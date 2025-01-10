@@ -19,7 +19,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
       load: [configuration],
     }),
     PrismaModule,
-    RedisModule,
+    // RedisModule,
     LoggerModule,
     AuthModule,
     PilotModule,

@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, ConsoleLogger } from '@nestjs/common';
 
 @Injectable()
-export class LoggerService extends Logger {
+export class LoggerService extends ConsoleLogger {
   log(message: string, context?: string) {
     super.log(`[${new Date().toISOString()}] ${message}`, context);
   }

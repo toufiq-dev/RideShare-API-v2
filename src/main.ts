@@ -1,19 +1,22 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggerService } from './core/logging/logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const logger = new Logger();
 
-  // CORS
+  const logger = app.get(LoggerService);
+  const configService = app.get(ConfigService);
+  const port = configService.get<number>('app.port');
+
   app.enableCors();
-
-  // Global Prefix
   app.setGlobalPrefix('api');
 
-  // Global Validation Pipe
+  app.useGlobalFilters(app.get(HttpExceptionFilter));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,22 +25,20 @@ async function bootstrap() {
     }),
   );
 
-  // Global Exception Filter
-  // app.useGlobalFilters(new PrismaExceptionFilter());
-
-  // Swagger Setup
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('FairDrive API')
-    .setDescription('FairDrive Taxi Booking API')
+    .setDescription(
+      'API documentation for the FairDrive Taxi Booking Application',
+    )
     .setVersion('1.0')
-    .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api-docs', app, document);
 
   app.useLogger(logger);
 
-  await app.listen(process.env.PORT ?? 8080);
+  await app.listen(port);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();

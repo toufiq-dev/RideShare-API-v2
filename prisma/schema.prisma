@@ -22,8 +22,10 @@ model User {
   updatedAt       DateTime        @updatedAt
   lastLogin       DateTime?
   metadata        Json?
+  admin           Admin[]
   customer        Customer[]
   pilot           Pilot[]
+  support         Support[]
   deviceTokens    DeviceToken[]
   supportTickets  SupportTicket[]
   session         UserSession[]
@@ -57,6 +59,15 @@ model DeviceToken {
   @@index([userId])
 }
 
+model Admin {
+  id       String @id @default(uuid())
+  name     String
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id])
+  email    String @unique
+  password String
+}
+
 model Customer {
   id          String             @id @default(uuid())
   userId      String             @unique
@@ -81,6 +92,15 @@ model SavedPlace {
 
   @@unique([customerId, type]) // One home/work per customer
   @@index([customerId])
+}
+
+model Support {
+  id           String @id @default(uuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id])
+  email        String @unique
+  password     String
+  referralCode String
 }
 
 model Pilot {
@@ -391,6 +411,7 @@ enum UserRole {
   ADMIN
   CUSTOMER
   PILOT
+  SUPPORT
 }
 
 enum UserStatus {

@@ -14,4 +14,9 @@ export default () => ({
     messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
     fromNumber: process.env.TWILIO_FROM_NUMBER,
   },
+  jwt: {
+    secret: process.env.JWT_SECRET,
+    accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN,
+    refreshTokenExpiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
+  },
 });

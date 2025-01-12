@@ -4,6 +4,7 @@ import {
   IsPhoneNumber,
   IsEmail,
   Length,
+  IsEnum,
 } from 'class-validator';
 
 export class SendOtpDto {
@@ -22,8 +23,13 @@ export class VerifyOtpDto {
   phone: string;
 
   @IsString()
-  // @Length(6, 6)
+  @Length(6, 6)
   otp: string;
+
+  @IsEnum(['CUSTOMER', 'PILOT'], {
+    message: 'Role must be either CUSTOMER or PILOT',
+  })
+  role: 'CUSTOMER' | 'PILOT';
 }
 
 export class CompleteCustomerOnboardingDto {

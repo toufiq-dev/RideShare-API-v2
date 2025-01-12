@@ -74,7 +74,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.client.set(key, value, 'EX', ttl);
       this.logger.log(
-        `Successfully set key: ${key} with TTL: ${ttl}`,
+        `Successfully set key: ${key}, value: ${value}, with TTL: ${ttl}`,
         this.context,
       );
     } catch (error) {

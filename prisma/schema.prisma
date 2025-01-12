@@ -10,11 +10,11 @@ datasource db {
 model User {
   id              String          @id @default(uuid())
   phone           String          @unique
-  email           String          @unique
-  isEmailVerified Boolean         @default(false)
+  email           String?         @unique
+  isEmailVerified Boolean?        @default(false)
   isPhoneVerified Boolean         @default(false)
-  name            String
-  avatar          String
+  name            String?
+  avatar          String?
   referralCode    String?
   role            UserRole
   status          UserStatus      @default(ACTIVE)
@@ -69,12 +69,13 @@ model Admin {
 }
 
 model Customer {
-  id          String             @id @default(uuid())
-  userId      String             @unique
-  user        User               @relation(fields: [userId], references: [id])
+  id          String           @id @default(uuid())
+  userId      String           @unique
+  user        User             @relation(fields: [userId], references: [id])
+  languageId  String
+  language    Languages        @relation(fields: [languageId], references: [id])
   bookings    Booking[]
   savedPlaces SavedPlace[]
-  languages   CustomerLanguage[]
   ratings     CustomerRating[]
 
   @@index([userId])
@@ -119,12 +120,13 @@ model Pilot {
   isDocumentVerified Boolean            @default(false)
   isAadharVerified   Boolean            @default(false)
   hasAcceptedTerms   Boolean            @default(false)
+  languageId         String
+  language           Languages          @relation(fields: [languageId], references: [id])
   pilotProgram       PilotProgram       @default(REGULAR)
   bookings           Booking[]
   wallet             PilotWallet?
   earnings           PilotEarning[]
   documents          Document[]
-  languages          PilotLanguage[]
   ratings            PilotRating[]
   ranking            PilotRanking?
   videoProgress      VideoProgress?
@@ -141,29 +143,11 @@ model PilotRanking {
 }
 
 model Languages {
-  id                  String             @id @default(uuid())
-  name                String             @unique
-  customerPreferences CustomerLanguage[]
-  pilotPreferences    PilotLanguage[]
-  translations        Translation[]
-}
-
-model CustomerLanguage {
-  customerId String
-  languageId String
-  customer   Customer  @relation(fields: [customerId], references: [id])
-  language   Languages @relation(fields: [languageId], references: [id])
-
-  @@id([customerId, languageId])
-}
-
-model PilotLanguage {
-  pilotId    String
-  languageId String
-  pilot      Pilot     @relation(fields: [pilotId], references: [id])
-  language   Languages @relation(fields: [languageId], references: [id])
-
-  @@id([pilotId, languageId])
+  id           String        @id @default(uuid())
+  name         String        @unique
+  pilots       Pilot[]
+  customers    Customer[]
+  translations Translation[]
 }
 
 model Translation {

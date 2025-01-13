@@ -14,6 +14,8 @@ export class LanguagesService {
   }
 
   async findAll() {
-    return this.prisma.languages.findMany();
+    const languages = await this.prisma.languages.findMany();
+
+    return { languages };
   }
 }

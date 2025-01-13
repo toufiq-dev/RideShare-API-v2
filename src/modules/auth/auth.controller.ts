@@ -13,7 +13,7 @@ import {
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
 } from './dto/onboarding.dto';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/current-user.guard';
 
@@ -47,6 +47,7 @@ export class AuthController {
   @Post('complete-onboarding')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Complete Customer Onboarding' })
   @ApiBody({ type: CompleteCustomerOnboardingDto })
   async completeOnboarding(

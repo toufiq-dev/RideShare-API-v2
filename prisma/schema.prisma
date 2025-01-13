@@ -22,14 +22,14 @@ model User {
   updatedAt       DateTime        @updatedAt
   lastLogin       DateTime?
   metadata        Json?
-  admin           Admin[]
-  customer        Customer[]
-  pilot           Pilot[]
-  support         Support[]
+  admin           Admin?
+  customer        Customer?
   deviceTokens    DeviceToken[]
+  pilot           Pilot?
+  support         Support?
   supportTickets  SupportTicket[]
-  session         UserSession[]
   transaction     Transaction[]
+  session         UserSession[]
 
   @@index([phone])
 }
@@ -37,11 +37,11 @@ model User {
 model UserSession {
   id         String  @id @default(uuid())
   userId     String
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   deviceInfo String?
   ipAddress  String?
   location   String?
   isActive   Boolean @default(true)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([location])
@@ -50,11 +50,11 @@ model UserSession {
 model DeviceToken {
   id         String     @id @default(uuid())
   userId     String
-  user       User       @relation(fields: [userId], references: [id])
   token      String     @unique
   deviceType DeviceType
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -63,20 +63,20 @@ model Admin {
   id       String @id @default(uuid())
   name     String
   userId   String @unique
-  user     User   @relation(fields: [userId], references: [id])
   email    String @unique
   password String
+  user     User   @relation(fields: [userId], references: [id])
 }
 
 model Customer {
   id          String           @id @default(uuid())
   userId      String           @unique
-  user        User             @relation(fields: [userId], references: [id])
   languageId  String
-  language    Languages        @relation(fields: [languageId], references: [id])
   bookings    Booking[]
-  savedPlaces SavedPlace[]
+  language    Languages        @relation(fields: [languageId], references: [id])
+  user        User             @relation(fields: [userId], references: [id])
   ratings     CustomerRating[]
+  savedPlaces SavedPlace[]
 
   @@index([userId])
 }
@@ -84,51 +84,51 @@ model Customer {
 model SavedPlace {
   id         String   @id @default(uuid())
   customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
   name       String
   type       String
   address    String
-  location   Json // lat, long
+  location   Json
   createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id])
 
-  @@unique([customerId, type]) // One home/work per customer
+  @@unique([customerId, type])
   @@index([customerId])
 }
 
 model Support {
   id           String @id @default(uuid())
   userId       String @unique
-  user         User   @relation(fields: [userId], references: [id])
   email        String @unique
   password     String
   referralCode String
+  user         User   @relation(fields: [userId], references: [id])
 }
 
 model Pilot {
   id                 String             @id @default(uuid())
   userId             String             @unique
-  user               User               @relation(fields: [userId], references: [id])
   licenseNumber      String             @unique
   vehicleId          String
-  vehicle            Vehicle            @relation(fields: [vehicleId], references: [id])
   isAvailable        Boolean            @default(false)
   currentLocation    Json?
   subscriptionId     String?
-  subscription       PilotSubscription? @relation(fields: [subscriptionId], references: [id])
   totalTrips         Int                @default(0)
   averageRating      Float              @default(0)
   isDocumentVerified Boolean            @default(false)
   isAadharVerified   Boolean            @default(false)
   hasAcceptedTerms   Boolean            @default(false)
   languageId         String
-  language           Languages          @relation(fields: [languageId], references: [id])
   pilotProgram       PilotProgram       @default(REGULAR)
   bookings           Booking[]
-  wallet             PilotWallet?
-  earnings           PilotEarning[]
   documents          Document[]
-  ratings            PilotRating[]
+  language           Languages          @relation(fields: [languageId], references: [id])
+  subscription       PilotSubscription? @relation(fields: [subscriptionId], references: [id])
+  user               User               @relation(fields: [userId], references: [id])
+  vehicle            Vehicle            @relation(fields: [vehicleId], references: [id])
+  earnings           PilotEarning[]
   ranking            PilotRanking?
+  ratings            PilotRating[]
+  wallet             PilotWallet?
   videoProgress      VideoProgress?
 
   @@index([licenseNumber])
@@ -138,27 +138,27 @@ model Pilot {
 model PilotRanking {
   id      String @id @default(uuid())
   pilotId String @unique
-  pilot   Pilot  @relation(fields: [pilotId], references: [id])
   ranking Int    @default(0)
+  pilot   Pilot  @relation(fields: [pilotId], references: [id])
 }
 
 model Languages {
   id           String        @id @default(uuid())
   name         String        @unique
-  pilots       Pilot[]
   customers    Customer[]
+  pilots       Pilot[]
   translations Translation[]
 }
 
 model Translation {
   id         String    @id @default(uuid())
   languageId String
-  language   Languages @relation(fields: [languageId], references: [id])
   key        String
   content    String
   category   String
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  language   Languages @relation(fields: [languageId], references: [id])
 
   @@unique([languageId, key])
 }
@@ -175,33 +175,33 @@ model Vehicle {
   insuranceExpiry DateTime
   puccExpiry      DateTime
   fitnessExpiry   DateTime
-  pilots          Pilot[]
   documents       Document[]
+  pilots          Pilot[]
 }
 
 model PilotWallet {
   id           String        @id @default(uuid())
   pilotId      String        @unique
-  pilot        Pilot         @relation(fields: [pilotId], references: [id])
   balance      Int
   minusLimit   Int           @default(-100)
   lastRecharge DateTime?
+  pilot        Pilot         @relation(fields: [pilotId], references: [id])
   transactions Transaction[]
 }
 
 model Transaction {
   id          String          @id @default(uuid())
   userId      String
-  user        User            @relation(fields: [userId], references: [id])
   walletId    String?
-  pilotWallet PilotWallet?    @relation(fields: [walletId], references: [id])
   type        TransactionType
   amount      Decimal
   description String?
   bookingId   String?
-  booking     Booking?        @relation(fields: [bookingId], references: [id])
   metadata    Json?
   createdAt   DateTime        @default(now())
+  booking     Booking?        @relation(fields: [bookingId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
+  pilotWallet PilotWallet?    @relation(fields: [walletId], references: [id])
 }
 
 model PilotSubscription {
@@ -219,32 +219,30 @@ model PilotSubscription {
 model PilotEarning {
   id          String   @id @default(uuid())
   pilotId     String
-  pilot       Pilot    @relation(fields: [pilotId], references: [id])
   amount      Decimal
   date        DateTime
   description String?
   createdAt   DateTime @default(now())
+  pilot       Pilot    @relation(fields: [pilotId], references: [id])
 }
 
 model SubscriptionTransaction {
   id             String            @id @default(uuid())
   subscriptionId String
-  subscription   PilotSubscription @relation(fields: [subscriptionId], references: [id])
   amount         Decimal
   status         PaymentStatus
   paymentMethod  String
   startDate      DateTime
   endDate        DateTime
   createdAt      DateTime          @default(now())
+  subscription   PilotSubscription @relation(fields: [subscriptionId], references: [id])
 }
 
 model Booking {
   id                 String          @id @default(uuid())
   bookingCode        String          @unique
   customerId         String
-  customer           Customer        @relation(fields: [customerId], references: [id])
   pilotId            String?
-  pilot              Pilot?          @relation(fields: [pilotId], references: [id])
   riderName          String?
   riderPhone         String?
   pickupLocation     Json
@@ -264,8 +262,10 @@ model Booking {
   scheduledFor       DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
-  payment            Payment?
+  customer           Customer        @relation(fields: [customerId], references: [id])
+  pilot              Pilot?          @relation(fields: [pilotId], references: [id])
   customerRating     CustomerRating?
+  payment            Payment?
   pilotRating        PilotRating?
   supportTicket      SupportTicket?
   walletTransactions Transaction[]
@@ -278,87 +278,87 @@ model Booking {
 model Payment {
   id            String        @id @default(uuid())
   bookingId     String        @unique
-  booking       Booking       @relation(fields: [bookingId], references: [id])
   amount        Decimal
   status        PaymentStatus
   paymentMethod String
   transactionId String?
   createdAt     DateTime      @default(now())
   metadata      Json?
+  booking       Booking       @relation(fields: [bookingId], references: [id])
 
   @@index([status])
   @@index([createdAt])
 }
 
 model CustomerRating {
-  id         String     @id @default(uuid())
-  bookingId  String     @unique
-  booking    Booking    @relation(fields: [bookingId], references: [id])
+  id         String    @id @default(uuid())
+  bookingId  String    @unique
   customerId String
-  customer   Customer   @relation(fields: [customerId], references: [id])
-  rating     Int        @db.SmallInt
-  feedback   Feedback[]
+  rating     Int       @db.SmallInt
   comment    String?
-  createdAt  DateTime   @default(now())
+  createdAt  DateTime  @default(now())
+  booking    Booking   @relation(fields: [bookingId], references: [id])
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  feedback   Feedback?
 }
 
 model PilotRating {
   id        String     @id @default(uuid())
   bookingId String     @unique
-  booking   Booking    @relation(fields: [bookingId], references: [id])
   pilotId   String
-  pilot     Pilot      @relation(fields: [pilotId], references: [id])
   rating    Int        @db.SmallInt
-  feedback  Feedback[]
   comment   String?
   createdAt DateTime   @default(now())
+  feedback  Feedback[]
+  booking   Booking    @relation(fields: [bookingId], references: [id])
+  pilot     Pilot      @relation(fields: [pilotId], references: [id])
 }
 
 model Feedback {
   id               String         @id @default(uuid())
   ratingId         String?
   customerRatingId String         @unique
-  customerRating   CustomerRating @relation(fields: [customerRatingId], references: [id])
   pilotRatingId    String
-  pilotRating      PilotRating    @relation(fields: [pilotRatingId], references: [id])
   tags             String[]
   comment          String?
   createdAt        DateTime       @default(now())
+  customerRating   CustomerRating @relation(fields: [customerRatingId], references: [id])
+  pilotRating      PilotRating    @relation(fields: [pilotRatingId], references: [id])
 }
 
 model SupportTicket {
   id          String         @id @default(uuid())
   userId      String
-  user        User           @relation(fields: [userId], references: [id])
   bookingId   String?        @unique
-  booking     Booking?       @relation(fields: [bookingId], references: [id])
   type        SupportType
   channel     SupportChannel
   status      SupportStatus  @default(OPEN)
   description String
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  booking     Booking?       @relation(fields: [bookingId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
 }
 
 model Document {
   id           String       @id @default(uuid())
   pilotId      String
-  pilot        Pilot        @relation(fields: [pilotId], references: [id], onDelete: Cascade)
   vehicleId    String
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
   type         DocumentType
   documentUrl  String
   expiryDate   DateTime?
   alertMessage String
   isVerified   Boolean      @default(false)
   uploadedAt   DateTime     @default(now())
+  pilot        Pilot        @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
 }
 
 model LegalDocument {
   id        String       @id @default(uuid())
   type      LegalDocType
   title     String
-  content   String       @db.Text
+  content   String
   version   String
   isActive  Boolean      @default(true)
   createdAt DateTime     @default(now())
@@ -378,10 +378,10 @@ model VideoTutorial {
 model VideoProgress {
   id        String        @id @default(uuid())
   pilotId   String        @unique
-  pilot     Pilot         @relation(fields: [pilotId], references: [id])
   videoId   String
-  video     VideoTutorial @relation(fields: [videoId], references: [id])
   completed Boolean       @default(false)
+  pilot     Pilot         @relation(fields: [pilotId], references: [id])
+  video     VideoTutorial @relation(fields: [videoId], references: [id])
 
   @@unique([pilotId, videoId])
 }
@@ -442,10 +442,10 @@ enum LegalDocType {
 }
 
 enum SubscriptionType {
-  STARTER_PACK // 1390
-  PRO_PACK // 3990
-  MEGA_PACK // 12500
-  FLEXI_PACK // 149
+  STARTER_PACK
+  PRO_PACK
+  MEGA_PACK
+  FLEXI_PACK
 }
 
 enum BookingStatus {

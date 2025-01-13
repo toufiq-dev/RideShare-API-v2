@@ -52,7 +52,7 @@ export class AuthService {
 
     await this.twilio.sendOtp(phone, otp);
 
-    return { otp };
+    return { message: 'OTP sent to your phone successfully', otp };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -105,7 +105,11 @@ export class AuthService {
     await this.redis.del(`languageId:${phone}`);
     await this.redis.set(`refreshToken:${user.id}`, refreshToken, 604800);
 
-    return { accessToken, refreshToken };
+    return {
+      message: 'OTP verified successfully',
+      accessToken,
+      refreshToken,
+    };
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {

@@ -163,6 +163,7 @@ model Translation {
   @@unique([languageId, key])
 }
 
+// rc number - > licensePlate
 model Vehicle {
   id              String      @id @default(uuid())
   make            String

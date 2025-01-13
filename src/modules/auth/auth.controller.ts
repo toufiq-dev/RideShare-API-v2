@@ -47,7 +47,7 @@ export class AuthController {
   @Post('complete-onboarding')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete Customer Onboarding' })
   @ApiBody({ type: CompleteCustomerOnboardingDto })
   async completeOnboarding(

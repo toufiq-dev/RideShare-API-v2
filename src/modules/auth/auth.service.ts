@@ -1,5 +1,9 @@
 import { randomInt } from 'node:crypto';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -9,6 +13,7 @@ import {
   SendOtpDto,
   VerifyOtpDto,
   CompleteCustomerOnboardingDto,
+  RefreshTokenDto,
 } from './dto/onboarding.dto';
 
 @Injectable()
@@ -31,16 +36,23 @@ export class AuthService {
   }
 
   async sendOtp(sendOtpDto: SendOtpDto) {
-    const { languageId, phone } = sendOtpDto;
+    const { language, phone } = sendOtpDto;
+
+    const Language = await this.prisma.languages.findUnique({
+      where: { name: language },
+    });
+    if (!Language) {
+      throw new NotFoundException('Language not found');
+    }
 
     const otp = randomInt(100000, 999999).toString();
 
     await this.redis.set(`otp:${phone}`, otp, 300);
-    await this.redis.set(`languageId:${phone}`, languageId, 300);
+    await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
     await this.twilio.sendOtp(phone, otp);
 
-    return 'OTP sent successfully';
+    return { otp };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -81,7 +93,6 @@ export class AuthService {
       }
     }
 
-    // Generate Tokens
     const accessToken = this.jwtService.sign(
       { userId: user.id, role },
       { expiresIn: this.accessTokenExpiresIn },
@@ -97,40 +108,51 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async refreshToken(userId: string, token: string) {
+  async refreshToken(refreshTokenDto: RefreshTokenDto) {
+    const { userId, refreshToken } = refreshTokenDto;
+
     const storedToken = await this.redis.get(`refreshToken:${userId}`);
-    if (!storedToken || storedToken !== token) {
+    if (!storedToken || storedToken !== refreshToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    await this.redis.del(`refreshToken:${userId}`);
+
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new NotFoundException('User not found');
     }
 
-    // Generate new tokens
     const newAccessToken = this.jwtService.sign(
       { userId: user.id, role: user.role },
-      { expiresIn: '15m' },
+      { expiresIn: this.accessTokenExpiresIn },
     );
     const newRefreshToken = this.jwtService.sign(
       { userId: user.id },
-      { expiresIn: '7d' },
+      { expiresIn: this.refreshTokenExpiresIn },
     );
 
-    // Update refresh token in Redis
     await this.redis.set(`refreshToken:${userId}`, newRefreshToken, 604800);
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   async completeOnboarding(
+    userId: string,
     customerOnboardingDto: CompleteCustomerOnboardingDto,
   ) {
-    const { phone, name, email } = customerOnboardingDto;
+    const { name, email } = customerOnboardingDto;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     return await this.prisma.user.update({
-      where: { phone },
+      where: { id: userId },
       data: {
         name,
         email,

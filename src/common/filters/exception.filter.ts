@@ -24,17 +24,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    const errorMessage =
-      typeof message === 'string'
-        ? message
-        : (message as any).message || 'Unexpected error occurred';
+    console.error('Exception Caught:', exception); // Logs the error stack
 
     response.status(status).json({
       success: false,
       message: 'Request failed',
       error: {
         code: status,
-        message: errorMessage,
+        message:
+          typeof message === 'string'
+            ? message
+            : (message as any).message || 'Unexpected error occurred',
         path: request.url,
         timestamp: new Date().toISOString(),
       },

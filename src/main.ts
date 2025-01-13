@@ -34,6 +34,7 @@ async function bootstrap() {
       'API documentation for the FairDrive Taxi Booking Application',
     )
     .setVersion('1.0')
+    .addTag('Auth')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

@@ -46,11 +46,6 @@ export class VerifyOtpDto {
 }
 
 export class RefreshTokenDto {
-  @ApiProperty({ description: 'User ID' })
-  @IsString()
-  @IsNotEmpty({ message: 'User ID is required' })
-  userId: string;
-
   @ApiProperty({ description: 'Refresh token' })
   @IsString()
   @IsNotEmpty({ message: 'Refresh token is required' })

@@ -52,7 +52,7 @@ export class AuthService {
 
     await this.twilio.sendOtp(phone, otp);
 
-    return { message: 'OTP sent to your phone successfully', otp };
+    return { message: 'OTP sent to your phone successfully', data: { otp } };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -107,8 +107,10 @@ export class AuthService {
 
     return {
       message: 'OTP verified successfully',
-      accessToken,
-      refreshToken,
+      data: {
+        accessToken,
+        refreshToken,
+      },
     };
   }
 
@@ -138,7 +140,9 @@ export class AuthService {
 
     await this.redis.set(`refreshToken:${userId}`, newRefreshToken, 604800);
 
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    return {
+      data: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+    };
   }
 
   async completeOnboarding(
@@ -147,7 +151,7 @@ export class AuthService {
   ) {
     const { name, email } = customerOnboardingDto;
 
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
@@ -155,12 +159,17 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    return await this.prisma.user.update({
+    user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         name,
         email,
       },
     });
+
+    return {
+      message: 'Onboarding completed successfully',
+      data: user,
+    };
   }
 }

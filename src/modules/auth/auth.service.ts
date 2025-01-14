@@ -38,7 +38,7 @@ export class AuthService {
   }
 
   async sendOtp(sendOtpDto: SendOtpDto) {
-    const { language, phone } = sendOtpDto;
+    const { language, phone, referralCode } = sendOtpDto;
 
     const Language = await this.prisma.languages.findUnique({
       where: { name: language },
@@ -87,6 +87,18 @@ export class AuthService {
       });
       if (!customer) {
         customer = await this.prisma.customer.create({
+          data: {
+            userId: user.id,
+            languageId,
+          },
+        });
+      }
+    } else if (role == 'PILOT') {
+      let pilot = await this.prisma.pilot.findUnique({
+        where: { userId: user.id },
+      });
+      if (!pilot) {
+        pilot = await this.prisma.pilot.create({
           data: {
             userId: user.id,
             languageId,

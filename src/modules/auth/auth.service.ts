@@ -20,6 +20,7 @@ import {
 export class AuthService {
   private readonly accessTokenExpiresIn: string;
   private readonly refreshTokenExpiresIn: string;
+  private readonly jwtSecret: string;
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -33,6 +34,7 @@ export class AuthService {
     this.refreshTokenExpiresIn = this.configService.get<string>(
       'jwt.refreshTokenExpiresIn',
     );
+    this.jwtSecret = this.configService.get<string>('jwt.secret');
   }
 
   async sendOtp(sendOtpDto: SendOtpDto) {
@@ -50,7 +52,7 @@ export class AuthService {
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
-    await this.twilio.sendOtp(phone, otp);
+    // await this.twilio.sendOtp(phone, otp);
 
     return { message: 'OTP sent to your phone successfully', data: { otp } };
   }
@@ -115,7 +117,19 @@ export class AuthService {
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
-    const { userId, refreshToken } = refreshTokenDto;
+    const { refreshToken } = refreshTokenDto;
+
+    // Decode the token to extract payload
+    let decodedToken;
+    try {
+      decodedToken = this.jwtService.verify(refreshToken, {
+        secret: this.jwtSecret,
+      });
+    } catch (err) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const { userId } = decodedToken;
 
     const storedToken = await this.redis.get(`refreshToken:${userId}`);
     if (!storedToken || storedToken !== refreshToken) {

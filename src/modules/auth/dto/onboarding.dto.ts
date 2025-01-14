@@ -5,6 +5,7 @@ import {
   IsEmail,
   Length,
   IsEnum,
+  IsOptional,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -23,6 +24,11 @@ export class SendOtpDto {
   @IsPhoneNumber()
   @IsNotEmpty({ message: 'Phone number is required' })
   phone: string;
+
+  @ApiPropertyOptional({ description: 'Referral Code' })
+  @IsString()
+  @IsOptional({ message: 'Referral Code is optional' })
+  referralCode?: string;
 }
 
 export class VerifyOtpDto {

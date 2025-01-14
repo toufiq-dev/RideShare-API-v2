@@ -43,7 +43,6 @@ model UserSession {
   isActive   Boolean @default(true)
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@index([location])
 }
 
@@ -55,8 +54,6 @@ model DeviceToken {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   user       User       @relation(fields: [userId], references: [id])
-
-  @@index([userId])
 }
 
 model Admin {
@@ -105,34 +102,46 @@ model Support {
 }
 
 model Pilot {
-  id                 String             @id @default(uuid())
-  userId             String             @unique
-  licenseNumber      String             @unique
-  vehicleId          String
-  isAvailable        Boolean            @default(false)
-  currentLocation    Json?
-  subscriptionId     String?
-  totalTrips         Int                @default(0)
-  averageRating      Float              @default(0)
-  isDocumentVerified Boolean            @default(false)
-  isAadharVerified   Boolean            @default(false)
-  hasAcceptedTerms   Boolean            @default(false)
-  languageId         String
-  pilotProgram       PilotProgram       @default(REGULAR)
-  bookings           Booking[]
-  documents          Document[]
-  language           Languages          @relation(fields: [languageId], references: [id])
-  subscription       PilotSubscription? @relation(fields: [subscriptionId], references: [id])
-  user               User               @relation(fields: [userId], references: [id])
-  vehicle            Vehicle            @relation(fields: [vehicleId], references: [id])
-  earnings           PilotEarning[]
-  ranking            PilotRanking?
-  ratings            PilotRating[]
-  wallet             PilotWallet?
-  videoProgress      VideoProgress?
+  id                     String             @id @default(uuid())
+  languageId             String
+  userId                 String             @unique
+  hasAcceptedTerms       Boolean            @default(false)
+  selfieUrl              String?
+  drivingLicense         String?            @unique
+  dateOfBirth            DateTime?
+  providedDrivingLicense Boolean            @default(false)
+  providedRC             Boolean            @default(false)
+  panCardName            String?
+  panCardNumber          String?
+  providedPanCard        Boolean            @default(false)
+  isAadharVerified       Boolean            @default(false)
+  currentLocation        Json?
+  subscriptionId         String?
+  totalTrips             Int                @default(0)
+  averageRating          Float              @default(0)
+  isAvailable            Boolean            @default(false)
+  pilotProgramId         String?
+  pilotProgram           PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
+  vehicles               Vehicle[]
+  bookings               Booking[]
+  documents              Document[]
+  language               Languages          @relation(fields: [languageId], references: [id])
+  subscription           PilotSubscription? @relation(fields: [subscriptionId], references: [id])
+  user                   User               @relation(fields: [userId], references: [id])
+  earnings               PilotEarning[]
+  ranking                PilotRanking?
+  ratings                PilotRating[]
+  wallet                 PilotWallet?
+  videoProgress          VideoProgress?
 
-  @@index([licenseNumber])
-  @@index([vehicleId])
+  @@index([isAvailable, currentLocation])
+}
+
+model PilotProgram {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  pilot       Pilot[]
 }
 
 model PilotRanking {
@@ -163,21 +172,28 @@ model Translation {
   @@unique([languageId, key])
 }
 
-// rc number - > licensePlate
 model Vehicle {
-  id              String      @id @default(uuid())
-  make            String
-  model           String
-  year            Int
-  licensePlate    String      @unique
-  color           String
-  vehicleType     VehicleType
-  capacity        Int
-  insuranceExpiry DateTime
-  puccExpiry      DateTime
-  fitnessExpiry   DateTime
-  documents       Document[]
-  pilots          Pilot[]
+  id                 String       @id @default(uuid())
+  pilotId            String
+  manufacturer       String?
+  model              String?
+  year               Int?
+  rcNumber           String       @unique
+  color              String
+  capacity           Int
+  vehicleTypeId      String?
+  registrationExpiry DateTime?
+  permitExpiry       DateTime?
+  insuranceExpiry    DateTime?
+  pilot              Pilot        @relation(fields: [pilotId], references: [id])
+  vehicleType        VehicleType? @relation(fields: [vehicleTypeId], references: [id])
+  documents          Document[]
+}
+
+model VehicleType {
+  id      String    @id @default(uuid())
+  name    String    @unique
+  vehicle Vehicle[]
 }
 
 model PilotWallet {
@@ -206,15 +222,22 @@ model Transaction {
 }
 
 model PilotSubscription {
-  id           String                    @id @default(uuid())
-  name         SubscriptionType
-  price        Decimal
-  coins        Int
-  description  String
-  features     Json
-  isActive     Boolean                   @default(true)
-  pilots       Pilot[]
-  transactions SubscriptionTransaction[]
+  id                 String                    @id @default(uuid())
+  subscriptionTypeId String                    @unique
+  price              Decimal
+  coins              Int
+  description        String
+  features           Json
+  isActive           Boolean                   @default(true)
+  pilots             Pilot[]
+  transactions       SubscriptionTransaction[]
+  subscriptionType   SubscriptionType          @relation(fields: [subscriptionTypeId], references: [id])
+}
+
+model SubscriptionType {
+  id                String              @id @default(uuid())
+  name              String              @unique
+  pilotSubscription PilotSubscription[]
 }
 
 model PilotEarning {
@@ -223,6 +246,7 @@ model PilotEarning {
   amount      Decimal
   date        DateTime
   description String?
+  lastUpdated DateTime
   createdAt   DateTime @default(now())
   pilot       Pilot    @relation(fields: [pilotId], references: [id])
 }
@@ -240,40 +264,48 @@ model SubscriptionTransaction {
 }
 
 model Booking {
-  id                 String          @id @default(uuid())
-  bookingCode        String          @unique
-  customerId         String
-  pilotId            String?
-  riderName          String?
-  riderPhone         String?
-  pickupLocation     Json
-  dropLocation       Json
-  actualDistance     Float?
-  actualDuration     Int?
-  tripStart          DateTime?
-  tripEnd            DateTime?
-  status             BookingStatus
-  estimatedFare      Float?
-  fare               Float?
-  surgeMultiplier    Float?          @default(1.0)
-  discount           Float?          @default(0.0)
-  duration           Int?
-  cancellationReason String?
-  notes              String?
-  scheduledFor       DateTime?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  customer           Customer        @relation(fields: [customerId], references: [id])
-  pilot              Pilot?          @relation(fields: [pilotId], references: [id])
-  customerRating     CustomerRating?
-  payment            Payment?
-  pilotRating        PilotRating?
-  supportTicket      SupportTicket?
-  walletTransactions Transaction[]
+  id                   String              @id @default(uuid())
+  bookingCode          String              @unique
+  customerId           String
+  pilotId              String?
+  riderName            String?
+  riderPhone           String?
+  pickupLocation       Json
+  dropLocation         Json
+  actualDistance       Float?
+  actualDuration       Int?
+  tripStart            DateTime?
+  tripEnd              DateTime?
+  status               BookingStatus
+  estimatedFare        Float?
+  fare                 Float?
+  surgeMultiplier      Float?              @default(1.0)
+  discount             Float?              @default(0.0)
+  duration             Int?
+  cancellationReasonId String?
+  notes                String?
+  scheduledFor         DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  customer             Customer            @relation(fields: [customerId], references: [id])
+  pilot                Pilot?              @relation(fields: [pilotId], references: [id])
+  cancellationReason   CancellationReason? @relation(fields: [cancellationReasonId], references: [id])
+  customerRating       CustomerRating?
+  payment              Payment?
+  pilotRating          PilotRating?
+  supportTicket        SupportTicket?
+  walletTransactions   Transaction[]
 
   @@index([customerId])
   @@index([pilotId])
   @@index([status, createdAt])
+}
+
+model CancellationReason {
+  id        String    @id @default(uuid())
+  reason    String
+  bookingId String
+  booking   Booking[]
 }
 
 model Payment {
@@ -355,17 +387,6 @@ model Document {
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
 }
 
-model LegalDocument {
-  id        String       @id @default(uuid())
-  type      LegalDocType
-  title     String
-  content   String
-  version   String
-  isActive  Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-}
-
 model VideoTutorial {
   id         String          @id @default(uuid())
   title      String
@@ -406,20 +427,6 @@ enum UserStatus {
   DELETED
 }
 
-enum PilotProgram {
-  REGULAR
-  STAR
-  SUPER
-}
-
-enum VehicleType {
-  HATCHBACK
-  SEDAN
-  SUV
-  KALI_PEELI
-  AUTO_RICKSHAW
-}
-
 enum DocumentType {
   DRIVING_LICENSE
   VEHICLE_REGISTRATION
@@ -430,23 +437,6 @@ enum DocumentType {
   PUCC
   FITNESS_CERTIFICATE
   OTHER
-}
-
-enum LegalDocType {
-  PRIVACY_POLICY
-  TERMS_CONDITIONS
-  COPYRIGHT
-  DATA_PROVIDERS
-  SOFTWARE_LICENSE
-  LOCATION_INFORMATION
-  CITY_REGULATIONS
-}
-
-enum SubscriptionType {
-  STARTER_PACK
-  PRO_PACK
-  MEGA_PACK
-  FLEXI_PACK
 }
 
 enum BookingStatus {

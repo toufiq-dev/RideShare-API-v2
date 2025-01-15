@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
-import { TwilioUtil } from 'src/core/utils/twilio.util';
+import { Msg91Util } from 'src/core/utils/msg91.util';
 import { JwtService } from '@nestjs/jwt';
 import {
   SendOtpDto,
@@ -21,12 +21,13 @@ export class AuthService {
   private readonly accessTokenExpiresIn: string;
   private readonly refreshTokenExpiresIn: string;
   private readonly jwtSecret: string;
+  private readonly redisRefreshTokenTTL: number;
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly twilio: TwilioUtil,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly msg91: Msg91Util,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -35,6 +36,9 @@ export class AuthService {
       'jwt.refreshTokenExpiresIn',
     );
     this.jwtSecret = this.configService.get<string>('jwt.secret');
+    this.redisRefreshTokenTTL = this.configService.get<number>(
+      'redis.refreshTokenTTL',
+    );
   }
 
   async sendOtp(sendOtpDto: SendOtpDto) {
@@ -52,7 +56,7 @@ export class AuthService {
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
-    // await this.twilio.sendOtp(phone, otp);
+    await this.msg91.sendOtp(phone);
 
     return { message: 'OTP sent to your phone successfully', data: { otp } };
   }
@@ -60,19 +64,102 @@ export class AuthService {
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { phone, otp, role } = verifyOtpDto;
 
+    const languageId = await this.validateOtp(phone, otp);
+
+    const { user, isNewUser } = await this.findOrCreateUser(phone, role);
+
+    await this.handleProfileCreation(user.id, role, languageId);
+
+    const tokens = await this.generateTokens(user);
+
+    return {
+      message: 'OTP verified successfully',
+      data: {
+        ...tokens,
+        isAlreadyRegistered: !isNewUser,
+      },
+    };
+  }
+
+  async refreshToken(refreshTokenDto: RefreshTokenDto) {
+    const { refreshToken } = refreshTokenDto;
+
+    const { userId, version } = this.decodeRefreshToken(refreshToken);
+
+    await this.validateStoredRefreshToken(userId, refreshToken);
+
+    const user = await this.validateUserTokenVersion(userId, version);
+
+    const updatedUser = this.incrementUserTokenVersion(
+      userId,
+      user.authTokenVersion,
+    );
+
+    const tokens = await this.generateTokens(updatedUser);
+
+    return {
+      data: tokens,
+    };
+  }
+
+  async completeOnboarding(
+    userId: string,
+    customerOnboardingDto: CompleteCustomerOnboardingDto,
+  ) {
+    const { name, email } = customerOnboardingDto;
+
+    const user = await this.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name,
+        email,
+      },
+    });
+
+    return {
+      message: 'Onboarding completed successfully',
+      data: updatedUser,
+    };
+  }
+
+  private async findUserById(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
+  private async validateOtp(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
-    const languageId = await this.redis.get(`languageId:${phone}`);
     if (!storedOtp || storedOtp !== otp) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
+    const languageId = await this.redis.get(`languageId:${phone}`);
+
+    // const isVerified = await this.msg91.verifyOtp(phone, otp);
+    // if (!isVerified) {
+    //   throw new UnauthorizedException('Invalid or expired OTP');
+    // }
+
     await this.redis.del(`otp:${phone}`);
+    await this.redis.del(`languageId:${phone}`);
 
-    let user = await this.prisma.user.findUnique({
-      where: { phone },
-    });
+    return languageId;
+  }
 
-    if (!user) {
+  private async findOrCreateUser(phone: string, role) {
+    let user = await this.prisma.user.findUnique({ where: { phone } });
+    const isNewUser = !user;
+
+    if (isNewUser) {
       user = await this.prisma.user.create({
         data: {
           phone,
@@ -83,127 +170,97 @@ export class AuthService {
       });
     }
 
-    if (role == 'CUSTOMER') {
-      let customer = await this.prisma.customer.findUnique({
-        where: { userId: user.id },
+    return { user, isNewUser };
+  }
+
+  private async handleProfileCreation(
+    userId: string,
+    role: string,
+    languageId: string,
+  ): Promise<void> {
+    if (role === 'CUSTOMER') {
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
       });
       if (!customer) {
-        customer = await this.prisma.customer.create({
+        await this.prisma.customer.create({
           data: {
-            userId: user.id,
+            userId,
             languageId,
           },
         });
       }
-    } else if (role == 'PILOT') {
-      let pilot = await this.prisma.pilot.findUnique({
-        where: { userId: user.id },
+    } else if (role === 'PILOT') {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
       });
       if (!pilot) {
-        pilot = await this.prisma.pilot.create({
+        await this.prisma.pilot.create({
           data: {
-            userId: user.id,
+            userId,
             languageId,
           },
         });
       }
     }
+  }
 
+  private async generateTokens(user) {
     const accessToken = this.jwtService.sign(
-      { userId: user.id, role, version: user.authTokenVersion },
+      { userId: user.id, role: user.role, version: user.authTokenVersion },
       { expiresIn: this.accessTokenExpiresIn },
     );
+
     const refreshToken = this.jwtService.sign(
       { userId: user.id, version: user.authTokenVersion },
       { expiresIn: this.refreshTokenExpiresIn },
     );
 
-    await this.redis.del(`languageId:${phone}`);
-    await this.redis.set(`refreshToken:${user.id}`, refreshToken, 604800);
+    await this.redis.set(
+      `refreshToken:${user.id}`,
+      refreshToken,
+      this.redisRefreshTokenTTL,
+    );
 
-    return {
-      message: 'OTP verified successfully',
-      data: {
-        accessToken,
-        refreshToken,
-      },
-    };
+    return { accessToken, refreshToken };
   }
 
-  async refreshToken(refreshTokenDto: RefreshTokenDto) {
-    const { refreshToken } = refreshTokenDto;
-
-    let decodedToken;
+  private decodeRefreshToken(refreshToken: string) {
     try {
-      decodedToken = this.jwtService.verify(refreshToken, {
-        secret: this.jwtSecret,
-      });
-    } catch (err) {
+      return this.jwtService.verify(refreshToken, { secret: this.jwtSecret });
+    } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+  }
 
-    const { userId, version } = decodedToken;
-
+  private async validateStoredRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<void> {
     const storedToken = await this.redis.get(`refreshToken:${userId}`);
     if (!storedToken || storedToken !== refreshToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     await this.redis.del(`refreshToken:${userId}`);
+  }
 
+  private async validateUserTokenVersion(userId: string, version: number) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.authTokenVersion !== version) {
       throw new UnauthorizedException('Token has been invalidated');
     }
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        authTokenVersion: user.authTokenVersion + 1,
-      },
-    });
-
-    const newAccessToken = this.jwtService.sign(
-      { userId: user.id, role: user.role, version: user.authTokenVersion + 1 },
-      { expiresIn: this.accessTokenExpiresIn },
-    );
-    const newRefreshToken = this.jwtService.sign(
-      { userId: user.id, version: user.authTokenVersion + 1 },
-      { expiresIn: this.refreshTokenExpiresIn },
-    );
-
-    await this.redis.set(`refreshToken:${userId}`, newRefreshToken, 604800);
-
-    return {
-      data: { accessToken: newAccessToken, refreshToken: newRefreshToken },
-    };
+    return user;
   }
 
-  async completeOnboarding(
+  private async incrementUserTokenVersion(
     userId: string,
-    customerOnboardingDto: CompleteCustomerOnboardingDto,
+    currentVersion: number,
   ) {
-    const { name, email } = customerOnboardingDto;
-
-    let user = await this.prisma.user.findUnique({
+    const newVersion = currentVersion + 1;
+    return await this.prisma.user.update({
       where: { id: userId },
+      data: { authTokenVersion: newVersion },
     });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        email,
-      },
-    });
-
-    return {
-      message: 'Onboarding completed successfully',
-      data: user,
-    };
   }
 }

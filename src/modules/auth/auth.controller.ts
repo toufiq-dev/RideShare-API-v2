@@ -37,6 +37,14 @@ export class AuthController {
     return await this.authService.verifyOtp(verifyOtpDto);
   }
 
+  @Post('resend-otp')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Resend OTP to user' })
+  @ApiBody({ type: SendOtpDto })
+  async resendOtp(@Body() sendOtpDto: SendOtpDto) {
+    return await this.authService.sendOtp(sendOtpDto);
+  }
+
   @Post('refresh-token')
   @HttpCode(200)
   @ApiOperation({ summary: 'Refresh access token' })

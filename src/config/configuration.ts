@@ -7,6 +7,7 @@ export default () => ({
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
+    refreshTokenTTL: process.env.REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID,

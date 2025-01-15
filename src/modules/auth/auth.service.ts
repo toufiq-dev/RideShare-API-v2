@@ -71,12 +71,14 @@ export class AuthService {
     let user = await this.prisma.user.findUnique({
       where: { phone },
     });
+
     if (!user) {
       user = await this.prisma.user.create({
         data: {
           phone,
           role,
           isPhoneVerified: true,
+          authTokenVersion: 1,
         },
       });
     }
@@ -108,11 +110,11 @@ export class AuthService {
     }
 
     const accessToken = this.jwtService.sign(
-      { userId: user.id, role },
+      { userId: user.id, role, version: user.authTokenVersion },
       { expiresIn: this.accessTokenExpiresIn },
     );
     const refreshToken = this.jwtService.sign(
-      { userId: user.id },
+      { userId: user.id, version: user.authTokenVersion },
       { expiresIn: this.refreshTokenExpiresIn },
     );
 
@@ -131,7 +133,6 @@ export class AuthService {
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    // Decode the token to extract payload
     let decodedToken;
     try {
       decodedToken = this.jwtService.verify(refreshToken, {
@@ -141,7 +142,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const { userId } = decodedToken;
+    const { userId, version } = decodedToken;
 
     const storedToken = await this.redis.get(`refreshToken:${userId}`);
     if (!storedToken || storedToken !== refreshToken) {
@@ -151,16 +152,23 @@ export class AuthService {
     await this.redis.del(`refreshToken:${userId}`);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (!user || user.authTokenVersion !== version) {
+      throw new UnauthorizedException('Token has been invalidated');
     }
 
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        authTokenVersion: user.authTokenVersion + 1,
+      },
+    });
+
     const newAccessToken = this.jwtService.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role, version: user.authTokenVersion + 1 },
       { expiresIn: this.accessTokenExpiresIn },
     );
     const newRefreshToken = this.jwtService.sign(
-      { userId: user.id },
+      { userId: user.id, version: user.authTokenVersion + 1 },
       { expiresIn: this.refreshTokenExpiresIn },
     );
 

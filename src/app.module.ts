@@ -12,6 +12,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middleware';
+import { CustomerModule } from './modules/customer/customer.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middle
     DocumentsModule,
     VehiclesModule,
     SubscriptionsModule,
+    CustomerModule,
   ],
   providers: [GlobalExceptionFilter],
 })

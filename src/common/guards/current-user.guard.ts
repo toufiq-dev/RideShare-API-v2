@@ -40,7 +40,7 @@ export class JwtAuthGuard implements CanActivate {
       if (!user || user.authTokenVersion !== payload.version) {
         throw new UnauthorizedException('Token has been invalidated');
       }
-      request.user = payload; console.log(request.user)
+      request.user = payload;
       return true;
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired token');

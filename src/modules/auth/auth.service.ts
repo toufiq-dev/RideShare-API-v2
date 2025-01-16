@@ -14,7 +14,7 @@ import {
   VerifyOtpDto,
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
-} from './dto/onboarding.dto';
+} from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -90,16 +90,14 @@ export class AuthService {
 
     const user = await this.validateUserTokenVersion(userId, version);
 
-    const updatedUser = this.incrementUserTokenVersion(
+    const updatedUser = await this.incrementUserTokenVersion(
       userId,
       user.authTokenVersion,
     );
 
     const tokens = await this.generateTokens(updatedUser);
 
-    return {
-      data: tokens,
-    };
+    return { data: tokens };
   }
 
   async completeOnboarding(
@@ -237,7 +235,12 @@ export class AuthService {
     userId: string,
     refreshToken: string,
   ): Promise<void> {
+    if (!userId || !refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token payload');
+    }
+
     const storedToken = await this.redis.get(`refreshToken:${userId}`);
+
     if (!storedToken || storedToken !== refreshToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -246,7 +249,8 @@ export class AuthService {
   }
 
   private async validateUserTokenVersion(userId: string, version: number) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.findUserById(userId);
+
     if (!user || user.authTokenVersion !== version) {
       throw new UnauthorizedException('Token has been invalidated');
     }

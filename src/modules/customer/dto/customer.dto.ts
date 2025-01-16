@@ -40,3 +40,24 @@ export class CreateSavedPlaceDto {
   @Type(() => LocationDto)
   location?: LocationDto;
 }
+
+export class UpdateSavedPlaceDto {
+  @ApiProperty({ description: 'Name of the address type' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ description: 'Address' })
+  @IsNotEmpty({ message: 'Address is required' })
+  @IsString()
+  address: string;
+
+  @ApiProperty({
+    description: 'Location in latitude and longitude',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  location?: LocationDto;
+}

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { CreateSavedPlaceDto } from './dto/customer.dto';
+import { CreateSavedPlaceDto, UpdateSavedPlaceDto } from './dto/customer.dto';
 
 @Injectable()
 export class CustomerService {
@@ -40,20 +40,119 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    const locationPlain = location ? instanceToPlain(location) : null;
-
-    const savedAddress = await this.prisma.savedPlace.create({
+    const savedPlace = await this.prisma.savedPlace.create({
       data: {
         customerId: customer.id,
         name,
         address,
-        location: locationPlain,
+        location: location ? instanceToPlain(location) : null,
       },
     });
 
     return {
       message: 'Saved address created successfully',
-      data: savedAddress,
+      data: savedPlace,
+    };
+  }
+
+  async getSavedPlaces(userId: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const savedPlaces = await this.prisma.savedPlace.findMany({
+      where: {
+        customerId: customer.id,
+      },
+    });
+
+    if (!savedPlaces) {
+      throw new NotFoundException('Saved places not found');
+    }
+
+    return {
+      message: 'Saved places fetched successfully',
+      data: savedPlaces,
+    };
+  }
+
+  async updateSavedPlace(
+    id: string,
+    userId: string,
+    updateSavedPlaceDto: UpdateSavedPlaceDto,
+  ) {
+    const { name, address, location } = updateSavedPlaceDto;
+    const customer = await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const savedPlace = await this.prisma.savedPlace.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!savedPlace) {
+      throw new NotFoundException('Saved place not found');
+    } else {
+      const savedPlaceUpdate = await this.prisma.savedPlace.update({
+        where: {
+          id,
+        },
+        data: {
+          name,
+          address,
+          location: location ? instanceToPlain(location) : null,
+        },
+      });
+      return {
+        message: 'Saved place updated successfully',
+        data: savedPlaceUpdate,
+      };
+    }
+  }
+
+  async deleteSavedPlace(id: string, userId: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const savedPlace = await this.prisma.savedPlace.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!savedPlace) {
+      throw new NotFoundException('Saved place not found');
+    }
+
+    await this.prisma.savedPlace.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      message: 'Saved place deleted successfully',
     };
   }
 }

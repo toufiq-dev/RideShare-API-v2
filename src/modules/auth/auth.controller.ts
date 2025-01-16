@@ -12,7 +12,7 @@ import {
   VerifyOtpDto,
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
-} from './dto/onboarding.dto';
+} from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/current-user.guard';

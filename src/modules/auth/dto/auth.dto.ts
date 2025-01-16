@@ -16,13 +16,13 @@ export enum RoleEnum {
 
 export class SendOtpDto {
   @ApiProperty({ description: 'Language Name' })
-  @IsString()
   @IsNotEmpty({ message: 'Language Name is required' })
+  @IsString()
   language: string;
 
   @ApiProperty({ description: 'Phone number' })
-  @IsPhoneNumber()
   @IsNotEmpty({ message: 'Phone number is required' })
+  @IsPhoneNumber()
   phone: string;
 
   @ApiPropertyOptional({ description: 'Referral Code' })

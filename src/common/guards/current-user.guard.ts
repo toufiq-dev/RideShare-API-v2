@@ -29,9 +29,7 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('jwt.secret'),
-      });
+      const payload = await this.jwtService.verifyAsync(token);
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
@@ -40,6 +38,7 @@ export class JwtAuthGuard implements CanActivate {
       if (!user || user.authTokenVersion !== payload.version) {
         throw new UnauthorizedException('Token has been invalidated');
       }
+
       request.user = payload;
       return true;
     } catch (err) {

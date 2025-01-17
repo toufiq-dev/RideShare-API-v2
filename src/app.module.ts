@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { getJwtConfig } from './config/jwt.config';
 import { PrismaModule } from './core/database/prisma.module';
 import { RedisModule } from './core/cache/redis.module';
 import configuration from './config/configuration';
@@ -20,6 +22,11 @@ import { CustomerModule } from './modules/customer/customer.module';
       isGlobal: true,
       load: [configuration],
     }),
+    JwtModule.registerAsync({
+      global: true,
+      useFactory: getJwtConfig,
+      inject: [ConfigService],
+    }),
     PrismaModule,
     RedisModule,
     LoggerModule,
@@ -32,6 +39,7 @@ import { CustomerModule } from './modules/customer/customer.module';
     CustomerModule,
   ],
   providers: [GlobalExceptionFilter],
+  exports: [JwtModule],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

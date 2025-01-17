@@ -1,16 +1,20 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AzureBlobService {
   private readonly blobServiceClient: BlobServiceClient;
-  private readonly containerName = 'live-selfie';
+  private readonly containerName: string;
+  private readonly connectionString: string;
 
-  constructor() {
-    const AZURE_STORAGE_CONNECTION_STRING =
-      process.env.AZURE_STORAGE_CONNECTION_STRING;
+  constructor(private readonly configService: ConfigService) {
+    this.connectionString = this.configService.get<string>(
+      'azure.connectionString',
+    );
+    this.containerName = this.configService.get<string>('azure.containerName');
     this.blobServiceClient = BlobServiceClient.fromConnectionString(
-      AZURE_STORAGE_CONNECTION_STRING,
+      this.connectionString,
     );
   }
 
@@ -18,20 +22,28 @@ export class AzureBlobService {
     buffer: Buffer,
     originalName: string,
     userId: string,
-  ): Promise<string> {
-    const containerClient = this.blobServiceClient.getContainerClient(
-      this.containerName,
-    );
+    contentType: string,
+  ) {
+    try {
+      const containerClient = this.blobServiceClient.getContainerClient(
+        this.containerName,
+      );
 
-    await containerClient.createIfNotExists({ access: 'container' });
+      await containerClient.createIfNotExists({ access: 'container' });
 
-    const uniqueFileName = `${userId}-${Date.now()}-${originalName}`;
-    const blockBlobClient = containerClient.getBlockBlobClient(uniqueFileName);
+      const uniqueFileName = `${userId}-${Date.now()}-${originalName}`;
+      const blockBlobClient =
+        containerClient.getBlockBlobClient(uniqueFileName);
 
-    await blockBlobClient.uploadData(buffer, {
-      blobHTTPHeaders: { blobContentType: 'image/jpeg' },
-    });
+      await blockBlobClient.uploadData(buffer, {
+        blobHTTPHeaders: { blobContentType: contentType },
+      });
 
-    return blockBlobClient.url;
+      console.log(blockBlobClient.url);
+      return blockBlobClient.url;
+    } catch (error) {
+      console.error('Azure Blob Upload Error:', error.message);
+      throw new Error('Failed to upload file to Azure Blob Storage');
+    }
   }
 }

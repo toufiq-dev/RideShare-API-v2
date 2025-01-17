@@ -20,4 +20,9 @@ export default () => ({
     accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN,
     refreshTokenExpiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
   },
+  azure: {
+    connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
+    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME,
+  },
+  allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
 });

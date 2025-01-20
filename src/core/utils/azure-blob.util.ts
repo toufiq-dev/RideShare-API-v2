@@ -39,7 +39,6 @@ export class AzureBlobService {
         blobHTTPHeaders: { blobContentType: contentType },
       });
 
-      console.log(blockBlobClient.url);
       return blockBlobClient.url;
     } catch (error) {
       console.error('Azure Blob Upload Error:', error.message);

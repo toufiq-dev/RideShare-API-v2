@@ -4,6 +4,6 @@ import { LanguagesController } from './languages.controller';
 
 @Module({
   providers: [LanguagesService],
-  controllers: [LanguagesController]
+  controllers: [LanguagesController],
 })
 export class LanguagesModule {}

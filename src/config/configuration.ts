@@ -24,5 +24,9 @@ export default () => ({
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME,
   },
-  allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+  file: {
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+    maxFileSize: 3 * 1024 * 1024,
+    tempUploadDir: './uploads/temp',
+  },
 });

@@ -10,8 +10,8 @@ import {
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/current-user.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { FileInterceptor } from 'src/common/interceptors/file.interceptor';
 
 @Controller('pilot')
 export class PilotController {
@@ -31,7 +31,7 @@ export class PilotController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload live selfie for pilot' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor)
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('userId') userId: string,

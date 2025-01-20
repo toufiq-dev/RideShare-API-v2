@@ -49,13 +49,8 @@ export class PilotService {
       throw new UnauthorizedException('Live selfie can be uploaded only once');
     }
 
-    const fileUrl = await this.azureBlobService.uploadFile(
-      buffer,
-      originalname,
-      userId,
-      mimetype,
-    );
-
+    const fileUrl = file.azureFileUrl;
+    
     if (fileUrl) {
       await this.prisma.pilot.update({
         where: { userId },

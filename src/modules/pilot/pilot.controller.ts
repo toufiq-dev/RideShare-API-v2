@@ -29,6 +29,8 @@ export class PilotController {
   @Post('live-selfie')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload live selfie for pilot' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,

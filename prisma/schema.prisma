@@ -13,7 +13,6 @@ model User {
   isEmailVerified  Boolean?        @default(false)
   isPhoneVerified  Boolean         @default(false)
   name             String?
-  avatar           String?
   referralCode     String?
   role             UserRole
   status           UserStatus      @default(ACTIVE)
@@ -71,6 +70,7 @@ model Customer {
   userId      String           @unique
   phone       String           @unique
   languageId  String
+  avatar      String?
   bookings    Booking[]
   language    Languages        @relation(fields: [languageId], references: [id])
   user        User             @relation(fields: [userId], references: [id])

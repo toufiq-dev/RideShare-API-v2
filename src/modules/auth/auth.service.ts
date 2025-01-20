@@ -14,6 +14,7 @@ import {
   VerifyOtpDto,
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
+  RoleEnum,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -68,7 +69,7 @@ export class AuthService {
 
     const { user, isNewUser } = await this.findOrCreateUser(phone, role);
 
-    await this.handleProfileCreation(user.id, role, languageId);
+    await this.handleProfileCreation(user.id, role, phone, languageId);
 
     const tokens = await this.generateTokens(user);
 
@@ -153,14 +154,32 @@ export class AuthService {
     return languageId;
   }
 
-  private async findOrCreateUser(phone: string, role) {
-    let user = await this.prisma.user.findUnique({ where: { phone } });
-    const isNewUser = !user;
+  private async findOrCreateUser(phone: string, role: RoleEnum) {
+    let customer = await this.prisma.customer.findUnique({
+      where: { phone },
+    });
+
+    let pilot = await this.prisma.pilot.findUnique({
+      where: { phone },
+    });
+
+    let user;
+
+    if (customer) {
+      user = await this.prisma.user.findUnique({
+        where: { id: customer.userId },
+      });
+    } else if (pilot) {
+      user = await this.prisma.user.findUnique({
+        where: { id: pilot.userId },
+      });
+    }
+
+    let isNewUser = !user || role !== user.role;
 
     if (isNewUser) {
       user = await this.prisma.user.create({
         data: {
-          phone,
           role,
           isPhoneVerified: true,
           authTokenVersion: 1,
@@ -174,6 +193,7 @@ export class AuthService {
   private async handleProfileCreation(
     userId: string,
     role: string,
+    phone: string,
     languageId: string,
   ): Promise<void> {
     if (role === 'CUSTOMER') {
@@ -183,6 +203,7 @@ export class AuthService {
       if (!customer) {
         await this.prisma.customer.create({
           data: {
+            phone,
             userId,
             languageId,
           },
@@ -195,6 +216,7 @@ export class AuthService {
       if (!pilot) {
         await this.prisma.pilot.create({
           data: {
+            phone,
             userId,
             languageId,
           },

@@ -22,7 +22,8 @@ export class PilotController {
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
   ) {
-    return await this.pilotService.uploadLiveSelfie(file, userId);
+    return await this.pilotService.uploadLiveSelfie(file, userId, role);
   }
 }

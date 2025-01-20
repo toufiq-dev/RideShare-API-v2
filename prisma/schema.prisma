@@ -9,7 +9,6 @@ datasource db {
 
 model User {
   id               String          @id @default(uuid())
-  phone            String          @unique
   email            String?         @unique
   isEmailVerified  Boolean?        @default(false)
   isPhoneVerified  Boolean         @default(false)
@@ -22,7 +21,7 @@ model User {
   updatedAt        DateTime        @updatedAt
   lastLogin        DateTime?
   metadata         Json?
-  authTokenVersion Int        
+  authTokenVersion Int
   admin            Admin?
   customer         Customer?
   deviceTokens     DeviceToken[]
@@ -31,8 +30,6 @@ model User {
   supportTickets   SupportTicket[]
   transaction      Transaction[]
   session          UserSession[]
-
-  @@index([phone])
 }
 
 model UserSession {
@@ -72,6 +69,7 @@ model Admin {
 model Customer {
   id          String           @id @default(uuid())
   userId      String           @unique
+  phone       String           @unique
   languageId  String
   bookings    Booking[]
   language    Languages        @relation(fields: [languageId], references: [id])
@@ -79,7 +77,7 @@ model Customer {
   ratings     CustomerRating[]
   savedPlaces SavedPlace[]
 
-  @@index([userId])
+  @@index([phone])
 }
 
 model SavedPlace {
@@ -106,6 +104,7 @@ model Support {
 model Pilot {
   id                     String             @id @default(uuid())
   userId                 String             @unique
+  phone                  String             @unique
   isAvailable            Boolean            @default(false)
   currentLocation        Json?
   subscriptionId         String?

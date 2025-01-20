@@ -67,9 +67,11 @@ export class AuthService {
 
     const languageId = await this.validateOtp(phone, otp);
 
-    const { user, isNewUser } = await this.findOrCreateUser(phone, role);
-
-    await this.handleProfileCreation(user.id, role, phone, languageId);
+    const { user, isNewUser } = await this.findOrCreateUser(
+      phone,
+      role,
+      languageId,
+    );
 
     const tokens = await this.generateTokens(user);
 
@@ -154,30 +156,28 @@ export class AuthService {
     return languageId;
   }
 
-  private async findOrCreateUser(phone: string, role: RoleEnum) {
-    let customer = await this.prisma.customer.findUnique({
+  private async findOrCreateUser(
+    phone: string,
+    role: RoleEnum,
+    languageId: string,
+  ) {
+    const customer = await this.prisma.customer.findUnique({
       where: { phone },
     });
+    const pilot = await this.prisma.pilot.findUnique({ where: { phone } });
 
-    let pilot = await this.prisma.pilot.findUnique({
-      where: { phone },
-    });
-
-    let user;
-
+    let user: any = null;
     if (customer) {
       user = await this.prisma.user.findUnique({
         where: { id: customer.userId },
       });
     } else if (pilot) {
-      user = await this.prisma.user.findUnique({
-        where: { id: pilot.userId },
-      });
+      user = await this.prisma.user.findUnique({ where: { id: pilot.userId } });
     }
 
-    let isNewUser = !user || role !== user.role;
+    let isNewUser = false;
 
-    if (isNewUser) {
+    if (!user) {
       user = await this.prisma.user.create({
         data: {
           role,
@@ -185,44 +185,30 @@ export class AuthService {
           authTokenVersion: 1,
         },
       });
+      isNewUser = true;
+    }
+
+    if (role === RoleEnum.CUSTOMER && !customer) {
+      await this.prisma.customer.create({
+        data: {
+          phone,
+          userId: user.id,
+          languageId,
+        },
+      });
+      isNewUser = true;
+    } else if (role === RoleEnum.PILOT && !pilot) {
+      await this.prisma.pilot.create({
+        data: {
+          phone,
+          userId: user.id,
+          languageId,
+        },
+      });
+      isNewUser = true;
     }
 
     return { user, isNewUser };
-  }
-
-  private async handleProfileCreation(
-    userId: string,
-    role: string,
-    phone: string,
-    languageId: string,
-  ): Promise<void> {
-    if (role === 'CUSTOMER') {
-      const customer = await this.prisma.customer.findUnique({
-        where: { userId },
-      });
-      if (!customer) {
-        await this.prisma.customer.create({
-          data: {
-            phone,
-            userId,
-            languageId,
-          },
-        });
-      }
-    } else if (role === 'PILOT') {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId },
-      });
-      if (!pilot) {
-        await this.prisma.pilot.create({
-          data: {
-            phone,
-            userId,
-            languageId,
-          },
-        });
-      }
-    }
   }
 
   private async generateTokens(user) {

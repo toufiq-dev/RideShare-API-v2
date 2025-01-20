@@ -17,6 +17,21 @@ export class PilotService {
     );
   }
 
+  async getPilot(userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({
+      where: { userId },
+      include: {
+        user: true,
+        language: true,
+      },
+    });
+
+    return {
+      message: 'Pilot fetched successfully',
+      data: pilot,
+    };
+  }
+
   async uploadLiveSelfie(
     file: Express.Multer.File,
     userId: string,
@@ -28,9 +43,9 @@ export class PilotService {
       throw new UnauthorizedException('Only Pilot can upload live selfie');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-    if (user.avatar) {
+    if (pilot.selfieUrl) {
       throw new UnauthorizedException('Live selfie can be uploaded only once');
     }
 
@@ -42,9 +57,9 @@ export class PilotService {
     );
 
     if (fileUrl) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { avatar: fileUrl },
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { selfieUrl: fileUrl },
       });
     }
 

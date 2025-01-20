@@ -17,7 +17,7 @@ export class CustomerService {
         language: true,
       },
     });
-    console.log('customer service from vscode');
+
     return {
       message: 'Customer fetched successfully',
       data: customer,

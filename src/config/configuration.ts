@@ -23,10 +23,19 @@ export default () => ({
   azure: {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME,
+    cognitiveServices: {
+      endpoint: process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT,
+      apiKey: process.env.AZURE_COGNITIVE_SERVICES_API_KEY,
+    },
   },
   file: {
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
     maxFileSize: 3 * 1024 * 1024,
     tempUploadDir: './uploads/temp',
+  },
+  signzy: {
+    productionAccessToken: process.env.SIGNZY_ACCESS_TOKEN_PRODUCTION,
+    preproductionAccessToken: process.env.SIGNZY_ACCESS_TOKEN_PREPRODUCTION,
+    drivingLicenseEndPoint: process.env.SIGNZY_DL_ENDPOINT_PRODUCTION,
   },
 });

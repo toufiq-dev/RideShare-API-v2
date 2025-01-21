@@ -105,6 +105,7 @@ model Pilot {
   id                     String             @id @default(uuid())
   userId                 String             @unique
   phone                  String             @unique
+  languageId             String
   isAvailable            Boolean            @default(false)
   currentLocation        Json?
   subscriptionId         String?
@@ -112,9 +113,11 @@ model Pilot {
   averageRating          Float              @default(0)
   isAadharVerified       Boolean            @default(false)
   hasAcceptedTerms       Boolean            @default(false)
+  drivingLicenseNumber   String?            @unique
+  drivingLicenseName     String?
   dateOfBirth            DateTime?
-  drivingLicense         String?            @unique
-  languageId             String
+  issueDate              DateTime?
+  validTill              DateTime?
   panCardName            String?
   panCardNumber          String?
   pilotProgramId         String?

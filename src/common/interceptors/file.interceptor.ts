@@ -9,7 +9,7 @@ import {
 import { Observable } from 'rxjs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { AzureBlobService } from 'src/core/utils/azure-blob.util';
+import { AzureService } from 'src/core/utils/azure.util';
 import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config';
 import * as multer from 'multer';
@@ -17,19 +17,19 @@ import { promisify } from 'util';
 import { Request } from 'express';
 
 @Injectable()
-export class FileInterceptor implements NestInterceptor {
+export class CustomFileInterceptor implements NestInterceptor {
   private readonly allowedMimeTypes: string[];
   private readonly maxFileSize: number;
   private readonly tempUploadDir: string;
   private multerInstance: any;
 
   constructor(
-    private readonly azureBlobService: AzureBlobService,
+    private readonly azureBlobService: AzureService,
     private readonly configService: ConfigService,
   ) {
     this.allowedMimeTypes = this.configService.get<string[]>(
       'file.allowedMimeTypes',
-    ) || ['image/jpeg', 'image/png', 'image/jpg'];
+    ) || ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     this.maxFileSize =
       this.configService.get<number>('file.maxFileSize') || 3 * 1024 * 1024;
     this.tempUploadDir = this.configService.get<string>('file.tempUploadDir');

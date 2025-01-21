@@ -11,7 +11,8 @@ import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/current-user.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { FileInterceptor } from 'src/common/interceptors/file.interceptor';
+import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('pilot')
 export class PilotController {
@@ -31,12 +32,25 @@ export class PilotController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload live selfie for pilot' })
-  @UseInterceptors(FileInterceptor)
+  @UseInterceptors(CustomFileInterceptor)
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('userId') userId: string,
     @CurrentUser('role') role: string,
   ) {
     return await this.pilotService.uploadLiveSelfie(file, userId, role);
+  }
+
+  @Post('driving-license')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload driving license of pilot' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDrivingLicense(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processDrivingLicense(file, userId);
   }
 }

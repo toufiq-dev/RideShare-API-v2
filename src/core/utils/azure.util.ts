@@ -1,12 +1,15 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 
 @Injectable()
-export class AzureBlobService {
+export class AzureService {
   private readonly blobServiceClient: BlobServiceClient;
   private readonly containerName: string;
   private readonly connectionString: string;
+  private readonly endpoint: string;
+  private readonly apiKey: string;
 
   constructor(private readonly configService: ConfigService) {
     this.connectionString = this.configService.get<string>(
@@ -15,6 +18,12 @@ export class AzureBlobService {
     this.containerName = this.configService.get<string>('azure.containerName');
     this.blobServiceClient = BlobServiceClient.fromConnectionString(
       this.connectionString,
+    );
+    this.endpoint = this.configService.get<string>(
+      'azure.cognitiveServices.endpoint',
+    );
+    this.apiKey = this.configService.get<string>(
+      'azure.cognitiveServices.apiKey',
     );
   }
 
@@ -43,6 +52,32 @@ export class AzureBlobService {
     } catch (error) {
       console.error('Azure Blob Upload Error:', error.message);
       throw new Error('Failed to upload file to Azure Blob Storage');
+    }
+  }
+
+  async extractTextFromImage(imageBuffer: Buffer): Promise<any> {
+    try {
+      const url = `${this.endpoint}/vision/v3.2/read/analyze`;
+      const response = await axios.post(url, imageBuffer, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Ocp-Apim-Subscription-Key': this.apiKey,
+        },
+      });
+      // Wait for processing to complete
+      const operationLocation = response.headers['operation-location'];
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Adjust delay as needed
+
+      const result = await axios.get(operationLocation, {
+        headers: {
+          'Ocp-Apim-Subscription-Key': this.apiKey,
+        },
+      });
+
+      return result.data;
+    } catch (error) {
+      console.error('Azure OCR Error:', error.message);
+      throw new Error('Failed to extract text from image.');
     }
   }
 }

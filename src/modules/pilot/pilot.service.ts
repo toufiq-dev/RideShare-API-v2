@@ -7,6 +7,7 @@ import { PrismaService } from 'src/core/database/prisma.service';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import { AzureService } from 'src/core/utils/azure.util';
 import { SignzyService } from 'src/core/utils/signzy.util';
+import { DrivingLicenseAndDboDto } from './dto/pilot.dto';
 
 @Injectable()
 export class PilotService {
@@ -82,30 +83,27 @@ export class PilotService {
       extractedData.dateOfBirth.split(': ')[1],
     );
 
-    const issueDate = this.parseDate(
-      verificationResponse.dlValidity.nonTransport.from,
-    );
-    const validTill = this.parseDate(
-      verificationResponse.dlValidity.nonTransport.to,
-    );
-    const dateOfBirth = this.parseDate(verificationResponse.dob);
-
-    // Update Pilot record in the database
-    const pilot = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        drivingLicenseNumber: verificationResponse.dlNumber,
-        drivingLicenseName: verificationResponse.detailsOfDrivingLicence.name,
-        issueDate,
-        validTill,
-        dateOfBirth,
-        providedDrivingLicense: true,
-      },
-    });
+    const data = await this.updatePilotDrivingLiceseData(verificationResponse, userId)
 
     return {
       message: 'Driving license processed successfully.',
-      data: pilot,
+      data,
+    };
+  }
+
+  async processManualDrivingLicense(
+    drivingLicenseAndDobDto: DrivingLicenseAndDboDto,
+    userId: string,
+  ) {
+    const {drivingLicenseNumber, dob} = drivingLicenseAndDobDto
+
+    const verificationResponse = await this.signzyService.verifyDrivingLicense(drivingLicenseNumber, dob)
+
+    const data = await this.updatePilotDrivingLiceseData(verificationResponse, userId)
+
+    return {
+      message: 'Driving license processed successfully.',
+      data,
     };
   }
 
@@ -154,5 +152,30 @@ export class PilotService {
     }
 
     return parsedDate;
+  }
+
+  private async updatePilotDrivingLiceseData(verificationResponse: any, userId) {
+    const issueDate = this.parseDate(
+      verificationResponse.dlValidity.nonTransport.from,
+    );
+    const validTill = this.parseDate(
+      verificationResponse.dlValidity.nonTransport.to,
+    );
+    const dateOfBirth = this.parseDate(verificationResponse.dob);
+
+    // Update Pilot record in the database
+    const pilot = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        drivingLicenseNumber: verificationResponse.dlNumber,
+        drivingLicenseName: verificationResponse.detailsOfDrivingLicence.name,
+        issueDate,
+        validTill,
+        dateOfBirth,
+        providedDrivingLicense: true,
+      },
+    });
+
+    return pilot
   }
 }

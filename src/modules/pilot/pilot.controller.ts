@@ -14,7 +14,7 @@ import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { DrivingLicenseAndDboDto } from './dto/pilot.dto';
+import { DrivingLicenseAndDboDto, PancardDto } from './dto/pilot.dto';
 
 @Controller('pilot')
 export class PilotController {
@@ -56,7 +56,7 @@ export class PilotController {
     return await this.pilotService.processDrivingLicense(file, userId);
   }
 
-  @Post('driving-license-dob')
+  @Post('driving-license-manual')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -70,5 +70,44 @@ export class PilotController {
       drivingLicenseAndDobDto,
       userId,
     );
+  }
+
+  @Post('vehicle-rc')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload Vehicle RC' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadVehicleRC(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processVehicleRC(file, userId);
+  }
+
+  // @Post('pancard')
+  // @HttpCode(200)
+  // @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
+  // @ApiOperation({ summary: 'Upload Pancard of pilot' })
+  // @UseInterceptors(FileInterceptor('file'))
+  // async uploadPanCard(
+  //   @UploadedFile() file: Express.Multer.File,
+  //   @CurrentUser('userId') userId: string,
+  // ) {
+  //   return await this.pilotService.processPancard(file, userId);
+  // }
+
+  @Post('pancard-manual')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give Pancard of pilot' })
+  @ApiBody({ type: PancardDto })
+  async verifyPanCard(
+    @Body() pancardDto: PancardDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processManualPancard(pancardDto, userId);
   }
 }

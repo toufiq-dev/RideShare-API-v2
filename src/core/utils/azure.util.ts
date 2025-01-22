@@ -50,7 +50,6 @@ export class AzureService {
 
       return blockBlobClient.url;
     } catch (error) {
-      console.error('Azure Blob Upload Error:', error.message);
       throw new Error('Failed to upload file to Azure Blob Storage');
     }
   }
@@ -58,25 +57,44 @@ export class AzureService {
   async extractTextFromImage(imageBuffer: Buffer): Promise<any> {
     try {
       const url = `${this.endpoint}/vision/v3.2/read/analyze`;
+
       const response = await axios.post(url, imageBuffer, {
         headers: {
           'Content-Type': 'application/octet-stream',
           'Ocp-Apim-Subscription-Key': this.apiKey,
         },
       });
-      // Wait for processing to complete
+
       const operationLocation = response.headers['operation-location'];
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // Adjust delay as needed
 
-      const result = await axios.get(operationLocation, {
-        headers: {
-          'Ocp-Apim-Subscription-Key': this.apiKey,
-        },
-      });
+      // Poll for results with exponential backoff
+      const maxRetries = 5; // Maximum polling attempts
+      let retryCount = 0;
+      let delay = 5000; // Initial delay
 
-      return result.data;
+      while (retryCount < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        const result = await axios.get(operationLocation, {
+          headers: {
+            'Ocp-Apim-Subscription-Key': this.apiKey,
+          },
+        });
+
+        const { status } = result.data;
+        if (status === 'succeeded') {
+          return result.data; // Return OCR results
+        } else if (status === 'failed') {
+          throw new Error('OCR processing failed');
+        }
+
+        // exponential backoff
+        retryCount += 1;
+        delay *= 2; // Double the delay after each retry
+      }
+
+      throw new Error('OCR processing timed out');
     } catch (error) {
-      console.error('Azure OCR Error:', error.message);
       throw new Error('Failed to extract text from image.');
     }
   }

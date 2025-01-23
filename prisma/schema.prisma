@@ -118,15 +118,12 @@ model Pilot {
   dateOfBirth            DateTime?
   issueDate              DateTime?
   validTill              DateTime?
-  panCardName            String?
-  panCardNumber          String?
   pilotProgramId         String?
   providedDrivingLicense Boolean            @default(false)
   providedPanCard        Boolean            @default(false)
   providedRC             Boolean            @default(false)
   selfieUrl              String?
   bookings               Booking[]
-  documents              Document[]
   language               Languages          @relation(fields: [languageId], references: [id])
   pilotProgram           PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
   subscription           PilotSubscription? @relation(fields: [subscriptionId], references: [id])
@@ -181,7 +178,7 @@ model Vehicle {
   model              String?
   year               Int?
   color              String
-  capacity           Int
+  capacity           Int?
   insuranceExpiry    DateTime?
   manufacturer       String?
   permitExpiry       DateTime?
@@ -189,7 +186,6 @@ model Vehicle {
   rcNumber           String       @unique
   registrationExpiry DateTime?
   vehicleTypeId      String?
-  documents          Document[]
   pilot              Pilot        @relation(fields: [pilotId], references: [id])
   vehicleType        VehicleType? @relation(fields: [vehicleTypeId], references: [id])
 }
@@ -377,18 +373,13 @@ model SupportTicket {
   user        User           @relation(fields: [userId], references: [id])
 }
 
-model Document {
-  id           String       @id @default(uuid())
-  pilotId      String
-  vehicleId    String
-  type         DocumentType
-  documentUrl  String
-  expiryDate   DateTime?
-  alertMessage String
-  isVerified   Boolean      @default(false)
-  uploadedAt   DateTime     @default(now())
-  pilot        Pilot        @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+model Policy {
+  id        String   @id @default(uuid())
+  type      String
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VideoTutorial {

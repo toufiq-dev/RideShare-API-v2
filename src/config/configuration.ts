@@ -37,5 +37,7 @@ export default () => ({
     productionAccessToken: process.env.SIGNZY_ACCESS_TOKEN_PRODUCTION,
     preproductionAccessToken: process.env.SIGNZY_ACCESS_TOKEN_PREPRODUCTION,
     drivingLicenseEndPoint: process.env.SIGNZY_DL_ENDPOINT_PRODUCTION,
+    panVerifyEndPoint: process.env.SIGNZY_PAN_VERIFY_ENDPOINT,
+    rcVerifyEndPoint: process.env.SIGNZY_RC_VERIFY_ENDPOINT,
   },
 });

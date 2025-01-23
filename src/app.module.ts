@@ -15,6 +15,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middleware';
 import { CustomerModule } from './modules/customer/customer.module';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CustomerModule } from './modules/customer/customer.module';
     VehiclesModule,
     SubscriptionsModule,
     CustomerModule,
+    WebsocketModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

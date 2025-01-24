@@ -70,7 +70,7 @@ export class AzureService {
       // Poll for results with exponential backoff
       const maxRetries = 5; // Maximum polling attempts
       let retryCount = 0;
-      let delay = 5000; // Initial delay
+      let delay = 500; // Initial delay
 
       while (retryCount < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, delay));

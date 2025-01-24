@@ -86,7 +86,6 @@ model SavedPlace {
   name       String?
   address    String
   location   Json?
-  createdAt  DateTime @default(now())
   customer   Customer @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
@@ -113,21 +112,17 @@ model Pilot {
   averageRating          Float              @default(0)
   isAadharVerified       Boolean            @default(false)
   hasAcceptedTerms       Boolean            @default(false)
-  drivingLicenseNumber   String?            @unique
-  drivingLicenseName     String?
-  dateOfBirth            DateTime?
-  issueDate              DateTime?
-  validTill              DateTime?
-  pilotProgramId         String?
+  selfieUrl              String?
   providedDrivingLicense Boolean            @default(false)
   providedPanCard        Boolean            @default(false)
   providedRC             Boolean            @default(false)
-  selfieUrl              String?
+  pilotProgramId         String?
   bookings               Booking[]
   language               Languages          @relation(fields: [languageId], references: [id])
   pilotProgram           PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
   subscription           PilotSubscription? @relation(fields: [subscriptionId], references: [id])
   user                   User               @relation(fields: [userId], references: [id])
+  drivingLicense         DrivingLicense?
   earnings               PilotEarning[]
   ranking                PilotRanking?
   ratings                PilotRating[]
@@ -136,6 +131,53 @@ model Pilot {
   videoProgress          VideoProgress?
 
   @@index([isAvailable, currentLocation])
+}
+
+model DrivingLicense {
+  id               String   @id @default(uuid())
+  pilotId          String   @unique
+  licenseNumber    String   @unique
+  nameOnLicense    String
+  dateOfBirth      DateTime
+  dateOfIssue      DateTime
+  validUntill      DateTime
+  permanentAddress String?
+  temporaryAddress String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  pilot            Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([licenseNumber])
+}
+
+model Vehicle {
+  id                 String      @id @default(uuid())
+  pilotId            String
+  regNo              String      @unique
+  status             String
+  fitUpto            DateTime
+  puccUpto           DateTime
+  insuranceUpto      DateTime?
+  makerModel         String
+  vehicleColour      String
+  fuelDesc           String?
+  capacity           Int?
+  manufacturer       String?
+  permitExpiry       DateTime?
+  registrationExpiry DateTime?
+  vehicleTypeId      String
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  pilot              Pilot       @relation(fields: [pilotId], references: [id])
+  vehicleType        VehicleType @relation(fields: [vehicleTypeId], references: [id])
+}
+
+model VehicleType {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  vehicle     Vehicle[]
 }
 
 model PilotProgram {
@@ -171,29 +213,6 @@ model Translation {
   language   Languages @relation(fields: [languageId], references: [id])
 
   @@unique([languageId, key])
-}
-
-model Vehicle {
-  id                 String       @id @default(uuid())
-  model              String?
-  year               Int?
-  color              String
-  capacity           Int?
-  insuranceExpiry    DateTime?
-  manufacturer       String?
-  permitExpiry       DateTime?
-  pilotId            String
-  rcNumber           String       @unique
-  registrationExpiry DateTime?
-  vehicleTypeId      String?
-  pilot              Pilot        @relation(fields: [pilotId], references: [id])
-  vehicleType        VehicleType? @relation(fields: [vehicleTypeId], references: [id])
-}
-
-model VehicleType {
-  id      String    @id @default(uuid())
-  name    String    @unique
-  vehicle Vehicle[]
 }
 
 model PilotWallet {
@@ -260,6 +279,7 @@ model SubscriptionTransaction {
   startDate      DateTime
   endDate        DateTime
   createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   subscription   PilotSubscription @relation(fields: [subscriptionId], references: [id])
 }
 

@@ -7,6 +7,7 @@ export class SignzyService {
   private readonly productionAccessToken: string;
   private readonly preproductionAccessToken: string;
   private readonly drivingLicenseEndPoint: string;
+  private readonly drivingLicenseEndPointPreproduction: string;
   private readonly panVerifyEndPoint: string;
   private readonly rcVerifyEndPoint: string;
 
@@ -20,6 +21,9 @@ export class SignzyService {
     this.drivingLicenseEndPoint = this.configService.get<string>(
       'signzy.drivingLicenseEndPoint',
     );
+    this.drivingLicenseEndPointPreproduction = this.configService.get<string>(
+      'signzy.drivingLicenseEndPointPreproduction',
+    );
     this.panVerifyEndPoint = this.configService.get<string>(
       'signzy.panVerifyEndPoint',
     );
@@ -29,7 +33,7 @@ export class SignzyService {
   }
 
   async verifyDrivingLicense(dlNumber: string, dob: string) {
-    const url = this.drivingLicenseEndPoint;
+    const url = this.drivingLicenseEndPointPreproduction;
     const data = {
       number: dlNumber,
       dob: dob.split('-').join('/'),
@@ -39,7 +43,7 @@ export class SignzyService {
       const response = await axios.post(url, data, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: this.productionAccessToken,
+          Authorization: this.preproductionAccessToken,
         },
       });
 

@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { abortOnError: false });
@@ -42,6 +43,8 @@ async function bootstrap() {
   SwaggerModule.setup('api-docs', app, document);
 
   app.useLogger(logger);
+
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);

@@ -8,7 +8,10 @@ import { RoleEnum } from '../auth/dto/auth.dto';
 import { AzureService } from 'src/core/utils/azure.util';
 import { SignzyService } from 'src/core/utils/signzy.util';
 import { DrivingLicenseAndDboDto, PancardDto } from './dto/pilot.dto';
-import * as Tesseract from 'tesseract.js';
+import {
+  VerificationResponseDL,
+  VerificationResponseVehicle,
+} from './interfaces/pilot.interface';
 
 @Injectable()
 export class PilotService {
@@ -72,10 +75,13 @@ export class PilotService {
 
     const extractedData = this.parseLicenseData(lines);
 
-    const verificationResponse = await this.signzyService.verifyDrivingLicense(
+    const rawResponse = await this.signzyService.verifyDrivingLicense(
       extractedData.dlNumber,
-      extractedData.dateOfBirth.split(': ')[1],
+      extractedData.dateOfBirth,
     );
+
+    const verificationResponse: VerificationResponseDL =
+      this.transformResponseDL(rawResponse);
 
     const data = await this.updatePilotDrivingLiceseData(
       verificationResponse,
@@ -94,10 +100,13 @@ export class PilotService {
   ) {
     const { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
-    const verificationResponse = await this.signzyService.verifyDrivingLicense(
+    const rawResponse = await this.signzyService.verifyDrivingLicense(
       drivingLicenseNumber,
       dob,
     );
+
+    const verificationResponse: VerificationResponseDL =
+      this.transformResponseDL(rawResponse);
 
     const data = await this.updatePilotDrivingLiceseData(
       verificationResponse,
@@ -128,8 +137,11 @@ export class PilotService {
       );
     }
 
-    const verificationResponse =
+    const rawResponse =
       await this.signzyService.verifyVehicleRC(registrationNumber);
+
+    const verificationResponse: VerificationResponseVehicle =
+      this.transformResponseVehicle(rawResponse);
 
     if (verificationResponse.status !== 'Active') {
       throw new BadRequestException(
@@ -144,7 +156,7 @@ export class PilotService {
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: vehicle,
+      data: verificationResponse,
     };
   }
 
@@ -154,8 +166,6 @@ export class PilotService {
     }
 
     const buffer = file.buffer;
-
-    const text = await this.extractTextUsingTesseract(buffer);
   }
 
   async processManualPancard(pancardDto: PancardDto, userId: string) {
@@ -209,16 +219,15 @@ export class PilotService {
       const text = line.text.trim();
 
       // Extract Driving License Number (DL No)
-      if (text.includes('DL No')) {
-        const dlIndex = text.indexOf('DL No');
-        const temp = text.substring(dlIndex + 6).trim(); // Extract everything after 'DL No'
-        data.dlNumber = temp.split(' ').join('');
+      if (text.startsWith('DL No')) {
+        // 6 -> DL No -> 5 characters including space + space
+        data.dlNumber = text.substring(6).replace(' ', '');
       }
 
       // Extract Date of Birth (DOB)
       if (text.startsWith('DOB')) {
-        const dobIndex = text.indexOf('DOB');
-        data.dateOfBirth = text.substring(dobIndex + 4).trim(); // Extract everything after 'DOB:'
+        // text: "DOB : 01-12-1987"
+        data.dateOfBirth = text.substring(text.indexOf(':') + 2);
       }
     }
 
@@ -246,32 +255,51 @@ export class PilotService {
     return parsedDate;
   }
 
+  private transformResponseDL(rawResponse: any) {
+    return {
+      licenseNumber: rawResponse.dlNumber,
+      dateOfBirth: this.parseDate(rawResponse.dob),
+      nameOnLicense: rawResponse.detailsOfDrivingLicence.name,
+      dateOfIssue: this.parseDate(
+        rawResponse.detailsOfDrivingLicence.dateOfIssue,
+      ),
+      validUntill: this.parseDate(rawResponse.dlValidity.nonTransport.to),
+    };
+  }
+
   private async updatePilotDrivingLiceseData(
-    verificationResponse: any,
-    userId,
+    verificationResponse: VerificationResponseDL,
+    userId: string,
   ) {
-    const issueDate = this.parseDate(
-      verificationResponse.dlValidity.nonTransport.from,
-    );
-    const validTill = this.parseDate(
-      verificationResponse.dlValidity.nonTransport.to,
-    );
-    const dateOfBirth = this.parseDate(verificationResponse.dob);
+    const {
+      licenseNumber,
+      nameOnLicense,
+      dateOfIssue,
+      validUntill,
+      dateOfBirth,
+    } = verificationResponse;
 
     // Update Pilot record in the database
     const pilot = await this.prisma.pilot.update({
       where: { userId },
       data: {
-        drivingLicenseNumber: verificationResponse.dlNumber,
-        drivingLicenseName: verificationResponse.detailsOfDrivingLicence.name,
-        issueDate,
-        validTill,
-        dateOfBirth,
         providedDrivingLicense: true,
       },
     });
 
-    return pilot;
+    // Create Driving License record in the database
+    const drivingLicense = await this.prisma.drivingLicense.create({
+      data: {
+        licenseNumber,
+        nameOnLicense,
+        dateOfIssue,
+        validUntill,
+        dateOfBirth,
+        pilotId: pilot.id,
+      },
+    });
+
+    return drivingLicense;
   }
 
   private extractRegistrationNumber(lines: any[]): string | null {
@@ -288,10 +316,32 @@ export class PilotService {
     return null;
   }
 
+  private transformResponseVehicle(rawResponse: any) {
+    return {
+      regNo: rawResponse.regNo,
+      status: rawResponse.status,
+      fitUpto: this.parseDate(rawResponse.fitUpto),
+      puccUpto: this.parseDate(rawResponse.puccUpto),
+      makerModel: rawResponse.makerModel,
+      vehicleColour: rawResponse.vehicleColour,
+      type: rawResponse.desc,
+    };
+  }
+
   private async updatePilotVehicleData(
-    verificationResponse: any,
+    verificationResponse: VerificationResponseVehicle,
     userId: string,
   ) {
+    const {
+      type,
+      fitUpto,
+      puccUpto,
+      regNo,
+      status,
+      makerModel,
+      vehicleColour,
+    } = verificationResponse;
+
     // Update pilot record with vehicle information
     const pilot = await this.prisma.pilot.update({
       where: { userId },
@@ -300,29 +350,26 @@ export class PilotService {
       },
     });
 
+    const vehicleType = await this.prisma.vehicleType.upsert({
+      where: { name: type },
+      update: {},
+      create: { name: type },
+    });
+
+    // Create vehicle record
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        rcNumber: verificationResponse.regNo,
-        model: verificationResponse.makerModel,
-        color: verificationResponse.vehicleColour,
+        fitUpto,
+        puccUpto,
         pilotId: pilot.id,
-      },
-      include: {
-        pilot: true,
+        vehicleTypeId: vehicleType.id,
+        regNo,
+        status,
+        makerModel,
+        vehicleColour,
       },
     });
 
     return vehicle;
-  }
-
-  private async extractTextUsingTesseract(buffer: Buffer): Promise<string> {
-    try {
-      const result = await Tesseract.recognize(buffer, 'eng');
-
-      return result.data.text; // Extracted text
-    } catch (error) {
-      console.error('Tesseract OCR Error:', error);
-      throw new Error('Failed to extract text using Tesseract.');
-    }
   }
 }

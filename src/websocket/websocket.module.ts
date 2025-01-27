@@ -1,10 +1,7 @@
 import { Module } from '@nestjs/common';
-import { BookingGateway } from './gateways/booking.gateway';
-import { WebsocketController } from './websocket.controller';
+import { WebsocketGateway } from './websocket.gateway';
 
 @Module({
-  providers: [BookingGateway],
-  controllers: [WebsocketController],
-  exports: [BookingGateway],
+  providers: [WebsocketGateway],
 })
 export class WebsocketModule {}

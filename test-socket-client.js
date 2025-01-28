@@ -1,6 +1,6 @@
 const io = require('socket.io-client');
 
-const socket = io('ws://localhost:3000', { transports: ['websocket'] });
+const socket = io('ws://20.197.44.230:3000', { transports: ['websocket'] });
 
 socket.on('connect', () => {
   console.log('Connected to WebSocket server');
@@ -13,4 +13,8 @@ socket.on('connection', (message) => {
 
 socket.on('disconnect', () => {
   console.log('Disconnected from WebSocket server');
+});
+
+socket.on('booking-request', (data) => {
+  console.log('Received booking request:', data);
 });

@@ -1,33 +1,45 @@
 import {
   SubscribeMessage,
   WebSocketGateway,
+  OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  MessageBody,
+  ConnectedSocket,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
-  transports: ['websocket'],
+  cors: {
+    origin: '*',
+  },
 })
 export class WebsocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  @WebSocketServer() server: Server; // Socket.IO server instance
+  @WebSocketServer()
+  server: Server;
+
+  afterInit(server: Server) {
+    console.log('WebSocket Server Initialized');
+  }
 
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-    client.emit('connection', 'Welcome to the WebSocket server! from nest');
+    console.log(`Client connected successfully: ${client.id}`);
+    client.emit('connection', 'Welcome to the WebSocket server!');
   }
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('message') // Listens for the 'message' event
-  handleMessage(client: Socket, payload: any): string {
-    console.log(`Message from client ${client.id}: ${payload}`);
-    return `Server received your message: ${payload}`;
+  @SubscribeMessage('message')
+  handleMessage(
+    @MessageBody() data: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(`Message from client ${client.id}: ${data}`);
+    return `Server received your message: ${data}`;
   }
 }

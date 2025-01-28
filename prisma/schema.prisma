@@ -81,12 +81,13 @@ model Customer {
 }
 
 model SavedPlace {
-  id         String   @id @default(uuid())
+  id         String         @id @default(uuid())
   customerId String
   name       String?
   address    String
   location   Json?
-  customer   Customer @relation(fields: [customerId], references: [id])
+  type       SavedPlaceType @default(OTHERS)
+  customer   Customer       @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
 }
@@ -221,32 +222,30 @@ model PilotWallet {
   balance      Int
   minusLimit   Int           @default(-100)
   lastRecharge DateTime?
+  subscriptionId String 
   pilot        Pilot         @relation(fields: [pilotId], references: [id])
   transactions Transaction[]
 }
 
 model Transaction {
-  id          String          @id @default(uuid())
-  userId      String
-  walletId    String?
-  type        TransactionType
-  amount      Decimal
-  description String?
-  bookingId   String?
-  metadata    Json?
-  createdAt   DateTime        @default(now())
-  booking     Booking?        @relation(fields: [bookingId], references: [id])
-  user        User            @relation(fields: [userId], references: [id])
-  pilotWallet PilotWallet?    @relation(fields: [walletId], references: [id])
+  id             String                   @id @default(uuid())
+  userId         String
+  walletId       String?
+  type           TransactionType
+  amount         Decimal
+  bookingId      String?
+  subscriptionId String?
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  booking        Booking?                 @relation(fields: [bookingId], references: [id])
+  user           User                     @relation(fields: [userId], references: [id])
+  pilotWallet    PilotWallet?             @relation(fields: [walletId], references: [id])
+  subscriptionTx SubscriptionTransaction? @relation(fields: [subscriptionId], references: [id])
 }
 
 model PilotSubscription {
   id                 String                    @id @default(uuid())
-  price              Decimal
-  coins              Int
-  description        String
-  features           Json
-  isActive           Boolean                   @default(true)
+  name               String
   subscriptionTypeId String                    @unique
   pilots             Pilot[]
   subscriptionType   SubscriptionType          @relation(fields: [subscriptionTypeId], references: [id])
@@ -256,6 +255,8 @@ model PilotSubscription {
 model SubscriptionType {
   id                String             @id @default(uuid())
   name              String             @unique
+  coins             Int
+  description       String
   pilotSubscription PilotSubscription?
 }
 
@@ -281,6 +282,7 @@ model SubscriptionTransaction {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   subscription   PilotSubscription @relation(fields: [subscriptionId], references: [id])
+  transaction    Transaction[]
 }
 
 model Booking {
@@ -494,4 +496,13 @@ enum SupportStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum SavedPlaceType {
+  HOME
+  WORK
+  RESTAURANT
+  GYM
+  COLLEGE
+  OTHERS
 }

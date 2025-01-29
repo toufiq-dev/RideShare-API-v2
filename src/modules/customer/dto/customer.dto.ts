@@ -1,12 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
+import Api from 'twilio/lib/rest/Api';
+
+enum SavedPlaveTypeEnum {
+  WORK = 'WORK',
+  HOME = 'HOME',
+  RESTAURANT = 'RESTAURANT',
+  GYM = 'GYM',
+  COLLEGE = 'COLLEGE',
+  OTHERS = 'OTHERS',
+}
 
 class LocationDto {
   @ApiProperty({ description: 'Latitude' })
@@ -39,6 +50,11 @@ export class CreateSavedPlaceDto {
   @ValidateNested()
   @Type(() => LocationDto)
   location?: LocationDto;
+
+  @IsOptional()
+  @ApiProperty({ enum: SavedPlaveTypeEnum, required: false })
+  @IsEnum(SavedPlaveTypeEnum)
+  type?: SavedPlaveTypeEnum;
 }
 
 export class UpdateSavedPlaceDto {

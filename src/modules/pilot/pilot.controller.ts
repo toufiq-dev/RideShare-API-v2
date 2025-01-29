@@ -14,7 +14,7 @@ import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { DrivingLicenseAndDboDto, PancardDto } from './dto/pilot.dto';
+import { DrivingLicenseDto, PancardDto } from './dto/pilot.dto';
 
 @Controller('pilot')
 export class PilotController {
@@ -27,6 +27,19 @@ export class PilotController {
   @ApiOperation({ summary: 'Get pilot' })
   async getPilot(@CurrentUser('userId') userId: string) {
     return await this.pilotService.getPilot(userId);
+  }
+
+  @Post('driving-license')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload driving license of pilot' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDrivingLicense(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processDrivingLicense(file, userId);
   }
 
   @Post('live-selfie')
@@ -43,27 +56,14 @@ export class PilotController {
     return await this.pilotService.uploadLiveSelfie(file, userId, role);
   }
 
-  @Post('driving-license')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload driving license of pilot' })
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadDrivingLicense(
-    @UploadedFile() file: Express.Multer.File,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.pilotService.processDrivingLicense(file, userId);
-  }
-
   @Post('driving-license-manual')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
-  @ApiBody({ type: DrivingLicenseAndDboDto })
+  @ApiBody({ type: DrivingLicenseDto })
   async drivingLicenseAndDob(
-    @Body() drivingLicenseAndDobDto: DrivingLicenseAndDboDto,
+    @Body() drivingLicenseAndDobDto: DrivingLicenseDto,
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.processManualDrivingLicense(

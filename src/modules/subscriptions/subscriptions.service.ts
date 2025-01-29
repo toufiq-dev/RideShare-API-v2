@@ -59,4 +59,6 @@ export class SubscriptionsService {
       data,
     };
   }
+
+  async onboardingRecharge(pilotId: string) {}
 }

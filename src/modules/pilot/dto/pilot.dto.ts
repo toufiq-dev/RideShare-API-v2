@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class DrivingLicenseAndDboDto {
+export class DrivingLicenseDto {
   @ApiProperty({ description: 'Driving license number' })
   @IsNotEmpty({ message: 'Driving license number is required' })
   @IsString()
@@ -11,6 +11,13 @@ export class DrivingLicenseAndDboDto {
   @IsNotEmpty({ message: 'Date of birth is required' })
   @IsString()
   dob: string;
+}
+
+export class VehicleRcDto {
+  @ApiProperty({ description: 'Vehicle registration number' })
+  @IsNotEmpty({ message: 'Vehicle registration number is required' })
+  @IsString()
+  registrationNumber: string;
 }
 
 export class PancardDto {

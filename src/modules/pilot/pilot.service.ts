@@ -7,7 +7,7 @@ import { PrismaService } from 'src/core/database/prisma.service';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import { AzureService } from 'src/core/utils/azure.util';
 import { SignzyService } from 'src/core/utils/signzy.util';
-import { DrivingLicenseAndDboDto, PancardDto } from './dto/pilot.dto';
+import { DrivingLicenseDto, VehicleRcDto, PancardDto } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
   VerificationResponseVehicle,
@@ -36,38 +36,15 @@ export class PilotService {
     };
   }
 
-  async uploadLiveSelfie(
-    file: Express.Multer.File,
-    userId: string,
-    role: string,
-  ) {
-    if (role !== RoleEnum.PILOT) {
-      throw new BadRequestException('Only Pilot can upload live selfie');
-    }
-
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-
-    if (pilot.selfieUrl) {
-      throw new ForbiddenException('Live selfie can be uploaded only once');
-    }
-
-    const fileUrl = file.azureFileUrl;
-
-    if (fileUrl) {
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: { selfieUrl: fileUrl },
-      });
-    }
-
-    return { message: 'Live selfie uploaded successfully' };
-  }
-
   async processDrivingLicense(file: Express.Multer.File, userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+
     if (!file) {
       throw new BadRequestException('No file provided.');
     }
-
     const buffer = file.buffer;
 
     // Extract text using Azure OCR
@@ -95,10 +72,15 @@ export class PilotService {
   }
 
   async processManualDrivingLicense(
-    drivingLicenseAndDobDto: DrivingLicenseAndDboDto,
+    drivingLicenseAndDobDto: DrivingLicenseDto,
     userId: string,
   ) {
     const { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
+
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
 
     const rawResponse = await this.signzyService.verifyDrivingLicense(
       drivingLicenseNumber,
@@ -119,11 +101,50 @@ export class PilotService {
     };
   }
 
+  async uploadLiveSelfie(
+    file: Express.Multer.File,
+    userId: string,
+    role: string,
+  ) {
+    if (role !== RoleEnum.PILOT) {
+      throw new BadRequestException('Only Pilot can upload live selfie');
+    }
+
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (pilot.selfieUrl) {
+      throw new ForbiddenException('Live selfie can be uploaded only once');
+    }
+    if (!pilot.isDLVerified) {
+      throw new ForbiddenException(
+        'Driving License must be verified before uploading Live selfie',
+      );
+    }
+
+    // file was uploaded by the azure service with file interceptor
+    const fileUrl = file.azureFileUrl;
+
+    if (fileUrl) {
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { selfieUrl: fileUrl },
+      });
+    }
+
+    return { message: 'Live selfie uploaded successfully' };
+  }
+
   async processVehicleRC(file: Express.Multer.File, userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+    if (!pilot.selfieUrl) {
+      throw new BadRequestException('Live selfie not found.');
+    }
+
     if (!file) {
       throw new BadRequestException('No file provided.');
     }
-
     const buffer = file.buffer;
 
     // Extract text using Azure OCR
@@ -156,7 +177,33 @@ export class PilotService {
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: verificationResponse,
+      data: vehicle,
+    };
+  }
+
+  async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
+    const { registrationNumber } = vehicleRcDto;
+
+    const rawResponse =
+      await this.signzyService.verifyVehicleRC(registrationNumber);
+
+    const verificationResponse: VerificationResponseVehicle =
+      this.transformResponseVehicle(rawResponse);
+
+    if (verificationResponse.status !== 'Active') {
+      throw new BadRequestException(
+        'vehicle registration number is not active',
+      );
+    }
+
+    const vehicle = await this.updatePilotVehicleData(
+      verificationResponse,
+      userId,
+    );
+
+    return {
+      message: 'Vehicle RC processed successfully',
+      data: vehicle,
     };
   }
 
@@ -187,7 +234,7 @@ export class PilotService {
     const pilot = await this.prisma.pilot.update({
       where: { userId },
       data: {
-        providedPanCard: true,
+        isPanCardVerified: true,
       },
     });
 
@@ -283,7 +330,7 @@ export class PilotService {
     const pilot = await this.prisma.pilot.update({
       where: { userId },
       data: {
-        providedDrivingLicense: true,
+        isDLVerified: true,
       },
     });
 
@@ -346,7 +393,7 @@ export class PilotService {
     const pilot = await this.prisma.pilot.update({
       where: { userId },
       data: {
-        providedRC: true,
+        isRCVerified: true,
       },
     });
 
@@ -371,5 +418,9 @@ export class PilotService {
     });
 
     return vehicle;
+  }
+
+  private async pilotonboardingSetup(userId: string) {
+    
   }
 }

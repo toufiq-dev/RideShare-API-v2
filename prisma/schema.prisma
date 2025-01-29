@@ -256,7 +256,7 @@ model SubscriptionType {
   id                String             @id @default(uuid())
   name              String             @unique
   coins             Int
-  description       String
+  description       String?
   pilotSubscription PilotSubscription?
 }
 

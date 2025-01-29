@@ -28,7 +28,7 @@ export class CustomerService {
     userId: string,
     createSavedPlacesDto: CreateSavedPlaceDto,
   ) {
-    const { name, address, location } = createSavedPlacesDto;
+    const { name, address, location, type } = createSavedPlacesDto;
 
     const customer = await this.prisma.customer.findUnique({
       where: {
@@ -45,6 +45,7 @@ export class CustomerService {
         customerId: customer.id,
         name,
         address,
+        type,
         location: location ? instanceToPlain(location) : null,
       },
     });
@@ -87,7 +88,7 @@ export class CustomerService {
     userId: string,
     updateSavedPlaceDto: UpdateSavedPlaceDto,
   ) {
-    const { name, address, location } = updateSavedPlaceDto;
+    const { name, address, location, type } = updateSavedPlaceDto;
     const customer = await this.prisma.customer.findUnique({
       where: {
         userId,
@@ -114,6 +115,7 @@ export class CustomerService {
         data: {
           name,
           address,
+          type,
           location: location ? instanceToPlain(location) : null,
         },
       });

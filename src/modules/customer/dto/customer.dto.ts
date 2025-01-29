@@ -8,7 +8,6 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import Api from 'twilio/lib/rest/Api';
 
 enum SavedPlaveTypeEnum {
   WORK = 'WORK',
@@ -76,4 +75,9 @@ export class UpdateSavedPlaceDto {
   @ValidateNested()
   @Type(() => LocationDto)
   location?: LocationDto;
+
+  @IsOptional()
+  @ApiProperty({ enum: SavedPlaveTypeEnum, required: false })
+  @IsEnum(SavedPlaveTypeEnum)
+  type?: SavedPlaveTypeEnum;
 }

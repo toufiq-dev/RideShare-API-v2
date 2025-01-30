@@ -12,14 +12,20 @@ import {
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PilotService {
+  private readonly onboardingOffer: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly azureServicce: AzureService,
     private readonly signzyService: SignzyService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.onboardingOffer = this.configService.get<string>('onboardingOffer');
+  }
 
   async getPilot(userId: string) {
     const pilot = await this.prisma.pilot.findUnique({
@@ -420,7 +426,18 @@ export class PilotService {
     return vehicle;
   }
 
-  private async pilotonboardingSetup(userId: string) {
-    
+  private async pilotonboardingSetup(pilotId: string) {
+    const subscription = await this.prisma.pilotSubscription.findUnique({
+      where: { name: this.onboardingOffer },
+    });
+
+    // Create pilot wallet
+    const wallet = await this.prisma.pilotWallet.create({
+      data: {
+        pilotId,
+        balance: subscription.coins,
+        subscriptionId: subscription.id,
+      },
+    });
   }
 }

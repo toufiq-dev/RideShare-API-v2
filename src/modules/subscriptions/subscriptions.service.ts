@@ -10,7 +10,7 @@ export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSubscriptionTypes() {
-    const data = await this.prisma.subscriptionType.findMany();
+    const data = await this.prisma.pilotSubscription.findMany();
 
     return {
       message: 'Subscription types fetched successfully',
@@ -21,13 +21,12 @@ export class SubscriptionsService {
   async createSubscriptionType(
     createSubscriptionTypeDto: CreateSubscriptionTypeDto,
   ) {
-    const { name, coins, description } = createSubscriptionTypeDto;
+    const { name, coins } = createSubscriptionTypeDto;
 
-    const data = await this.prisma.subscriptionType.create({
+    const data = await this.prisma.pilotSubscription.create({
       data: {
         name,
         coins,
-        description,
       },
     });
 
@@ -41,16 +40,15 @@ export class SubscriptionsService {
     id: string,
     updateSubscriptionTypeDto: UpdateSubscriptionTypeDto,
   ) {
-    const { name, coins, description } = updateSubscriptionTypeDto;
+    const { name, coins } = updateSubscriptionTypeDto;
 
-    const data = await this.prisma.subscriptionType.update({
+    const data = await this.prisma.pilotSubscription.update({
       where: {
         id,
       },
       data: {
         name,
         coins,
-        description,
       },
     });
 
@@ -59,4 +57,6 @@ export class SubscriptionsService {
       data,
     };
   }
+
+  async onboardingRecharge(pilotId: string) {}
 }

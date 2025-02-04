@@ -102,34 +102,32 @@ model Support {
 }
 
 model Pilot {
-  id                     String             @id @default(uuid())
-  userId                 String             @unique
-  phone                  String             @unique
-  languageId             String
-  isAvailable            Boolean            @default(false)
-  currentLocation        Json?
-  subscriptionId         String?
-  totalTrips             Int                @default(0)
-  averageRating          Float              @default(0)
-  isAadharVerified       Boolean            @default(false)
-  hasAcceptedTerms       Boolean            @default(false)
-  selfieUrl              String?
-  providedDrivingLicense Boolean            @default(false)
-  providedPanCard        Boolean            @default(false)
-  providedRC             Boolean            @default(false)
-  pilotProgramId         String?
-  bookings               Booking[]
-  language               Languages          @relation(fields: [languageId], references: [id])
-  pilotProgram           PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
-  subscription           PilotSubscription? @relation(fields: [subscriptionId], references: [id])
-  user                   User               @relation(fields: [userId], references: [id])
-  drivingLicense         DrivingLicense?
-  earnings               PilotEarning[]
-  ranking                PilotRanking?
-  ratings                PilotRating[]
-  wallet                 PilotWallet?
-  vehicles               Vehicle[]
-  videoProgress          VideoProgress?
+  id                String          @id @default(uuid())
+  userId            String          @unique
+  phone             String          @unique
+  languageId        String
+  isAvailable       Boolean         @default(false)
+  currentLocation   Json?
+  acceptedTerms     Boolean         @default(true)
+  isDLVerified      Boolean         @default(false)
+  isRCVerified      Boolean         @default(false)
+  isAadharVerified  Boolean         @default(false)
+  isPanCardVerified Boolean         @default(false)
+  selfieUrl         String?
+  pilotProgramId    String?
+  totalTrips        Int             @default(0)
+  averageRating     Float           @default(0)
+  bookings          Booking[]
+  language          Languages       @relation(fields: [languageId], references: [id])
+  pilotProgram      PilotProgram?   @relation(fields: [pilotProgramId], references: [id])
+  user              User            @relation(fields: [userId], references: [id])
+  drivingLicense    DrivingLicense?
+  earnings          PilotEarning[]
+  ranking           PilotRanking?
+  ratings           PilotRating[]
+  wallet            PilotWallet?
+  vehicles          Vehicle[]
+  videoProgress     VideoProgress?
 
   @@index([isAvailable, currentLocation])
 }
@@ -217,14 +215,14 @@ model Translation {
 }
 
 model PilotWallet {
-  id           String        @id @default(uuid())
-  pilotId      String        @unique
-  balance      Int
-  minusLimit   Int           @default(-100)
-  lastRecharge DateTime?
-  subscriptionId String 
-  pilot        Pilot         @relation(fields: [pilotId], references: [id])
-  transactions Transaction[]
+  id             String        @id @default(uuid())
+  pilotId        String        @unique
+  balance        Int
+  minusLimit     Int           @default(-100)
+  lastRecharge   DateTime?
+  subscriptionId String
+  pilot          Pilot         @relation(fields: [pilotId], references: [id])
+  transactions   Transaction[]
 }
 
 model Transaction {
@@ -244,20 +242,10 @@ model Transaction {
 }
 
 model PilotSubscription {
-  id                 String                    @id @default(uuid())
-  name               String
-  subscriptionTypeId String                    @unique
-  pilots             Pilot[]
-  subscriptionType   SubscriptionType          @relation(fields: [subscriptionTypeId], references: [id])
-  transactions       SubscriptionTransaction[]
-}
-
-model SubscriptionType {
-  id                String             @id @default(uuid())
-  name              String             @unique
-  coins             Int
-  description       String?
-  pilotSubscription PilotSubscription?
+  id           String                    @id @default(uuid())
+  name         String                    @unique
+  coins        Int
+  transactions SubscriptionTransaction[]
 }
 
 model PilotEarning {

@@ -11,11 +11,6 @@ export class CreateSubscriptionTypeDto {
   @IsNotEmpty()
   @IsNumber()
   coins: number;
-
-  @ApiProperty({ description: 'Description of the subscription' })
-  @IsOptional()
-  @IsString()
-  description: string;
 }
 
 export class UpdateSubscriptionTypeDto {
@@ -28,8 +23,4 @@ export class UpdateSubscriptionTypeDto {
   @IsOptional()
   @IsNumber()
   coins: number;
-
-  @ApiProperty({ description: 'Description of the subscription' })
-  @IsOptional()
-  description: string;
 }

@@ -284,6 +284,8 @@ export class PilotService {
       }
     }
 
+    data.dlNumber = data.dlNumber.split(' ').join('');
+
     return data;
   }
 
@@ -316,7 +318,7 @@ export class PilotService {
       dateOfIssue: this.parseDate(
         rawResponse.detailsOfDrivingLicence.dateOfIssue,
       ),
-      validUntill: this.parseDate(rawResponse.dlValidity.nonTransport.to),
+      validUntill: this.parseDate(rawResponse.dlValidity.transport.to),
     };
   }
 

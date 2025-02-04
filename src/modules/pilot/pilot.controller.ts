@@ -42,20 +42,6 @@ export class PilotController {
     return await this.pilotService.processDrivingLicense(file, userId);
   }
 
-  @Post('live-selfie')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload live selfie for pilot' })
-  @UseInterceptors(CustomFileInterceptor)
-  async uploadLiveSelfie(
-    @UploadedFile() file: Express.Multer.File,
-    @CurrentUser('userId') userId: string,
-    @CurrentUser('role') role: string,
-  ) {
-    return await this.pilotService.uploadLiveSelfie(file, userId, role);
-  }
-
   @Post('driving-license-manual')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
@@ -70,6 +56,20 @@ export class PilotController {
       drivingLicenseAndDobDto,
       userId,
     );
+  }
+
+  @Post('live-selfie')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload live selfie for pilot' })
+  @UseInterceptors(CustomFileInterceptor)
+  async uploadLiveSelfie(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return await this.pilotService.uploadLiveSelfie(file, userId, role);
   }
 
   @Post('vehicle-rc')

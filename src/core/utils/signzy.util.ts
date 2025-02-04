@@ -47,6 +47,17 @@ export class SignzyService {
         },
       });
 
+      const result = response.data.result;
+
+      if (
+        !result.dlValidity.transport.to ||
+        !result.dlValidity.transport.from
+      ) {
+        throw new BadRequestException(
+          'Driver does not have a valid transport license.',
+        );
+      }
+
       return response.data.result;
     } catch (error) {
       throw new BadRequestException(

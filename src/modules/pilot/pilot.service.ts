@@ -14,6 +14,7 @@ import {
 } from './interfaces/pilot.interface';
 import { ConfigService } from '@nestjs/config';
 import * as moment from 'moment-timezone';
+import formatDate from 'src/common/functions/formatDate';
 
 @Injectable()
 export class PilotService {
@@ -166,29 +167,17 @@ export class PilotService {
       );
     }
 
-    const rawResponse =
+    const verificationResponse: VerificationResponseVehicle =
       await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    if (rawResponse.status.toLowerCase() !== 'active') {
+    if (verificationResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
-    
+
     // Check if vehicle registration number is expired
-    const expiryDateUTC = moment.utc(this.parseDate(rawResponse.rcExpiryDate));
-    const nowUTC = moment.utc();
-    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
-    const nowIST = nowUTC.tz('Asia/Kolkata');
-    if (expiryDateIST.isBefore(nowIST)) {
-      throw new BadRequestException('Vehicle registration number is expired');
-    }
-
-    const rcToNameResponse =
-      await this.signzyService.getRcToName(registrationNumber);
-
-    const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse, rcToNameResponse);
+    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
 
     const vehicle = await this.updatePilotVehicleData(
       verificationResponse,
@@ -206,28 +195,17 @@ export class PilotService {
 
     registrationNumber = registrationNumber.split(' ').join('');
 
-    const rawResponse =
+    const verificationResponse: VerificationResponseVehicle =
       await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    if (rawResponse.status.toLowerCase() !== 'active') {
+    if (verificationResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
-    console.log(rawResponse.rcExpiryDate)
-    const expiryDateUTC = moment.utc(rawResponse.rcExpiryDate);
-    const nowUTC = moment.utc();
-    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
-    const nowIST = nowUTC.tz('Asia/Kolkata');
-    if (expiryDateIST.isBefore(nowIST)) {
-      throw new BadRequestException('Vehicle registration number is expired');
-    }
 
-    const rcToNameResponse =
-      await this.signzyService.getRcToName(registrationNumber);
-
-    const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse, rcToNameResponse);
+    // Check if vehicle registration number is expired
+    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
 
     const vehicle = await this.updatePilotVehicleData(
       verificationResponse,
@@ -301,7 +279,7 @@ export class PilotService {
       // Extract Driving License Number (DL No)
       if (text.startsWith('DL No')) {
         // DL No : MH01 19950048097
-        data.dlNumber = text.substring(text.indexOf(':') + 2)
+        data.dlNumber = text.substring(text.indexOf(':') + 2);
       }
 
       // Extract Date of Birth (DOB)
@@ -316,37 +294,13 @@ export class PilotService {
     return data;
   }
 
-  private parseDate(dateString: string): Date {console.log('for v rc')
-    console.log(dateString)
-    if (!dateString) {
-      throw new Error('Invalid date string');
-    }
-
-    const [day, month, year] = dateString.split('/');
-    if (!day || !month || !year) {
-      throw new Error('Invalid date components');
-    }
-
-    // Reformat the date to YYYY-MM-DD
-    const formattedDate = `${year}-${month}-${day}`;
-    const parsedDate = new Date(formattedDate);
-
-    if (isNaN(parsedDate.getTime())) {
-      throw new Error('Failed to parse date');
-    }
-
-    return parsedDate;
-  }
-
   private transformResponseDL(rawResponse: any) {
     return {
       licenseNumber: rawResponse.dlNumber,
-      dateOfBirth: this.parseDate(rawResponse.dob),
+      dateOfBirth: formatDate(rawResponse.dob),
       nameOnLicense: rawResponse.detailsOfDrivingLicence.name,
-      dateOfIssue: this.parseDate(
-        rawResponse.detailsOfDrivingLicence.dateOfIssue,
-      ),
-      validUntill: this.parseDate(rawResponse.dlValidity.transport.to),
+      dateOfIssue: formatDate(rawResponse.detailsOfDrivingLicence.dateOfIssue),
+      validUntill: formatDate(rawResponse.dlValidity.transport.to),
     };
   }
 
@@ -399,23 +353,14 @@ export class PilotService {
     return null;
   }
 
-  private transformResponseVehicle(
-    rawResponse: any,
-    rcToNameResponse: any,
-  ): VerificationResponseVehicle {
-    return {
-      regNo: rawResponse.regNo,
-      status: rawResponse.status,
-      insuranceUpto: this.parseDate(rawResponse.vehicleInsuranceUpto),
-      fitUpto: this.parseDate(rawResponse.fitUpto),
-      puccUpto: this.parseDate(rawResponse.puccUpto),
-      manufacturer: rawResponse.vehicleManufacturerName,
-      makerModel: rawResponse.makerModel,
-      vehicleColour: rawResponse.vehicleColour,
-      vehicleState: rcToNameResponse.vehicleState,
-      vehicleSeatingCapacity: rcToNameResponse.vehicleSeatingCapacity,
-      vehicleClass: rcToNameResponse.vehicleClass,
-    };
+  private isVehicleRegistrationNumberExpired(rcExpiryDate) {
+    const expiryDateUTC = moment.utc(rcExpiryDate);
+    const nowUTC = moment.utc();
+    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
+    const nowIST = nowUTC.tz('Asia/Kolkata');
+    if (expiryDateIST.isBefore(nowIST)) {
+      throw new BadRequestException('Vehicle registration number is expired');
+    }
   }
 
   private async updatePilotVehicleData(
@@ -423,14 +368,16 @@ export class PilotService {
     userId: string,
   ) {
     const {
-      insuranceUpto,
-      fitUpto,
-      puccUpto,
       regNo,
       status,
-      makerModel,
+      insuranceUpto,
       manufacturer,
+      makerModel,
       vehicleColour,
+      fitUpto,
+      puccUpto,
+      rcExpiryDate,
+      permitUpto,
       vehicleState,
       vehicleSeatingCapacity,
       vehicleClass,
@@ -456,8 +403,8 @@ export class PilotService {
         pilotId: pilot.id,
         regNo,
         status,
-        regUpto: '',
-        permitUpto: '',
+        regUpto: rcExpiryDate,
+        permitUpto,
         fitUpto,
         puccUpto,
         insuranceUpto,
@@ -465,7 +412,6 @@ export class PilotService {
         vehicleColour,
         manufacturer,
         vehicleState,
-        registrationExpiry: '',
         vehicleSeatingCapacity: vehicleSeatingCapacity - 1, // in our system, we exclude the driver
         vehicleTypeId: vehicleType.id,
       },

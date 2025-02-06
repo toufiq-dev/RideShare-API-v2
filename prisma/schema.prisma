@@ -155,8 +155,8 @@ model Vehicle {
   pilotId                String
   regNo                  String      @unique
   status                 String
-  regUpto                String
-  permitUpto             String?
+  regUpto                DateTime
+  permitUpto             DateTime?
   fitUpto                DateTime
   puccUpto               DateTime
   insuranceUpto          DateTime
@@ -165,7 +165,6 @@ model Vehicle {
   vehicleState           String
   vehicleSeatingCapacity Int?
   manufacturer           String
-  registrationExpiry     DateTime
   vehicleTypeId          String
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt

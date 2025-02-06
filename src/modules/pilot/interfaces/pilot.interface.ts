@@ -15,6 +15,8 @@ export interface VerificationResponseVehicle {
   vehicleColour: string;
   fitUpto: Date;
   puccUpto: Date;
+  rcExpiryDate: Date;
+  permitUpto?: Date | null;
   vehicleState: string;
   vehicleSeatingCapacity: number;
   vehicleClass: string;

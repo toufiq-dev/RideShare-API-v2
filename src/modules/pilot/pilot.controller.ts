@@ -89,7 +89,7 @@ export class PilotController {
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload Vehicle RC' })
+  @ApiOperation({ summary: 'Manually give Vehicle RC' })
   @ApiBody({ type: VehicleRcDto })
   async uploadVehicleRCManual(
     @Body() vehicleRcDto: VehicleRcDto,

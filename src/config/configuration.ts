@@ -45,6 +45,9 @@ export default () => ({
     panVerifyEndPointPreproduction:
       process.env.SIGNZY_PAN_VERIFY_ENDPOINT_TESTING,
     rcVerifyEndPoint: process.env.SIGNZY_RC_VERIFY_ENDPOINT,
+    rcVerifyEndPointPreproduction: process.env.SIGNZY_RC_VERIFY_ENDPOINT_PRE,
+    rcToName: process.env.SIGNZY_RC_TO_NAME,
+    rcToNamePreproduction: process.env.SIGNZY_RC_TO_NAME_PRE,
   },
   subscription: {
     onboardingOffer: process.env.ONBOARDING_OFFER,

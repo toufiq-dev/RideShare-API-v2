@@ -9,9 +9,13 @@ export interface VerificationResponseDL {
 export interface VerificationResponseVehicle {
   regNo: string;
   status: string;
+  insuranceUpto: Date;
+  manufacturer: string;
   makerModel: string;
   vehicleColour: string;
   fitUpto: Date;
   puccUpto: Date;
-  type: string;
+  vehicleState: string;
+  vehicleSeatingCapacity: number;
+  vehicleClass: string;
 }

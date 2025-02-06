@@ -10,6 +10,9 @@ export class SignzyService {
   private readonly drivingLicenseEndPointPreproduction: string;
   private readonly panVerifyEndPoint: string;
   private readonly rcVerifyEndPoint: string;
+  private readonly rcVerifyEndPointPreproduction: string;
+  private readonly rcToName: string;
+  private readonly rcToNamePreproduction: string;
 
   constructor(private readonly configService: ConfigService) {
     this.productionAccessToken = this.configService.get<string>(
@@ -29,6 +32,13 @@ export class SignzyService {
     );
     this.rcVerifyEndPoint = this.configService.get<string>(
       'signzy.rcVerifyEndPoint',
+    );
+    this.rcVerifyEndPointPreproduction = this.configService.get<string>(
+      'signzy.rcVerifyEndPointPreproduction',
+    );
+    this.rcToName = this.configService.get<string>('signzy.rcToName');
+    this.rcToNamePreproduction = this.configService.get<string>(
+      'signzy.rcToNamePreproduction',
     );
   }
 
@@ -79,7 +89,7 @@ export class SignzyService {
       const response = await axios.post(url, data, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: this.productionAccessToken,
+          Authorization: this.preproductionAccessToken,
         },
       });
 
@@ -92,7 +102,7 @@ export class SignzyService {
   }
 
   async verifyVehicleRC(registrationNumber: string) {
-    const url = this.rcVerifyEndPoint;
+    const url = this.rcVerifyEndPointPreproduction;
     const data = {
       vehicleNumber: registrationNumber,
     };
@@ -101,14 +111,37 @@ export class SignzyService {
       const response = await axios.post(url, data, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: this.productionAccessToken,
+          Authorization: this.preproductionAccessToken,
+        },
+      });
+
+      return response.data.result;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to verify vehicle rc number with Signzy API.',
+      );
+    }
+  }
+
+  async getRcToName(registrationNumber: string) {
+    const url = this.rcToNamePreproduction;
+    const data = {
+      vehicleNumber: registrationNumber,
+    };
+
+    try {
+      const response = await axios.post(url, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: this.preproductionAccessToken,
         },
       });
 
       return response.data.result;
     } catch (error) {
       throw new BadRequestException(
-        'Failed to verify vehicle rc number with Signzy API.',
+        'Failed to get vehicle name from Signzy API.',
       );
     }
   }

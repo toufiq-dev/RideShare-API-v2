@@ -13,6 +13,7 @@ import {
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
 import { ConfigService } from '@nestjs/config';
+import * as moment from 'moment-timezone';
 
 @Injectable()
 export class PilotService {
@@ -81,13 +82,14 @@ export class PilotService {
     drivingLicenseAndDobDto: DrivingLicenseDto,
     userId: string,
   ) {
-    const { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
+    let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (!pilot) {
       throw new BadRequestException('Pilot not found.');
     }
 
+    drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
     const rawResponse = await this.signzyService.verifyDrivingLicense(
       drivingLicenseNumber,
       dob,
@@ -145,7 +147,7 @@ export class PilotService {
       throw new BadRequestException('Pilot not found.');
     }
     if (!pilot.selfieUrl) {
-      throw new BadRequestException('Live selfie not found.');
+      throw new BadRequestException('Driver does not have Live selfie');
     }
 
     if (!file) {
@@ -167,14 +169,26 @@ export class PilotService {
     const rawResponse =
       await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse);
-
-    if (verificationResponse.status !== 'Active') {
+    if (rawResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
+    
+    // Check if vehicle registration number is expired
+    const expiryDateUTC = moment.utc(this.parseDate(rawResponse.rcExpiryDate));
+    const nowUTC = moment.utc();
+    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
+    const nowIST = nowUTC.tz('Asia/Kolkata');
+    if (expiryDateIST.isBefore(nowIST)) {
+      throw new BadRequestException('Vehicle registration number is expired');
+    }
+
+    const rcToNameResponse =
+      await this.signzyService.getRcToName(registrationNumber);
+
+    const verificationResponse: VerificationResponseVehicle =
+      this.transformResponseVehicle(rawResponse, rcToNameResponse);
 
     const vehicle = await this.updatePilotVehicleData(
       verificationResponse,
@@ -188,19 +202,32 @@ export class PilotService {
   }
 
   async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
-    const { registrationNumber } = vehicleRcDto;
+    let { registrationNumber } = vehicleRcDto;
+
+    registrationNumber = registrationNumber.split(' ').join('');
 
     const rawResponse =
       await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse);
-
-    if (verificationResponse.status !== 'Active') {
+    if (rawResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
+    console.log(rawResponse.rcExpiryDate)
+    const expiryDateUTC = moment.utc(rawResponse.rcExpiryDate);
+    const nowUTC = moment.utc();
+    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
+    const nowIST = nowUTC.tz('Asia/Kolkata');
+    if (expiryDateIST.isBefore(nowIST)) {
+      throw new BadRequestException('Vehicle registration number is expired');
+    }
+
+    const rcToNameResponse =
+      await this.signzyService.getRcToName(registrationNumber);
+
+    const verificationResponse: VerificationResponseVehicle =
+      this.transformResponseVehicle(rawResponse, rcToNameResponse);
 
     const vehicle = await this.updatePilotVehicleData(
       verificationResponse,
@@ -273,8 +300,8 @@ export class PilotService {
 
       // Extract Driving License Number (DL No)
       if (text.startsWith('DL No')) {
-        // 6 -> DL No -> 5 characters including space + space
-        data.dlNumber = text.substring(6).replace(' ', '');
+        // DL No : MH01 19950048097
+        data.dlNumber = text.substring(text.indexOf(':') + 2)
       }
 
       // Extract Date of Birth (DOB)
@@ -289,7 +316,8 @@ export class PilotService {
     return data;
   }
 
-  private parseDate(dateString: string): Date {
+  private parseDate(dateString: string): Date {console.log('for v rc')
+    console.log(dateString)
     if (!dateString) {
       throw new Error('Invalid date string');
     }
@@ -371,15 +399,22 @@ export class PilotService {
     return null;
   }
 
-  private transformResponseVehicle(rawResponse: any) {
+  private transformResponseVehicle(
+    rawResponse: any,
+    rcToNameResponse: any,
+  ): VerificationResponseVehicle {
     return {
       regNo: rawResponse.regNo,
       status: rawResponse.status,
+      insuranceUpto: this.parseDate(rawResponse.vehicleInsuranceUpto),
       fitUpto: this.parseDate(rawResponse.fitUpto),
       puccUpto: this.parseDate(rawResponse.puccUpto),
+      manufacturer: rawResponse.vehicleManufacturerName,
       makerModel: rawResponse.makerModel,
       vehicleColour: rawResponse.vehicleColour,
-      type: rawResponse.desc,
+      vehicleState: rcToNameResponse.vehicleState,
+      vehicleSeatingCapacity: rcToNameResponse.vehicleSeatingCapacity,
+      vehicleClass: rcToNameResponse.vehicleClass,
     };
   }
 
@@ -388,13 +423,17 @@ export class PilotService {
     userId: string,
   ) {
     const {
-      type,
+      insuranceUpto,
       fitUpto,
       puccUpto,
       regNo,
       status,
       makerModel,
+      manufacturer,
       vehicleColour,
+      vehicleState,
+      vehicleSeatingCapacity,
+      vehicleClass,
     } = verificationResponse;
 
     // Update pilot record with vehicle information
@@ -406,22 +445,29 @@ export class PilotService {
     });
 
     const vehicleType = await this.prisma.vehicleType.upsert({
-      where: { name: type },
+      where: { name: vehicleClass },
       update: {},
-      create: { name: type },
+      create: { name: vehicleClass },
     });
 
     // Create vehicle record
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        fitUpto,
-        puccUpto,
         pilotId: pilot.id,
-        vehicleTypeId: vehicleType.id,
         regNo,
         status,
+        regUpto: '',
+        permitUpto: '',
+        fitUpto,
+        puccUpto,
+        insuranceUpto,
         makerModel,
         vehicleColour,
+        manufacturer,
+        vehicleState,
+        registrationExpiry: '',
+        vehicleSeatingCapacity: vehicleSeatingCapacity - 1, // in our system, we exclude the driver
+        vehicleTypeId: vehicleType.id,
       },
     });
 

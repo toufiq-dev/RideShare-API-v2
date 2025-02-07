@@ -13,6 +13,8 @@ import {
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
 import { ConfigService } from '@nestjs/config';
+import * as moment from 'moment-timezone';
+import formatDate from 'src/common/functions/formatDate';
 
 @Injectable()
 export class PilotService {
@@ -28,7 +30,7 @@ export class PilotService {
   }
 
   async getPilot(userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({
+    const data = await this.prisma.pilot.findUnique({
       where: { userId },
       include: {
         user: true,
@@ -38,7 +40,7 @@ export class PilotService {
 
     return {
       message: 'Pilot fetched successfully',
-      data: pilot,
+      data,
     };
   }
 
@@ -81,13 +83,14 @@ export class PilotService {
     drivingLicenseAndDobDto: DrivingLicenseDto,
     userId: string,
   ) {
-    const { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
+    let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (!pilot) {
       throw new BadRequestException('Pilot not found.');
     }
 
+    drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
     const rawResponse = await this.signzyService.verifyDrivingLicense(
       drivingLicenseNumber,
       dob,
@@ -145,7 +148,7 @@ export class PilotService {
       throw new BadRequestException('Pilot not found.');
     }
     if (!pilot.selfieUrl) {
-      throw new BadRequestException('Live selfie not found.');
+      throw new BadRequestException('Driver does not have Live selfie');
     }
 
     if (!file) {
@@ -164,52 +167,54 @@ export class PilotService {
       );
     }
 
-    const rawResponse =
+    const verificationResponse: VerificationResponseVehicle =
       await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse);
-
-    if (verificationResponse.status !== 'Active') {
+    if (verificationResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
 
-    const vehicle = await this.updatePilotVehicleData(
+    // Check if vehicle registration number is expired
+    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
+
+    const data = await this.updatePilotVehicleData(
       verificationResponse,
       userId,
     );
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: vehicle,
+      data,
     };
   }
 
   async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
-    const { registrationNumber } = vehicleRcDto;
+    let { registrationNumber } = vehicleRcDto;
 
-    const rawResponse =
-      await this.signzyService.verifyVehicleRC(registrationNumber);
+    registrationNumber = registrationNumber.split(' ').join('');
 
     const verificationResponse: VerificationResponseVehicle =
-      this.transformResponseVehicle(rawResponse);
+      await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    if (verificationResponse.status !== 'Active') {
+    if (verificationResponse.status.toLowerCase() !== 'active') {
       throw new BadRequestException(
         'vehicle registration number is not active',
       );
     }
 
-    const vehicle = await this.updatePilotVehicleData(
+    // Check if vehicle registration number is expired
+    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
+
+    const data = await this.updatePilotVehicleData(
       verificationResponse,
       userId,
     );
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: vehicle,
+      data,
     };
   }
 
@@ -219,25 +224,30 @@ export class PilotService {
     }
 
     const buffer = file.buffer;
-  }
 
-  async processManualPancard(pancardDto: PancardDto, userId: string) {
-    const { pan, name, dob } = pancardDto;
+    // Extract text using Azure OCR
+    const lines = await this.getOcrResult(buffer);
 
-    const verificationResponse = await this.signzyService.verifyPancard(
-      pan,
-      name,
-      dob,
-    );
+    const panNumber = this.extractPancardData(lines);
 
-    // E - Existing and Valid
-    if (verificationResponse.panStatus !== 'E') {
+    if (!panNumber) {
+      throw new BadRequestException(
+        'Could not extract pan card number from the image',
+      );
+    }
+
+    const verificationResponse =
+      await this.signzyService.verifyPancard(panNumber);
+
+    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
       throw new BadRequestException(
         'This pan card is either non-existing or invalid',
       );
     }
 
-    const pilot = await this.prisma.pilot.update({
+    // await this.verifyPancardName(verificationResponse, userId);
+
+    const data = await this.prisma.pilot.update({
       where: { userId },
       data: {
         isPanCardVerified: true,
@@ -246,8 +256,57 @@ export class PilotService {
 
     return {
       message: 'Pancard verified successfully',
-      pilot,
+      data,
     };
+  }
+
+  async processManualPancard(pancardDto: PancardDto, userId: string) {
+    const { panNumber } = pancardDto;
+
+    const verificationResponse =
+      await this.signzyService.verifyPancard(panNumber);
+
+    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
+      throw new BadRequestException(
+        'This pan card is either non-existing or invalid',
+      );
+    }
+
+    // await this.verifyPancardName(verificationResponse, userId);
+
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isPanCardVerified: true,
+      },
+    });
+
+    return {
+      message: 'Pancard verified successfully',
+      data,
+    };
+  }
+
+   async pilotonboardingOffer(userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+
+    const subscription = await this.prisma.pilotSubscription.findUnique({
+      where: { name: this.onboardingOffer },
+    });
+
+    // Create pilot wallet
+    const data = await this.prisma.pilotWallet.create({
+      data: {
+        pilotId: pilot.id,
+        balance: subscription.coins,
+        subscriptionId: subscription.id,
+      },
+    });
+
+    return {
+      message: 'Pilot onboarding coins availed successfully',
+      data
+    }
   }
 
   private async getOcrResult(buffer: any) {
@@ -273,8 +332,8 @@ export class PilotService {
 
       // Extract Driving License Number (DL No)
       if (text.startsWith('DL No')) {
-        // 6 -> DL No -> 5 characters including space + space
-        data.dlNumber = text.substring(6).replace(' ', '');
+        // DL No : MH01 19950048097
+        data.dlNumber = text.substring(text.indexOf(':') + 2);
       }
 
       // Extract Date of Birth (DOB)
@@ -284,39 +343,18 @@ export class PilotService {
       }
     }
 
+    data.dlNumber = data.dlNumber.split(' ').join('');
+
     return data;
-  }
-
-  private parseDate(dateString: string): Date {
-    if (!dateString) {
-      throw new Error('Invalid date string');
-    }
-
-    const [day, month, year] = dateString.split('/');
-    if (!day || !month || !year) {
-      throw new Error('Invalid date components');
-    }
-
-    // Reformat the date to YYYY-MM-DD
-    const formattedDate = `${year}-${month}-${day}`;
-    const parsedDate = new Date(formattedDate);
-
-    if (isNaN(parsedDate.getTime())) {
-      throw new Error('Failed to parse date');
-    }
-
-    return parsedDate;
   }
 
   private transformResponseDL(rawResponse: any) {
     return {
       licenseNumber: rawResponse.dlNumber,
-      dateOfBirth: this.parseDate(rawResponse.dob),
+      dateOfBirth: formatDate(rawResponse.dob),
       nameOnLicense: rawResponse.detailsOfDrivingLicence.name,
-      dateOfIssue: this.parseDate(
-        rawResponse.detailsOfDrivingLicence.dateOfIssue,
-      ),
-      validUntill: this.parseDate(rawResponse.dlValidity.nonTransport.to),
+      dateOfIssue: formatDate(rawResponse.detailsOfDrivingLicence.dateOfIssue),
+      validUntill: formatDate(rawResponse.dlValidity.transport.to),
     };
   }
 
@@ -369,30 +407,55 @@ export class PilotService {
     return null;
   }
 
-  private transformResponseVehicle(rawResponse: any) {
-    return {
-      regNo: rawResponse.regNo,
-      status: rawResponse.status,
-      fitUpto: this.parseDate(rawResponse.fitUpto),
-      puccUpto: this.parseDate(rawResponse.puccUpto),
-      makerModel: rawResponse.makerModel,
-      vehicleColour: rawResponse.vehicleColour,
-      type: rawResponse.desc,
-    };
+  private isVehicleRegistrationNumberExpired(rcExpiryDate) {
+    const expiryDateUTC = moment.utc(rcExpiryDate);
+    const nowUTC = moment.utc();
+    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
+    const nowIST = nowUTC.tz('Asia/Kolkata');
+    if (expiryDateIST.isBefore(nowIST)) {
+      throw new BadRequestException('Vehicle registration number is expired');
+    }
   }
 
+  private extractPancardData(lines: any[]) {
+    const panIdentifiers = [
+      'Permanent Account Number Card',
+      'Permanent Account Number',
+    ];
+
+    let foundPanTitle = false;
+
+    for (const line of lines) {
+      const text = line.text.trim();
+
+      if (panIdentifiers.includes(text)) {
+        foundPanTitle = true;
+        continue;
+      }
+
+      if (foundPanTitle) {
+        return text;
+      }
+    }
+  }
   private async updatePilotVehicleData(
     verificationResponse: VerificationResponseVehicle,
     userId: string,
   ) {
     const {
-      type,
-      fitUpto,
-      puccUpto,
       regNo,
       status,
+      insuranceUpto,
+      manufacturer,
       makerModel,
       vehicleColour,
+      fitUpto,
+      puccUpto,
+      rcExpiryDate,
+      permitUpto,
+      vehicleState,
+      vehicleSeatingCapacity,
+      vehicleClass,
     } = verificationResponse;
 
     // Update pilot record with vehicle information
@@ -404,40 +467,49 @@ export class PilotService {
     });
 
     const vehicleType = await this.prisma.vehicleType.upsert({
-      where: { name: type },
+      where: { name: vehicleClass },
       update: {},
-      create: { name: type },
+      create: { name: vehicleClass },
     });
 
     // Create vehicle record
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        fitUpto,
-        puccUpto,
         pilotId: pilot.id,
-        vehicleTypeId: vehicleType.id,
         regNo,
         status,
+        regUpto: rcExpiryDate,
+        permitUpto,
+        fitUpto,
+        puccUpto,
+        insuranceUpto,
         makerModel,
         vehicleColour,
+        manufacturer,
+        vehicleState,
+        vehicleSeatingCapacity: vehicleSeatingCapacity - 1, // in our system, we exclude the driver
+        vehicleTypeId: vehicleType.id,
       },
     });
 
     return vehicle;
   }
 
-  private async pilotonboardingSetup(pilotId: string) {
-    const subscription = await this.prisma.pilotSubscription.findUnique({
-      where: { name: this.onboardingOffer },
+  private async verifyPancardName(verificationResponse: any, userId: string) {
+    const name =
+      verificationResponse.firstName + ' ' + verificationResponse.lastName;
+
+    // Check if pan card name matches with driving license name
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    const drivingLicense = await this.prisma.drivingLicense.findUnique({
+      where: { pilotId: pilot.id },
     });
 
-    // Create pilot wallet
-    const wallet = await this.prisma.pilotWallet.create({
-      data: {
-        pilotId,
-        balance: subscription.coins,
-        subscriptionId: subscription.id,
-      },
-    });
+    if (drivingLicense.nameOnLicense !== name) {
+      throw new BadRequestException(
+        'Pancard name does not match with driving license name',
+      );
+    }
   }
+
 }

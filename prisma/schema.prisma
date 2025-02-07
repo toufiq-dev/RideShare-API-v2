@@ -151,25 +151,25 @@ model DrivingLicense {
 }
 
 model Vehicle {
-  id                 String      @id @default(uuid())
-  pilotId            String
-  regNo              String      @unique
-  status             String
-  fitUpto            DateTime
-  puccUpto           DateTime
-  insuranceUpto      DateTime?
-  makerModel         String
-  vehicleColour      String
-  fuelDesc           String?
-  capacity           Int?
-  manufacturer       String?
-  permitExpiry       DateTime?
-  registrationExpiry DateTime?
-  vehicleTypeId      String
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  pilot              Pilot       @relation(fields: [pilotId], references: [id])
-  vehicleType        VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  id                     String      @id @default(uuid())
+  pilotId                String
+  regNo                  String      @unique
+  status                 String
+  regUpto                DateTime
+  permitUpto             DateTime?
+  fitUpto                DateTime
+  puccUpto               DateTime
+  insuranceUpto          DateTime
+  makerModel             String
+  vehicleColour          String
+  vehicleState           String
+  vehicleSeatingCapacity Int?
+  manufacturer           String
+  vehicleTypeId          String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  pilot                  Pilot       @relation(fields: [pilotId], references: [id])
+  vehicleType            VehicleType @relation(fields: [vehicleTypeId], references: [id])
 }
 
 model VehicleType {

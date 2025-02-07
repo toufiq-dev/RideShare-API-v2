@@ -14,7 +14,7 @@ import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { DrivingLicenseDto, PancardDto } from './dto/pilot.dto';
+import { DrivingLicenseDto, PancardDto, VehicleRcDto } from './dto/pilot.dto';
 
 @Controller('pilot')
 export class PilotController {
@@ -42,21 +42,7 @@ export class PilotController {
     return await this.pilotService.processDrivingLicense(file, userId);
   }
 
-  @Post('live-selfie')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload live selfie for pilot' })
-  @UseInterceptors(CustomFileInterceptor)
-  async uploadLiveSelfie(
-    @UploadedFile() file: Express.Multer.File,
-    @CurrentUser('userId') userId: string,
-    @CurrentUser('role') role: string,
-  ) {
-    return await this.pilotService.uploadLiveSelfie(file, userId, role);
-  }
-
-  @Post('driving-license-manual')
+  @Post('manual/driving-license')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -72,6 +58,20 @@ export class PilotController {
     );
   }
 
+  @Post('live-selfie')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload live selfie for pilot' })
+  @UseInterceptors(CustomFileInterceptor)
+  async uploadLiveSelfie(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return await this.pilotService.uploadLiveSelfie(file, userId, role);
+  }
+
   @Post('vehicle-rc')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
@@ -85,20 +85,33 @@ export class PilotController {
     return await this.pilotService.processVehicleRC(file, userId);
   }
 
-  // @Post('pancard')
-  // @HttpCode(200)
-  // @UseGuards(JwtAuthGuard)
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Upload Pancard of pilot' })
-  // @UseInterceptors(FileInterceptor('file'))
-  // async uploadPanCard(
-  //   @UploadedFile() file: Express.Multer.File,
-  //   @CurrentUser('userId') userId: string,
-  // ) {
-  //   return await this.pilotService.processPancard(file, userId);
-  // }
+  @Post('manual/vehicle-rc')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give Vehicle RC' })
+  @ApiBody({ type: VehicleRcDto })
+  async uploadVehicleRCManual(
+    @Body() vehicleRcDto: VehicleRcDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processManualVehicleRC(vehicleRcDto, userId);
+  }
 
-  @Post('pancard-manual')
+  @Post('pancard')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload Pancard of pilot' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPanCard(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processPancard(file, userId);
+  }
+
+  @Post('manual/pancard')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -109,5 +122,13 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.processManualPancard(pancardDto, userId);
+  }
+
+  @Get('onboarding-offer')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Faircoins for onborading' })
+  async getLiveSelfie(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.pilotonboardingOffer(userId);
   }
 }

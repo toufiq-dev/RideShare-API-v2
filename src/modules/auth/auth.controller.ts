@@ -8,7 +8,7 @@ import {
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { JwtAuthGuard } from 'src/common/guards/current-user.guard';
+import { JwtAuthGuard } from 'src/common/guards/auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')

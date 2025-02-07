@@ -5,7 +5,7 @@ export default function formatDate(dateString: string): Date {
 
   const [day, month, year] = dateString.split('/');
   if (!day || !month || !year) {
-    throw new Error('Invalid date components');
+    return null;
   }
 
   // Reformat the date to YYYY-MM-DD

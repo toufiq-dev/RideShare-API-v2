@@ -30,7 +30,7 @@ export class PilotService {
   }
 
   async getPilot(userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({
+    const data = await this.prisma.pilot.findUnique({
       where: { userId },
       include: {
         user: true,
@@ -40,7 +40,7 @@ export class PilotService {
 
     return {
       message: 'Pilot fetched successfully',
-      data: pilot,
+      data,
     };
   }
 
@@ -179,14 +179,14 @@ export class PilotService {
     // Check if vehicle registration number is expired
     this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
 
-    const vehicle = await this.updatePilotVehicleData(
+    const data = await this.updatePilotVehicleData(
       verificationResponse,
       userId,
     );
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: vehicle,
+      data,
     };
   }
 
@@ -207,14 +207,14 @@ export class PilotService {
     // Check if vehicle registration number is expired
     this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
 
-    const vehicle = await this.updatePilotVehicleData(
+    const data = await this.updatePilotVehicleData(
       verificationResponse,
       userId,
     );
 
     return {
       message: 'Vehicle RC processed successfully',
-      data: vehicle,
+      data,
     };
   }
 
@@ -224,25 +224,30 @@ export class PilotService {
     }
 
     const buffer = file.buffer;
-  }
 
-  async processManualPancard(pancardDto: PancardDto, userId: string) {
-    const { pan, name, dob } = pancardDto;
+    // Extract text using Azure OCR
+    const lines = await this.getOcrResult(buffer);
 
-    const verificationResponse = await this.signzyService.verifyPancard(
-      pan,
-      name,
-      dob,
-    );
+    const panNumber = this.extractPancardData(lines);
 
-    // E - Existing and Valid
-    if (verificationResponse.panStatus !== 'E') {
+    if (!panNumber) {
+      throw new BadRequestException(
+        'Could not extract pan card number from the image',
+      );
+    }
+
+    const verificationResponse =
+      await this.signzyService.verifyPancard(panNumber);
+
+    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
       throw new BadRequestException(
         'This pan card is either non-existing or invalid',
       );
     }
 
-    const pilot = await this.prisma.pilot.update({
+    // await this.verifyPancardName(verificationResponse, userId);
+
+    const data = await this.prisma.pilot.update({
       where: { userId },
       data: {
         isPanCardVerified: true,
@@ -251,8 +256,57 @@ export class PilotService {
 
     return {
       message: 'Pancard verified successfully',
-      pilot,
+      data,
     };
+  }
+
+  async processManualPancard(pancardDto: PancardDto, userId: string) {
+    const { panNumber } = pancardDto;
+
+    const verificationResponse =
+      await this.signzyService.verifyPancard(panNumber);
+
+    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
+      throw new BadRequestException(
+        'This pan card is either non-existing or invalid',
+      );
+    }
+
+    // await this.verifyPancardName(verificationResponse, userId);
+
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isPanCardVerified: true,
+      },
+    });
+
+    return {
+      message: 'Pancard verified successfully',
+      data,
+    };
+  }
+
+   async pilotonboardingOffer(userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+
+    const subscription = await this.prisma.pilotSubscription.findUnique({
+      where: { name: this.onboardingOffer },
+    });
+
+    // Create pilot wallet
+    const data = await this.prisma.pilotWallet.create({
+      data: {
+        pilotId: pilot.id,
+        balance: subscription.coins,
+        subscriptionId: subscription.id,
+      },
+    });
+
+    return {
+      message: 'Pilot onboarding coins availed successfully',
+      data
+    }
   }
 
   private async getOcrResult(buffer: any) {
@@ -363,6 +417,27 @@ export class PilotService {
     }
   }
 
+  private extractPancardData(lines: any[]) {
+    const panIdentifiers = [
+      'Permanent Account Number Card',
+      'Permanent Account Number',
+    ];
+
+    let foundPanTitle = false;
+
+    for (const line of lines) {
+      const text = line.text.trim();
+
+      if (panIdentifiers.includes(text)) {
+        foundPanTitle = true;
+        continue;
+      }
+
+      if (foundPanTitle) {
+        return text;
+      }
+    }
+  }
   private async updatePilotVehicleData(
     verificationResponse: VerificationResponseVehicle,
     userId: string,
@@ -420,18 +495,21 @@ export class PilotService {
     return vehicle;
   }
 
-  private async pilotonboardingSetup(pilotId: string) {
-    const subscription = await this.prisma.pilotSubscription.findUnique({
-      where: { name: this.onboardingOffer },
+  private async verifyPancardName(verificationResponse: any, userId: string) {
+    const name =
+      verificationResponse.firstName + ' ' + verificationResponse.lastName;
+
+    // Check if pan card name matches with driving license name
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    const drivingLicense = await this.prisma.drivingLicense.findUnique({
+      where: { pilotId: pilot.id },
     });
 
-    // Create pilot wallet
-    const wallet = await this.prisma.pilotWallet.create({
-      data: {
-        pilotId,
-        balance: subscription.coins,
-        subscriptionId: subscription.id,
-      },
-    });
+    if (drivingLicense.nameOnLicense !== name) {
+      throw new BadRequestException(
+        'Pancard name does not match with driving license name',
+      );
+    }
   }
+
 }

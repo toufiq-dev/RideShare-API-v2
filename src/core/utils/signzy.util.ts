@@ -11,6 +11,7 @@ export class SignzyService {
   private readonly drivingLicenseEndPoint: string;
   private readonly drivingLicenseEndPointPreproduction: string;
   private readonly panVerifyEndPoint: string;
+  private readonly panVerifyEndPointPreproduction: string;
   private readonly rcVerifyEndPoint: string;
   private readonly rcVerifyEndPointPreproduction: string;
   private readonly rcToName: string;
@@ -32,6 +33,9 @@ export class SignzyService {
     );
     this.panVerifyEndPoint = this.configService.get<string>(
       'signzy.panVerifyEndPoint',
+    );
+    this.panVerifyEndPointPreproduction = this.configService.get<string>(
+      'signzy.panVerifyEndPointPreproduction',
     );
     this.rcVerifyEndPoint = this.configService.get<string>(
       'signzy.rcVerifyEndPoint',
@@ -83,25 +87,28 @@ export class SignzyService {
     }
   }
 
-  async verifyPancard(pan: string, name: string, dob: string) {
+  async verifyPancard(panNumber: string) {
     const data = {
-      pan,
-      name,
-      dob: dob.split('-').join('/'),
+      panNumber,
     };
 
     try {
-      const response = await axios.post(this.panVerifyEndPoint, data, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this.preproductionAccessToken,
+      const response = await axios.post(
+        this.panVerifyEndPointPreproduction,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: this.preproductionAccessToken,
+          },
         },
-      });
+      );
 
       return response.data.result;
     } catch (error) {
+      console.log(error);
       throw new BadRequestException(
-        'Failed to verify driving license with Signzy API.',
+        'Failed to verify Pancard with Signzy API.',
       );
     }
   }
@@ -152,7 +159,7 @@ export class SignzyService {
         rcExpiryDate: formatDate(responseRc.data.result.rcExpiryDate),
         permitUpto: formatDate(responseRc.data.result.permitValidUpto),
         manufacturer: responseRc.data.result.vehicleManufacturerName,
-        makerModel: responseRc.data.result.makerModel,
+        makerModel: responseBasic.data.result.makerModel,
         vehicleColour: responseRc.data.result.vehicleColour,
         vehicleState: responseRcToName.data.result.vehicleState,
         vehicleSeatingCapacity:
@@ -160,7 +167,6 @@ export class SignzyService {
         vehicleClass: responseRcToName.data.result.vehicleClass,
       };
     } catch (error) {
-      console.log(error);
       throw new BadRequestException(
         'Failed to verify vehicle rc number with Signzy API.',
       );

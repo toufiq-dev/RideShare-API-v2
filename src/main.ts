@@ -6,10 +6,12 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-
+import { WsAdapter } from '@nestjs/platform-ws';
+import { NotFoundFilter } from './common/filters/not-found.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { abortOnError: false });
-
+  app.useWebSocketAdapter(new WsAdapter(app));
+  
   const logger = app.get(LoggerService);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port');
@@ -17,7 +19,7 @@ async function bootstrap() {
   app.enableCors();
   app.setGlobalPrefix('api');
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new GlobalExceptionFilter(), new NotFoundFilter());
   app.useGlobalInterceptors(new TransformResponseInterceptor());
 
   app.useGlobalPipes(

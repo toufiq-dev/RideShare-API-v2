@@ -17,7 +17,6 @@ import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
     origin: '*',
   },
   namespace: 'booking',
-  path: '/socket.io'
 })
 // @UseGuards(WsJwtAuthGuard)
 export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -56,6 +55,7 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     @ConnectedSocket() client: Socket,
     @MessageBody() createBookingDto: CreateBookingDto
   ) {
+    console.log(createBookingDto)
     const booking = await this.bookingService.create(createBookingDto, client.data.user);
     
     // Join booking room

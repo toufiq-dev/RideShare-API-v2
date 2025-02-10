@@ -4,7 +4,6 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { RoleEnum } from '../auth/dto/auth.dto';
 import { AzureService } from 'src/core/utils/azure.util';
 import { SignzyService } from 'src/core/utils/signzy.util';
 import { DrivingLicenseDto, VehicleRcDto, PancardDto } from './dto/pilot.dto';
@@ -113,11 +112,8 @@ export class PilotService {
   async uploadLiveSelfie(
     file: Express.Multer.File,
     userId: string,
-    role: string,
+    
   ) {
-    if (role !== RoleEnum.PILOT) {
-      throw new BadRequestException('Only Pilot can upload live selfie');
-    }
 
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (pilot.selfieUrl) {
@@ -288,6 +284,7 @@ export class PilotService {
   }
 
    async pilotonboardingOffer(userId: string) {
+    console.log(userId)
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
     const subscription = await this.prisma.pilotSubscription.findUnique({

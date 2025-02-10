@@ -8,7 +8,8 @@ import {
   ConnectedSocket,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Server, WebSocket } from 'ws';
+
 
 @WebSocketGateway({
   cors: {
@@ -25,19 +26,19 @@ export class WebsocketGateway
     console.log('WebSocket Server Initialized');
   }
 
-  handleConnection(client: Socket) {
+  handleConnection(client: WebSocket) {
     console.log(`Client connected successfully: ${client.id}`);
-    client.emit('connection', 'Welcome to the WebSocket server!');
+    client.emit('connection', 'Welcome to the WebWeb server!');
   }
 
-  handleDisconnect(client: Socket) {
+  handleDisconnect(client: WebSocket) {
     console.log(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('message')
   handleMessage(
     @MessageBody() data: string,
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: WebSocket,
   ) {
     console.log(`Message from client ${client.id}: ${data}`);
     return `Server received your message: ${data}`;

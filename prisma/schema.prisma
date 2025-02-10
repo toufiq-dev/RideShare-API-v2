@@ -85,7 +85,7 @@ model SavedPlace {
   customerId String
   name       String?
   address    String
-  location   Json?
+  location   String?
   type       SavedPlaceType @default(OTHERS)
   customer   Customer       @relation(fields: [customerId], references: [id])
 
@@ -107,7 +107,7 @@ model Pilot {
   phone             String          @unique
   languageId        String
   isAvailable       Boolean         @default(false)
-  currentLocation   Json?
+  currentLocation   String? // Will store as "POINT(longitude latitude)"
   acceptedTerms     Boolean         @default(true)
   isDLVerified      Boolean         @default(false)
   isRCVerified      Boolean         @default(false)
@@ -129,7 +129,7 @@ model Pilot {
   vehicles          Vehicle[]
   videoProgress     VideoProgress?
 
-  @@index([isAvailable, currentLocation])
+  @@index([isAvailable])
 }
 
 model DrivingLicense {
@@ -280,8 +280,8 @@ model Booking {
   pilotId              String?
   riderName            String?
   riderPhone           String?
-  pickupLocation       Json
-  dropLocation         Json
+  pickupLocation       String? // Will store as "POINT(longitude latitude)"
+  dropLocation         String? // Will store as "POINT(longitude latitude)"
   actualDistance       Float?
   actualDuration       Int?
   tripStart            DateTime?

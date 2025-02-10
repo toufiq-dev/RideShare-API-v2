@@ -37,6 +37,8 @@ async function main() {
   }
 
   console.log('Seeding languages finished.');
+
+  
 }
 
 main()

@@ -109,12 +109,7 @@ export class PilotService {
     };
   }
 
-  async uploadLiveSelfie(
-    file: Express.Multer.File,
-    userId: string,
-    
-  ) {
-
+  async uploadLiveSelfie(file: Express.Multer.File, userId: string) {
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (pilot.selfieUrl) {
       throw new ForbiddenException('Live selfie can be uploaded only once');
@@ -283,8 +278,8 @@ export class PilotService {
     };
   }
 
-   async pilotonboardingOffer(userId: string) {
-    console.log(userId)
+  async pilotonboardingOffer(userId: string) {
+    console.log(userId);
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
     const subscription = await this.prisma.pilotSubscription.findUnique({
@@ -302,8 +297,8 @@ export class PilotService {
 
     return {
       message: 'Pilot onboarding coins availed successfully',
-      data
-    }
+      data,
+    };
   }
 
   private async getOcrResult(buffer: any) {
@@ -508,5 +503,4 @@ export class PilotService {
       );
     }
   }
-
 }

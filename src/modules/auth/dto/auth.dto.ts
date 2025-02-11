@@ -22,7 +22,7 @@ export class SendOtpDto {
 
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
-  @IsPhoneNumber()
+  @IsPhoneNumber('IN')
   phone: string;
 
   @ApiPropertyOptional({ description: 'Referral Code' })

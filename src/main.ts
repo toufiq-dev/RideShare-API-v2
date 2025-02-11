@@ -9,7 +9,6 @@ import { TransformResponseInterceptor } from './common/interceptors/transform-re
 import { NotFoundFilter } from './common/filters/not-found.filter';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { abortOnError: false });
 

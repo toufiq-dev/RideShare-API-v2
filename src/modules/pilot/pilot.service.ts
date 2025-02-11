@@ -29,25 +29,25 @@ export class PilotService {
   }
 
   async getPilot(userId: string) {
-    const data = await this.prisma.pilot.findUnique({
-      where: { userId },
-      include: {
-        user: true,
-        language: true,
-      },
-    });
+    const data: any = await this.prisma.$queryRaw`
+      SELECT "id", "userId", "phone", ST_AsText("currentLocation") AS location, "isAvailable"
+      FROM "Pilot"
+      WHERE "userId" = ${userId}
+      LIMIT 1;
+    `;
+
+    if (data.length === 0) {
+      throw new BadRequestException('Pilot not found.');
+    }
 
     return {
       message: 'Pilot fetched successfully',
-      data,
+      data: data[0],
     };
   }
 
   async processDrivingLicense(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
+    await this.findPilot(userId);
 
     if (!file) {
       throw new BadRequestException('No file provided.');
@@ -84,10 +84,7 @@ export class PilotService {
   ) {
     let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
+    await this.findPilot(userId);
 
     drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
     const rawResponse = await this.signzyService.verifyDrivingLicense(
@@ -109,17 +106,14 @@ export class PilotService {
     };
   }
 
-  async uploadLiveSelfie(
-    file: Express.Multer.File,
-    userId: string,
-    
-  ) {
+  async uploadLiveSelfie(file: Express.Multer.File, userId: string) {
+    const pilot = await this.findPilot(userId);
 
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (pilot.selfieUrl) {
+    if (pilot[0].selfieUrl) {
       throw new ForbiddenException('Live selfie can be uploaded only once');
     }
-    if (!pilot.isDLVerified) {
+
+    if (!pilot[0].isDLVerified) {
       throw new ForbiddenException(
         'Driving License must be verified before uploading Live selfie',
       );
@@ -129,21 +123,20 @@ export class PilotService {
     const fileUrl = file.azureFileUrl;
 
     if (fileUrl) {
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: { selfieUrl: fileUrl },
-      });
+      await this.prisma.$queryRaw`
+        UPDATE "Pilot" 
+        SET "selfieUrl" = ${fileUrl} 
+        WHERE "userId" = ${userId};
+      `;
     }
 
     return { message: 'Live selfie uploaded successfully' };
   }
 
   async processVehicleRC(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
-    if (!pilot.selfieUrl) {
+    const pilot = await this.findPilot(userId);
+
+    if (!pilot[0].selfieUrl) {
       throw new BadRequestException('Driver does not have Live selfie');
     }
 
@@ -189,6 +182,8 @@ export class PilotService {
   async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
     let { registrationNumber } = vehicleRcDto;
 
+    await this.findPilot(userId);
+
     registrationNumber = registrationNumber.split(' ').join('');
 
     const verificationResponse: VerificationResponseVehicle =
@@ -215,6 +210,8 @@ export class PilotService {
   }
 
   async processPancard(file: Express.Multer.File, userId: string) {
+    await this.findPilot(userId);
+
     if (!file) {
       throw new BadRequestException('No file provided.');
     }
@@ -243,21 +240,22 @@ export class PilotService {
 
     // await this.verifyPancardName(verificationResponse, userId);
 
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isPanCardVerified: true,
-      },
-    });
+    const data = await this.prisma.$queryRaw`
+      UPDATE "Pilot" 
+      SET "isPanCardVerified" = true 
+      WHERE "userId" = ${userId};
+    `;
 
     return {
       message: 'Pancard verified successfully',
-      data,
+      data: data[0],
     };
   }
 
   async processManualPancard(pancardDto: PancardDto, userId: string) {
     const { panNumber } = pancardDto;
+
+    await this.findPilot(userId);
 
     const verificationResponse =
       await this.signzyService.verifyPancard(panNumber);
@@ -270,22 +268,20 @@ export class PilotService {
 
     // await this.verifyPancardName(verificationResponse, userId);
 
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isPanCardVerified: true,
-      },
-    });
+    const data = await this.prisma.$queryRaw`
+      UPDATE "Pilot" 
+      SET "isPanCardVerified" = true 
+      WHERE "userId" = ${userId};
+    `;
 
     return {
       message: 'Pancard verified successfully',
-      data,
+      data: data[0],
     };
   }
 
-   async pilotonboardingOffer(userId: string) {
-    console.log(userId)
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+  async pilotonboardingOffer(userId: string) {
+    const pilot = await this.findPilot(userId);
 
     const subscription = await this.prisma.pilotSubscription.findUnique({
       where: { name: this.onboardingOffer },
@@ -302,10 +298,20 @@ export class PilotService {
 
     return {
       message: 'Pilot onboarding coins availed successfully',
-      data
-    }
+      data,
+    };
   }
 
+  private async findPilot(userId: string) {
+    const pilot: any = await this.prisma.$queryRaw`
+      SELECT "id" FROM "Pilot" WHERE "userId" = ${userId} LIMIT 1;
+    `;
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+
+    return pilot;
+  }
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 
@@ -367,15 +373,10 @@ export class PilotService {
       dateOfBirth,
     } = verificationResponse;
 
-    // Update Pilot record in the database
-    const pilot = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isDLVerified: true,
-      },
-    });
+    const pilot = await this.findPilot(userId);
+    console.log(pilot);
 
-    // Create Driving License record in the database
+    // Insert driving license data
     const drivingLicense = await this.prisma.drivingLicense.create({
       data: {
         licenseNumber,
@@ -383,7 +384,7 @@ export class PilotService {
         dateOfIssue,
         validUntill,
         dateOfBirth,
-        pilotId: pilot.id,
+        pilotId: pilot[0].id,
       },
     });
 
@@ -456,40 +457,21 @@ export class PilotService {
     } = verificationResponse;
 
     // Update pilot record with vehicle information
-    const pilot = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isRCVerified: true,
-      },
-    });
+    const pilot = await this.prisma.$queryRaw`
+      UPDATE "Pilot" 
+      SET "isRCVerified" = true 
+      WHERE "userId" = ${userId};
+    `;
 
-    const vehicleType = await this.prisma.vehicleType.upsert({
-      where: { name: vehicleClass },
-      update: {},
-      create: { name: vehicleClass },
-    });
+    // const vehicleType = await this.prisma.vehicleType.findUnique({ where: { name: vehicleClass } });
 
     // Create vehicle record
-    const vehicle = await this.prisma.vehicle.create({
-      data: {
-        pilotId: pilot.id,
-        regNo,
-        status,
-        regUpto: rcExpiryDate,
-        permitUpto,
-        fitUpto,
-        puccUpto,
-        insuranceUpto,
-        makerModel,
-        vehicleColour,
-        manufacturer,
-        vehicleState,
-        vehicleSeatingCapacity: vehicleSeatingCapacity - 1, // in our system, we exclude the driver
-        vehicleTypeId: vehicleType.id,
-      },
-    });
+    const vehicle = await this.prisma.$queryRaw`
+      INSERT INTO "Vehicle" ("pilotId", "regNo", "status", "regUpto", "permitUpto", "fitUpto", "puccUpto", "insuranceUpto", "makerModel", "vehicleColour", "manufacturer", "vehicleState", "vehicleSeatingCapacity", "vehicleTypeId")
+      VALUES (${pilot[0].id}, ${verificationResponse.regNo}, ${verificationResponse.status}, ${verificationResponse.rcExpiryDate}, ${verificationResponse.permitUpto}, ${verificationResponse.fitUpto}, ${verificationResponse.puccUpto}, ${verificationResponse.insuranceUpto}, ${verificationResponse.makerModel}, ${verificationResponse.vehicleColour}, ${verificationResponse.manufacturer}, ${verificationResponse.vehicleState}, ${verificationResponse.vehicleSeatingCapacity}, ${'Kali Peeli'} LIMIT 1));
+    `;
 
-    return vehicle;
+    return vehicle[0];
   }
 
   private async verifyPancardName(verificationResponse: any, userId: string) {
@@ -508,5 +490,4 @@ export class PilotService {
       );
     }
   }
-
 }

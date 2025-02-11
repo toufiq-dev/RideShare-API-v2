@@ -56,7 +56,7 @@ export class AuthService {
 
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
-
+    console.log(otp);
     // const response = await this.msg91.sendOtp(phone);
     // console.log(response);
     return { message: 'OTP sent to your phone successfully', data: { otp } };
@@ -164,15 +164,22 @@ export class AuthService {
     const customer = await this.prisma.customer.findUnique({
       where: { phone },
     });
-    const pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+    const pilot: any = await this.prisma.$queryRaw`
+      SELECT "id", "userId", "phone", ST_AsText("currentLocation") as location
+      FROM "Pilot"
+      WHERE phone = ${phone}
+      LIMIT 1;
+    `;
 
     let user: any = null;
     if (customer) {
       user = await this.prisma.user.findUnique({
         where: { id: customer.userId },
       });
-    } else if (pilot) {
-      user = await this.prisma.user.findUnique({ where: { id: pilot.userId } });
+    } else if (pilot.length > 0) {
+      user = await this.prisma.user.findUnique({
+        where: { id: pilot[0].userId },
+      });
     }
 
     let isNewUser = false;
@@ -197,14 +204,12 @@ export class AuthService {
         },
       });
       isNewUser = true;
-    } else if (role === RoleEnum.PILOT && !pilot) {
-      await this.prisma.pilot.create({
-        data: {
-          phone,
-          userId: user.id,
-          languageId,
-        },
-      });
+    } else if (role === RoleEnum.PILOT && pilot.length === 0) {
+      await this.prisma.$queryRaw`
+        INSERT INTO "Pilot" ("userId", "phone", "languageId", "currentLocation")
+        VALUES (${user.id}, ${phone}, ${languageId});
+      `;
+
       isNewUser = true;
     }
 

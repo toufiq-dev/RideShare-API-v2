@@ -13,7 +13,7 @@ import { LanguagesModule } from './modules/languages/languages.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middleware';
 import { CustomerModule } from './modules/customer/customer.module';
-import { WebsocketModule } from './websocket/websocket.module';
+import { BookingModule } from './booking/booking.module';
 
 @Module({
   imports: [
@@ -29,12 +29,12 @@ import { WebsocketModule } from './websocket/websocket.module';
     PrismaModule,
     RedisModule,
     LoggerModule,
-    WebsocketModule,
     AuthModule,
     PilotModule,
     LanguagesModule,
     SubscriptionsModule,
     CustomerModule,
+    BookingModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

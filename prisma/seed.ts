@@ -19,7 +19,13 @@ async function main() {
     { name: 'Oriya' },
   ];
 
-  console.log('Start seeding languages...');
+  const vehicleTypes = [
+    { name: 'Hatch back' },
+    { name: 'Sedan' },
+    { name: 'SUV' },
+    { name: 'Kali Peeli' },  
+    { name: 'Auto-Rickshaw' },
+  ];
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({
@@ -38,7 +44,22 @@ async function main() {
 
   console.log('Seeding languages finished.');
 
-  
+  for (const vehicleType of vehicleTypes) {
+    const existingVehicleType = await prisma.vehicleType.findUnique({
+      where: { name: vehicleType.name },
+    });
+
+    if (!existingVehicleType) {
+      await prisma.vehicleType.create({
+        data: vehicleType,
+      });
+      console.log(`Created vehicle type: ${vehicleType.name}`);
+    } else {
+      console.log(`Vehicle type ${vehicleType.name} already exists`);
+    }
+  }
+
+  console.log('Seeding vehicle types finished.');
 }
 
 main()

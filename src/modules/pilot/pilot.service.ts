@@ -242,6 +242,8 @@ export class PilotService {
       where: { userId },
       data: {
         isPanCardVerified: true,
+        panCardNumber: verificationResponse.number,
+        panCardName: verificationResponse.name,
       },
     });
 

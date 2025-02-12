@@ -89,7 +89,7 @@ export class SignzyService {
 
   async verifyPancard(panNumber: string) {
     const data = {
-      panNumber,
+      number: panNumber,
     };
 
     try {
@@ -103,7 +103,7 @@ export class SignzyService {
           },
         },
       );
-
+      
       return response.data.result;
     } catch (error) {
       console.log(error);

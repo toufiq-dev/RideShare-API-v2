@@ -112,6 +112,8 @@ model Pilot {
   isDLVerified      Boolean         @default(false)
   isRCVerified      Boolean         @default(false)
   isAadharVerified  Boolean         @default(false)
+  panCardNumber     String?
+  panCardName       String?
   isPanCardVerified Boolean         @default(false)
   isFairCoinAvailed Boolean         @default(false)
   selfieUrl         String?

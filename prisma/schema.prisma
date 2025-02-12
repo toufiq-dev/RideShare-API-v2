@@ -107,7 +107,7 @@ model Pilot {
   phone             String          @unique
   languageId        String
   isAvailable       Boolean         @default(false)
-  currentLocation   String? // Will store as "POINT(longitude latitude)"
+  currentLocation   String?         @default("POINT(0 0)") // Will store as "POINT(longitude latitude)"
   acceptedTerms     Boolean         @default(true)
   isDLVerified      Boolean         @default(false)
   isRCVerified      Boolean         @default(false)

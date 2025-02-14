@@ -4,7 +4,6 @@ import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { PrismaService } from 'src/core/database/prisma.service';
 
-
 @Injectable()
 export class WsJwtAuthGuard implements CanActivate {
   constructor(

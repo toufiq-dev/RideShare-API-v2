@@ -107,14 +107,15 @@ model Pilot {
   phone             String          @unique
   languageId        String
   isAvailable       Boolean         @default(false)
-  currentLocation   Json?         
+  currentLocation   Json?
   acceptedTerms     Boolean         @default(true)
   isDLVerified      Boolean         @default(false)
   isRCVerified      Boolean         @default(false)
   isAadharVerified  Boolean         @default(false)
-  panCardNumber     String?
-  panCardName       String?
   isPanCardVerified Boolean         @default(false)
+  panCardNumber     String?         @unique
+  panCardName       String?
+  aadhaarCardNumber  String?         @unique
   isFairCoinAvailed Boolean         @default(false)
   selfieUrl         String?
   pilotProgramId    String?
@@ -157,17 +158,16 @@ model Vehicle {
   id                     String      @id @default(uuid())
   pilotId                String
   regNo                  String      @unique
-  status                 String
   regUpto                DateTime
-  permitUpto             DateTime?
-  fitUpto                DateTime
-  puccUpto               DateTime
-  insuranceUpto          DateTime
-  makerModel             String
-  vehicleColour          String
-  vehicleState           String
-  vehicleSeatingCapacity Int?
+  permitUpto             DateTime
+  status                 String
   manufacturer           String
+  model                  String
+  colour                 String
+  state                  String
+  insuranceUpto          DateTime
+  puccUpto               DateTime
+  fitUpto                DateTime
   vehicleTypeId          String
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
@@ -283,8 +283,8 @@ model Booking {
   pilotId              String?
   riderName            String?
   riderPhone           String?
-  pickupLocation       Json 
-  dropLocation         Json 
+  pickupLocation       Json
+  dropLocation         Json
   actualDistance       Float?
   actualDuration       Int?
   tripStart            DateTime?

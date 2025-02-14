@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
 import { BookingStatus, UserRole } from '@prisma/client';

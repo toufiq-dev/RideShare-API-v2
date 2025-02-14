@@ -19,7 +19,9 @@ import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
   namespace: 'booking',
 })
 // @UseGuards(WsJwtAuthGuard)
-export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class BookingGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -29,7 +31,7 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     try {
       console.log('Connection attempt from:', client.handshake.address);
       console.log('Auth data:', client.handshake.auth);
-      
+
       // Temporarily disable auth check for testing
       // const user = client.data.user;
       // if (!user) {
@@ -39,7 +41,6 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       // }
 
       console.log('Client connected successfully:', client.id);
-      
     } catch (error) {
       console.error('Connection error:', error);
       client.disconnect();
@@ -53,36 +54,41 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('createBooking')
   async create(
     @ConnectedSocket() client: Socket,
-    @MessageBody() createBookingDto: CreateBookingDto
+    @MessageBody() createBookingDto: CreateBookingDto,
   ) {
-    console.log(createBookingDto)
-    const booking = await this.bookingService.create(createBookingDto, client.data.user);
-    
+    console.log(createBookingDto);
+    const booking = await this.bookingService.create(
+      createBookingDto,
+      client.data.user,
+    );
+
     // Join booking room
     client.join(`booking:${booking.id}`);
-    
+
     // Notify available pilots
     this.server.to('available_pilots').emit('newBookingRequest', booking);
-    
+
     return booking;
   }
 
   @SubscribeMessage('acceptBooking')
   async acceptBooking(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { bookingId: string }
+    @MessageBody() data: { bookingId: string },
   ) {
     const booking = await this.bookingService.acceptBooking(
       data.bookingId,
-      client.data.user
+      client.data.user,
     );
-    
+
     // Join booking room
     client.join(`booking:${booking.id}`);
-    
+
     // Notify customer
-    this.server.to(`user:${booking.customerId}`).emit('bookingAccepted', booking);
-    
+    this.server
+      .to(`user:${booking.customerId}`)
+      .emit('bookingAccepted', booking);
+
     return booking;
   }
 
@@ -96,10 +102,10 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   //     updateBookingDto,
   //     client.data.user
   //   );
-    
+
   //   // Notify all clients in the booking room
   //   this.server.to(`booking:${booking.id}`).emit('bookingUpdated', booking);
-    
+
   //   return booking;
   // }
 
@@ -113,10 +119,10 @@ export class BookingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   //     client.data.user,
   //     data.reason
   //   );
-    
+
   //   // Notify all clients in the booking room
   //   this.server.to(`booking:${booking.id}`).emit('bookingCancelled', booking);
-    
+
   //   return booking;
   // }
 

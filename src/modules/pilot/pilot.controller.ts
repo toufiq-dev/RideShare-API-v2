@@ -121,6 +121,17 @@ export class PilotController {
     return await this.pilotService.processManualPancard(pancardDto, userId);
   }
 
+  @Post('aadhaar')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify Aadhaar' })
+  async verifyAadhaar(
+    @Body() requestId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.verifyAadhaar(requestId, userId);
+  }
+
   @Get('onboarding-offer')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Faircoins for onborading' })

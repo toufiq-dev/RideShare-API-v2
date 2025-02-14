@@ -7,17 +7,17 @@ export interface VerificationResponseDL {
 }
 
 export interface VerificationResponseVehicle {
+  isrcExpired: boolean;
+  ispermitExpired: boolean;
   regNo: string;
+  regUpto: Date;
+  permitUpto: Date;
   status: string;
-  insuranceUpto: Date;
   manufacturer: string;
-  makerModel: string;
-  vehicleColour: string;
+  model: string;
+  colour: string;
+  state: string;
   fitUpto: Date;
   puccUpto: Date;
-  rcExpiryDate: Date;
-  permitUpto?: Date | null;
-  vehicleState: string;
-  vehicleSeatingCapacity: number;
-  vehicleClass: string;
+  insuranceUpto: Date;
 }

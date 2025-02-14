@@ -58,7 +58,7 @@ export class AuthService {
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
     // const response = await this.msg91.sendOtp(phone);
-    // console.log(response);
+
     return { message: 'OTP sent to your phone successfully', data: { otp } };
   }
 

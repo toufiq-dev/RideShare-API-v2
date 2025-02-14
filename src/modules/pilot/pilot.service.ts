@@ -537,6 +537,7 @@ export class PilotService {
     const {
       regNo,
       regUpto,
+      permitUpto,
       status,
       insuranceUpto,
       manufacturer,
@@ -552,8 +553,9 @@ export class PilotService {
       data: {
         pilotId,
         regNo,
-        status,
         regUpto,
+        permitUpto,
+        status,
         fitUpto,
         puccUpto,
         insuranceUpto,

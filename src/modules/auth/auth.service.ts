@@ -65,23 +65,28 @@ export class AuthService {
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { phone, otp, role } = verifyOtpDto;
 
-    const languageId = await this.validateOtp(phone, otp);
+    try {
+      const languageId = await this.validateOtp(phone, otp);
 
-    const { user, isNewUser } = await this.findOrCreateUser(
-      phone,
-      role,
-      languageId,
-    );
+      const { user, isNewUser } = await this.findOrCreateUser(
+        phone,
+        role,
+        languageId,
+      );
 
-    const tokens = await this.generateTokens(user);
+      const tokens = await this.generateTokens(user);
 
-    return {
-      message: 'OTP verified successfully',
-      data: {
-        ...tokens,
-        isAlreadyRegistered: !isNewUser,
-      },
-    };
+      return {
+        message: 'OTP verified successfully',
+        data: {
+          ...tokens,
+          isAlreadyRegistered: !isNewUser,
+        },
+      };
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {

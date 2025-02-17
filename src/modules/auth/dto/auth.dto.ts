@@ -39,7 +39,7 @@ export class VerifyOtpDto {
 
   @ApiPropertyOptional({ description: 'OTP' })
   @IsString()
-  @Length(6, 6)
+  @Length(4, 4)
   otp: string;
 
   @ApiProperty({

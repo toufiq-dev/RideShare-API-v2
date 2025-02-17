@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  UseGuards,
-  Get,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
@@ -69,7 +62,7 @@ export class AuthController {
     );
   }
 
-  @Get('find-pilot')
+  @Post('find-pilot')
   @ApiOperation({ summary: 'Find Pilot Account' })
   async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
     return await this.authService.findMyAccount(findPilotDto);

@@ -25,7 +25,7 @@ export class Msg91Util {
           authkey: this.authKey,
         },
       });
-
+      console.log(response.data);
       if (response.data.type === 'success') {
         return {
           requestId: response.data.request_id,

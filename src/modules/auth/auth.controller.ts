@@ -1,10 +1,18 @@
-import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  UseGuards,
+  Get,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
   VerifyOtpDto,
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
+  FindPilotDto,
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -59,5 +67,11 @@ export class AuthController {
       userId,
       customerOnboardingDto,
     );
+  }
+
+  @Get('find-pilot')
+  @ApiOperation({ summary: 'Find Pilot Account' })
+  async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
+    return await this.authService.findMyAccount(findPilotDto);
   }
 }

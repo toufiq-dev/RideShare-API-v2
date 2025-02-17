@@ -22,7 +22,7 @@ export class SendOtpDto {
 
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
-  @IsPhoneNumber()
+  @IsPhoneNumber('IN')
   phone: string;
 
   @ApiPropertyOptional({ description: 'Referral Code' })
@@ -33,7 +33,7 @@ export class SendOtpDto {
 
 export class VerifyOtpDto {
   @ApiProperty({ description: 'Phone number' })
-  @IsPhoneNumber()
+  @IsPhoneNumber('IN')
   @IsNotEmpty()
   phone: string;
 
@@ -68,4 +68,11 @@ export class CompleteCustomerOnboardingDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+}
+
+export class FindPilotDto {
+  @ApiProperty({ description: 'Phone number' })
+  @IsNotEmpty()
+  @IsPhoneNumber('IN')
+  phone: string;
 }

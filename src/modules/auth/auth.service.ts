@@ -15,6 +15,7 @@ import {
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   RoleEnum,
+  FindPilotDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -53,7 +54,7 @@ export class AuthService {
     }
 
     const otp = randomInt(1000, 10000).toString();
-    console.log(otp)
+    console.log(otp);
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
@@ -84,8 +85,8 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.log(error)
-      throw error
+      console.log(error);
+      throw error;
     }
   }
 
@@ -131,6 +132,20 @@ export class AuthService {
     return {
       message: 'Onboarding completed successfully',
       data: updatedUser,
+    };
+  }
+
+  async findMyAccount(findPilotDto: FindPilotDto) {
+    const { phone } = findPilotDto;
+    const pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+
+    if (!pilot) {
+      throw new NotFoundException('Pilot not found');
+    }
+
+    return {
+      message: 'Pilot found successfully',
+      data: pilot,
     };
   }
 

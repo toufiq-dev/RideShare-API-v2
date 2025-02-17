@@ -34,6 +34,7 @@ export class PilotService {
       include: {
         user: true,
         language: true,
+        drivingLicense: true,
       },
     });
 

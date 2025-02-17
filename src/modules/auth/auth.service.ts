@@ -17,6 +17,7 @@ import {
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
+const SendOtp = require('sendotp');
 
 @Injectable()
 export class AuthService {
@@ -54,11 +55,11 @@ export class AuthService {
     }
 
     const otp = randomInt(1000, 10000).toString();
-    console.log(otp);
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
-    // const response = await this.msg91.sendOtp(phone);
+    const response = await this.msg91.sendOTP(phone);
+    console.log(response);
 
     return { message: 'OTP sent to your phone successfully', data: { otp } };
   }
@@ -137,7 +138,12 @@ export class AuthService {
 
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
-    const pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+    const pilot = await this.prisma.pilot.findUnique({
+      where: { phone },
+      include: {
+        drivingLicense: true,
+      },
+    });
 
     if (!pilot) {
       throw new NotFoundException('Pilot not found');

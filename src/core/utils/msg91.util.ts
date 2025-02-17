@@ -1,86 +1,95 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
-import * as https from 'https';
 
 @Injectable()
 export class Msg91Util {
+  private readonly baseUrl = 'https://control.msg91.com/api/v5';
   private readonly authKey: string;
   private readonly templateId: string;
+  private readonly senderId: string;
 
-  constructor(private readonly configService: ConfigService) {
-    this.authKey = this.configService.get<string>('MSG91_AUTH_KEY');
-    this.templateId = this.configService.get<string>('MSG91_TEMPLATE_ID');
+  constructor(private configService: ConfigService) {
+    this.authKey = this.configService.get<string>('msg91.authKey');
+    this.templateId = this.configService.get<string>('msg91.templateId');
+    this.senderId = this.configService.get<string>('msg91.senderId');
   }
 
-  private async makeRequest(
-    options: https.RequestOptions,
-    payload?: string,
-  ): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const req = https.request(options, (res) => {
-        const chunks: Buffer[] = [];
-
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
-          const response = Buffer.concat(chunks).toString();
-          try {
-            const parsedResponse = JSON.parse(response);
-            resolve(parsedResponse);
-          } catch (err) {
-            reject(new Error(`Failed to parse response: ${response}`));
-          }
-        });
+  async sendOTP(mobile: string): Promise<{ requestId: string }> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/otp`, {
+        params: {
+          otp_expiry: 2, // OTP expiry in minutes
+          template_id: this.templateId,
+          mobile,
+          authkey: this.authKey,
+        },
       });
 
-      req.on('error', (err) => {
-        reject(err);
-      });
-
-      if (payload) {
-        req.write(payload);
+      if (response.data.type === 'success') {
+        return {
+          requestId: response.data.request_id,
+        };
       }
 
-      req.end();
-    });
-  }
-
-  async sendOtp(phone: string, otpExpiry = 5): Promise<void> {
-    const options = {
-      method: 'POST',
-      hostname: 'control.msg91.com',
-      path: `/api/v5/otp?otp_expiry=${otpExpiry}&template_id=${this.templateId}&mobile=${phone}&authkey=${this.authKey}`,
-      headers: {
-        'Content-Type': 'application/JSON',
-      },
-    };
-
-    console.log('Sending OTP to phone:', phone);
-    const response = await this.makeRequest(options);
-    if (response.type !== 'success') {
-      console.error('Failed to send OTP:', response);
-      throw new Error(response.message || 'Failed to send OTP');
+      throw new HttpException('Failed to send OTP', HttpStatus.BAD_REQUEST);
+    } catch (error) {
+      throw new HttpException(
+        error.response?.data?.message || 'Failed to send OTP',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-    console.log('OTP sent successfully:', response);
   }
 
-  async verifyOtp(phone: string, otp: string): Promise<boolean> {
-    const options = {
-      method: 'GET',
-      hostname: 'control.msg91.com',
-      path: `/api/v5/otp/verify?otp=${otp}&mobile=${phone}`,
-      headers: {
-        authkey: this.authKey,
-      },
-    };
+  async verifyOTP(
+    mobile: string,
+    otp: string,
+    requestId: string,
+  ): Promise<boolean> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/otp/verify`, {
+        params: {
+          mobile,
+          otp,
+          authkey: this.authKey,
+          request_id: requestId,
+        },
+      });
 
-    console.log('Verifying OTP for phone:', phone);
-    const response = await this.makeRequest(options);
-    if (response.type === 'success') {
-      console.log('OTP verified successfully:', response);
-      return true;
-    } else {
-      console.error('OTP verification failed:', response);
-      throw new Error(response.message || 'OTP verification failed');
+      return response.data.type === 'success';
+    } catch (error) {
+      throw new HttpException(
+        error.response?.data?.message || 'Failed to verify OTP',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async resendOTP(
+    mobile: string,
+    requestId: string,
+  ): Promise<{ requestId: string }> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/otp/resend`, {
+        params: {
+          mobile,
+          authkey: this.authKey,
+          request_id: requestId,
+        },
+      });
+
+      if (response.data.type === 'success') {
+        return {
+          requestId: response.data.request_id,
+        };
+      }
+
+      throw new HttpException('Failed to resend OTP', HttpStatus.BAD_REQUEST);
+    } catch (error) {
+      throw new HttpException(
+        error.response?.data?.message || 'Failed to resend OTP',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

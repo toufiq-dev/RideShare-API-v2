@@ -12,11 +12,10 @@ export default () => ({
     url: process.env.REDIS_URL || 'redis://localhost:6379',
     refreshTokenTTL: process.env.REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
-  twilio: {
-    accountSid: process.env.TWILIO_ACCOUNT_SID,
-    authToken: process.env.TWILIO_AUTH_TOKEN,
-    messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
-    fromNumber: process.env.TWILIO_FROM_NUMBER,
+  msg91: {
+    authKey: process.env.MSG91_AUTH_KEY,
+    templateId: process.env.MSG91_TEMPLATE_ID,
+    senderId: process.env.MSG91_SENDER_ID,
   },
   jwt: {
     secret: process.env.JWT_SECRET,

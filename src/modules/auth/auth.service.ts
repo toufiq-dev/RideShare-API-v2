@@ -17,7 +17,6 @@ import {
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
-const SendOtp = require('sendotp');
 
 @Injectable()
 export class AuthService {

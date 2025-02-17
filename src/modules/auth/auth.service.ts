@@ -52,8 +52,8 @@ export class AuthService {
       throw new NotFoundException('Language not found');
     }
 
-    const otp = randomInt(100000, 999999).toString();
-
+    const otp = randomInt(1000, 10000).toString();
+    console.log(otp)
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 

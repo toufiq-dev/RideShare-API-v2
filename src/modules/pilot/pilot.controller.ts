@@ -8,6 +8,7 @@ import {
   UploadedFile,
   Body,
   Query,
+  Req,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/auth.guard';
@@ -122,15 +123,12 @@ export class PilotController {
     return await this.pilotService.processManualPancard(pancardDto, userId);
   }
 
-  @Get('aadhaar')
+  @Post('aadhaar')
   @HttpCode(200)
-  // @()
-  @ApiOperation({ summary: 'Verify Aadhaar' })
-  async verifyAadhaar(
-    @Body() data: JSON
-  )
-  {
-    return await this.pilotService.verifyAadhaar(data);
+  async verifyAadhaar(@Req() req: Request) {
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    return { status: 'received', data: req.body };
   }
 
   @Get('onboarding-offer')

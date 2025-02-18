@@ -146,8 +146,6 @@ export class AuthService {
       },
     });
 
-    console.log(pilot);
-
     if (!pilot) {
       throw new NotFoundException('Pilot not found');
     }

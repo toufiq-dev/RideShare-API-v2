@@ -27,9 +27,7 @@ export class Msg91Util {
       });
       console.log(response.data);
       if (response.data.type === 'success') {
-        return {
-          requestId: response.data.request_id,
-        };
+        return response.data.request_id
       }
 
       throw new HttpException('Failed to send OTP', HttpStatus.BAD_REQUEST);

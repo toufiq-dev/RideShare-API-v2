@@ -549,7 +549,14 @@ export class PilotService {
       state,
     } = verificationResponse;
 
-    // Create vehicle record
+ 
+
+    const vehicleType = await this.prisma.vehicleType.findFirst({
+      where: {
+        name: 'Sedan',
+      },
+    })
+
     const vehicle = await this.prisma.vehicle.create({
       data: {
         pilotId,
@@ -564,7 +571,7 @@ export class PilotService {
         colour,
         manufacturer,
         state,
-        vehicleTypeId: null,
+        vehicleTypeId: vehicleType.id,
       },
     });
 

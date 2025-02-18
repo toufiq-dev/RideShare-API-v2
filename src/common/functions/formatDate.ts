@@ -1,4 +1,4 @@
-export default function formatDate(dateString: string): Date {
+export default function formatDate(dateString: string) {
   if (!dateString) {
     throw new Error('Invalid date string');
   }

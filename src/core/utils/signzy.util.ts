@@ -83,7 +83,7 @@ export class SignzyService {
 
       let isExpired = false;
       if (result.dlValidity.transport.to) {
-        const expiryDateUTC = moment.utc(result.dlValidity.transport.to);
+        const expiryDateUTC = moment.utc(formatDate(result.dlValidity.transport.to));
         const nowUTC = moment.utc();
         const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
         const nowIST = nowUTC.tz('Asia/Kolkata');
@@ -95,6 +95,7 @@ export class SignzyService {
         isExpired,
       };
     } catch (error) {
+      console.error(error);
       throw new BadRequestException(
         'Failed to verify driving license with Signzy API.',
       );
@@ -155,16 +156,18 @@ export class SignzyService {
       // Check if rc or permit is expired
       let isrcExpired = false;
       let ispermitExpired = false;
-      if (responseRc.data.result.rcExpiryDate) {
-        const rcexpiryDateUTC = moment.utc(responseRc.data.result.rcExpiryDate);
-        const permitexpiryDateUTC = moment.utc(responseRc.data.permitValidUpto);
-        const nowUTC = moment.utc();
-        const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
-        const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
-        const nowIST = nowUTC.tz('Asia/Kolkata');
-        isrcExpired = rcexpiryDateIST.isBefore(nowIST);
-        ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
-      }
+      // if (responseRc.data.result.rcExpiryDate) {
+      //   const rcexpiryDateUTC = moment.utc(formatDate(responseRc.data.result.rcExpiryDate));
+      //   const permitexpiryDateUTC = moment.utc(formatDate(responseRc.data.permitValidUpto));
+      //   const nowUTC = moment.utc();
+      //   const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
+      //   const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
+      //   const nowIST = nowUTC.tz('Asia/Kolkata');
+      //   isrcExpired = rcexpiryDateIST.isBefore(nowIST);
+      //   ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
+      // }
+
+  
 
       return {
         isrcExpired,
@@ -176,14 +179,13 @@ export class SignzyService {
         manufacturer: responseRc.data.result.vehicleManufacturerName,
         model: responseRc.data.result.model,
         colour: responseRc.data.result.vehicleColour,
-        state: responseRc.data.result.splitPresentAddress
-          ? responseRc.data.result.splitPresentAddress
-          : responseRc.data.result.splitPermanentAddress,
+        state: responseBasic.data.result.stateCode,
         insuranceUpto: formatDate(responseRc.data.result.vehicleInsuranceUpto),
         fitUpto: formatDate(responseBasic.data.result.fitUpto),
         puccUpto: formatDate(responseRc.data.result.puccUpto),
       };
     } catch (error) {
+      console.log(error)
       throw new BadRequestException(
         'Failed to verify vehicle rc number with Signzy API.',
       );

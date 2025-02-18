@@ -59,6 +59,8 @@ export class AuthService {
 
     const requestId = await this.msg91.sendOTP(phone);
 
+    await this.redis.set(`requestId:${phone}`, requestId, 300);
+
     return {
       message: 'OTP sent to your phone successfully',
       data: { otp, requestId },
@@ -69,9 +71,11 @@ export class AuthService {
     const { phone, otp, role } = verifyOtpDto;
 
     try {
+      // const languageId = await this.validateOtpRedis(phone, otp);
+
       const languageId = await this.validateOtp(phone, otp);
 
-      const { user, isNewUser } = await this.findOrCreateUser(
+      const { user, customer, pilot, isNewUser } = await this.findOrCreateUser(
         phone,
         role,
         languageId,
@@ -84,10 +88,11 @@ export class AuthService {
         data: {
           ...tokens,
           isAlreadyRegistered: !isNewUser,
+          user: customer ? customer : pilot,
         },
       };
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -164,8 +169,9 @@ export class AuthService {
     return user;
   }
 
-  private async validateOtp(phone: string, otp: string) {
+  private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
+
     if (!storedOtp || storedOtp !== otp) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
@@ -183,15 +189,28 @@ export class AuthService {
     return languageId;
   }
 
+  private async validateOtp(phone: string, otp: string) {
+    const request_id = await this.redis.get(`requestId:${phone}`);
+
+    const isVerified = await this.msg91.verifyOTP(phone, otp, request_id);
+    if (!isVerified) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    const languageId = await this.redis.get(`languageId:${phone}`);
+
+    return languageId;
+  }
+
   private async findOrCreateUser(
     phone: string,
     role: RoleEnum,
     languageId: string,
   ) {
-    const customer = await this.prisma.customer.findUnique({
+    let customer = await this.prisma.customer.findUnique({
       where: { phone },
     });
-    const pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+    let pilot = await this.prisma.pilot.findUnique({ where: { phone } });
 
     let user: any = null;
     if (customer) {
@@ -216,7 +235,7 @@ export class AuthService {
     }
 
     if (role === RoleEnum.CUSTOMER && !customer) {
-      await this.prisma.customer.create({
+      customer = await this.prisma.customer.create({
         data: {
           phone,
           userId: user.id,
@@ -225,7 +244,7 @@ export class AuthService {
       });
       isNewUser = true;
     } else if (role === RoleEnum.PILOT && !pilot) {
-      await this.prisma.pilot.create({
+      pilot = await this.prisma.pilot.create({
         data: {
           phone,
           userId: user.id,
@@ -235,7 +254,7 @@ export class AuthService {
       isNewUser = true;
     }
 
-    return { user, isNewUser };
+    return { user, customer, pilot, isNewUser };
   }
 
   private async generateTokens(user) {

@@ -357,7 +357,7 @@ export class PilotService {
   }
 
   async verifyAadhaar(requestId: string, userId: string) {
-    console.log(requestId)
+    console.log(requestId);
 
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (!pilot) {
@@ -374,8 +374,6 @@ export class PilotService {
         isAadharVerified: true,
       },
     });
-
-    
 
     return {
       message: 'Aadhaar verified successfully',
@@ -553,13 +551,11 @@ export class PilotService {
       state,
     } = verificationResponse;
 
- 
-
     const vehicleType = await this.prisma.vehicleType.findFirst({
       where: {
         name: 'Sedan',
       },
-    })
+    });
 
     const vehicle = await this.prisma.vehicle.create({
       data: {

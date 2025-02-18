@@ -15,7 +15,9 @@ export class Msg91Util {
     this.senderId = this.configService.get<string>('msg91.senderId');
   }
 
-  async sendOTP(mobile: string): Promise<{ requestId: string }> {
+  async sendOTP(mobile: string) {
+    mobile = mobile.replace('+', '');
+
     try {
       const response = await axios.get(`${this.baseUrl}/otp`, {
         params: {
@@ -25,25 +27,17 @@ export class Msg91Util {
           authkey: this.authKey,
         },
       });
-      console.log(response.data);
-      if (response.data.type === 'success') {
-        return response.data.request_id
-      }
 
-      throw new HttpException('Failed to send OTP', HttpStatus.BAD_REQUEST);
+      // const response = await axios.get(`https://control.msg91.com/api/v5/otp?otp_expiry=2&template_id=${this.templateId}&mobile=${mobile}&authkey=${this.authKey}`);
+
+      return response.data.request_id;
     } catch (error) {
-      throw new HttpException(
-        error.response?.data?.message || 'Failed to send OTP',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      console.error(error);
+      throw error;
     }
   }
 
-  async verifyOTP(
-    mobile: string,
-    otp: string,
-    requestId: string,
-  ): Promise<boolean> {
+  async verifyOTP(mobile: string, otp: string, requestId: string) {
     try {
       const response = await axios.get(`${this.baseUrl}/otp/verify`, {
         params: {
@@ -54,12 +48,12 @@ export class Msg91Util {
         },
       });
 
+      console.log(response.data);
+
       return response.data.type === 'success';
     } catch (error) {
-      throw new HttpException(
-        error.response?.data?.message || 'Failed to verify OTP',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      console.error(error);
+      throw error;
     }
   }
 
@@ -84,10 +78,8 @@ export class Msg91Util {
 
       throw new HttpException('Failed to resend OTP', HttpStatus.BAD_REQUEST);
     } catch (error) {
-      throw new HttpException(
-        error.response?.data?.message || 'Failed to resend OTP',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      console.error(error);
+      throw error;
     }
   }
 }

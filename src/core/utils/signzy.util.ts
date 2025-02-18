@@ -83,7 +83,9 @@ export class SignzyService {
 
       let isExpired = false;
       if (result.dlValidity.transport.to) {
-        const expiryDateUTC = moment.utc(formatDate(result.dlValidity.transport.to));
+        const expiryDateUTC = moment.utc(
+          formatDate(result.dlValidity.transport.to),
+        );
         const nowUTC = moment.utc();
         const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
         const nowIST = nowUTC.tz('Asia/Kolkata');
@@ -167,8 +169,6 @@ export class SignzyService {
       //   ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
       // }
 
-  
-
       return {
         isrcExpired,
         ispermitExpired,
@@ -185,7 +185,7 @@ export class SignzyService {
         puccUpto: formatDate(responseRc.data.result.puccUpto),
       };
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new BadRequestException(
         'Failed to verify vehicle rc number with Signzy API.',
       );

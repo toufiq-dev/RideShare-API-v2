@@ -357,6 +357,8 @@ export class PilotService {
   }
 
   async verifyAadhaar(requestId: string, userId: string) {
+    console.log(requestId)
+
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (!pilot) {
       throw new BadRequestException('Pilot not found.');
@@ -372,6 +374,8 @@ export class PilotService {
         isAadharVerified: true,
       },
     });
+
+    
 
     return {
       message: 'Aadhaar verified successfully',

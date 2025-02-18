@@ -205,6 +205,8 @@ export class SignzyService {
         },
       );
 
+      console.log(response.data.result);
+
       return response.data.result;
     } catch (error) {
       throw new BadRequestException(

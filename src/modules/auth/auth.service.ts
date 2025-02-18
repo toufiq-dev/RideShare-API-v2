@@ -57,13 +57,16 @@ export class AuthService {
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
 
-    const requestId = await this.msg91.sendOTP(phone);
+    // const requestId = await this.msg91.sendOTP(phone);
 
-    await this.redis.set(`requestId:${phone}`, requestId, 300);
+    // await this.redis.set(`requestId:${phone}`, requestId, 300);
 
     return {
       message: 'OTP sent to your phone successfully',
-      data: { otp, requestId },
+      data: {
+        otp,
+        // requestId
+      },
     };
   }
 
@@ -71,9 +74,9 @@ export class AuthService {
     const { phone, otp, role } = verifyOtpDto;
 
     try {
-      // const languageId = await this.validateOtpRedis(phone, otp);
+      const languageId = await this.validateOtpRedis(phone, otp);
 
-      const languageId = await this.validateOtp(phone, otp);
+      // const languageId = await this.validateOtp(phone, otp);
 
       const { user, customer, pilot, isNewUser } = await this.findOrCreateUser(
         phone,
@@ -88,7 +91,7 @@ export class AuthService {
         data: {
           ...tokens,
           isAlreadyRegistered: !isNewUser,
-          user: customer ? customer : pilot,
+          user: role === RoleEnum.CUSTOMER ? customer : pilot,
         },
       };
     } catch (error) {
@@ -207,21 +210,30 @@ export class AuthService {
     role: RoleEnum,
     languageId: string,
   ) {
-    let customer = await this.prisma.customer.findUnique({
-      where: { phone },
-    });
-    let pilot = await this.prisma.pilot.findUnique({ where: { phone } });
-
-    let user: any = null;
-    if (customer) {
-      user = await this.prisma.user.findUnique({
-        where: { id: customer.userId },
-      });
-    } else if (pilot) {
-      user = await this.prisma.user.findUnique({ where: { id: pilot.userId } });
-    }
-
+    let customer = null;
+    let pilot = null;
+    let user = null;
     let isNewUser = false;
+
+    if (role === RoleEnum.CUSTOMER) {
+      customer = await this.prisma.customer.findUnique({
+        where: { phone },
+      });
+
+      if (customer) {
+        user = await this.prisma.user.findUnique({
+          where: { id: customer.userId },
+        });
+      }
+    } else if (role === RoleEnum.PILOT) {
+      pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+
+      if (pilot) {
+        user = await this.prisma.user.findUnique({
+          where: { id: pilot.userId },
+        });
+      }
+    }
 
     if (!user) {
       user = await this.prisma.user.create({

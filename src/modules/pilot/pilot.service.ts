@@ -356,33 +356,31 @@ export class PilotService {
     };
   }
 
-  async verifyAadhaar(requestId: string, userId: string) {
-    console.log(requestId);
+  async verifyAadhaar() {
+    console.log('verify aadhaar');
+    // const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    // if (!pilot) {
+    //   throw new BadRequestException('Pilot not found.');
+    // }
+    // if (!pilot.isPanCardVerified) {
+    //   throw new BadRequestException('Driver pan card not verified');
+    // }
+    // const response = await this.signzyService.verifyAadhaar(requestId);
 
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
-    if (!pilot.isPanCardVerified) {
-      throw new BadRequestException('Driver pan card not verified');
-    }
-    const response = await this.signzyService.verifyAadhaar(requestId);
-
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isAadharVerified: true,
-      },
-    });
+    // const data = await this.prisma.pilot.update({
+    //   where: { userId },
+    //   data: {
+    //     isAadharVerified: true,
+    //   },
+    // });
 
     return {
       message: 'Aadhaar verified successfully',
-      data,
+      // data,
     };
   }
 
   async pilotonboardingOffer(userId: string) {
-    console.log(userId);
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
     const subscription = await this.prisma.pilotSubscription.findUnique({

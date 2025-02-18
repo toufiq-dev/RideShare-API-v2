@@ -126,10 +126,11 @@ export class PilotController {
   @HttpCode(200)
   // @()
   @ApiOperation({ summary: 'Verify Aadhaar' })
-  async verifyAadhaar() // @Query() token: string,
-  // @CurrentUser('userId') userId: string,
+  async verifyAadhaar(
+    @Body() data: JSON
+  )
   {
-    return await this.pilotService.verifyAadhaar();
+    return await this.pilotService.verifyAadhaar(data);
   }
 
   @Get('onboarding-offer')

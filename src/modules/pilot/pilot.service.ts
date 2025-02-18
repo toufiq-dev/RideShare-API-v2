@@ -356,8 +356,8 @@ export class PilotService {
     };
   }
 
-  async verifyAadhaar() {
-    console.log('verify aadhaar');
+  async verifyAadhaar(data: JSON) {
+    console.log(data);
     // const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     // if (!pilot) {
     //   throw new BadRequestException('Pilot not found.');

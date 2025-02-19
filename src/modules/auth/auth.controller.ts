@@ -1,4 +1,12 @@
-import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  UseGuards,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
@@ -9,7 +17,8 @@ import {
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { JwtAuthGuard } from 'src/common/guards/auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { QueryTokenGuard } from 'src/common/guards/query-token.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -66,5 +75,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Find Pilot Account' })
   async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
     return await this.authService.findMyAccount(findPilotDto);
+  }
+
+  @Post('aadhaar')
+  @UseGuards(QueryTokenGuard)
+  @HttpCode(200)
+  async verifyAadhaar(@Query('token') token: string, @Req() req: Request) {
+    return await this.authService.verifyAadhaar(token);
   }
 }

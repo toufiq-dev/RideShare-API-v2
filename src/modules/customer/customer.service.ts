@@ -18,8 +18,6 @@ export class CustomerService {
       },
     });
 
-    console.log(customer);
-
     return {
       message: 'Customer fetched successfully',
       data: customer,

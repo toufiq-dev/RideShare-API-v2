@@ -164,6 +164,16 @@ export class AuthService {
     };
   }
 
+  async verifyAadhaar(token: string, req: Request) {
+    
+    console.log(req.body)
+
+    return {
+      message: 'Aadhaar verified successfully',
+      // data,
+    };
+  }
+
   private async findUserById(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {

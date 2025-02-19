@@ -11,7 +11,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
-import { JwtAuthGuard } from 'src/common/guards/auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
@@ -22,8 +22,8 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
 
 @Controller('pilot')
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles(RoleEnum.PILOT)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleEnum.PILOT)
 export class PilotController {
   constructor(private readonly pilotService: PilotService) {}
 
@@ -121,14 +121,6 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.processManualPancard(pancardDto, userId);
-  }
-
-  @Post('aadhaar')
-  @HttpCode(200)
-  async verifyAadhaar(@Req() req: Request) {
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    return { status: 'received', data: req.body };
   }
 
   @Get('onboarding-offer')

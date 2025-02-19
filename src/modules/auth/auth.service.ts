@@ -164,12 +164,20 @@ export class AuthService {
     };
   }
 
-  async verifyAadhaar(token: string, req: Request) {
-    console.log(req.body);
+  async verifyAadhaar(req: any, userId: string) {
+    
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isAadhaarVerified: true,
+        aadhaarName: req.body.aadharDetail.name,
+        aadhaarCardAddress: req.body.address
+      },
+    })
 
     return {
       message: 'Aadhaar verified successfully',
-      // data,
+      data
     };
   }
 

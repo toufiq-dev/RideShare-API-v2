@@ -116,9 +116,11 @@ model Pilot {
   isDLVerified      Boolean         @default(false)
   isPanCardVerified Boolean         @default(false)
   isRCVerified      Boolean         @default(false)
+  isAadhaarVerified Boolean         @default(false)
   isFairCoinAvailed Boolean         @default(false)
   currentLocation   Json?
   panCardName       String?
+  aadhaarName       String?
   panCardNumber     String?         @unique
   aadhaarCardNumber String?         @unique
   bookings          Booking[]
@@ -156,7 +158,7 @@ model DrivingLicense {
 
 model Vehicle {
   id            String      @id @default(uuid())
-  pilotId       String      
+  pilotId       String
   regNo         String      @unique
   fitUpto       DateTime
   insuranceUpto DateTime

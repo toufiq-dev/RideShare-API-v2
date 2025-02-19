@@ -81,6 +81,6 @@ export class AuthController {
   @UseGuards(QueryTokenGuard)
   @HttpCode(200)
   async verifyAadhaar(@Query('token') token: string, @Req() req: Request) {
-    return await this.authService.verifyAadhaar(token);
+    return await this.authService.verifyAadhaar(token, req);
   }
 }

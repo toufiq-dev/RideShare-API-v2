@@ -165,8 +165,7 @@ export class AuthService {
   }
 
   async verifyAadhaar(token: string, req: Request) {
-    
-    console.log(req.body)
+    console.log(req.body);
 
     return {
       message: 'Aadhaar verified successfully',

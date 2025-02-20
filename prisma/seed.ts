@@ -42,7 +42,20 @@ async function main() {
     }
   }
 
-  console.log('Seeding languages finished.');
+  for (const vehicleType of vehicleTypes) {
+    const existingVehicleType = await prisma.vehicleType.findUnique({
+      where: { name: vehicleType.name },
+    });
+
+    if (!existingVehicleType) {
+      await prisma.vehicleType.create({
+        data: vehicleType,
+      });
+      console.log(`Created vehicle type: ${vehicleType.name}`);
+    } else {
+      console.log(`Vehicle type ${vehicleType.name} already exists`);
+    }
+  }
 
   for (const vehicleType of vehicleTypes) {
     const existingVehicleType = await prisma.vehicleType.findUnique({
@@ -60,6 +73,7 @@ async function main() {
   }
 
   console.log('Seeding vehicle types finished.');
+  console.log('Seeding languages and vehicle types finished.');
 }
 
 main()

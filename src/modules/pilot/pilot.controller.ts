@@ -7,9 +7,11 @@ import {
   Post,
   UploadedFile,
   Body,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
-import { JwtAuthGuard } from 'src/common/guards/auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';

@@ -33,13 +33,13 @@ export class SendOtpDto {
 
 export class VerifyOtpDto {
   @ApiProperty({ description: 'Phone number' })
-  @IsPhoneNumber()
+  @IsPhoneNumber('IN')
   @IsNotEmpty()
   phone: string;
 
   @ApiPropertyOptional({ description: 'OTP' })
   @IsString()
-  @Length(6, 6)
+  @Length(4, 4)
   otp: string;
 
   @ApiProperty({
@@ -68,4 +68,11 @@ export class CompleteCustomerOnboardingDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+}
+
+export class FindPilotDto {
+  @ApiProperty({ description: 'Phone number' })
+  @IsNotEmpty()
+  @IsPhoneNumber('IN')
+  phone: string;
 }

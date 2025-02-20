@@ -157,4 +157,13 @@ export class CustomerService {
       message: 'Saved place deleted successfully',
     };
   }
+
+  async getVehicleCategories() {
+    const data = await this.prisma.vehicleType.findMany();
+
+    return {
+      message: 'Vehicle categories fetched successfully',
+      data,
+    };
+  }
 }

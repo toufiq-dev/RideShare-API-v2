@@ -15,11 +15,10 @@ export class NotFoundFilter implements ExceptionFilter {
 
     response.status(404).json({
       success: false,
-      message: 'Resource not found',
+      message: exception.message,
       error: {
         code: 404,
-        message: `Cannot ${request.method} ${request.url}`,
-        path: request.url,
+        message: exception.message,
         timestamp: new Date().toISOString(),
       },
     });

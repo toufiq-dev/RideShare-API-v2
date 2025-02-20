@@ -23,7 +23,7 @@ async function main() {
     { name: 'Hatch back' },
     { name: 'Sedan' },
     { name: 'SUV' },
-    { name: 'Kali Peeli' },
+    { name: 'Kali Peeli' },  
     { name: 'Auto-Rickshaw' },
   ];
 
@@ -57,6 +57,22 @@ async function main() {
     }
   }
 
+  for (const vehicleType of vehicleTypes) {
+    const existingVehicleType = await prisma.vehicleType.findUnique({
+      where: { name: vehicleType.name },
+    });
+
+    if (!existingVehicleType) {
+      await prisma.vehicleType.create({
+        data: vehicleType,
+      });
+      console.log(`Created vehicle type: ${vehicleType.name}`);
+    } else {
+      console.log(`Vehicle type ${vehicleType.name} already exists`);
+    }
+  }
+
+  console.log('Seeding vehicle types finished.');
   console.log('Seeding languages and vehicle types finished.');
 }
 

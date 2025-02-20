@@ -15,6 +15,7 @@ import {
   CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   RoleEnum,
+  FindPilotDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -52,36 +53,51 @@ export class AuthService {
       throw new NotFoundException('Language not found');
     }
 
-    const otp = randomInt(100000, 999999).toString();
-
+    const otp = randomInt(1000, 10000).toString();
     await this.redis.set(`otp:${phone}`, otp, 300);
     await this.redis.set(`languageId:${phone}`, Language.id, 300);
-    console.log(otp);
-    // const response = await this.msg91.sendOtp(phone);
-    // console.log(response);
-    return { message: 'OTP sent to your phone successfully', data: { otp } };
+
+    // const requestId = await this.msg91.sendOTP(phone);
+
+    // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+    return {
+      message: 'OTP sent to your phone successfully',
+      data: {
+        otp,
+        // requestId
+      },
+    };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { phone, otp, role } = verifyOtpDto;
 
-    const languageId = await this.validateOtp(phone, otp);
+    try {
+      const languageId = await this.validateOtpRedis(phone, otp);
 
-    const { user, isNewUser } = await this.findOrCreateUser(
-      phone,
-      role,
-      languageId,
-    );
+      // const languageId = await this.validateOtp(phone, otp);
 
-    const tokens = await this.generateTokens(user);
+      const { user, customer, pilot, isNewUser } = await this.findOrCreateUser(
+        phone,
+        role,
+        languageId,
+      );
 
-    return {
-      message: 'OTP verified successfully',
-      data: {
-        ...tokens,
-        isAlreadyRegistered: !isNewUser,
-      },
-    };
+      const tokens = await this.generateTokens(user);
+
+      return {
+        message: 'OTP verified successfully',
+        data: {
+          ...tokens,
+          isAlreadyRegistered: !isNewUser,
+          user: role === RoleEnum.CUSTOMER ? customer : pilot,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
@@ -129,6 +145,42 @@ export class AuthService {
     };
   }
 
+  async findMyAccount(findPilotDto: FindPilotDto) {
+    const { phone } = findPilotDto;
+    const pilot = await this.prisma.pilot.findUnique({
+      where: { phone },
+      include: {
+        drivingLicense: true,
+      },
+    });
+
+    if (!pilot) {
+      throw new NotFoundException('Pilot not found');
+    }
+
+    return {
+      message: 'Pilot found successfully',
+      data: pilot,
+    };
+  }
+
+  async verifyAadhaar(req: any, userId: string) {
+    
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isAadhaarVerified: true,
+        aadhaarName: req.body.aadharDetail.name,
+        aadhaarCardAddress: req.body.address
+      },
+    })
+
+    return {
+      message: 'Aadhaar verified successfully',
+      data
+    };
+  }
+
   private async findUserById(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -137,8 +189,9 @@ export class AuthService {
     return user;
   }
 
-  private async validateOtp(phone: string, otp: string) {
+  private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
+
     if (!storedOtp || storedOtp !== otp) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
@@ -156,33 +209,48 @@ export class AuthService {
     return languageId;
   }
 
+  private async validateOtp(phone: string, otp: string) {
+    const request_id = await this.redis.get(`requestId:${phone}`);
+
+    const isVerified = await this.msg91.verifyOTP(phone, otp, request_id);
+    if (!isVerified) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    const languageId = await this.redis.get(`languageId:${phone}`);
+
+    return languageId;
+  }
+
   private async findOrCreateUser(
     phone: string,
     role: RoleEnum,
     languageId: string,
   ) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { phone },
-    });
-    const pilot: any = await this.prisma.$queryRaw`
-      SELECT "id", "userId", "phone", ST_AsText("currentLocation") as location
-      FROM "Pilot"
-      WHERE phone = ${phone}
-      LIMIT 1;
-    `;
-
-    let user: any = null;
-    if (customer) {
-      user = await this.prisma.user.findUnique({
-        where: { id: customer.userId },
-      });
-    } else if (pilot.length > 0) {
-      user = await this.prisma.user.findUnique({
-        where: { id: pilot[0].userId },
-      });
-    }
-
+    let customer = null;
+    let pilot = null;
+    let user = null;
     let isNewUser = false;
+
+    if (role === RoleEnum.CUSTOMER) {
+      customer = await this.prisma.customer.findUnique({
+        where: { phone },
+      });
+
+      if (customer) {
+        user = await this.prisma.user.findUnique({
+          where: { id: customer.userId },
+        });
+      }
+    } else if (role === RoleEnum.PILOT) {
+      pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+
+      if (pilot) {
+        user = await this.prisma.user.findUnique({
+          where: { id: pilot.userId },
+        });
+      }
+    }
 
     if (!user) {
       user = await this.prisma.user.create({
@@ -196,7 +264,7 @@ export class AuthService {
     }
 
     if (role === RoleEnum.CUSTOMER && !customer) {
-      await this.prisma.customer.create({
+      customer = await this.prisma.customer.create({
         data: {
           phone,
           userId: user.id,
@@ -204,16 +272,18 @@ export class AuthService {
         },
       });
       isNewUser = true;
-    } else if (role === RoleEnum.PILOT && pilot.length === 0) {
-      await this.prisma.$queryRaw`
-        INSERT INTO "Pilot" ("userId", "phone", "languageId", "currentLocation")
-        VALUES (${user.id}, ${phone}, ${languageId});
-      `;
-
+    } else if (role === RoleEnum.PILOT && !pilot) {
+      pilot = await this.prisma.pilot.create({
+        data: {
+          phone,
+          userId: user.id,
+          languageId,
+        },
+      });
       isNewUser = true;
     }
 
-    return { user, isNewUser };
+    return { user, customer, pilot, isNewUser };
   }
 
   private async generateTokens(user) {

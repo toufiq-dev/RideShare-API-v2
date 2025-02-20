@@ -11,7 +11,7 @@ import {
 import { CustomerService } from './customer.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { JwtAuthGuard } from 'src/common/guards/auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { UpdateSavedPlaceDto, CreateSavedPlaceDto } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -76,5 +76,12 @@ export class CustomerController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.customerService.deleteSavedPlace(id, userId);
+  }
+
+  @Get('vehicle-category')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get vehicle category' })
+  async getVehicleCategory() {
+    return await this.customerService.getVehicleCategories();
   }
 }

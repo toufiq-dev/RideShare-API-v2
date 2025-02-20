@@ -29,25 +29,27 @@ export class PilotService {
   }
 
   async getPilot(userId: string) {
-    const data: any = await this.prisma.$queryRaw`
-      SELECT "id", "userId", "phone", ST_AsText("currentLocation") AS location, "isAvailable"
-      FROM "Pilot"
-      WHERE "userId" = ${userId}
-      LIMIT 1;
-    `;
-
-    if (data.length === 0) {
-      throw new BadRequestException('Pilot not found.');
-    }
+    const data = await this.prisma.pilot.findUnique({
+      where: { userId },
+      include: {
+        user: true,
+        language: true,
+        drivingLicense: true,
+      },
+    });
 
     return {
       message: 'Pilot fetched successfully',
-      data: data[0],
+      data,
     };
   }
 
   async processDrivingLicense(file: Express.Multer.File, userId: string) {
-    await this.findPilot(userId);
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
 
     if (!file) {
       throw new BadRequestException('No file provided.');
@@ -67,9 +69,25 @@ export class PilotService {
     const verificationResponse: VerificationResponseDL =
       this.transformResponseDL(rawResponse);
 
+    if (rawResponse.isExpired) {
+      return {
+        message: 'Transport license is expired.',
+        data: {
+          ...verificationResponse,
+          id: null,
+          pilotId: null,
+          permanentAddress: null,
+          temporaryAddress: null,
+          metadata: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      };
+    }
+
     const data = await this.updatePilotDrivingLiceseData(
       verificationResponse,
-      userId,
+      pilot.id,
     );
 
     return {
@@ -84,7 +102,10 @@ export class PilotService {
   ) {
     let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
-    await this.findPilot(userId);
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
 
     drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
     const rawResponse = await this.signzyService.verifyDrivingLicense(
@@ -95,9 +116,25 @@ export class PilotService {
     const verificationResponse: VerificationResponseDL =
       this.transformResponseDL(rawResponse);
 
+    if (rawResponse.isExpired) {
+      return {
+        message: 'Transport license is expired.',
+        data: {
+          ...verificationResponse,
+          id: null,
+          pilotId: null,
+          permanentAddress: null,
+          temporaryAddress: null,
+          metadata: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      };
+    }
+
     const data = await this.updatePilotDrivingLiceseData(
       verificationResponse,
-      userId,
+      pilot.id,
     );
 
     return {
@@ -107,13 +144,12 @@ export class PilotService {
   }
 
   async uploadLiveSelfie(file: Express.Multer.File, userId: string) {
-    const pilot = await this.findPilot(userId);
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-    if (pilot[0].selfieUrl) {
+    if (pilot.selfieUrl) {
       throw new ForbiddenException('Live selfie can be uploaded only once');
     }
-
-    if (!pilot[0].isDLVerified) {
+    if (!pilot.isDLVerified) {
       throw new ForbiddenException(
         'Driving License must be verified before uploading Live selfie',
       );
@@ -123,20 +159,21 @@ export class PilotService {
     const fileUrl = file.azureFileUrl;
 
     if (fileUrl) {
-      await this.prisma.$queryRaw`
-        UPDATE "Pilot" 
-        SET "selfieUrl" = ${fileUrl} 
-        WHERE "userId" = ${userId};
-      `;
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { selfieUrl: fileUrl },
+      });
     }
 
     return { message: 'Live selfie uploaded successfully' };
   }
 
   async processVehicleRC(file: Express.Multer.File, userId: string) {
-    const pilot = await this.findPilot(userId);
-
-    if (!pilot[0].selfieUrl) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+    if (!pilot.selfieUrl) {
       throw new BadRequestException('Driver does not have Live selfie');
     }
 
@@ -165,12 +202,27 @@ export class PilotService {
       );
     }
 
-    // Check if vehicle registration number is expired
-    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
+    if (
+      !verificationResponse.isrcExpired ||
+      !verificationResponse.ispermitExpired
+    ) {
+      return {
+        message: 'Vehicle registration or permit is expired',
+        data: {
+          ...verificationResponse,
+          id: null,
+          pilotId: null,
+          regNo: null,
+          vehicleTypeId: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      };
+    }
 
     const data = await this.updatePilotVehicleData(
       verificationResponse,
-      userId,
+      pilot.id,
     );
 
     return {
@@ -180,9 +232,15 @@ export class PilotService {
   }
 
   async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
-    let { registrationNumber } = vehicleRcDto;
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+    if (!pilot.selfieUrl) {
+      throw new BadRequestException('Driver does not have Live selfie');
+    }
 
-    await this.findPilot(userId);
+    let { registrationNumber } = vehicleRcDto;
 
     registrationNumber = registrationNumber.split(' ').join('');
 
@@ -196,11 +254,11 @@ export class PilotService {
     }
 
     // Check if vehicle registration number is expired
-    this.isVehicleRegistrationNumberExpired(verificationResponse.rcExpiryDate);
+    // this.isVehicleRegistrationNumberExpired(verificationResponse.regUpto);
 
     const data = await this.updatePilotVehicleData(
       verificationResponse,
-      userId,
+      pilot.id,
     );
 
     return {
@@ -210,7 +268,13 @@ export class PilotService {
   }
 
   async processPancard(file: Express.Multer.File, userId: string) {
-    await this.findPilot(userId);
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+    if (!pilot.isRCVerified) {
+      throw new BadRequestException('Driver does not have rc verfied');
+    }
 
     if (!file) {
       throw new BadRequestException('No file provided.');
@@ -240,22 +304,31 @@ export class PilotService {
 
     // await this.verifyPancardName(verificationResponse, userId);
 
-    const data = await this.prisma.$queryRaw`
-      UPDATE "Pilot" 
-      SET "isPanCardVerified" = true 
-      WHERE "userId" = ${userId};
-    `;
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isPanCardVerified: true,
+        panCardNumber: verificationResponse.number,
+        panCardName: verificationResponse.name,
+      },
+    });
 
     return {
       message: 'Pancard verified successfully',
-      data: data[0],
+      data,
     };
   }
 
   async processManualPancard(pancardDto: PancardDto, userId: string) {
-    const { panNumber } = pancardDto;
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+    if (!pilot.isRCVerified) {
+      throw new BadRequestException('Driver does not have rc verfied');
+    }
 
-    await this.findPilot(userId);
+    const { panNumber } = pancardDto;
 
     const verificationResponse =
       await this.signzyService.verifyPancard(panNumber);
@@ -268,20 +341,23 @@ export class PilotService {
 
     // await this.verifyPancardName(verificationResponse, userId);
 
-    const data = await this.prisma.$queryRaw`
-      UPDATE "Pilot" 
-      SET "isPanCardVerified" = true 
-      WHERE "userId" = ${userId};
-    `;
+    const data = await this.prisma.pilot.update({
+      where: { userId },
+      data: {
+        isPanCardVerified: true,
+        panCardNumber: verificationResponse.number,
+        panCardName: verificationResponse.name,
+      },
+    });
 
     return {
       message: 'Pancard verified successfully',
-      data: data[0],
+      data,
     };
   }
 
   async pilotonboardingOffer(userId: string) {
-    const pilot = await this.findPilot(userId);
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
     const subscription = await this.prisma.pilotSubscription.findUnique({
       where: { name: this.onboardingOffer },
@@ -302,16 +378,6 @@ export class PilotService {
     };
   }
 
-  private async findPilot(userId: string) {
-    const pilot: any = await this.prisma.$queryRaw`
-      SELECT "id" FROM "Pilot" WHERE "userId" = ${userId} LIMIT 1;
-    `;
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
-
-    return pilot;
-  }
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 
@@ -363,7 +429,7 @@ export class PilotService {
 
   private async updatePilotDrivingLiceseData(
     verificationResponse: VerificationResponseDL,
-    userId: string,
+    pilotId: string,
   ) {
     const {
       licenseNumber,
@@ -373,10 +439,7 @@ export class PilotService {
       dateOfBirth,
     } = verificationResponse;
 
-    const pilot = await this.findPilot(userId);
-    console.log(pilot);
-
-    // Insert driving license data
+    // Create Driving License record in the database
     const drivingLicense = await this.prisma.drivingLicense.create({
       data: {
         licenseNumber,
@@ -384,7 +447,14 @@ export class PilotService {
         dateOfIssue,
         validUntill,
         dateOfBirth,
-        pilotId: pilot[0].id,
+        pilotId,
+      },
+    });
+
+    await this.prisma.pilot.update({
+      where: { id: pilotId },
+      data: {
+        isDLVerified: true,
       },
     });
 
@@ -405,15 +475,16 @@ export class PilotService {
     return null;
   }
 
-  private isVehicleRegistrationNumberExpired(rcExpiryDate) {
-    const expiryDateUTC = moment.utc(rcExpiryDate);
-    const nowUTC = moment.utc();
-    const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
-    const nowIST = nowUTC.tz('Asia/Kolkata');
-    if (expiryDateIST.isBefore(nowIST)) {
-      throw new BadRequestException('Vehicle registration number is expired');
-    }
-  }
+  // private isVehicleRegistrationNumberExpired(rcExpiryDate) {
+  //   const expiryDateUTC = moment.utc(rcExpiryDate);
+  //   const nowUTC = moment.utc();
+  //   const expiryDateIST = expiryDateUTC.tz('Asia/Kolkata');
+  //   const nowIST = nowUTC.tz('Asia/Kolkata');
+  //   if (expiryDateIST.isBefore(nowIST)) {
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
   private extractPancardData(lines: any[]) {
     const panIdentifiers = [
@@ -438,40 +509,55 @@ export class PilotService {
   }
   private async updatePilotVehicleData(
     verificationResponse: VerificationResponseVehicle,
-    userId: string,
+    pilotId: string,
   ) {
     const {
       regNo,
+      regUpto,
+      permitUpto,
       status,
       insuranceUpto,
       manufacturer,
-      makerModel,
-      vehicleColour,
+      model,
+      colour,
       fitUpto,
       puccUpto,
-      rcExpiryDate,
-      permitUpto,
-      vehicleState,
-      vehicleSeatingCapacity,
-      vehicleClass,
+      state,
     } = verificationResponse;
 
+    const vehicleType = await this.prisma.vehicleType.findFirst({
+      where: {
+        name: 'Sedan',
+      },
+    });
+
+    const vehicle = await this.prisma.vehicle.create({
+      data: {
+        pilotId,
+        regNo,
+        regUpto,
+        permitUpto,
+        status,
+        fitUpto,
+        puccUpto,
+        insuranceUpto,
+        model,
+        colour,
+        manufacturer,
+        state,
+        vehicleTypeId: vehicleType.id,
+      },
+    });
+
     // Update pilot record with vehicle information
-    const pilot = await this.prisma.$queryRaw`
-      UPDATE "Pilot" 
-      SET "isRCVerified" = true 
-      WHERE "userId" = ${userId};
-    `;
+    await this.prisma.pilot.update({
+      where: { id: pilotId },
+      data: {
+        isRCVerified: true,
+      },
+    });
 
-    // const vehicleType = await this.prisma.vehicleType.findUnique({ where: { name: vehicleClass } });
-
-    // Create vehicle record
-    const vehicle = await this.prisma.$queryRaw`
-      INSERT INTO "Vehicle" ("pilotId", "regNo", "status", "regUpto", "permitUpto", "fitUpto", "puccUpto", "insuranceUpto", "makerModel", "vehicleColour", "manufacturer", "vehicleState", "vehicleSeatingCapacity", "vehicleTypeId")
-      VALUES (${pilot[0].id}, ${verificationResponse.regNo}, ${verificationResponse.status}, ${verificationResponse.rcExpiryDate}, ${verificationResponse.permitUpto}, ${verificationResponse.fitUpto}, ${verificationResponse.puccUpto}, ${verificationResponse.insuranceUpto}, ${verificationResponse.makerModel}, ${verificationResponse.vehicleColour}, ${verificationResponse.manufacturer}, ${verificationResponse.vehicleState}, ${verificationResponse.vehicleSeatingCapacity}, ${'Kali Peeli'} LIMIT 1));
-    `;
-
-    return vehicle[0];
+    return vehicle;
   }
 
   private async verifyPancardName(verificationResponse: any, userId: string) {

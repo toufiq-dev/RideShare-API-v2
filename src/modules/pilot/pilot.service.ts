@@ -29,353 +29,395 @@ export class PilotService {
   }
 
   async getPilot(userId: string) {
-    const data = await this.prisma.pilot.findUnique({
-      where: { userId },
-      include: {
-        user: true,
-        language: true,
-        drivingLicense: true,
-      },
-    });
+    try {
+      const data = await this.prisma.pilot.findUnique({
+        where: { userId },
+        include: {
+          user: true,
+          language: true,
+          drivingLicense: true,
+        },
+      });
 
-    return {
-      message: 'Pilot fetched successfully',
-      data,
-    };
+      return {
+        message: 'Pilot fetched successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async processDrivingLicense(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
 
-    if (!file) {
-      throw new BadRequestException('No file provided.');
-    }
-    const buffer = file.buffer;
+      if (!file) {
+        throw new BadRequestException('No file provided.');
+      }
 
-    // Extract text using Azure OCR
-    const lines = await this.getOcrResult(buffer);
+      const buffer = file.buffer;
 
-    const extractedData = this.parseLicenseData(lines);
+      // Extract text using Azure OCR
+      const lines = await this.getOcrResult(buffer);
 
-    const rawResponse = await this.signzyService.verifyDrivingLicense(
-      extractedData.dlNumber,
-      extractedData.dateOfBirth,
-    );
+      const extractedData = this.parseLicenseData(lines);
 
-    const verificationResponse: VerificationResponseDL =
-      this.transformResponseDL(rawResponse);
+      const rawResponse = await this.signzyService.verifyDrivingLicense(
+        extractedData.dlNumber,
+        extractedData.dateOfBirth,
+      );
 
-    if (rawResponse.isExpired) {
+      const verificationResponse: VerificationResponseDL =
+        this.transformResponseDL(rawResponse);
+
+      if (rawResponse.isExpired) {
+        return {
+          message: 'Transport license is expired.',
+          data: {
+            ...verificationResponse,
+            id: null,
+            pilotId: null,
+            permanentAddress: null,
+            temporaryAddress: null,
+            metadata: null,
+            createdAt: null,
+            updatedAt: null,
+          },
+        };
+      }
+
+      const data = await this.updatePilotDrivingLiceseData(
+        verificationResponse,
+        pilot.id,
+      );
+
       return {
-        message: 'Transport license is expired.',
-        data: {
-          ...verificationResponse,
-          id: null,
-          pilotId: null,
-          permanentAddress: null,
-          temporaryAddress: null,
-          metadata: null,
-          createdAt: null,
-          updatedAt: null,
-        },
+        message: 'Driving license processed successfully.',
+        data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const data = await this.updatePilotDrivingLiceseData(
-      verificationResponse,
-      pilot.id,
-    );
-
-    return {
-      message: 'Driving license processed successfully.',
-      data,
-    };
   }
 
   async processManualDrivingLicense(
     drivingLicenseAndDobDto: DrivingLicenseDto,
     userId: string,
   ) {
-    let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
+    try {
+      let { drivingLicenseNumber, dob } = drivingLicenseAndDobDto;
 
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
 
-    drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
-    const rawResponse = await this.signzyService.verifyDrivingLicense(
-      drivingLicenseNumber,
-      dob,
-    );
+      drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
+      const rawResponse = await this.signzyService.verifyDrivingLicense(
+        drivingLicenseNumber,
+        dob,
+      );
 
-    const verificationResponse: VerificationResponseDL =
-      this.transformResponseDL(rawResponse);
+      const verificationResponse: VerificationResponseDL =
+        this.transformResponseDL(rawResponse);
 
-    if (rawResponse.isExpired) {
+      if (rawResponse.isExpired) {
+        return {
+          message: 'Transport license is expired.',
+          data: {
+            ...verificationResponse,
+            id: null,
+            pilotId: null,
+            permanentAddress: null,
+            temporaryAddress: null,
+            metadata: null,
+            createdAt: null,
+            updatedAt: null,
+          },
+        };
+      }
+
+      const data = await this.updatePilotDrivingLiceseData(
+        verificationResponse,
+        pilot.id,
+      );
+
       return {
-        message: 'Transport license is expired.',
-        data: {
-          ...verificationResponse,
-          id: null,
-          pilotId: null,
-          permanentAddress: null,
-          temporaryAddress: null,
-          metadata: null,
-          createdAt: null,
-          updatedAt: null,
-        },
+        message: 'Driving license processed successfully.',
+        data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const data = await this.updatePilotDrivingLiceseData(
-      verificationResponse,
-      pilot.id,
-    );
-
-    return {
-      message: 'Driving license processed successfully.',
-      data,
-    };
   }
 
   async uploadLiveSelfie(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-    if (pilot.selfieUrl) {
-      throw new ForbiddenException('Live selfie can be uploaded only once');
+      if (pilot.selfieUrl) {
+        throw new ForbiddenException('Live selfie can be uploaded only once');
+      }
+      if (!pilot.isDLVerified) {
+        throw new ForbiddenException(
+          'Driving License must be verified before uploading Live selfie',
+        );
+      }
+
+      const fileUrl = file.azureFileUrl;
+
+      if (fileUrl) {
+        await this.prisma.pilot.update({
+          where: { userId },
+          data: { selfieUrl: fileUrl },
+        });
+      }
+
+      return { message: 'Live selfie uploaded successfully' };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-    if (!pilot.isDLVerified) {
-      throw new ForbiddenException(
-        'Driving License must be verified before uploading Live selfie',
-      );
-    }
-
-    // file was uploaded by the azure service with file interceptor
-    const fileUrl = file.azureFileUrl;
-
-    if (fileUrl) {
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: { selfieUrl: fileUrl },
-      });
-    }
-
-    return { message: 'Live selfie uploaded successfully' };
   }
 
   async processVehicleRC(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
-    if (!pilot.selfieUrl) {
-      throw new BadRequestException('Driver does not have Live selfie');
-    }
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie');
+      }
 
-    if (!file) {
-      throw new BadRequestException('No file provided.');
-    }
-    const buffer = file.buffer;
+      if (!file) {
+        throw new BadRequestException('No file provided.');
+      }
+      const buffer = file.buffer;
 
-    // Extract text using Azure OCR
-    const lines = await this.getOcrResult(buffer);
+      // Extract text using Azure OCR
+      const lines = await this.getOcrResult(buffer);
 
-    const registrationNumber = this.extractRegistrationNumber(lines);
+      const registrationNumber = this.extractRegistrationNumber(lines);
 
-    if (!registrationNumber) {
-      throw new BadRequestException(
-        'Could not extract vehicle registration number from the image',
+      if (!registrationNumber) {
+        throw new BadRequestException(
+          'Could not extract vehicle registration number from the image',
+        );
+      }
+
+      const verificationResponse: VerificationResponseVehicle =
+        await this.signzyService.verifyVehicleRC(registrationNumber);
+
+      if (verificationResponse.status.toLowerCase() !== 'active') {
+        throw new BadRequestException(
+          'vehicle registration number is not active',
+        );
+      }
+
+      if (
+        !verificationResponse.isrcExpired ||
+        !verificationResponse.ispermitExpired
+      ) {
+        return {
+          message: 'Vehicle registration or permit is expired',
+          data: {
+            ...verificationResponse,
+            id: null,
+            pilotId: null,
+            regNo: null,
+            vehicleTypeId: null,
+            createdAt: null,
+            updatedAt: null,
+          },
+        };
+      }
+
+      const data = await this.updatePilotVehicleData(
+        verificationResponse,
+        pilot.id,
       );
-    }
 
-    const verificationResponse: VerificationResponseVehicle =
-      await this.signzyService.verifyVehicleRC(registrationNumber);
-
-    if (verificationResponse.status.toLowerCase() !== 'active') {
-      throw new BadRequestException(
-        'vehicle registration number is not active',
-      );
-    }
-
-    if (
-      !verificationResponse.isrcExpired ||
-      !verificationResponse.ispermitExpired
-    ) {
       return {
-        message: 'Vehicle registration or permit is expired',
-        data: {
-          ...verificationResponse,
-          id: null,
-          pilotId: null,
-          regNo: null,
-          vehicleTypeId: null,
-          createdAt: null,
-          updatedAt: null,
-        },
+        message: 'Vehicle RC processed successfully',
+        data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const data = await this.updatePilotVehicleData(
-      verificationResponse,
-      pilot.id,
-    );
-
-    return {
-      message: 'Vehicle RC processed successfully',
-      data,
-    };
   }
 
   async processManualVehicleRC(vehicleRcDto: VehicleRcDto, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
-    }
-    if (!pilot.selfieUrl) {
-      throw new BadRequestException('Driver does not have Live selfie');
-    }
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie');
+      }
 
-    let { registrationNumber } = vehicleRcDto;
+      let { registrationNumber } = vehicleRcDto;
 
-    registrationNumber = registrationNumber.split(' ').join('');
+      registrationNumber = registrationNumber.split(' ').join('');
 
-    const verificationResponse: VerificationResponseVehicle =
-      await this.signzyService.verifyVehicleRC(registrationNumber);
+      const verificationResponse: VerificationResponseVehicle =
+        await this.signzyService.verifyVehicleRC(registrationNumber);
 
-    if (verificationResponse.status.toLowerCase() !== 'active') {
-      throw new BadRequestException(
-        'vehicle registration number is not active',
+      if (verificationResponse.status.toLowerCase() !== 'active') {
+        throw new BadRequestException(
+          'vehicle registration number is not active',
+        );
+      }
+
+      const data = await this.updatePilotVehicleData(
+        verificationResponse,
+        pilot.id,
       );
+
+      return {
+        message: 'Vehicle RC processed successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    // Check if vehicle registration number is expired
-    // this.isVehicleRegistrationNumberExpired(verificationResponse.regUpto);
-
-    const data = await this.updatePilotVehicleData(
-      verificationResponse,
-      pilot.id,
-    );
-
-    return {
-      message: 'Vehicle RC processed successfully',
-      data,
-    };
   }
 
   async processPancard(file: Express.Multer.File, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
+      if (!pilot.isRCVerified) {
+        throw new BadRequestException('Driver does not have rc verfied');
+      }
+
+      if (!file) {
+        throw new BadRequestException('No file provided.');
+      }
+
+      const buffer = file.buffer;
+
+      // Extract text using Azure OCR
+      const lines = await this.getOcrResult(buffer);
+
+      const panNumber = this.extractPancardData(lines);
+
+      if (!panNumber) {
+        throw new BadRequestException(
+          'Could not extract pan card number from the image',
+        );
+      }
+
+      const verificationResponse =
+        await this.signzyService.verifyPancard(panNumber);
+
+      if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
+        throw new BadRequestException(
+          'This pan card is either non-existing or invalid',
+        );
+      }
+
+      // await this.verifyPancardName(verificationResponse, userId);
+
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isPanCardVerified: true,
+          panCardNumber: verificationResponse.number,
+          panCardName: verificationResponse.name,
+        },
+      });
+
+      return {
+        message: 'Pancard verified successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-    if (!pilot.isRCVerified) {
-      throw new BadRequestException('Driver does not have rc verfied');
-    }
-
-    if (!file) {
-      throw new BadRequestException('No file provided.');
-    }
-
-    const buffer = file.buffer;
-
-    // Extract text using Azure OCR
-    const lines = await this.getOcrResult(buffer);
-
-    const panNumber = this.extractPancardData(lines);
-
-    if (!panNumber) {
-      throw new BadRequestException(
-        'Could not extract pan card number from the image',
-      );
-    }
-
-    const verificationResponse =
-      await this.signzyService.verifyPancard(panNumber);
-
-    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
-      throw new BadRequestException(
-        'This pan card is either non-existing or invalid',
-      );
-    }
-
-    // await this.verifyPancardName(verificationResponse, userId);
-
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isPanCardVerified: true,
-        panCardNumber: verificationResponse.number,
-        panCardName: verificationResponse.name,
-      },
-    });
-
-    return {
-      message: 'Pancard verified successfully',
-      data,
-    };
   }
 
   async processManualPancard(pancardDto: PancardDto, userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-    if (!pilot) {
-      throw new BadRequestException('Pilot not found.');
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new BadRequestException('Pilot not found.');
+      }
+      if (!pilot.isRCVerified) {
+        throw new BadRequestException('Driver does not have rc verfied');
+      }
+
+      const { panNumber } = pancardDto;
+
+      const verificationResponse =
+        await this.signzyService.verifyPancard(panNumber);
+
+      if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
+        throw new BadRequestException(
+          'This pan card is either non-existing or invalid',
+        );
+      }
+
+      // await this.verifyPancardName(verificationResponse, userId);
+
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isPanCardVerified: true,
+          panCardNumber: verificationResponse.number,
+          panCardName: verificationResponse.name,
+        },
+      });
+
+      return {
+        message: 'Pancard verified successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-    if (!pilot.isRCVerified) {
-      throw new BadRequestException('Driver does not have rc verfied');
-    }
-
-    const { panNumber } = pancardDto;
-
-    const verificationResponse =
-      await this.signzyService.verifyPancard(panNumber);
-
-    if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
-      throw new BadRequestException(
-        'This pan card is either non-existing or invalid',
-      );
-    }
-
-    // await this.verifyPancardName(verificationResponse, userId);
-
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isPanCardVerified: true,
-        panCardNumber: verificationResponse.number,
-        panCardName: verificationResponse.name,
-      },
-    });
-
-    return {
-      message: 'Pancard verified successfully',
-      data,
-    };
   }
 
   async pilotonboardingOffer(userId: string) {
-    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-    const subscription = await this.prisma.pilotSubscription.findUnique({
-      where: { name: this.onboardingOffer },
-    });
+      const subscription = await this.prisma.pilotSubscription.findUnique({
+        where: { name: this.onboardingOffer },
+      });
 
-    // Create pilot wallet
-    const data = await this.prisma.pilotWallet.create({
-      data: {
-        pilotId: pilot.id,
-        balance: subscription.coins,
-        subscriptionId: subscription.id,
-      },
-    });
+      // Create pilot wallet
+      const data = await this.prisma.pilotWallet.create({
+        data: {
+          pilotId: pilot.id,
+          balance: subscription.coins,
+          subscriptionId: subscription.id,
+        },
+      });
 
-    return {
-      message: 'Pilot onboarding coins availed successfully',
-      data,
-    };
+      return {
+        message: 'Pilot onboarding coins availed successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   private async getOcrResult(buffer: any) {

@@ -46,28 +46,33 @@ export class AuthService {
   async sendOtp(sendOtpDto: SendOtpDto) {
     const { language, phone, referralCode } = sendOtpDto;
 
-    const Language = await this.prisma.languages.findUnique({
-      where: { name: language },
-    });
-    if (!Language) {
-      throw new NotFoundException('Language not found');
+    try {
+      const Language = await this.prisma.languages.findUnique({
+        where: { name: language },
+      });
+      if (!Language) {
+        throw new NotFoundException('Language not found');
+      }
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${phone}`, otp, 300);
+      await this.redis.set(`languageId:${phone}`, Language.id, 300);
+
+      // const requestId = await this.msg91.sendOTP(phone);
+
+      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+      return {
+        message: 'OTP sent to your phone successfully',
+        data: {
+          otp,
+          // requestId
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const otp = randomInt(1000, 10000).toString();
-    await this.redis.set(`otp:${phone}`, otp, 300);
-    await this.redis.set(`languageId:${phone}`, Language.id, 300);
-
-    // const requestId = await this.msg91.sendOTP(phone);
-
-    // await this.redis.set(`requestId:${phone}`, requestId, 300);
-
-    return {
-      message: 'OTP sent to your phone successfully',
-      data: {
-        otp,
-        // requestId
-      },
-    };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -105,18 +110,23 @@ export class AuthService {
 
     const { userId, version } = this.decodeRefreshToken(refreshToken);
 
-    await this.validateStoredRefreshToken(userId, refreshToken);
+    try {
+      await this.validateStoredRefreshToken(userId, refreshToken);
 
-    const user = await this.validateUserTokenVersion(userId, version);
+      const user = await this.validateUserTokenVersion(userId, version);
 
-    const updatedUser = await this.incrementUserTokenVersion(
-      userId,
-      user.authTokenVersion,
-    );
+      const updatedUser = await this.incrementUserTokenVersion(
+        userId,
+        user.authTokenVersion,
+      );
 
-    const tokens = await this.generateTokens(updatedUser);
+      const tokens = await this.generateTokens(updatedUser);
 
-    return { data: tokens };
+      return { data: tokens };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async completeOnboarding(
@@ -125,60 +135,74 @@ export class AuthService {
   ) {
     const { name, email } = customerOnboardingDto;
 
-    const user = await this.findUserById(userId);
+    try {
+      const user = await this.findUserById(userId);
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          name,
+          email,
+        },
+      });
+
+      return {
+        message: 'Onboarding completed successfully',
+        data: updatedUser,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        email,
-      },
-    });
-
-    return {
-      message: 'Onboarding completed successfully',
-      data: updatedUser,
-    };
   }
 
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
-    const pilot = await this.prisma.pilot.findUnique({
-      where: { phone },
-      include: {
-        drivingLicense: true,
-      },
-    });
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { phone },
+        include: {
+          drivingLicense: true,
+        },
+      });
 
-    if (!pilot) {
-      throw new NotFoundException('Pilot not found');
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found');
+      }
+
+      return {
+        message: 'Pilot found successfully',
+        data: pilot,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    return {
-      message: 'Pilot found successfully',
-      data: pilot,
-    };
   }
 
   async verifyAadhaar(req: any, userId: string) {
-    
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isAadhaarVerified: true,
-        aadhaarName: req.body.aadharDetail.name,
-        aadhaarCardAddress: req.body.address
-      },
-    })
+    try {
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isAadhaarVerified: true,
+          aadhaarName: req.body.aadharDetail.name,
+          aadhaarCardAddress: req.body.address,
+        },
+      });
 
-    return {
-      message: 'Aadhaar verified successfully',
-      data
-    };
+      return {
+        message: 'Aadhaar verified successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   private async findUserById(userId: string) {

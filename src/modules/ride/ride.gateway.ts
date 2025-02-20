@@ -8,7 +8,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { BookingService } from './booking.service';
+import { RideService } from './ride.service';
 import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 
@@ -16,16 +16,16 @@ import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
   cors: {
     origin: '*',
   },
-  namespace: 'booking',
 })
 // @UseGuards(WsJwtAuthGuard)
-export class BookingGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(private readonly rideService: RideService) {}
+
+  // Store connected users
+  private connectedUsers: Map<string, Socket> = new Map();
 
   async handleConnection(client: Socket) {
     try {
@@ -51,13 +51,18 @@ export class BookingGateway
     console.log('Client disconnected:', client.id);
   }
 
-  @SubscribeMessage('createBooking')
-  async create(
+  @SubscribeMessage('verificationAadhaar')
+  async verificationAadhaar(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() room: string,
+  ) {}
+
+  @SubscribeMessage('requestRide')
+  async requestRide(
     @ConnectedSocket() client: Socket,
     @MessageBody() createBookingDto: CreateBookingDto,
   ) {
-    console.log(createBookingDto);
-    const booking = await this.bookingService.create(
+    const booking = await this.rideService.handleRequestRide(
       createBookingDto,
       client.data.user,
     );
@@ -66,17 +71,17 @@ export class BookingGateway
     client.join(`booking:${booking.id}`);
 
     // Notify available pilots
-    this.server.to('available_pilots').emit('newBookingRequest', booking);
+    this.server.to('available_pilots').emit('newRideRequest', booking);
 
     return booking;
   }
 
-  @SubscribeMessage('acceptBooking')
-  async acceptBooking(
+  @SubscribeMessage('acceptRide')
+  async acceptRide(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { bookingId: string },
   ) {
-    const booking = await this.bookingService.acceptBooking(
+    const booking = await this.rideService.handleAcceptRide(
       data.bookingId,
       client.data.user,
     );
@@ -85,9 +90,7 @@ export class BookingGateway
     client.join(`booking:${booking.id}`);
 
     // Notify customer
-    this.server
-      .to(`user:${booking.customerId}`)
-      .emit('bookingAccepted', booking);
+    this.server.to(`user:${booking.customerId}`).emit('rideAccepted', booking);
 
     return booking;
   }

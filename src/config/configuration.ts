@@ -10,7 +10,8 @@ export default () => ({
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
-    refreshTokenTTL: process.env.REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
+    accessTokenTTL: process.env.REDIS_ACCESS_TOKEN_TTL || 60 * 60 * 24 * 1,
+    refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
   msg91: {
     authKey: process.env.MSG91_AUTH_KEY,

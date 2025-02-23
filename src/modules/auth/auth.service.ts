@@ -24,6 +24,7 @@ export class AuthService {
   private readonly accessTokenExpiresIn: string;
   private readonly refreshTokenExpiresIn: string;
   private readonly jwtSecret: string;
+  private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
   constructor(
     private readonly prisma: PrismaService,
@@ -40,6 +41,9 @@ export class AuthService {
       'jwt.refreshTokenExpiresIn',
     );
     this.jwtSecret = this.configService.get<string>('jwt.secret');
+    this.redisAccessTokenTTL = this.configService.get<number>(
+      'redis.accessTokenTTL',
+    );
     this.redisRefreshTokenTTL = this.configService.get<number>(
       'redis.refreshTokenTTL',
     );
@@ -90,7 +94,7 @@ export class AuthService {
         languageId,
       );
 
-      const tokens = await this.generateTokens(user);
+      const tokens = await this.generateTokens(user.id, user.role);
 
       return {
         message: 'OTP verified successfully',
@@ -109,21 +113,24 @@ export class AuthService {
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    const { userId, version } = this.decodeRefreshToken(refreshToken);
-
     try {
-      await this.validateStoredRefreshToken(userId, refreshToken);
+      const { userId, role } = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.jwtSecret,
+      });
 
-      const user = await this.validateUserTokenVersion(userId, version);
+      const storedToken = await this.redis.get(`refreshToken:${userId}`);
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
 
-      const updatedUser = await this.incrementUserTokenVersion(
-        userId,
-        user.authTokenVersion,
-      );
+      await this.redis.del(`refreshToken:${userId}`);
 
-      const tokens = await this.generateTokens(updatedUser);
+      const data = await this.generateTokens(userId, role);
 
-      return { data: tokens };
+      return {
+        message: 'Refresh token generated successfully',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -282,61 +289,60 @@ export class AuthService {
         data: {
           role,
           isPhoneVerified: true,
-          authTokenVersion: 1,
         },
       });
-      isNewUser = true;
-    }
 
-    if (role === RoleEnum.CUSTOMER && !customer) {
-      customer = await this.prisma.customer.create({
-        data: {
-          phone,
-          userId: user.id,
-          languageId,
-        },
-      });
-      isNewUser = true;
-    } else if (role === RoleEnum.PILOT && !pilot) {
-      pilot = await this.prisma.pilot.create({
-        data: {
-          phone,
-          userId: user.id,
-          languageId,
-        },
-      });
+      if (role === RoleEnum.CUSTOMER && !customer) {
+        customer = await this.prisma.customer.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+          },
+        });
+      } else if (role === RoleEnum.PILOT && !pilot) {
+        pilot = await this.prisma.pilot.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+          },
+        });
+      }
+
       isNewUser = true;
     }
 
     return { user, customer, pilot, isNewUser };
   }
 
-  private async generateTokens(user) {
-    const accessToken = this.jwtService.sign(
-      { userId: user.id, role: user.role, version: user.authTokenVersion },
+  private async generateTokens(userId: string, role: RoleEnum) {
+    await this.redis.del(`accessToken:${userId}`);
+    await this.redis.del(`refreshToken:${userId}`);
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId, role },
       { expiresIn: this.accessTokenExpiresIn },
     );
 
-    const refreshToken = this.jwtService.sign(
-      { userId: user.id, version: user.authTokenVersion },
+    const refreshToken = await this.jwtService.signAsync(
+      { userId, role },
       { expiresIn: this.refreshTokenExpiresIn },
     );
 
     await this.redis.set(
-      `refreshToken:${user.id}`,
+      `accessToken:${userId}`,
+      accessToken,
+      this.redisAccessTokenTTL,
+    );
+
+    await this.redis.set(
+      `refreshToken:${userId}`,
       refreshToken,
       this.redisRefreshTokenTTL,
     );
 
     return { accessToken, refreshToken };
-  }
-
-  private decodeRefreshToken(refreshToken: string) {
-    try {
-      return this.jwtService.verify(refreshToken, { secret: this.jwtSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
   }
 
   private async validateStoredRefreshToken(
@@ -354,25 +360,5 @@ export class AuthService {
     }
 
     await this.redis.del(`refreshToken:${userId}`);
-  }
-
-  private async validateUserTokenVersion(userId: string, version: number) {
-    const user = await this.findUserById(userId);
-
-    if (!user || user.authTokenVersion !== version) {
-      throw new UnauthorizedException('Token has been invalidated');
-    }
-    return user;
-  }
-
-  private async incrementUserTokenVersion(
-    userId: string,
-    currentVersion: number,
-  ) {
-    const newVersion = currentVersion + 1;
-    return await this.prisma.user.update({
-      where: { id: userId },
-      data: { authTokenVersion: newVersion },
-    });
   }
 }

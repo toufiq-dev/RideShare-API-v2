@@ -22,15 +22,7 @@ export class WsJwtAuthGuard implements CanActivate {
 
       const payload = await this.jwtService.verifyAsync(token);
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
-      });
-
-      if (!user || user.authTokenVersion !== payload.version) {
-        throw new WsException('Token has been invalidated');
-      }
-
-      client.data.user = { ...payload, role: user.role };
+      client.data.user = payload;
       return true;
     } catch (err) {
       throw new WsException('Invalid credentials');

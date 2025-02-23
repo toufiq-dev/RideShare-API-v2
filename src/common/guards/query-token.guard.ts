@@ -25,14 +25,6 @@ export class QueryTokenGuard implements CanActivate {
     try {
       const payload = await this.jwtService.verifyAsync(token);
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
-      });
-
-      if (!user || user.authTokenVersion !== payload.version) {
-        throw new UnauthorizedException('Token has been invalidated');
-      }
-
       request.user = payload; // Attach the user payload to the request
       return true;
     } catch (error) {

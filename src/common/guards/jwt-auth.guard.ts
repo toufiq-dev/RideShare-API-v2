@@ -5,14 +5,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { RedisService } from 'src/core/cache/redis.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly jwtSecret: string;
+
   constructor(
+    private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
-  ) {}
+    private readonly redis: RedisService,
+  ) {
+    this.jwtSecret = this.configService.get<string>('jwt.secret');
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -25,15 +31,15 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const token = authHeader.split(' ')[1];
-
     try {
-      const payload = await this.jwtService.verifyAsync(token);
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.jwtSecret,
       });
 
-      if (!user || user.authTokenVersion !== payload.version) {
+      const storedAccessToken = await this.redis.get(
+        `accessToken:${payload.userId}`,
+      );
+      if (!storedAccessToken || storedAccessToken !== token) {
         throw new UnauthorizedException('Token has been invalidated');
       }
 

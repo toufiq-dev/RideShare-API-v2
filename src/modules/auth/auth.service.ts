@@ -194,6 +194,8 @@ export class AuthService {
 
   async verifyAadhaar(req: any, userId: string) {
     try {
+      console.log(req.body);
+
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
@@ -203,10 +205,14 @@ export class AuthService {
         },
       });
 
-      this.rideGateway.server.emit('aadhaarVerified', {
+      console.log(data);
+
+      const response =  this.rideGateway.server.emit('aadhaarVerified', {
         message: 'Aadhaar verified successfully',
         data,
       });
+
+      console.log(response)
     } catch (error) {
       console.error(error);
       throw error;

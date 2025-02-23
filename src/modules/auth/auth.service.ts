@@ -194,25 +194,24 @@ export class AuthService {
 
   async verifyAadhaar(req: any, userId: string) {
     try {
-      console.log(req.body);
+      console.log(req.body.aadharDetail.name);
+      console.log(req.body.aadharDetail.address)
 
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isAadhaarVerified: true,
           aadhaarName: req.body.aadharDetail.name,
-          aadhaarCardAddress: req.body.address,
+          aadhaarCardAddress: req.body.aadharDetail.address,
         },
       });
 
       console.log(data);
 
-      const response =  this.rideGateway.server.emit('aadhaarVerified', {
+      this.rideGateway.server.emit('aadhaarVerified', {
         message: 'Aadhaar verified successfully',
         data,
       });
-
-      console.log(response)
     } catch (error) {
       console.error(error);
       throw error;

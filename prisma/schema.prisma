@@ -106,7 +106,6 @@ model Pilot {
   isAvailable        Boolean         @default(false)
   totalTrips         Int             @default(0)
   averageRating      Float           @default(0)
-  isAadharVerified   Boolean         @default(false)
   languageId         String
   phone              String          @unique
   pilotProgramId     String?

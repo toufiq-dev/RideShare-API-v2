@@ -7,5 +7,6 @@ import { PrismaModule } from 'src/core/database/prisma.module';
 @Module({
   imports: [PrismaModule, JwtModule],
   providers: [RideGateway, RideService],
+  exports: [RideGateway],
 })
 export class RideModule {}

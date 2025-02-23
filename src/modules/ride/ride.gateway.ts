@@ -51,12 +51,6 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('Client disconnected:', client.id);
   }
 
-  @SubscribeMessage('verificationAadhaar')
-  async verificationAadhaar(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() room: string,
-  ) {}
-
   @SubscribeMessage('requestRide')
   async requestRide(
     @ConnectedSocket() client: Socket,

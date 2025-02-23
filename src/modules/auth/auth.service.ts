@@ -17,6 +17,7 @@ import {
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
+import { RideGateway } from '../ride/ride.gateway';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly msg91: Msg91Util,
+    private readonly rideGateway: RideGateway,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -66,7 +68,6 @@ export class AuthService {
         message: 'OTP sent to your phone successfully',
         data: {
           otp,
-          // requestId
         },
       };
     } catch (error) {
@@ -195,10 +196,10 @@ export class AuthService {
         },
       });
 
-      return {
+      this.rideGateway.server.emit('aadhaarVerified', {
         message: 'Aadhaar verified successfully',
         data,
-      };
+      });
     } catch (error) {
       console.error(error);
       throw error;

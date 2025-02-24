@@ -5,6 +5,8 @@ import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
 } from './dto/subscriptions.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from 'src/common/decorators/user.decorator';
 
 @ApiTags('Subscriptions')
 @Controller('subscription')
@@ -43,5 +45,12 @@ export class SubscriptionsController {
       id,
       updateSubscriptionTypeDto,
     );
+  }
+
+  @Get('onboarding-offer')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Faircoins for onborading' })
+  async getOnboardingOffer(@CurrentUser('userId') userId: string) {
+    return await this.subscriptionService.onboardingOffer(userId);
   }
 }

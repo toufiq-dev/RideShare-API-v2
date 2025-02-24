@@ -398,33 +398,6 @@ export class PilotService {
     }
   }
 
-  async pilotonboardingOffer(userId: string) {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-
-      const subscription = await this.prisma.pilotSubscription.findUnique({
-        where: { name: this.onboardingOffer },
-      });
-
-      // Create pilot wallet
-      const data = await this.prisma.pilotWallet.create({
-        data: {
-          pilotId: pilot.id,
-          balance: subscription.coins,
-          subscriptionId: subscription.id,
-        },
-      });
-
-      return {
-        message: 'Pilot onboarding coins availed successfully',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 

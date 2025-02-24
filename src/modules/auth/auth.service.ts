@@ -63,6 +63,7 @@ export class AuthService {
       const otp = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${phone}`, otp, 300);
       await this.redis.set(`languageId:${phone}`, Language.id, 300);
+      await this.redis.set(`referralCode:${phone}`, referralCode, 300);
 
       // const requestId = await this.msg91.sendOTP(phone);
 
@@ -84,7 +85,7 @@ export class AuthService {
     const { phone, otp, role } = verifyOtpDto;
 
     try {
-      const languageId = await this.validateOtpRedis(phone, otp);
+      const {languageId, refferalCode} = await this.validateOtpRedis(phone, otp);
 
       // const languageId = await this.validateOtp(phone, otp);
 
@@ -92,6 +93,7 @@ export class AuthService {
         phone,
         role,
         languageId,
+        refferalCode,
       );
 
       const tokens = await this.generateTokens(user.id, user.role);
@@ -234,16 +236,13 @@ export class AuthService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
-
-    // const isVerified = await this.msg91.verifyOtp(phone, otp);
-    // if (!isVerified) {
-    //   throw new UnauthorizedException('Invalid or expired OTP');
-    // }
+    const refferalCode = await this.redis.get(`referralCode:${phone}`);
 
     await this.redis.del(`otp:${phone}`);
     await this.redis.del(`languageId:${phone}`);
+    await this.redis.del(`referralCode:${phone}`);
 
-    return languageId;
+    return {languageId, refferalCode};
   }
 
   private async validateOtp(phone: string, otp: string) {
@@ -255,14 +254,19 @@ export class AuthService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
+    const refferalCode = await this.redis.get(`referralCode:${phone}`);
 
-    return languageId;
+    await this.redis.del(`languageId:${phone}`);
+    await this.redis.del(`referralCode:${phone}`);
+
+    return {languageId, refferalCode};
   }
 
   private async findOrCreateUser(
     phone: string,
     role: RoleEnum,
     languageId: string,
+    referralCode: string
   ) {
     let customer = null;
     let pilot = null;
@@ -294,6 +298,7 @@ export class AuthService {
         data: {
           role,
           isPhoneVerified: true,
+          referralCode
         },
       });
 

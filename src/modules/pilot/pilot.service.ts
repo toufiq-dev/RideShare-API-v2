@@ -12,7 +12,7 @@ import {
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
 import { ConfigService } from '@nestjs/config';
-import * as moment from 'moment-timezone';
+import { RideGateway } from '../ride/ride.gateway';
 import formatDate from 'src/common/functions/formatDate';
 
 @Injectable()
@@ -24,6 +24,7 @@ export class PilotService {
     private readonly azureServicce: AzureService,
     private readonly signzyService: SignzyService,
     private readonly configService: ConfigService,
+    private readonly rideGateway: RideGateway,
   ) {
     this.onboardingOffer = this.configService.get<string>('onboardingOffer');
   }
@@ -37,6 +38,10 @@ export class PilotService {
           language: true,
           drivingLicense: true,
         },
+      });
+
+      this.rideGateway.server.emit('test', {
+        message: 'This is test event',
       });
 
       return {

@@ -127,10 +127,6 @@ export class AuthService {
 
       const data = await this.generateTokens(userId, role);
 
-      this.rideGateway.server.emit('test', {
-        message: 'This is test event',
-      });
-
       return {
         message: 'Refresh token generated successfully',
         data,

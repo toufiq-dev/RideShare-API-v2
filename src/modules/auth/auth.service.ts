@@ -238,11 +238,6 @@ export class AuthService {
     const languageId = await this.redis.get(`languageId:${phone}`);
     const refferalCode = await this.redis.get(`referralCode:${phone}`);
 
-    // const isVerified = await this.msg91.verifyOtp(phone, otp);
-    // if (!isVerified) {
-    //   throw new UnauthorizedException('Invalid or expired OTP');
-    // }
-
     await this.redis.del(`otp:${phone}`);
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
@@ -260,6 +255,9 @@ export class AuthService {
 
     const languageId = await this.redis.get(`languageId:${phone}`);
     const refferalCode = await this.redis.get(`referralCode:${phone}`);
+
+    await this.redis.del(`languageId:${phone}`);
+    await this.redis.del(`referralCode:${phone}`);
 
     return {languageId, refferalCode};
   }

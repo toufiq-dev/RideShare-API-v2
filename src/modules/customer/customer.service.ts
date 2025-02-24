@@ -40,7 +40,7 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    const savedPlace = await this.prisma.savedPlace.create({
+    const data = await this.prisma.savedPlace.create({
       data: {
         customerId: customer.id,
         name,
@@ -52,7 +52,7 @@ export class CustomerService {
 
     return {
       message: 'Saved address created successfully',
-      data: savedPlace,
+      data,
     };
   }
 
@@ -67,19 +67,19 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    const savedPlaces = await this.prisma.savedPlace.findMany({
+    const data = await this.prisma.savedPlace.findMany({
       where: {
         customerId: customer.id,
       },
     });
 
-    if (!savedPlaces) {
+    if (!data) {
       throw new NotFoundException('Saved places not found');
     }
 
     return {
       message: 'Saved places fetched successfully',
-      data: savedPlaces,
+      data,
     };
   }
 
@@ -108,7 +108,7 @@ export class CustomerService {
     if (!savedPlace) {
       throw new NotFoundException('Saved place not found');
     } else {
-      const savedPlaceUpdate = await this.prisma.savedPlace.update({
+      const data = await this.prisma.savedPlace.update({
         where: {
           id,
         },
@@ -121,7 +121,7 @@ export class CustomerService {
       });
       return {
         message: 'Saved place updated successfully',
-        data: savedPlaceUpdate,
+        data,
       };
     }
   }

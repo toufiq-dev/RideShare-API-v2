@@ -85,7 +85,10 @@ export class AuthService {
     const { phone, otp, role } = verifyOtpDto;
 
     try {
-      const {languageId, refferalCode} = await this.validateOtpRedis(phone, otp);
+      const { languageId, refferalCode } = await this.validateOtpRedis(
+        phone,
+        otp,
+      );
 
       // const languageId = await this.validateOtp(phone, otp);
 
@@ -173,20 +176,20 @@ export class AuthService {
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
     try {
-      const pilot = await this.prisma.pilot.findUnique({
+      const data = await this.prisma.pilot.findUnique({
         where: { phone },
         include: {
           drivingLicense: true,
         },
       });
 
-      if (!pilot) {
+      if (!data) {
         throw new NotFoundException('Pilot not found');
       }
 
       return {
         message: 'Pilot found successfully',
-        data: pilot,
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -242,7 +245,7 @@ export class AuthService {
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return {languageId, refferalCode};
+    return { languageId, refferalCode };
   }
 
   private async validateOtp(phone: string, otp: string) {
@@ -259,14 +262,14 @@ export class AuthService {
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return {languageId, refferalCode};
+    return { languageId, refferalCode };
   }
 
   private async findOrCreateUser(
     phone: string,
     role: RoleEnum,
     languageId: string,
-    referralCode: string
+    referralCode: string,
   ) {
     let customer = null;
     let pilot = null;
@@ -298,7 +301,7 @@ export class AuthService {
         data: {
           role,
           isPhoneVerified: true,
-          referralCode
+          referralCode,
         },
       });
 

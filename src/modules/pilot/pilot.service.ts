@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { AzureService } from 'src/core/utils/azure.util';
@@ -17,17 +18,12 @@ import formatDate from 'src/common/functions/formatDate';
 
 @Injectable()
 export class PilotService {
-  private readonly onboardingOffer: string;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly azureServicce: AzureService,
     private readonly signzyService: SignzyService,
-    private readonly configService: ConfigService,
     private readonly rideGateway: RideGateway,
-  ) {
-    this.onboardingOffer = this.configService.get<string>('onboardingOffer');
-  }
+  ) {}
 
   async getPilot(userId: string) {
     try {
@@ -43,6 +39,10 @@ export class PilotService {
       this.rideGateway.server.emit('test', {
         message: 'This is test event',
       });
+
+      if (!data) {
+        throw new NotFoundException('Pilot not found.');
+      }
 
       return {
         message: 'Pilot fetched successfully',
@@ -390,6 +390,33 @@ export class PilotService {
 
       return {
         message: 'Pancard verified successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async onboardingOffer(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+
+      const subscription = await this.prisma.pilotSubscription.findUnique({
+        where: { name: 'Flexi Pack' },
+      });
+
+      // Create pilot wallet
+      const data = await this.prisma.pilotWallet.create({
+        data: {
+          pilotId: pilot.id,
+          balance: subscription.coins,
+          subscriptionId: subscription.id,
+        },
+      });
+
+      return {
+        message: 'Pilot onboarding coins availed successfully',
         data,
       };
     } catch (error) {

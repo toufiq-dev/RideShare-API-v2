@@ -17,12 +17,14 @@ import {
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
+import { RideGateway } from '../ride/ride.gateway';
 
 @Injectable()
 export class AuthService {
   private readonly accessTokenExpiresIn: string;
   private readonly refreshTokenExpiresIn: string;
   private readonly jwtSecret: string;
+  private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
   constructor(
     private readonly prisma: PrismaService,
@@ -30,6 +32,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly msg91: Msg91Util,
+    private readonly rideGateway: RideGateway,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -38,6 +41,9 @@ export class AuthService {
       'jwt.refreshTokenExpiresIn',
     );
     this.jwtSecret = this.configService.get<string>('jwt.secret');
+    this.redisAccessTokenTTL = this.configService.get<number>(
+      'redis.accessTokenTTL',
+    );
     this.redisRefreshTokenTTL = this.configService.get<number>(
       'redis.refreshTokenTTL',
     );
@@ -46,28 +52,32 @@ export class AuthService {
   async sendOtp(sendOtpDto: SendOtpDto) {
     const { language, phone, referralCode } = sendOtpDto;
 
-    const Language = await this.prisma.languages.findUnique({
-      where: { name: language },
-    });
-    if (!Language) {
-      throw new NotFoundException('Language not found');
+    try {
+      const Language = await this.prisma.languages.findUnique({
+        where: { name: language },
+      });
+      if (!Language) {
+        throw new NotFoundException('Language not found');
+      }
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${phone}`, otp, 300);
+      await this.redis.set(`languageId:${phone}`, Language.id, 300);
+
+      // const requestId = await this.msg91.sendOTP(phone);
+
+      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+      return {
+        message: 'OTP sent to your phone successfully',
+        data: {
+          otp,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const otp = randomInt(1000, 10000).toString();
-    await this.redis.set(`otp:${phone}`, otp, 300);
-    await this.redis.set(`languageId:${phone}`, Language.id, 300);
-
-    // const requestId = await this.msg91.sendOTP(phone);
-
-    // await this.redis.set(`requestId:${phone}`, requestId, 300);
-
-    return {
-      message: 'OTP sent to your phone successfully',
-      data: {
-        otp,
-        // requestId
-      },
-    };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
@@ -84,7 +94,7 @@ export class AuthService {
         languageId,
       );
 
-      const tokens = await this.generateTokens(user);
+      const tokens = await this.generateTokens(user.id, user.role);
 
       return {
         message: 'OTP verified successfully',
@@ -103,20 +113,28 @@ export class AuthService {
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    const { userId, version } = this.decodeRefreshToken(refreshToken);
+    try {
+      const { userId, role } = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.jwtSecret,
+      });
 
-    await this.validateStoredRefreshToken(userId, refreshToken);
+      const storedToken = await this.redis.get(`refreshToken:${userId}`);
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
 
-    const user = await this.validateUserTokenVersion(userId, version);
+      await this.redis.del(`refreshToken:${userId}`);
 
-    const updatedUser = await this.incrementUserTokenVersion(
-      userId,
-      user.authTokenVersion,
-    );
+      const data = await this.generateTokens(userId, role);
 
-    const tokens = await this.generateTokens(updatedUser);
-
-    return { data: tokens };
+      return {
+        message: 'Refresh token generated successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async completeOnboarding(
@@ -125,60 +143,79 @@ export class AuthService {
   ) {
     const { name, email } = customerOnboardingDto;
 
-    const user = await this.findUserById(userId);
+    try {
+      const user = await this.findUserById(userId);
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          name,
+          email,
+        },
+      });
+
+      return {
+        message: 'Onboarding completed successfully',
+        data: updatedUser,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        email,
-      },
-    });
-
-    return {
-      message: 'Onboarding completed successfully',
-      data: updatedUser,
-    };
   }
 
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
-    const pilot = await this.prisma.pilot.findUnique({
-      where: { phone },
-      include: {
-        drivingLicense: true,
-      },
-    });
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { phone },
+        include: {
+          drivingLicense: true,
+        },
+      });
 
-    if (!pilot) {
-      throw new NotFoundException('Pilot not found');
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found');
+      }
+
+      return {
+        message: 'Pilot found successfully',
+        data: pilot,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
-
-    return {
-      message: 'Pilot found successfully',
-      data: pilot,
-    };
   }
 
   async verifyAadhaar(req: any, userId: string) {
-    
-    const data = await this.prisma.pilot.update({
-      where: { userId },
-      data: {
-        isAadhaarVerified: true,
-        aadhaarName: req.body.aadharDetail.name,
-        aadhaarCardAddress: req.body.address
-      },
-    })
+    try {
+      console.log(req.body.aadharDetail.name);
+      console.log(req.body.aadharDetail.address);
 
-    return {
-      message: 'Aadhaar verified successfully',
-      data
-    };
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isAadhaarVerified: true,
+          aadhaarName: req.body.aadharDetail.name,
+          aadhaarCardAddress: req.body.aadharDetail.address,
+        },
+      });
+
+      console.log(data);
+
+      this.rideGateway.server.emit('aadhaarVerified', {
+        message: 'Aadhaar verified successfully',
+        data,
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   private async findUserById(userId: string) {
@@ -257,61 +294,60 @@ export class AuthService {
         data: {
           role,
           isPhoneVerified: true,
-          authTokenVersion: 1,
         },
       });
-      isNewUser = true;
-    }
 
-    if (role === RoleEnum.CUSTOMER && !customer) {
-      customer = await this.prisma.customer.create({
-        data: {
-          phone,
-          userId: user.id,
-          languageId,
-        },
-      });
-      isNewUser = true;
-    } else if (role === RoleEnum.PILOT && !pilot) {
-      pilot = await this.prisma.pilot.create({
-        data: {
-          phone,
-          userId: user.id,
-          languageId,
-        },
-      });
+      if (role === RoleEnum.CUSTOMER && !customer) {
+        customer = await this.prisma.customer.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+          },
+        });
+      } else if (role === RoleEnum.PILOT && !pilot) {
+        pilot = await this.prisma.pilot.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+          },
+        });
+      }
+
       isNewUser = true;
     }
 
     return { user, customer, pilot, isNewUser };
   }
 
-  private async generateTokens(user) {
-    const accessToken = this.jwtService.sign(
-      { userId: user.id, role: user.role, version: user.authTokenVersion },
+  private async generateTokens(userId: string, role: RoleEnum) {
+    await this.redis.del(`accessToken:${userId}`);
+    await this.redis.del(`refreshToken:${userId}`);
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId, role },
       { expiresIn: this.accessTokenExpiresIn },
     );
 
-    const refreshToken = this.jwtService.sign(
-      { userId: user.id, version: user.authTokenVersion },
+    const refreshToken = await this.jwtService.signAsync(
+      { userId, role },
       { expiresIn: this.refreshTokenExpiresIn },
     );
 
     await this.redis.set(
-      `refreshToken:${user.id}`,
+      `accessToken:${userId}`,
+      accessToken,
+      this.redisAccessTokenTTL,
+    );
+
+    await this.redis.set(
+      `refreshToken:${userId}`,
       refreshToken,
       this.redisRefreshTokenTTL,
     );
 
     return { accessToken, refreshToken };
-  }
-
-  private decodeRefreshToken(refreshToken: string) {
-    try {
-      return this.jwtService.verify(refreshToken, { secret: this.jwtSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
   }
 
   private async validateStoredRefreshToken(
@@ -329,25 +365,5 @@ export class AuthService {
     }
 
     await this.redis.del(`refreshToken:${userId}`);
-  }
-
-  private async validateUserTokenVersion(userId: string, version: number) {
-    const user = await this.findUserById(userId);
-
-    if (!user || user.authTokenVersion !== version) {
-      throw new UnauthorizedException('Token has been invalidated');
-    }
-    return user;
-  }
-
-  private async incrementUserTokenVersion(
-    userId: string,
-    currentVersion: number,
-  ) {
-    const newVersion = currentVersion + 1;
-    return await this.prisma.user.update({
-      where: { id: userId },
-      data: { authTokenVersion: newVersion },
-    });
   }
 }

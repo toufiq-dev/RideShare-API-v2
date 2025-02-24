@@ -27,6 +27,13 @@ async function main() {
     { name: 'Auto-Rickshaw' },
   ];
 
+  const subscriptionTypes = [
+    { name: 'Starter Pack', coins: 45000, price: 1390, priceBeforeDiscount: 1400 },
+    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470 },
+    { name: 'Mega Pack', coins: 450000, price: 12500, priceBeforeDiscount: 14900 },
+    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null },
+  ];
+
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({
       where: { name: language.name },

@@ -13,7 +13,7 @@ import { LanguagesModule } from './modules/languages/languages.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middleware';
 import { CustomerModule } from './modules/customer/customer.module';
-import { BookingModule } from './booking/booking.module';
+import { RideModule } from './modules/ride/ride.module';
 
 @Module({
   imports: [
@@ -34,7 +34,7 @@ import { BookingModule } from './booking/booking.module';
     LanguagesModule,
     SubscriptionsModule,
     CustomerModule,
-    BookingModule,
+    RideModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

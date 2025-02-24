@@ -8,29 +8,31 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { BookingService } from './booking.service';
+import { RideService } from './ride.service';
 import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
+import { UseGuards } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
-  namespace: 'booking',
+  namespace: '/socket',
 })
-// @UseGuards(WsJwtAuthGuard)
-export class BookingGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+@UseGuards(WsJwtAuthGuard)
+export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(private readonly rideService: RideService) {}
+
+  // Store connected users
+  private connectedUsers: Map<string, Socket> = new Map();
 
   async handleConnection(client: Socket) {
     try {
       console.log('Connection attempt from:', client.handshake.address);
-      console.log('Auth data:', client.handshake.auth);
+      console.log('Auth data:', client.handshake.headers);
 
       // Temporarily disable auth check for testing
       // const user = client.data.user;
@@ -43,7 +45,6 @@ export class BookingGateway
       console.log('Client connected successfully:', client.id);
     } catch (error) {
       console.error('Connection error:', error);
-      client.disconnect();
     }
   }
 
@@ -51,45 +52,47 @@ export class BookingGateway
     console.log('Client disconnected:', client.id);
   }
 
-  @SubscribeMessage('createBooking')
-  async create(
+  @SubscribeMessage('requestRide')
+  async requestRide(
     @ConnectedSocket() client: Socket,
     @MessageBody() createBookingDto: CreateBookingDto,
   ) {
-    console.log(createBookingDto);
-    const booking = await this.bookingService.create(
-      createBookingDto,
-      client.data.user,
-    );
+    try {
+      const booking = await this.rideService.handleRequestRide(
+        createBookingDto,
+        client.data.user,
+      );
 
-    // Join booking room
-    client.join(`booking:${booking.id}`);
-
-    // Notify available pilots
-    this.server.to('available_pilots').emit('newBookingRequest', booking);
-
-    return booking;
+      // Join booking room
+      client.join(`booking:${booking.id}`);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  @SubscribeMessage('acceptBooking')
-  async acceptBooking(
+  @SubscribeMessage('acceptRide')
+  async acceptRide(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { bookingId: string },
   ) {
-    const booking = await this.bookingService.acceptBooking(
-      data.bookingId,
-      client.data.user,
-    );
+    try {
+      const booking = await this.rideService.handleAcceptRide(
+        data.bookingId,
+        client.data.user,
+      );
 
-    // Join booking room
-    client.join(`booking:${booking.id}`);
+      // Join booking room
+      client.join(`booking:${booking.id}`);
 
-    // Notify customer
-    this.server
-      .to(`user:${booking.customerId}`)
-      .emit('bookingAccepted', booking);
+      // Notify customer
+      this.server
+        .to(`user:${booking.customerId}`)
+        .emit('rideAccepted', booking);
 
-    return booking;
+      return booking;
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   // @SubscribeMessage('updateBooking')

@@ -8,27 +8,26 @@ datasource db {
 }
 
 model User {
-  id               String          @id @default(uuid())
-  email            String?         @unique
-  isEmailVerified  Boolean?        @default(false)
-  isPhoneVerified  Boolean         @default(false)
-  name             String?
-  referralCode     String?
-  role             UserRole
-  status           UserStatus      @default(ACTIVE)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  lastLogin        DateTime?
-  metadata         Json?
-  authTokenVersion Int
-  admin            Admin?
-  customer         Customer?
-  deviceTokens     DeviceToken[]
-  pilot            Pilot?
-  support          Support?
-  supportTickets   SupportTicket[]
-  transaction      Transaction[]
-  session          UserSession[]
+  id              String          @id @default(uuid())
+  email           String?         @unique
+  isEmailVerified Boolean?        @default(false)
+  isPhoneVerified Boolean         @default(false)
+  name            String?
+  referralCode    String?
+  role            UserRole
+  status          UserStatus      @default(ACTIVE)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  lastLogin       DateTime?
+  metadata        Json?
+  admin           Admin?
+  customer        Customer?
+  deviceTokens    DeviceToken[]
+  pilot           Pilot?
+  support         Support?
+  supportTickets  SupportTicket[]
+  transaction     Transaction[]
+  session         UserSession[]
 }
 
 model UserSession {
@@ -107,7 +106,6 @@ model Pilot {
   isAvailable        Boolean         @default(false)
   totalTrips         Int             @default(0)
   averageRating      Float           @default(0)
-  isAadharVerified   Boolean         @default(false)
   languageId         String
   phone              String          @unique
   pilotProgramId     String?
@@ -223,8 +221,8 @@ model Translation {
 model PilotWallet {
   id             String        @id @default(uuid())
   pilotId        String        @unique
-  balance        Int
-  minusLimit     Int           @default(-100)
+  balance        Decimal       @db.Decimal(10, 2)
+  minusLimit     Decimal       @default(-100.00) @db.Decimal(10, 2)
   lastRecharge   DateTime?
   subscriptionId String
   pilot          Pilot         @relation(fields: [pilotId], references: [id])
@@ -236,7 +234,7 @@ model Transaction {
   userId         String
   walletId       String?
   type           TransactionType
-  amount         Decimal
+  amount         Decimal                  @db.Decimal(10, 2)
   bookingId      String?
   metadata       Json?
   createdAt      DateTime                 @default(now())
@@ -248,16 +246,18 @@ model Transaction {
 }
 
 model PilotSubscription {
-  id           String                    @id @default(uuid())
-  name         String                    @unique
-  coins        Int
-  transactions SubscriptionTransaction[]
+  id                  String                    @id @default(uuid())
+  name                String                    @unique
+  coins               Int
+  price               Decimal                   @db.Decimal(10, 2)
+  priceBeforeDiscount Decimal?                  @db.Decimal(10, 2)
+  transactions        SubscriptionTransaction[]
 }
 
 model PilotEarning {
   id          String   @id @default(uuid())
   pilotId     String
-  amount      Decimal
+  amount      Decimal  @db.Decimal(10, 2)
   date        DateTime
   description String?
   createdAt   DateTime @default(now())
@@ -268,7 +268,7 @@ model PilotEarning {
 model SubscriptionTransaction {
   id             String            @id @default(uuid())
   subscriptionId String
-  amount         Decimal
+  amount         Decimal           @db.Decimal(10, 2)
   status         PaymentStatus
   paymentMethod  String
   startDate      DateTime

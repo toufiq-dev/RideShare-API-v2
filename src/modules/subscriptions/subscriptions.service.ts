@@ -21,12 +21,15 @@ export class SubscriptionsService {
   async createSubscriptionType(
     createSubscriptionTypeDto: CreateSubscriptionTypeDto,
   ) {
-    const { name, coins } = createSubscriptionTypeDto;
+    const { name, coins, price, priceBeforeDiscount } =
+      createSubscriptionTypeDto;
 
     const data = await this.prisma.pilotSubscription.create({
       data: {
         name,
         coins,
+        price,
+        priceBeforeDiscount,
       },
     });
 
@@ -40,7 +43,8 @@ export class SubscriptionsService {
     id: string,
     updateSubscriptionTypeDto: UpdateSubscriptionTypeDto,
   ) {
-    const { name, coins } = updateSubscriptionTypeDto;
+    const { name, coins, price, priceBeforeDiscount } =
+      updateSubscriptionTypeDto;
 
     const data = await this.prisma.pilotSubscription.update({
       where: {
@@ -49,6 +53,8 @@ export class SubscriptionsService {
       data: {
         name,
         coins,
+        price,
+        priceBeforeDiscount,
       },
     });
 

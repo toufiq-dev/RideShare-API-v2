@@ -11,6 +11,16 @@ export class CreateSubscriptionTypeDto {
   @IsNotEmpty()
   @IsNumber()
   coins: number;
+
+  @ApiProperty({ description: 'Price of the subscription' })
+  @IsNumber()
+  @IsNotEmpty()
+  price: string;
+
+  @ApiProperty({ description: 'Price of the subscription brfore discount' })
+  @IsNumber()
+  @IsOptional()
+  priceBeforeDiscount?: string;
 }
 
 export class UpdateSubscriptionTypeDto {
@@ -23,4 +33,14 @@ export class UpdateSubscriptionTypeDto {
   @IsOptional()
   @IsNumber()
   coins: number;
+
+  @ApiProperty({ description: 'Price of the subscription' })
+  @IsNumber()
+  @IsNotEmpty()
+  price: string;
+
+  @ApiProperty({ description: 'Price of the subscription brfore discount' })
+  @IsNumber()
+  @IsOptional()
+  priceBeforeDiscount?: string;
 }

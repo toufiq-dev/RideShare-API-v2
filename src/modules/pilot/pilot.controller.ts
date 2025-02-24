@@ -122,11 +122,4 @@ export class PilotController {
   ) {
     return await this.pilotService.processManualPancard(pancardDto, userId);
   }
-
-  @Get('onboarding-offer')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get Faircoins for onborading' })
-  async getLiveSelfie(@CurrentUser('userId') userId: string) {
-    return await this.pilotService.pilotonboardingOffer(userId);
-  }
 }

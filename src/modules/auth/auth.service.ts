@@ -127,6 +127,10 @@ export class AuthService {
 
       const data = await this.generateTokens(userId, role);
 
+      this.rideGateway.server.emit('test', {
+        message: 'This is test event',
+      });
+
       return {
         message: 'Refresh token generated successfully',
         data,
@@ -195,7 +199,7 @@ export class AuthService {
   async verifyAadhaar(req: any, userId: string) {
     try {
       console.log(req.body.aadharDetail.name);
-      console.log(req.body.aadharDetail.address)
+      console.log(req.body.aadharDetail.address);
 
       const data = await this.prisma.pilot.update({
         where: { userId },

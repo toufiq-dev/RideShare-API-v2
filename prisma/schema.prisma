@@ -103,7 +103,7 @@ model Support {
 model Pilot {
   id                 String          @id @default(uuid())
   userId             String          @unique
-  isAvailable        Boolean         @default(false)
+  isAvailable        PilotStatus     @default(OFFLINE)
   totalTrips         Int             @default(0)
   averageRating      Float           @default(0)
   languageId         String
@@ -133,7 +133,9 @@ model Pilot {
   wallet             PilotWallet?
   vehicles           Vehicle[]
   videoProgress      VideoProgress?
+  // @@index([currentLocation], type: Gist)
 
+  @@index([phone])
   @@index([isAvailable])
 }
 
@@ -235,6 +237,8 @@ model Transaction {
   walletId       String?
   type           TransactionType
   amount         Decimal                  @db.Decimal(10, 2)
+  balanceBefore  Decimal?                 @db.Decimal(10, 2)
+  balanceAfter   Decimal?                 @db.Decimal(10, 2)
   bookingId      String?
   metadata       Json?
   createdAt      DateTime                 @default(now())
@@ -291,12 +295,14 @@ model Booking {
   tripStart            DateTime?
   tripEnd              DateTime?
   status               BookingStatus
-  estimatedFare        Float?
-  fare                 Float?
-  surgeMultiplier      Float?              @default(1.0)
-  discount             Float?              @default(0.0)
+  estimatedFare        Decimal?            @db.Decimal(10, 2)
+  fare                 Decimal?            @db.Decimal(10, 2)
+  surgeMultiplier      Decimal?            @default(1.0) @db.Decimal(10, 2)
+  discount             Decimal?            @default(0.0) @db.Decimal(10, 2)
   duration             Int?
   notes                String?
+  acceptedAt           DateTime?
+  arrivedAt            DateTime?
   scheduledFor         DateTime?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -433,16 +439,10 @@ enum UserStatus {
   DELETED
 }
 
-enum DocumentType {
-  DRIVING_LICENSE
-  VEHICLE_REGISTRATION
-  INSURANCE
-  AADHAR_CARD
-  PAN_CARD
-  PROFILE_PHOTO
-  PUCC
-  FITNESS_CERTIFICATE
-  OTHER
+enum PilotStatus {
+  AVAILABLE
+  ON_TRIP
+  OFFLINE
 }
 
 enum BookingStatus {

@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { CreateSavedPlaceDto, UpdateSavedPlaceDto } from './dto/customer.dto';
+import { RideGateway } from '../ride/ride.gateway';
 
 @Injectable()
 export class CustomerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rideGateway: RideGateway,
+  ) {}
 
   async getCustomer(userId: string) {
     const customer = await this.prisma.customer.findUnique({
@@ -76,6 +80,11 @@ export class CustomerService {
     if (!data) {
       throw new NotFoundException('Saved places not found');
     }
+
+    this.rideGateway.server.emit('savedPlaces', {
+      message: 'Saved places fetched successfully',
+      data,
+    });
 
     return {
       message: 'Saved places fetched successfully',

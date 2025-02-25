@@ -133,10 +133,10 @@ model Pilot {
   wallet             PilotWallet?
   vehicles           Vehicle[]
   videoProgress      VideoProgress?
-  // @@index([currentLocation], type: Gist)
 
   @@index([phone])
   @@index([isAvailable])
+  @@index([currentLocation])
 }
 
 model DrivingLicense {
@@ -307,8 +307,8 @@ model Booking {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   cancellationReasonId String?
-  pickupLocation       Json
-  dropLocation         Json
+  pickupLocation       String              
+  dropLocation         String
   cancellationReason   CancellationReason? @relation(fields: [cancellationReasonId], references: [id])
   customer             Customer            @relation(fields: [customerId], references: [id])
   pilot                Pilot?              @relation(fields: [pilotId], references: [id])

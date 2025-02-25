@@ -22,6 +22,10 @@ export class CustomerService {
       },
     });
 
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
     return {
       message: 'Customer fetched successfully',
       data: customer,

@@ -12,6 +12,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum RoleEnum {
   CUSTOMER = 'CUSTOMER',
   PILOT = 'PILOT',
+  ADMIN = 'ADMIN',
+  SUPPORT = 'SUPPORT',
 }
 
 export class SendOtpDto {

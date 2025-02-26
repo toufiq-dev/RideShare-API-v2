@@ -44,3 +44,20 @@ export class UpdateSubscriptionTypeDto {
   @IsOptional()
   priceBeforeDiscount?: string;
 }
+
+export class CreateSupportStuffDto {
+  @ApiProperty({ description: 'Name of the support stuff' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ description: 'Email of the support stuff' })
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Phone number of the support stuff' })
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+}

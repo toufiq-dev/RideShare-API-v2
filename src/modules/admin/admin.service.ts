@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
   CreateSubscriptionTypeDto,
+  CreateSupportStuffDto,
   UpdateSubscriptionTypeDto,
 } from './dto/admin.dto';
+import { RoleEnum } from '../auth/dto/auth.dto';
+import { randomInt } from 'crypto';
 
 @Injectable()
 export class AdminService {
@@ -62,5 +65,41 @@ export class AdminService {
       message: 'Subscription type updated successfully',
       data,
     };
+  }
+
+  async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
+    const { name, email, phone } = createSupportStuffDto;
+
+    const user = await this.prisma.user.create({
+      data: {
+        name,
+        email,
+        role: RoleEnum.SUPPORT,
+    },
+    });
+
+    const data = await this.prisma.support.create({
+      data: {
+        name,
+        email,
+        phone,
+        referralCode: randomInt(10000, 1000000).toString(),
+        userId: user.id,
+      },
+    });
+
+    return {
+      message: 'Support stuff created successfully',
+      data,
+    };
+  }
+
+  async getSupportStuffs() {
+    const data = await this.prisma.support.findMany();  
+
+    return {
+      message: 'Support stuffs fetched successfully',
+      data,   
+    }
   }
 }

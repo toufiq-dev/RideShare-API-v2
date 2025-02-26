@@ -20,15 +20,9 @@ export class RideService {
       throw new UnauthorizedException('User is not a customer');
     }
 
-    const pickupLocation = {
-      latitude: createBookingDto.pickupLocation.latitude,
-      longitude: createBookingDto.pickupLocation.longitude,
-    };
+    const pickupLocation = `point({latitude: ${createBookingDto.pickupLocation.latitude}, longitude: ${createBookingDto.pickupLocation.longitude}})`;
 
-    const dropLocation = {
-      latitude: createBookingDto.dropLocation.latitude,
-      longitude: createBookingDto.dropLocation.longitude,
-    };
+    const dropLocation = `point({latitude: ${createBookingDto.dropLocation.latitude}, longitude: ${createBookingDto.dropLocation.longitude}})`;
 
     return this.prisma.booking.create({
       data: {

@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
+  CreateSupportStuffDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
@@ -44,4 +45,19 @@ export class AdminController {
       updateSubscriptionTypeDto,
     );
   }
+
+  @Post('support')
+  @ApiOperation({ summary: 'Create Support Member' })
+  @ApiBody({
+    type: CreateSupportStuffDto,
+  })
+  async createSupportStuff(@Body() createSupportStuffDto: CreateSupportStuffDto) {
+    return await this.adminService.createSupportStuff(createSupportStuffDto);
+  }
+
+  @Get('support')
+  @ApiOperation({ summary: 'Get all Support Members' })
+  async getSupportStuffs() {
+    return await this.adminService.getSupportStuffs();
+  } 
 }

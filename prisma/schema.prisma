@@ -9,11 +9,8 @@ datasource db {
 
 model User {
   id              String          @id @default(uuid())
-  email           String?         @unique
   isEmailVerified Boolean?        @default(false)
   isPhoneVerified Boolean         @default(false)
-  name            String?
-  referralCode    String?
   role            UserRole
   status          UserStatus      @default(ACTIVE)
   createdAt       DateTime        @default(now())
@@ -64,12 +61,24 @@ model Admin {
   user     User   @relation(fields: [userId], references: [id])
 }
 
+model Support {
+  id           String @id @default(uuid())
+  userId       String @unique
+  email        String @unique
+  name         String
+  phone        String
+  referralCode String @unique
+  user         User   @relation(fields: [userId], references: [id])
+}
+
 model Customer {
   id          String           @id @default(uuid())
-  userId      String           @unique
+  name        String?
+  email       String?          @unique
   avatar      String?
   languageId  String
   phone       String           @unique
+  userId      String           @unique
   bookings    Booking[]
   language    Languages        @relation(fields: [languageId], references: [id])
   user        User             @relation(fields: [userId], references: [id])
@@ -89,15 +98,6 @@ model SavedPlace {
   customer   Customer       @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
-}
-
-model Support {
-  id           String @id @default(uuid())
-  userId       String @unique
-  email        String @unique
-  password     String
-  referralCode String
-  user         User   @relation(fields: [userId], references: [id])
 }
 
 model Pilot {
@@ -307,7 +307,7 @@ model Booking {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   cancellationReasonId String?
-  pickupLocation       String              
+  pickupLocation       String
   dropLocation         String
   cancellationReason   CancellationReason? @relation(fields: [cancellationReasonId], references: [id])
   customer             Customer            @relation(fields: [customerId], references: [id])

@@ -72,8 +72,6 @@ export class AdminService {
 
     const user = await this.prisma.user.create({
       data: {
-        name,
-        email,
         role: RoleEnum.SUPPORT,
     },
     });

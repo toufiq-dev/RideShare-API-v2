@@ -103,6 +103,7 @@ model SavedPlace {
 model Pilot {
   id                 String          @id @default(uuid())
   userId             String          @unique
+  referralCode       String          @unique
   isAvailable        PilotStatus     @default(OFFLINE)
   totalTrips         Int             @default(0)
   averageRating      Float           @default(0)

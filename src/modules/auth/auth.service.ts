@@ -155,7 +155,7 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
 
-      const updatedUser = await this.prisma.user.update({
+      const updatedUser = await this.prisma.customer.update({
         where: { id: userId },
         data: {
           name,
@@ -301,7 +301,6 @@ export class AuthService {
         data: {
           role,
           isPhoneVerified: true,
-          referralCode,
         },
       });
 
@@ -319,6 +318,7 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
+            referralCode,
           },
         });
       }

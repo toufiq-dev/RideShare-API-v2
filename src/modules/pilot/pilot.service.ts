@@ -220,7 +220,7 @@ export class PilotService {
       // Extract text using Azure OCR
       const lines = await this.getOcrResult(buffer);
 
-      const registrationNumber = this.extractRegistrationNumber(lines);
+      const registrationNumber = this.parseRegistrationNumber(lines);
 
       if (!registrationNumber) {
         throw new BadRequestException(
@@ -327,7 +327,7 @@ export class PilotService {
       // Extract text using Azure OCR
       const lines = await this.getOcrResult(buffer);
 
-      const panNumber = this.extractPancardData(lines);
+      const panNumber = this.parsePancardData(lines);
 
       if (!panNumber) {
         throw new BadRequestException(
@@ -413,9 +413,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (!pilot.isPanCardVerified) {
-        throw new BadRequestException('Driver does not have pancard verfied.');
-      }
+      // if (!pilot.isPanCardVerified) {
+      //   throw new BadRequestException('Driver does not have pancard verfied.');
+      // }
 
       if (!file) {
         throw new BadRequestException('No file provided.');
@@ -423,11 +423,9 @@ export class PilotService {
 
       const buffer = file.buffer;
 
-      // Extract text using Azure OCR
       const lines = await this.getOcrResult(buffer);
 
-      const aadhaarNumber = this.extractAadhaarData(lines);
-
+      const aadhaarNumber = this.parseAadhaarData(lines);
       if (!aadhaarNumber) {
         throw new BadRequestException(
           'Could not extract aadhaar number from the image',
@@ -544,9 +542,7 @@ export class PilotService {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 
     if (!ocrResult?.analyzeResult?.readResults?.[0]?.lines) {
-      throw new BadRequestException(
-        'Unable to process the image. Please provide the Driving License number and Date of Birth manually.',
-      );
+      throw new BadRequestException('Unable to process the image.');
     }
 
     return ocrResult.analyzeResult.readResults[0].lines;
@@ -623,7 +619,7 @@ export class PilotService {
     return drivingLicense;
   }
 
-  private extractRegistrationNumber(lines: any[]): string | null {
+  private parseRegistrationNumber(lines: any[]): string | null {
     for (const line of lines) {
       const text = line.text.trim();
 
@@ -648,7 +644,7 @@ export class PilotService {
   //   return false;
   // }
 
-  private extractPancardData(lines: any[]) {
+  private parsePancardData(lines: any[]) {
     const panIdentifiers = [
       'Permanent Account Number Card',
       'Permanent Account Number',
@@ -670,11 +666,27 @@ export class PilotService {
     }
   }
 
-  private extractAadhaarData(lines: any[]) {
-    const text = '';
+  private parseAadhaarData(lines: any[]): string | null {
+    console.log(lines);
+    for (const line of lines) {
+      const text = line.text.trim();
 
-    return text;
+      const aadhaarRegex = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g;
+      const match = text.match(aadhaarRegex);
+
+      // Add a check to see if the match is null
+      if (match && match[0]) {
+        const cleanedNumber = match[0].replace(/[\s-]/g, '');
+
+        if (cleanedNumber.length === 12) {
+          return cleanedNumber;
+        }
+      }
+    }
+
+    return null;
   }
+
   private async updatePilotVehicleData(
     verificationResponse: VerificationResponseVehicle,
     pilotId: string,

@@ -56,7 +56,7 @@ export class AzureService {
 
   async extractTextFromImage(imageBuffer: Buffer): Promise<any> {
     try {
-      const url = `${this.endpoint}/vision/v3.2/read/analyze`;
+      const url = `${this.endpoint}vision/v3.2/read/analyze`;
 
       const response = await axios.post(url, imageBuffer, {
         headers: {

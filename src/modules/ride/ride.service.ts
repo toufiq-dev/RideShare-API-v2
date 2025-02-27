@@ -31,8 +31,6 @@ export class RideService {
         dropLocation,
         status: BookingStatus.PENDING,
         bookingCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        riderName: createBookingDto.riderName,
-        riderPhone: createBookingDto.riderPhone,
         scheduledFor: createBookingDto.scheduledFor,
       },
       include: {

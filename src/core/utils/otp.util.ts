@@ -3,7 +3,7 @@ import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class Msg91Util {
+export class OTPService {
   private readonly baseUrl = 'https://control.msg91.com/api/v5';
   private readonly authKey: string;
   private readonly templateId: string;

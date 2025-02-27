@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
-import { Msg91Util } from 'src/core/utils/msg91.util';
+import { OTPService } from 'src/core/utils/otp.util';
 import { JwtService } from '@nestjs/jwt';
 import {
   SendOtpDto,
@@ -31,7 +31,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly msg91: Msg91Util,
+    private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
@@ -57,7 +57,7 @@ export class AuthService {
         where: { name: language },
       });
       if (!Language) {
-        throw new NotFoundException('Language not found');
+        throw new NotFoundException('Language not found.');
       }
 
       const otp = randomInt(1000, 10000).toString();
@@ -70,7 +70,7 @@ export class AuthService {
       // await this.redis.set(`requestId:${phone}`, requestId, 300);
 
       return {
-        message: 'OTP sent to your phone successfully',
+        message: 'OTP sent to your phone successfully.',
         data: {
           otp,
         },
@@ -102,7 +102,7 @@ export class AuthService {
       const tokens = await this.generateTokens(user.id, user.role);
 
       return {
-        message: 'OTP verified successfully',
+        message: 'OTP verified successfully.',
         data: {
           ...tokens,
           isAlreadyRegistered: !isNewUser,
@@ -125,7 +125,7 @@ export class AuthService {
 
       const storedToken = await this.redis.get(`refreshToken:${userId}`);
       if (!storedToken || storedToken !== refreshToken) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException('Invalid or expired refresh token.');
       }
 
       await this.redis.del(`refreshToken:${userId}`);
@@ -133,7 +133,7 @@ export class AuthService {
       const data = await this.generateTokens(userId, role);
 
       return {
-        message: 'Refresh token generated successfully',
+        message: 'Refresh token generated successfully.',
         data,
       };
     } catch (error) {
@@ -152,7 +152,7 @@ export class AuthService {
       const user = await this.findUserById(userId);
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('User not found.');
       }
 
       const updatedUser = await this.prisma.customer.update({
@@ -164,7 +164,7 @@ export class AuthService {
       });
 
       return {
-        message: 'Onboarding completed successfully',
+        message: 'Onboarding completed successfully.',
         data: updatedUser,
       };
     } catch (error) {
@@ -184,11 +184,11 @@ export class AuthService {
       });
 
       if (!data) {
-        throw new NotFoundException('Pilot not found');
+        throw new NotFoundException('Pilot not found.');
       }
 
       return {
-        message: 'Pilot found successfully',
+        message: 'Pilot found successfully.',
         data,
       };
     } catch (error) {
@@ -214,7 +214,7 @@ export class AuthService {
       console.log(data);
 
       this.rideGateway.server.emit('aadhaarVerified', {
-        message: 'Aadhaar verified successfully',
+        message: 'Aadhaar verified successfully.',
         data,
       });
     } catch (error) {
@@ -226,7 +226,7 @@ export class AuthService {
   private async findUserById(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('User not found.');
     }
     return user;
   }
@@ -235,7 +235,7 @@ export class AuthService {
     const storedOtp = await this.redis.get(`otp:${phone}`);
 
     if (!storedOtp || storedOtp !== otp) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+      throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
@@ -251,9 +251,9 @@ export class AuthService {
   private async validateOtp(phone: string, otp: string) {
     const request_id = await this.redis.get(`requestId:${phone}`);
 
-    const isVerified = await this.msg91.verifyOTP(phone, otp, request_id);
+    const isVerified = await this.otpService.verifyOTP(phone, otp, request_id);
     if (!isVerified) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+      throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);

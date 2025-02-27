@@ -3,7 +3,7 @@ import { PilotController } from './pilot.controller';
 import { PilotService } from './pilot.service';
 import { AzureService } from 'src/core/utils/azure.util';
 import { ConfigService } from '@nestjs/config';
-import { SignzyService } from 'src/core/utils/signzy.util';
+import { VerificationService } from 'src/core/utils/verification.util';
 import { RideModule } from '../ride/ride.module';
 
 @Module({
@@ -14,7 +14,7 @@ import { RideModule } from '../ride/ride.module';
     AzureService,
     ConfigService,
     AzureService,
-    SignzyService,
+    VerificationService,
   ],
 })
 export class PilotModule {}

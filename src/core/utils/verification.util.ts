@@ -6,7 +6,7 @@ import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.
 import * as moment from 'moment-timezone';
 
 @Injectable()
-export class SignzyService {
+export class VerificationService {
   private readonly productionAccessToken: string;
   private readonly preproductionAccessToken: string;
   private readonly drivingLicenseEndPoint: string;
@@ -19,6 +19,10 @@ export class SignzyService {
   private readonly rcVerifyBasic: string;
   private readonly getAadhaar: string;
   private readonly getAadhaarPreproduction: string;
+  private readonly sendOtpEndPoint: string;
+  private readonly verifyAadhaarEndPoint: string;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
 
   constructor(private readonly configService: ConfigService) {
     this.productionAccessToken = this.configService.get<string>(
@@ -50,6 +54,14 @@ export class SignzyService {
     this.getAadhaarPreproduction = this.configService.get<string>(
       'signzy.getAadhaarPreproduction',
     );
+    this.sendOtpEndPoint = this.configService.get<string>(
+      'cashfree.sendOtpEndPoint',
+    );
+    this.verifyAadhaarEndPoint = this.configService.get<string>(
+      'cashfree.verifyAadhaarEndPoint',
+    );
+    this.clientId = this.configService.get<string>('cashfree.clientId');
+    this.clientSecret = this.configService.get<string>('cashfree.clientSecret');
   }
 
   async verifyDrivingLicense(dlNumber: string, dob: string) {
@@ -192,25 +204,71 @@ export class SignzyService {
     }
   }
 
-  async verifyAadhaar(requestId: string) {
+  // Signzy
+  // async verifyAadhaar(requestId: string) {
+  //   try {
+  //     const response = await axios.post(
+  //       this.getAadhaarPreproduction,
+  //       requestId,
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: this.preproductionAccessToken,
+  //         },
+  //       },
+  //     );
+
+  //     console.log(response.data.result);
+
+  //     return response.data.result;
+  //   } catch (error) {
+  //     throw new BadRequestException(
+  //       'Failed to verify aadhaar with Signzy API.',
+  //     );
+  //   }
+  // }
+
+  async sendOtpToverifyAadhaar(aadhaar_number: string) {
+    const data = {
+      aadhaar_number,
+    };
+
     try {
-      const response = await axios.post(
-        this.getAadhaarPreproduction,
-        requestId,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: this.preproductionAccessToken,
-          },
+      const response = await axios.post(this.sendOtpEndPoint, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-client-id': this.clientId,
+          'x-client-secret': this.clientSecret,
         },
-      );
+      });
 
-      console.log(response.data.result);
-
-      return response.data.result;
+      return response.data;
     } catch (error) {
       throw new BadRequestException(
-        'Failed to verify aadhaar with Signzy API.',
+        'Failed to verify aadhaar with Cashfree API.',
+      );
+    }
+  }
+
+  async verifyAadhaar(ref_id: string, otp: string) {
+    const data = {
+      ref_id,
+      otp,
+    };
+
+    try {
+      const response = await axios.post(this.verifyAadhaarEndPoint, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-client-id': this.clientId,
+          'x-client-secret': this.clientSecret,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to verify aadhaar with Cashfree API.',
       );
     }
   }

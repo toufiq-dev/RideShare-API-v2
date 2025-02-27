@@ -13,7 +13,7 @@ export class SubscriptionsService {
     const data = await this.prisma.pilotSubscription.findMany();
 
     return {
-      message: 'Subscription types fetched successfully',
+      message: 'Subscription types fetched successfully.',
       data,
     };
   }
@@ -34,7 +34,7 @@ export class SubscriptionsService {
     });
 
     return {
-      message: 'Subscription type created successfully',
+      message: 'Subscription type created successfully.',
       data,
     };
   }
@@ -59,7 +59,7 @@ export class SubscriptionsService {
     });
 
     return {
-      message: 'Subscription type updated successfully',
+      message: 'Subscription type updated successfully.',
       data,
     };
   }
@@ -82,7 +82,7 @@ export class SubscriptionsService {
       });
 
       return {
-        message: 'Pilot onboarding coins availed successfully',
+        message: 'Pilot onboarding coins availed successfully.',
         data,
       };
     } catch (error) {

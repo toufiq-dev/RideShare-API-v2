@@ -28,7 +28,7 @@ export class AdminService {
     });
 
     return {
-      message: 'Subscription type created successfully',
+      message: 'Subscription type created successfully.',
       data,
     };
   }
@@ -37,7 +37,7 @@ export class AdminService {
     const data = await this.prisma.pilotSubscription.findMany();
 
     return {
-      message: 'Subscription types fetched successfully',
+      message: 'Subscription types fetched successfully.',
       data,
     };
   }
@@ -62,7 +62,7 @@ export class AdminService {
     });
 
     return {
-      message: 'Subscription type updated successfully',
+      message: 'Subscription type updated successfully.',
       data,
     };
   }
@@ -73,7 +73,7 @@ export class AdminService {
     const user = await this.prisma.user.create({
       data: {
         role: RoleEnum.SUPPORT,
-    },
+      },
     });
 
     const data = await this.prisma.support.create({
@@ -87,17 +87,17 @@ export class AdminService {
     });
 
     return {
-      message: 'Support stuff created successfully',
+      message: 'Support stuff created successfully.',
       data,
     };
   }
 
   async getSupportStuffs() {
-    const data = await this.prisma.support.findMany();  
+    const data = await this.prisma.support.findMany();
 
     return {
-      message: 'Support stuffs fetched successfully',
-      data,   
-    }
+      message: 'Support stuffs fetched successfully.',
+      data,
+    };
   }
 }

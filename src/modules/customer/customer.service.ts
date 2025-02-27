@@ -23,11 +23,11 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Customer not found.');
     }
 
     return {
-      message: 'Customer fetched successfully',
+      message: 'Customer fetched successfully.',
       data: customer,
     };
   }
@@ -45,7 +45,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Customer not found.');
     }
 
     const data = await this.prisma.savedPlace.create({
@@ -59,7 +59,7 @@ export class CustomerService {
     });
 
     return {
-      message: 'Saved address created successfully',
+      message: 'Saved address created successfully.',
       data,
     };
   }
@@ -72,7 +72,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Customer not found.');
     }
 
     const data = await this.prisma.savedPlace.findMany({
@@ -82,16 +82,16 @@ export class CustomerService {
     });
 
     if (!data) {
-      throw new NotFoundException('Saved places not found');
+      throw new NotFoundException('Saved places not found.');
     }
 
     this.rideGateway.server.emit('savedPlaces', {
-      message: 'Saved places fetched successfully',
+      message: 'Saved places fetched successfully.',
       data,
     });
 
     return {
-      message: 'Saved places fetched successfully',
+      message: 'Saved places fetched successfully.',
       data,
     };
   }
@@ -109,7 +109,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Customer not found.');
     }
 
     const savedPlace = await this.prisma.savedPlace.findUnique({
@@ -119,7 +119,7 @@ export class CustomerService {
     });
 
     if (!savedPlace) {
-      throw new NotFoundException('Saved place not found');
+      throw new NotFoundException('Saved place not found.');
     } else {
       const data = await this.prisma.savedPlace.update({
         where: {
@@ -133,7 +133,7 @@ export class CustomerService {
         },
       });
       return {
-        message: 'Saved place updated successfully',
+        message: 'Saved place updated successfully.',
         data,
       };
     }
@@ -147,7 +147,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Customer not found.');
     }
 
     const savedPlace = await this.prisma.savedPlace.findUnique({
@@ -157,7 +157,7 @@ export class CustomerService {
     });
 
     if (!savedPlace) {
-      throw new NotFoundException('Saved place not found');
+      throw new NotFoundException('Saved place not found.');
     }
 
     await this.prisma.savedPlace.delete({
@@ -167,7 +167,7 @@ export class CustomerService {
     });
 
     return {
-      message: 'Saved place deleted successfully',
+      message: 'Saved place deleted successfully.',
     };
   }
 
@@ -175,7 +175,7 @@ export class CustomerService {
     const data = await this.prisma.vehicleType.findMany();
 
     return {
-      message: 'Vehicle categories fetched successfully',
+      message: 'Vehicle categories fetched successfully.',
       data,
     };
   }

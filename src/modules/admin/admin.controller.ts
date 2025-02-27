@@ -51,7 +51,9 @@ export class AdminController {
   @ApiBody({
     type: CreateSupportStuffDto,
   })
-  async createSupportStuff(@Body() createSupportStuffDto: CreateSupportStuffDto) {
+  async createSupportStuff(
+    @Body() createSupportStuffDto: CreateSupportStuffDto,
+  ) {
     return await this.adminService.createSupportStuff(createSupportStuffDto);
   }
 
@@ -59,5 +61,5 @@ export class AdminController {
   @ApiOperation({ summary: 'Get all Support Members' })
   async getSupportStuffs() {
     return await this.adminService.getSupportStuffs();
-  } 
+  }
 }

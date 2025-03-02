@@ -94,7 +94,7 @@ model SavedPlace {
   name       String?
   address    String
   type       SavedPlaceType @default(OTHERS)
-  location   String
+  location   Json?
   customer   Customer       @relation(fields: [customerId], references: [id])
 
   @@index([customerId])

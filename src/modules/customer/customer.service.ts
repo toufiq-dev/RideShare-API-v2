@@ -54,7 +54,7 @@ export class CustomerService {
         name,
         address,
         type,
-        // location: location ? instanceToPlain(location) : null,
+        location: location ? instanceToPlain(location) : null,
       },
     });
 

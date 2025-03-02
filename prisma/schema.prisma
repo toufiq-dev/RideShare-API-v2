@@ -94,7 +94,7 @@ model SavedPlace {
   name       String?
   address    String
   type       SavedPlaceType @default(OTHERS)
-  location   Json?
+  location   String
   customer   Customer       @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
@@ -308,8 +308,8 @@ model Booking {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   cancellationReasonId String?
-  pickupLocation       String
-  dropLocation         String
+  pickupLocation       Json
+  dropLocation         Json
   cancellationReason   CancellationReason? @relation(fields: [cancellationReasonId], references: [id])
   customer             Customer            @relation(fields: [customerId], references: [id])
   pilot                Pilot?              @relation(fields: [pilotId], references: [id])

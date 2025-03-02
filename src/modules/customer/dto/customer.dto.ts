@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   ValidateNested,
+  IsEmail,
 } from 'class-validator';
 
 enum SavedPlaveTypeEnum {
@@ -16,6 +17,18 @@ enum SavedPlaveTypeEnum {
   GYM = 'GYM',
   COLLEGE = 'COLLEGE',
   OTHERS = 'OTHERS',
+}
+
+export class CompleteCustomerOnboardingDto {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ description: 'Email' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }
 
 class LocationDto {

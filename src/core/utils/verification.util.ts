@@ -23,6 +23,7 @@ export class VerificationService {
   private readonly verifyAadhaarEndPoint: string;
   private readonly clientId: string;
   private readonly clientSecret: string;
+  private readonly openAiApiKey: string;
 
   constructor(private readonly configService: ConfigService) {
     this.productionAccessToken = this.configService.get<string>(
@@ -62,6 +63,7 @@ export class VerificationService {
     );
     this.clientId = this.configService.get<string>('cashfree.clientId');
     this.clientSecret = this.configService.get<string>('cashfree.clientSecret');
+    this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
   }
 
   async verifyDrivingLicense(dlNumber: string, dob: string) {
@@ -160,6 +162,12 @@ export class VerificationService {
         },
       );
 
+      if (responseRc.data.status.toLowerCase() !== 'active') {
+        throw new BadRequestException(
+          'vehicle registration number is not active.',
+        );
+      }
+
       const responseBasic = await axios.post(this.rcVerifyBasic, data, {
         headers: {
           'Content-Type': 'application/json',
@@ -191,6 +199,7 @@ export class VerificationService {
         manufacturer: responseRc.data.result.vehicleManufacturerName,
         model: responseRc.data.result.model,
         colour: responseRc.data.result.vehicleColour,
+        seatCapacity: responseRc.data.result.vehicleSeatCapacity,
         state: responseBasic.data.result.stateCode,
         insuranceUpto: formatDate(responseRc.data.result.vehicleInsuranceUpto),
         fitUpto: formatDate(responseBasic.data.result.fitUpto),

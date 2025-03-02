@@ -7,16 +7,20 @@ import {
   Patch,
   Post,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { UpdateSavedPlaceDto, CreateSavedPlaceDto } from './dto/customer.dto';
+import {
+  UpdateSavedPlaceDto,
+  CreateSavedPlaceDto,
+  CompleteCustomerOnboardingDto,
+} from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
-
 @ApiTags('Customer')
 @Controller('customer')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,6 +33,22 @@ export class CustomerController {
   @ApiOperation({ summary: 'Get customer' })
   async getCustomer(@CurrentUser('userId') userId: string) {
     return await this.customerService.getCustomer(userId);
+  }
+
+  @Post('onboarding')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete Customer Onboarding' })
+  @ApiBody({ type: CompleteCustomerOnboardingDto })
+  async completeOnboarding(
+    @Body() customerOnboardingDto: CompleteCustomerOnboardingDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.completeOnboarding(
+      userId,
+      customerOnboardingDto,
+    );
   }
 
   @Post('saved-places')

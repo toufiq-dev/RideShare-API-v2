@@ -4,8 +4,10 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -14,28 +16,54 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    let status: number;
+    let errorMessage: string | object;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    // Handle Prisma-specific errors
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (exception.code) {
+        case 'P2002': // Unique constraint violation
+          status = HttpStatus.BAD_REQUEST; // 400
+          const targetFields = (exception.meta?.target as string[])?.join(', ');
+          errorMessage = `A record with this ${targetFields} already exists.`;
+          break;
+        default:
+          status = HttpStatus.INTERNAL_SERVER_ERROR; // 500
+          errorMessage = 'Database error occurred';
+          break;
+      }
+    }
+    // Handle NotFoundException
+    else if (exception instanceof NotFoundException) {
+      status = HttpStatus.NOT_FOUND; // 404
+      errorMessage = exception.message || 'Resource not found';
+    }
+    // Handle other HttpExceptions
+    else if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      errorMessage = exception.getResponse();
+    }
+    // Fallback for unhandled errors
+    else {
+      status = HttpStatus.INTERNAL_SERVER_ERROR; // 500
+      errorMessage = 'Internal server error';
+    }
 
     console.error('Exception Caught:', exception);
 
+    // Normalize error message
+    const finalMessage =
+      typeof errorMessage === 'string'
+        ? errorMessage
+        : (errorMessage as any).message || 'Unexpected error occurred';
+
     response.status(status).json({
       success: false,
-      message: 'Request failed',
+      message: 'Request failed', // Keeping this consistent; adjust if needed
       error: {
         code: status,
-        message:
-          typeof message === 'string'
-            ? message
-            : (message as any).message || 'Unexpected error occurred',
-        path: request.url,
+        message: finalMessage,
+        path: request.url, // Included for all cases
         timestamp: new Date().toISOString(),
       },
     });

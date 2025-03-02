@@ -171,10 +171,11 @@ model Vehicle {
   permitUpto    DateTime
   manufacturer  String
   status        String
-  vehicleTypeId String
   colour        String
   model         String
   state         String
+  seatCapacity  String
+  vehicleTypeId String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   pilot         Pilot       @relation(fields: [pilotId], references: [id])

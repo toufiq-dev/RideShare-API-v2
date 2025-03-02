@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { CreateSavedPlaceDto, UpdateSavedPlaceDto } from './dto/customer.dto';
+import {
+  CreateSavedPlaceDto,
+  UpdateSavedPlaceDto,
+  CompleteCustomerOnboardingDto,
+} from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 
 @Injectable()
@@ -30,6 +34,37 @@ export class CustomerService {
       message: 'Customer fetched successfully.',
       data: customer,
     };
+  }
+
+  async completeOnboarding(
+    userId: string,
+    customerOnboardingDto: CompleteCustomerOnboardingDto,
+  ) {
+    const { name, email } = customerOnboardingDto;
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      console.log(user);
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      const updatedUser = await this.prisma.customer.update({
+        where: { userId: user.id },
+        data: {
+          name,
+          email,
+        },
+      });
+
+      return {
+        message: 'Onboarding completed successfully.',
+        data: updatedUser,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async createSavedPlace(

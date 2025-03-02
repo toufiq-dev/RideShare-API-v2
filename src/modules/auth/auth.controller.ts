@@ -11,13 +11,11 @@ import { AuthService } from './auth.service';
 import {
   SendOtpDto,
   VerifyOtpDto,
-  CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   FindPilotDto,
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { QueryTokenGuard } from 'src/common/guards/query-token.guard';
 
 @ApiTags('Auth')
@@ -53,22 +51,6 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return await this.authService.refreshToken(refreshTokenDto);
-  }
-
-  @Post('complete-onboarding')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Complete Customer Onboarding' })
-  @ApiBody({ type: CompleteCustomerOnboardingDto })
-  async completeOnboarding(
-    @Body() customerOnboardingDto: CompleteCustomerOnboardingDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.authService.completeOnboarding(
-      userId,
-      customerOnboardingDto,
-    );
   }
 
   @Post('find-pilot')

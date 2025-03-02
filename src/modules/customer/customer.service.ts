@@ -30,9 +30,20 @@ export class CustomerService {
       throw new NotFoundException('Customer not found.');
     }
 
+    const data = {
+      ...customer,
+      user: {
+        name: customer.name,
+        email: customer.email,
+        avatar: customer.avatar,
+       ...customer.user
+      },
+      ...customer.language,
+    }
+
     return {
       message: 'Customer fetched successfully.',
-      data: customer,
+      data,
     };
   }
 

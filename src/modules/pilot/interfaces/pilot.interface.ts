@@ -16,6 +16,7 @@ export interface VerificationResponseVehicle {
   manufacturer: string;
   model: string;
   colour: string;
+  seatCapacity: string;
   state: string;
   fitUpto: Date;
   puccUpto: Date;

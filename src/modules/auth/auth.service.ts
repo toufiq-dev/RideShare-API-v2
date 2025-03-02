@@ -12,7 +12,6 @@ import { JwtService } from '@nestjs/jwt';
 import {
   SendOtpDto,
   VerifyOtpDto,
-  CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   RoleEnum,
   FindPilotDto,
@@ -142,37 +141,6 @@ export class AuthService {
     }
   }
 
-  async completeOnboarding(
-    userId: string,
-    customerOnboardingDto: CompleteCustomerOnboardingDto,
-  ) {
-    const { name, email } = customerOnboardingDto;
-
-    try {
-      const user = await this.findUserById(userId);
-
-      if (!user) {
-        throw new NotFoundException('User not found.');
-      }
-
-      const updatedUser = await this.prisma.customer.update({
-        where: { id: userId },
-        data: {
-          name,
-          email,
-        },
-      });
-
-      return {
-        message: 'Onboarding completed successfully.',
-        data: updatedUser,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
     try {
@@ -199,9 +167,6 @@ export class AuthService {
 
   async verifyAadhaar(req: any, userId: string) {
     try {
-      console.log(req.body.aadharDetail.name);
-      console.log(req.body.aadharDetail.address);
-
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
@@ -223,13 +188,7 @@ export class AuthService {
     }
   }
 
-  private async findUserById(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found.');
-    }
-    return user;
-  }
+  private async findUserById(userId: string) {}
 
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);

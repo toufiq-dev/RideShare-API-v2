@@ -60,18 +60,6 @@ export class RefreshTokenDto {
   refreshToken: string;
 }
 
-export class CompleteCustomerOnboardingDto {
-  @ApiProperty({ description: 'Name' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @ApiProperty({ description: 'Email' })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-}
-
 export class FindPilotDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty()

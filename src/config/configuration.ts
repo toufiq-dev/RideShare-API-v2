@@ -59,4 +59,7 @@ export default () => ({
   subscription: {
     onboardingOffer: process.env.ONBOARDING_OFFER,
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 });

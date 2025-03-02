@@ -231,12 +231,6 @@ export class PilotService {
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
 
-      if (verificationResponse.status.toLowerCase() !== 'active') {
-        throw new BadRequestException(
-          'vehicle registration number is not active.',
-        );
-      }
-
       if (
         !verificationResponse.isrcExpired ||
         !verificationResponse.ispermitExpired
@@ -700,14 +694,17 @@ export class PilotService {
       manufacturer,
       model,
       colour,
+      seatCapacity,
       fitUpto,
       puccUpto,
       state,
     } = verificationResponse;
 
-    const vehicleType = await this.prisma.vehicleType.findFirst({
+    let vehicleType;
+
+    vehicleType = await this.prisma.vehicleType.findFirst({
       where: {
-        name: 'Sedan',
+        name: 'Kali Peeli',
       },
     });
 
@@ -723,6 +720,7 @@ export class PilotService {
         insuranceUpto,
         model,
         colour,
+        seatCapacity,
         manufacturer,
         state,
         vehicleTypeId: vehicleType.id,

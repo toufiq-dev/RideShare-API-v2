@@ -7,8 +7,7 @@ export interface VerificationResponseDL {
 }
 
 export interface VerificationResponseVehicle {
-  isrcExpired: boolean;
-  ispermitExpired: boolean;
+  category: string;
   regNo: string;
   regUpto: Date;
   permitUpto: Date;

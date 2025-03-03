@@ -208,9 +208,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie.');
-      }
+      // if (!pilot.selfieUrl) {
+      //   throw new BadRequestException('Driver does not have Live selfie.');
+      // }
 
       if (!file) {
         throw new BadRequestException('No file provided.');
@@ -230,24 +230,6 @@ export class PilotService {
 
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
-
-      if (
-        !verificationResponse.isrcExpired ||
-        !verificationResponse.ispermitExpired
-      ) {
-        return {
-          message: 'Vehicle registration or permit is expired.',
-          data: {
-            ...verificationResponse,
-            id: null,
-            pilotId: null,
-            regNo: null,
-            vehicleTypeId: null,
-            createdAt: null,
-            updatedAt: null,
-          },
-        };
-      }
 
       const data = await this.updatePilotVehicleData(
         verificationResponse,
@@ -270,9 +252,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie.');
-      }
+      // if (!pilot.selfieUrl) {
+      //   throw new BadRequestException('Driver does not have Live selfie.');
+      // }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -280,12 +262,6 @@ export class PilotService {
 
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
-
-      if (verificationResponse.status.toLowerCase() !== 'active') {
-        throw new BadRequestException(
-          'vehicle registration number is not active.',
-        );
-      }
 
       const data = await this.updatePilotVehicleData(
         verificationResponse,
@@ -690,6 +666,7 @@ export class PilotService {
     pilotId: string,
   ) {
     const {
+      category,
       regNo,
       regUpto,
       permitUpto,
@@ -708,7 +685,7 @@ export class PilotService {
 
     vehicleType = await this.prisma.vehicleType.findFirst({
       where: {
-        name: 'Kali Peeli',
+        name: "SUV",
       },
     });
 

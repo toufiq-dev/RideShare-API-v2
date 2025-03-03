@@ -36,10 +36,10 @@ export class CustomerService {
         name: customer.name,
         email: customer.email,
         avatar: customer.avatar,
-       ...customer.user
+        ...customer.user,
       },
       ...customer.language,
-    }
+    };
 
     return {
       message: 'Customer fetched successfully.',

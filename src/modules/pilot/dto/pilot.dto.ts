@@ -44,4 +44,9 @@ export class VerifyAadhaarDto {
   @IsNotEmpty({ message: 'Ref id is required' })
   @IsString()
   ref_id: string;
+
+  @ApiProperty({ description: 'Aadhaar number' })
+  @IsNotEmpty({ message: 'Aadhaar number is required' })
+  @IsString()
+  aadhaarNumber: string;
 }

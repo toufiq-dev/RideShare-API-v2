@@ -472,7 +472,7 @@ export class PilotService {
   }
 
   async verifyAadhaar(aadhaarNumberDto: VerifyAadhaarDto, userId: string) {
-    const { ref_id, otp } = aadhaarNumberDto;
+    const { ref_id, otp, aadhaarNumber: aadhaarCardNumber } = aadhaarNumberDto;
 
     try {
       const verificationResponse = await this.verificationService.verifyAadhaar(
@@ -486,12 +486,16 @@ export class PilotService {
         );
       }
 
+      const { name: aadhaarName, address: aadhaarCardAddress } =
+        verificationResponse;
+
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isAadhaarVerified: true,
-          aadhaarName: verificationResponse.name,
-          aadhaarCardAddress: verificationResponse.address,
+          aadhaarCardNumber,
+          aadhaarName,
+          aadhaarCardAddress,
         },
       });
 

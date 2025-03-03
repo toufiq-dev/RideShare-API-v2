@@ -281,4 +281,8 @@ export class VerificationService {
       );
     }
   }
+
+  // private async classifyVehicleUsingOpenAI(vehicleData: any) {
+
+  // }
 }

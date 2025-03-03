@@ -4,6 +4,14 @@ import axios from 'axios';
 import formatDate from 'src/common/functions/formatDate';
 import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.interface';
 import * as moment from 'moment-timezone';
+import OpenAI from 'openai';
+
+type VehicleCategory =
+  | 'Hatchback'
+  | 'Sedan'
+  | 'SUV'
+  | 'Kali Peeli'
+  | 'Auto-Rickshaw';
 
 @Injectable()
 export class VerificationService {
@@ -145,7 +153,7 @@ export class VerificationService {
 
   async verifyVehicleRC(
     registrationNumber: string,
-  ): Promise<VerificationResponseVehicle> {
+  ): Promise<VerificationResponseVehicle | any> {
     const data = {
       vehicleNumber: registrationNumber,
     };
@@ -162,7 +170,8 @@ export class VerificationService {
         },
       );
 
-      if (responseRc.data.status.toLowerCase() !== 'active') {
+      console.log(responseRc.data.result.status.toLowerCase())      
+      if (responseRc.data.result.status.toLowerCase() !== 'active') {
         throw new BadRequestException(
           'vehicle registration number is not active.',
         );
@@ -178,20 +187,42 @@ export class VerificationService {
       // Check if rc or permit is expired
       let isrcExpired = false;
       let ispermitExpired = false;
-      // if (responseRc.data.result.rcExpiryDate) {
-      //   const rcexpiryDateUTC = moment.utc(formatDate(responseRc.data.result.rcExpiryDate));
-      //   const permitexpiryDateUTC = moment.utc(formatDate(responseRc.data.permitValidUpto));
-      //   const nowUTC = moment.utc();
-      //   const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
-      //   const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
-      //   const nowIST = nowUTC.tz('Asia/Kolkata');
-      //   isrcExpired = rcexpiryDateIST.isBefore(nowIST);
-      //   ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
-      // }
+      if (responseRc.data.result.rcExpiryDate) {
+        const rcexpiryDateUTC = moment.utc(
+          formatDate(responseRc.data.result.rcExpiryDate),
+        );
+        const permitexpiryDateUTC = moment.utc(
+          formatDate(responseRc.data.result.permitValidUpto),
+        );
+        const nowUTC = moment.utc();
+        const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
+        const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
+        const nowIST = nowUTC.tz('Asia/Kolkata');
+        isrcExpired = rcexpiryDateIST.isBefore(nowIST);
+        ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
+      }
 
+      console.log(isrcExpired)
+      console.log(ispermitExpired)
+      
+      if (isrcExpired) {
+        return {
+          message: 'Vehicle registration or permit is expired.',
+          data: {
+            id: null,
+            pilotId: null,
+            regNo: null,
+            vehicleTypeId: null,
+            createdAt: null,
+            updatedAt: null,
+          },
+        };
+      }
+
+      const category = await this.classifyVehicleUsingOpenAI(responseRc);
+      
       return {
-        isrcExpired,
-        ispermitExpired,
+        category,
         regNo: responseRc.data.result.regNo,
         regUpto: formatDate(responseRc.data.result.rcExpiryDate),
         permitUpto: formatDate(responseRc.data.result.permitValidUpto),
@@ -282,7 +313,48 @@ export class VerificationService {
     }
   }
 
-  // private async classifyVehicleUsingOpenAI(vehicleData: any) {
+  private async classifyVehicleUsingOpenAI(
+    vehicleDetails: any,
+  ): Promise<VehicleCategory> {
+    const openai = new OpenAI({
+      apiKey: this.openAiApiKey,
+    });
 
-  // }
+    const prompt = `
+      You are an expert in vehicle classification for a Mumbai-based taxi booking application. 
+      Based on the following vehicle details, categorize the vehicle into one of these types: 
+      Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw. You must categorize the car into one
+      of these types.
+
+      Vehicle Details:
+      ${vehicleDetails}
+
+      Provide the category as a single word (e.g., "Hatchback", "Sedan", "SUV", "Kali Peeli" or "Auto-Rickshaw").
+    `;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a vehicle classification expert.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 10, // Limit response to a single category
+        temperature: 0.3, // Lower temperature for more deterministic output
+      });
+
+      const category =
+        response.choices[0].message.content.trim() as VehicleCategory;
+
+
+      console.log(response.choices[0].message)
+
+      return category;
+    } catch (error) {
+      console.error('Error calling OpenAI:', error);
+    }
+  }
 }

@@ -123,6 +123,8 @@ model Pilot {
   panCardNumber      String?         @unique
   aadhaarCardNumber  String?         @unique
   aadhaarCardAddress String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
   activeBookingId    String?         @unique
   bookings           Booking[]
   drivingLicense     DrivingLicense?

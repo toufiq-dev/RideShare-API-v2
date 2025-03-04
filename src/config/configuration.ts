@@ -2,8 +2,8 @@ export default () => ({
   app: {
     port:
       process.env.NODE_ENV === 'development'
-        ? parseInt(process.env['development.PORT'], 10) || 8080
-        : parseInt(process.env.PORT, 10) || 3000,
+        ? parseInt(process.env['development.PORT'], 10) || 3000
+        : parseInt(process.env.PORT, 10) || 8080,
   },
   database: {
     url: process.env.DATABASE_URL,

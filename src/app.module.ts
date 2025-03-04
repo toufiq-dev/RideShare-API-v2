@@ -15,6 +15,7 @@ import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middle
 import { CustomerModule } from './modules/customer/customer.module';
 import { RideModule } from './modules/ride/ride.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AdminModule } from './modules/admin/admin.module';
     CustomerModule,
     RideModule,
     AdminModule,
+    EmailModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

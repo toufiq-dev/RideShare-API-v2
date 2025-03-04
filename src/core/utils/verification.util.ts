@@ -219,7 +219,7 @@ export class VerificationService {
       const category = await this.classifyVehicleUsingOpenAI(
         responseRc.data.result,
       );
-      
+
       return {
         category,
         regNo: responseRc.data.result.regNo,
@@ -237,7 +237,9 @@ export class VerificationService {
       };
     } catch (error) {
       console.log(error);
-      throw new BadRequestException(error.message || 'Failed to verify vehicle RC with Signzy API.',);
+      throw new BadRequestException(
+        error.message || 'Failed to verify vehicle RC with Signzy API.',
+      );
     }
   }
 
@@ -281,9 +283,10 @@ export class VerificationService {
 
       return response.data;
     } catch (error) {
-      console.error(error)
+      console.error(error);
       throw new BadRequestException(
-        'Failed to send otp to verify aadhaar with Cashfree API.',)
+        'Failed to send otp to verify aadhaar with Cashfree API.',
+      );
     }
   }
 
@@ -300,11 +303,9 @@ export class VerificationService {
           'x-client-id': this.clientId,
           'x-client-secret': this.clientSecret,
         },
-      }); 
+      });
 
-    
       return response.data;
-
     } catch (error) {
       // Check if it's an Axios error with a response
       if (axios.isAxiosError(error) && error.response) {
@@ -312,15 +313,15 @@ export class VerificationService {
         // Throw BadRequestException with the specific message from the API
         throw new BadRequestException(errorData.message);
       }
-      
+
       // Handle other unexpected errors
       throw new BadRequestException({
         statusCode: 400,
         message: 'An error occurred during Aadhaar verification',
-        error: 'unknown_error'
+        error: 'unknown_error',
       });
     }
-}
+  }
 
   private async classifyVehicleUsingOpenAI(
     vehicleData: any,

@@ -25,6 +25,7 @@ async function main() {
     { name: 'SUV' },
     { name: 'Kali Peeli' },  
     { name: 'Auto-Rickshaw' },
+    { name: 'Other' },
   ];
 
   const subscriptionTypes = [

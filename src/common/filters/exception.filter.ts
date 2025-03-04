@@ -49,8 +49,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       errorMessage = 'Internal server error';
     }
 
-    console.error('Exception Caught:', exception);
-
     // Normalize error message
     const finalMessage =
       typeof errorMessage === 'string'

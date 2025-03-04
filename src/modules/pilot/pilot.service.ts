@@ -685,7 +685,7 @@ export class PilotService {
 
     vehicleType = await this.prisma.vehicleType.findFirst({
       where: {
-        name: "SUV",
+        name: category,
       },
     });
 

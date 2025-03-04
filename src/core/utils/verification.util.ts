@@ -11,7 +11,8 @@ type VehicleCategory =
   | 'Sedan'
   | 'SUV'
   | 'Kali Peeli'
-  | 'Auto-Rickshaw';
+  | 'Auto-Rickshaw'
+  | 'Other';
 
 @Injectable()
 export class VerificationService {
@@ -170,7 +171,6 @@ export class VerificationService {
         },
       );
 
-      console.log(responseRc.data.result.status.toLowerCase())      
       if (responseRc.data.result.status.toLowerCase() !== 'active') {
         throw new BadRequestException(
           'vehicle registration number is not active.',
@@ -202,9 +202,6 @@ export class VerificationService {
         ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
       }
 
-      console.log(isrcExpired)
-      console.log(ispermitExpired)
-      
       if (isrcExpired) {
         return {
           message: 'Vehicle registration or permit is expired.',
@@ -219,7 +216,9 @@ export class VerificationService {
         };
       }
 
-      const category = await this.classifyVehicleUsingOpenAI(responseRc);
+      const category = await this.classifyVehicleUsingOpenAI(
+        responseRc.data.result,
+      );
       
       return {
         category,
@@ -238,9 +237,7 @@ export class VerificationService {
       };
     } catch (error) {
       console.log(error);
-      throw new BadRequestException(
-        'Failed to verify vehicle rc number with Signzy API.',
-      );
+      throw new BadRequestException(error.message || 'Failed to verify vehicle RC with Signzy API.',);
     }
   }
 
@@ -284,9 +281,9 @@ export class VerificationService {
 
       return response.data;
     } catch (error) {
+      console.error(error)
       throw new BadRequestException(
-        'Failed to verify aadhaar with Cashfree API.',
-      );
+        'Failed to send otp to verify aadhaar with Cashfree API.',)
     }
   }
 
@@ -303,18 +300,30 @@ export class VerificationService {
           'x-client-id': this.clientId,
           'x-client-secret': this.clientSecret,
         },
-      });
+      }); 
 
+    
       return response.data;
+
     } catch (error) {
-      throw new BadRequestException(
-        'Failed to verify aadhaar with Cashfree API.',
-      );
+      // Check if it's an Axios error with a response
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data;
+        // Throw BadRequestException with the specific message from the API
+        throw new BadRequestException(errorData.message);
+      }
+      
+      // Handle other unexpected errors
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'An error occurred during Aadhaar verification',
+        error: 'unknown_error'
+      });
     }
-  }
+}
 
   private async classifyVehicleUsingOpenAI(
-    vehicleDetails: any,
+    vehicleData: any,
   ): Promise<VehicleCategory> {
     const openai = new OpenAI({
       apiKey: this.openAiApiKey,
@@ -322,14 +331,20 @@ export class VerificationService {
 
     const prompt = `
       You are an expert in vehicle classification for a Mumbai-based taxi booking application. 
-      Based on the following vehicle details, categorize the vehicle into one of these types: 
-      Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw. You must categorize the car into one
-      of these types.
+      Based on the following vehicle details, categorize the following vehicle into one of these types:
+      Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw.
 
       Vehicle Details:
-      ${vehicleDetails}
+      - Class: ${vehicleData.class}
+      - Manufacturer: ${vehicleData.vehicleManufacturerName}
+      - Model: ${vehicleData.model}
+      - Body Type: ${vehicleData.bodyType}
+      - Category: ${vehicleData.vehicleCategory}
+      - Seating Capacity: ${vehicleData.vehicleSeatCapacity}
+      - Permit type: ${vehicleData.permitType}
+      - Is Commercial: ${vehicleData.isCommercial}
 
-      Provide the category as a single word (e.g., "Hatchback", "Sedan", "SUV", "Kali Peeli" or "Auto-Rickshaw").
+      Reply with a **single word** (Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw).
     `;
 
     try {
@@ -349,12 +364,10 @@ export class VerificationService {
       const category =
         response.choices[0].message.content.trim() as VehicleCategory;
 
-
-      console.log(response.choices[0].message)
-
       return category;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
+      return 'Other';
     }
   }
 }

@@ -35,6 +35,7 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.jwtSecret,
       });
+      console.log(payload);
 
       const storedAccessToken = await this.redis.get(
         `accessToken:${payload.userId}`,

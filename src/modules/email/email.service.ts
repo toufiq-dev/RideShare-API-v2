@@ -1,18 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { VerifyEmailDto } from './dto/email.dto';
+import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
+import { RedisService } from 'src/core/cache/redis.service';
 
 @Injectable()
 export class EmailService {
   private transporter: nodemailer.Transporter;
-  private readonly otpStore: Map<string, { otp: string; expires: number }> =
-    new Map();
 
   constructor(
     private configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
@@ -25,14 +30,23 @@ export class EmailService {
     });
   }
 
-  async sendOtpEmail(verifyEmailDto: VerifyEmailDto) {
+  async sendOtpEmail(sendOtpDto: sendOtpDto, userId: string) {
     try {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-      const expires = Date.now() + 3 * 60 * 1000; // Expires in 10 minutes
+      const { email } = sendOtpDto;
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`emailVerificationotp:${email}`, otp, 270);
+
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),
-        to: verifyEmailDto.email,
+        to: customer.email,
         subject: 'Fairdrive OTP',
         html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -46,7 +60,6 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.otpStore.set(verifyEmailDto.email, { otp, expires });
 
       return {
         message: 'OTP sent successfully',
@@ -58,24 +71,22 @@ export class EmailService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyEmailDto, userId: string) {
-    const { email, otp } = verifyOtpDto;
-    const storedOtp = this.otpStore.get(email);
+    const { otp } = verifyOtpDto;
+
+    const customer = await this.prisma.customer.findUnique({
+      where: { userId },
+    });
+
+    const storedOtp = await this.redis.get(
+      `emailVerificationotp:${customer.email}`,
+    );
 
     if (!storedOtp) {
-      return {
-        message: 'Invalid OTP',
-      };
+      throw new BadRequestException('OTP not found');
     }
 
-    if (Date.now() > storedOtp.expires) {
-      this.otpStore.delete(email);
-      return {
-        message: 'OTP expired',
-      };
-    }
-
-    if (storedOtp.otp === otp) {
-      this.otpStore.delete(email); // OTP can only be used once
+    if (storedOtp === otp) {
+      await this.redis.del(`emailVerificationotp:${userId}`);
 
       await this.prisma.user.update({
         where: { id: userId },
@@ -89,8 +100,6 @@ export class EmailService {
       };
     }
 
-    return {
-      message: 'OTP verification failed',
-    };
+    throw new BadRequestException('Invalid OTP');
   }
 }

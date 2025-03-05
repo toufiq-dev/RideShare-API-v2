@@ -75,9 +75,9 @@ model Customer {
   id                  String           @id @default(uuid())
   userId              String           @unique
   phone               String           @unique
+  email               String?          @unique
   isAlreadyRegistered Boolean          @default(false)
   name                String?
-  email               String?          @unique
   avatar              String?
   languageId          String
   bookings            Booking[]

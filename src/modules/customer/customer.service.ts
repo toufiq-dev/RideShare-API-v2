@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
@@ -64,6 +68,13 @@ export class CustomerService {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         throw new NotFoundException('User not found.');
+      }
+
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId: user.id },
+      });
+      if (customer.isAlreadyRegistered) {
+        throw new BadRequestException('Customer already Onboarded.');
       }
 
       const data = await this.prisma.customer.update({

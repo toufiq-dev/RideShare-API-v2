@@ -91,7 +91,7 @@ export class AuthService {
 
       // const languageId = await this.validateOtp(phone, otp);
 
-      const { user, customer, pilot, isNewUser } = await this.findOrCreateUser(
+      const { user, customer, pilot } = await this.findOrCreateUser(
         phone,
         role,
         languageId,
@@ -104,7 +104,6 @@ export class AuthService {
         message: 'OTP verified successfully.',
         data: {
           ...tokens,
-          isAlreadyRegistered: !isNewUser,
           user: role === RoleEnum.CUSTOMER ? customer : pilot,
         },
       };
@@ -208,7 +207,6 @@ export class AuthService {
     let customer = null;
     let pilot = null;
     let user = null;
-    let isNewUser = false;
 
     if (role === RoleEnum.CUSTOMER) {
       customer = await this.prisma.customer.findUnique({
@@ -253,14 +251,13 @@ export class AuthService {
             userId: user.id,
             languageId,
             referralCode,
+            isAlreadyRegistered: true,
           },
         });
       }
-
-      isNewUser = true;
     }
 
-    return { user, customer, pilot, isNewUser };
+    return { user, customer, pilot };
   }
 
   private async generateTokens(userId: string, role: RoleEnum) {

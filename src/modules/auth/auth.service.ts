@@ -165,31 +165,6 @@ export class AuthService {
     }
   }
 
-  async verifyAadhaar(req: any, userId: string) {
-    try {
-      const data = await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isAadhaarVerified: true,
-          aadhaarName: req.body.aadharDetail.name,
-          aadhaarCardAddress: req.body.aadharDetail.address,
-        },
-      });
-
-      console.log(data);
-
-      this.rideGateway.server.emit('aadhaarVerified', {
-        message: 'Aadhaar verified successfully.',
-        data,
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  private async findUserById(userId: string) {}
-
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
 

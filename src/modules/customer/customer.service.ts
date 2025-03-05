@@ -38,7 +38,9 @@ export class CustomerService {
         avatar: customer.avatar,
         ...customer.user,
       },
+      language: {
       ...customer.language,
+      }
     };
 
     return {
@@ -55,12 +57,18 @@ export class CustomerService {
 
     try {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      console.log(user);
       if (!user) {
         throw new NotFoundException('User not found.');
       }
 
-      const updatedUser = await this.prisma.customer.update({
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          isPhoneVerified: true,
+        },
+      });
+
+      const data = await this.prisma.customer.update({
         where: { userId: user.id },
         data: {
           name,
@@ -70,7 +78,7 @@ export class CustomerService {
 
       return {
         message: 'Onboarding completed successfully.',
-        data: updatedUser,
+        data,
       };
     } catch (error) {
       console.error(error);

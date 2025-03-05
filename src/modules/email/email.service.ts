@@ -46,7 +46,7 @@ export class EmailService {
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),
-        to: customer.email,
+        to: email,
         subject: 'Fairdrive OTP',
         html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">

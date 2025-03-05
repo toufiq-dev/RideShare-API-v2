@@ -12,5 +12,10 @@ export class VerifyEmailDto {
   @ApiProperty({ description: 'Email' })
   @IsString()
   @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'OTP' })
+  @IsString()
+  @IsNotEmpty()
   otp: string;
 }

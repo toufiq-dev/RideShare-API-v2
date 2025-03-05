@@ -71,14 +71,11 @@ export class EmailService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyEmailDto, userId: string) {
-    const { otp } = verifyOtpDto;
+    const { email, otp } = verifyOtpDto;
 
-    const customer = await this.prisma.customer.findUnique({
-      where: { userId },
-    });
 
     const storedOtp = await this.redis.get(
-      `emailVerificationotp:${customer.email}`,
+      `emailVerificationotp:${email}`,
     );
 
     if (!storedOtp) {
@@ -86,7 +83,7 @@ export class EmailService {
     }
 
     if (storedOtp === otp) {
-      await this.redis.del(`emailVerificationotp:${userId}`);
+      await this.redis.del(`emailVerificationotp:${email}`);
 
       await this.prisma.user.update({
         where: { id: userId },
@@ -94,6 +91,13 @@ export class EmailService {
           isEmailVerified: true,
         },
       });
+
+      await this.prisma.customer.update({
+        where: { userId },
+        data: {
+          email
+        }
+      })
 
       return {
         message: 'Email verified successfully',

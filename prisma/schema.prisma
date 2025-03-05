@@ -72,18 +72,19 @@ model Support {
 }
 
 model Customer {
-  id          String           @id @default(uuid())
-  name        String?
-  email       String?          @unique
-  avatar      String?
-  languageId  String
-  phone       String           @unique
-  userId      String           @unique
-  bookings    Booking[]
-  language    Languages        @relation(fields: [languageId], references: [id])
-  user        User             @relation(fields: [userId], references: [id])
-  ratings     CustomerRating[]
-  savedPlaces SavedPlace[]
+  id                  String           @id @default(uuid())
+  userId              String           @unique
+  phone               String           @unique
+  isAlreadyRegistered Boolean          @default(false)
+  name                String?
+  email               String?          @unique
+  avatar              String?
+  languageId          String
+  bookings            Booking[]
+  language            Languages        @relation(fields: [languageId], references: [id])
+  user                User             @relation(fields: [userId], references: [id])
+  ratings             CustomerRating[]
+  savedPlaces         SavedPlace[]
 
   @@index([phone])
 }
@@ -101,43 +102,44 @@ model SavedPlace {
 }
 
 model Pilot {
-  id                 String          @id @default(uuid())
-  userId             String          @unique
-  referralCode       String
-  isAvailable        PilotStatus     @default(OFFLINE)
-  totalTrips         Int             @default(0)
-  averageRating      Float           @default(0)
-  languageId         String
-  phone              String          @unique
-  pilotProgramId     String?
-  selfieUrl          String?
-  acceptedTerms      Boolean         @default(true)
-  isDLVerified       Boolean         @default(false)
-  isRCVerified       Boolean         @default(false)
-  isPanCardVerified  Boolean         @default(false)
-  isAadhaarVerified  Boolean         @default(false)
-  isFairCoinAvailed  Boolean         @default(false)
-  currentLocation    Json?
-  panCardName        String?
-  aadhaarName        String?
-  panCardNumber      String?         @unique
-  aadhaarCardNumber  String?         @unique
-  aadhaarCardAddress String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  activeBookingId    String?         @unique
-  bookings           Booking[]
-  drivingLicense     DrivingLicense?
-  language           Languages       @relation(fields: [languageId], references: [id])
-  pilotProgram       PilotProgram?   @relation(fields: [pilotProgramId], references: [id])
-  user               User            @relation(fields: [userId], references: [id])
-  activeBooking      Booking?        @relation("ActiveBooking", fields: [activeBookingId], references: [id])
-  earnings           PilotEarning[]
-  ranking            PilotRanking?
-  ratings            PilotRating[]
-  wallet             PilotWallet?
-  vehicles           Vehicle[]
-  videoProgress      VideoProgress?
+  id                  String          @id @default(uuid())
+  userId              String          @unique
+  phone               String          @unique
+  isAlreadyRegistered Boolean         @default(false)
+  referralCode        String
+  isAvailable         PilotStatus     @default(OFFLINE)
+  totalTrips          Int             @default(0)
+  averageRating       Float           @default(0)
+  languageId          String
+  pilotProgramId      String?
+  selfieUrl           String?
+  acceptedTerms       Boolean         @default(true)
+  isDLVerified        Boolean         @default(false)
+  isRCVerified        Boolean         @default(false)
+  isPanCardVerified   Boolean         @default(false)
+  isAadhaarVerified   Boolean         @default(false)
+  isFairCoinAvailed   Boolean         @default(false)
+  currentLocation     Json?
+  panCardName         String?
+  aadhaarName         String?
+  panCardNumber       String?         @unique
+  aadhaarCardNumber   String?         @unique
+  aadhaarCardAddress  String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  activeBookingId     String?         @unique
+  bookings            Booking[]
+  drivingLicense      DrivingLicense?
+  language            Languages       @relation(fields: [languageId], references: [id])
+  pilotProgram        PilotProgram?   @relation(fields: [pilotProgramId], references: [id])
+  user                User            @relation(fields: [userId], references: [id])
+  activeBooking       Booking?        @relation("ActiveBooking", fields: [activeBookingId], references: [id])
+  earnings            PilotEarning[]
+  ranking             PilotRanking?
+  ratings             PilotRating[]
+  wallet              PilotWallet?
+  vehicles            Vehicle[]
+  videoProgress       VideoProgress?
 
   @@index([phone])
   @@index([isAvailable])

@@ -3,7 +3,6 @@ import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { VerifyEmailDto } from './dto/email.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { VerifyOtpDto } from '../auth/dto/auth.dto';
 
 @Injectable()
 export class EmailService {
@@ -37,7 +36,7 @@ export class EmailService {
         subject: 'Fairdrive OTP',
         html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Taxi Booking Verification</h2>
+          <h2>Fairdrive Email Verification</h2>
           <p>Your One-Time Password (OTP) is:</p>
           <h3 style="color: #2c3e50;">${otp}</h3>
           <p>This OTP is valid for 3 minutes.</p>

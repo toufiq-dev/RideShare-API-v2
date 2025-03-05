@@ -38,7 +38,9 @@ export class CustomerService {
         avatar: customer.avatar,
         ...customer.user,
       },
+      language: {
       ...customer.language,
+      }
     };
 
     return {

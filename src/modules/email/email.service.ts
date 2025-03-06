@@ -46,7 +46,7 @@ export class EmailService {
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),
-        to: customer.email,
+        to: email,
         subject: 'Fairdrive OTP',
         html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -71,27 +71,28 @@ export class EmailService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyEmailDto, userId: string) {
-    const { otp } = verifyOtpDto;
+    const { email, otp } = verifyOtpDto;
 
-    const customer = await this.prisma.customer.findUnique({
-      where: { userId },
-    });
-
-    const storedOtp = await this.redis.get(
-      `emailVerificationotp:${customer.email}`,
-    );
+    const storedOtp = await this.redis.get(`emailVerificationotp:${email}`);
 
     if (!storedOtp) {
       throw new BadRequestException('OTP not found');
     }
 
     if (storedOtp === otp) {
-      await this.redis.del(`emailVerificationotp:${userId}`);
+      await this.redis.del(`emailVerificationotp:${email}`);
 
       await this.prisma.user.update({
         where: { id: userId },
         data: {
           isEmailVerified: true,
+        },
+      });
+
+      await this.prisma.customer.update({
+        where: { userId },
+        data: {
+          email,
         },
       });
 

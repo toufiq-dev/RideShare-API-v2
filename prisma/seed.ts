@@ -23,15 +23,25 @@ async function main() {
     { name: 'Hatch back' },
     { name: 'Sedan' },
     { name: 'SUV' },
-    { name: 'Kali Peeli' },  
+    { name: 'Kali Peeli' },
     { name: 'Auto-Rickshaw' },
     { name: 'Other' },
   ];
 
   const subscriptionTypes = [
-    { name: 'Starter Pack', coins: 45000, price: 1390, priceBeforeDiscount: 1400 },
+    {
+      name: 'Starter Pack',
+      coins: 45000,
+      price: 1390,
+      priceBeforeDiscount: 1400,
+    },
     { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470 },
-    { name: 'Mega Pack', coins: 450000, price: 12500, priceBeforeDiscount: 14900 },
+    {
+      name: 'Mega Pack',
+      coins: 450000,
+      price: 12500,
+      priceBeforeDiscount: 14900,
+    },
     { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null },
   ];
 
@@ -80,8 +90,24 @@ async function main() {
     }
   }
 
+  for (const subscription of subscriptionTypes) {
+    const existingSubscription = await prisma.pilotSubscription.findUnique({
+      where: { name: subscription.name },
+    });
+
+    if (!existingSubscription) {
+      await prisma.pilotSubscription.create({
+        data: subscription,
+      });
+      console.log(`Created subscription: ${subscription.name}`);
+    } else {
+      console.log(`Subscription ${subscription.name} already exists`);
+    }
+  }
+
   console.log('Seeding vehicle types finished.');
   console.log('Seeding languages and vehicle types finished.');
+  console.log('Seeding subscription types finished.');
 }
 
 main()

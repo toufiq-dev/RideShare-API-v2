@@ -208,9 +208,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      // if (!pilot.selfieUrl) {
-      //   throw new BadRequestException('Driver does not have Live selfie.');
-      // }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie.');
+      }
 
       if (!file) {
         throw new BadRequestException('No file provided.');
@@ -252,9 +252,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      // if (!pilot.selfieUrl) {
-      //   throw new BadRequestException('Driver does not have Live selfie.');
-      // }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie.');
+      }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -383,9 +383,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      // if (!pilot.isPanCardVerified) {
-      //   throw new BadRequestException('Driver does not have pancard verfied.');
-      // }
+      if (!pilot.isPanCardVerified) {
+        throw new BadRequestException('Driver does not have pancard verfied.');
+      }
 
       if (!file) {
         throw new BadRequestException('No file provided.');
@@ -428,9 +428,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      // if (!pilot.isPanCardVerified) {
-      //   throw new BadRequestException('Driver does not have pancard verfied.');
-      // }
+      if (!pilot.isPanCardVerified) {
+        throw new BadRequestException('Driver does not have pancard verfied.');
+      }
 
       const verificationResponse =
         await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);
@@ -494,7 +494,7 @@ export class PilotService {
       });
 
       // Create pilot wallet
-      const data = await this.prisma.pilotWallet.create({
+      const wallet = await this.prisma.pilotWallet.create({
         data: {
           pilotId: pilot.id,
           balance: subscription.coins,
@@ -502,9 +502,17 @@ export class PilotService {
         },
       });
 
+      await this.prisma.transaction.create({
+        data: {
+          userId: pilot.userId,
+          amount: subscription.coins,
+          walletId: wallet.id,
+          type: 'ONBOARDING_OFFER',
+        },
+      });
+
       return {
         message: 'Pilot onboarding coins availed successfully.',
-        data,
       };
     } catch (error) {
       console.error(error);
@@ -680,15 +688,13 @@ export class PilotService {
       puccUpto,
       state,
     } = verificationResponse;
-
-    let vehicleType;
-
-    vehicleType = await this.prisma.vehicleType.findFirst({
+    console.log(category);
+    const vehicleCategory = await this.prisma.vehicleType.findFirst({
       where: {
         name: category,
       },
     });
-
+    console.log(pilotId);
     const vehicle = await this.prisma.vehicle.create({
       data: {
         pilotId,
@@ -704,7 +710,7 @@ export class PilotService {
         seatCapacity,
         manufacturer,
         state,
-        vehicleTypeId: vehicleType.id,
+        vehicleTypeId: vehicleCategory.id,
       },
     });
 

@@ -171,12 +171,6 @@ export class VerificationService {
         },
       );
 
-      if (responseRc.data.result.status.toLowerCase() !== 'active') {
-        throw new BadRequestException(
-          'vehicle registration number is not active.',
-        );
-      }
-
       const responseBasic = await axios.post(this.rcVerifyBasic, data, {
         headers: {
           'Content-Type': 'application/json',
@@ -333,7 +327,7 @@ export class VerificationService {
     const prompt = `
       You are an expert in vehicle classification for a Mumbai-based taxi booking application. 
       Based on the following vehicle details, categorize the following vehicle into one of these types:
-      Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw.
+      Hatch back, Sedan, SUV, Kali Peeli, or Auto-Rickshaw.
 
       Vehicle Details:
       - Class: ${vehicleData.class}
@@ -345,7 +339,7 @@ export class VerificationService {
       - Permit type: ${vehicleData.permitType}
       - Is Commercial: ${vehicleData.isCommercial}
 
-      Reply with a **single word** (Hatchback, Sedan, SUV, Kali Peeli, or Auto-Rickshaw).
+      Reply with a **single word** (Hatch back, Sedan, SUV, Kali Peeli, or Auto-Rickshaw).
     `;
 
     try {

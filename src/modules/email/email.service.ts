@@ -73,10 +73,7 @@ export class EmailService {
   async verifyOtp(verifyOtpDto: VerifyEmailDto, userId: string) {
     const { email, otp } = verifyOtpDto;
 
-
-    const storedOtp = await this.redis.get(
-      `emailVerificationotp:${email}`,
-    );
+    const storedOtp = await this.redis.get(`emailVerificationotp:${email}`);
 
     if (!storedOtp) {
       throw new BadRequestException('OTP not found');
@@ -95,9 +92,9 @@ export class EmailService {
       await this.prisma.customer.update({
         where: { userId },
         data: {
-          email
-        }
-      })
+          email,
+        },
+      });
 
       return {
         message: 'Email verified successfully',

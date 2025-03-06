@@ -260,7 +260,7 @@ model Transaction {
 model PilotSubscription {
   id                  String                    @id @default(uuid())
   name                String                    @unique
-  coins               Int
+  coins               Decimal                   @db.Decimal(10, 2)
   price               Decimal                   @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?                  @db.Decimal(10, 2)
   transactions        SubscriptionTransaction[]
@@ -466,8 +466,7 @@ enum TransactionType {
   TRIP_DEDUCTION
   REFUND
   BONUS
-  CUSTOMER_PAYMENT
-  CUSTOMER_REFUND
+  ONBOARDING_OFFER
 }
 
 enum PaymentStatus {

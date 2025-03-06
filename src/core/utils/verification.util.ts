@@ -65,13 +65,13 @@ export class VerificationService {
       'signzy.getAadhaarPreproduction',
     );
     this.sendOtpEndPoint = this.configService.get<string>(
-      'cashfree.sendOtpEndPoint',
+      'cashfreeAadhaar.sendOtpEndPoint',
     );
     this.verifyAadhaarEndPoint = this.configService.get<string>(
-      'cashfree.verifyAadhaarEndPoint',
+      'cashfreeAadhaar.verifyAadhaarEndPoint',
     );
-    this.clientId = this.configService.get<string>('cashfree.clientId');
-    this.clientSecret = this.configService.get<string>('cashfree.clientSecret');
+    this.clientId = this.configService.get<string>('cashfreeAadhaar.clientId');
+    this.clientSecret = this.configService.get<string>('cashfreeAadhaar.clientSecret');
     this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
   }
 

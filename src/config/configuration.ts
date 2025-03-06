@@ -50,11 +50,14 @@ export default () => ({
     getAadhaar: process.env.SIGNZY_GET_AADHAAR,
     getAadhaarPreproduction: process.env.SIGNZY_GET_AADHAAR_PRE,
   },
-  cashfree: {
+  cashfreeAadhaar: {
     sendOtpEndPoint: process.env.CASHFREE_GENERATE_OTP_ENDPOINT,
     verifyAadhaarEndPoint: process.env.CASHFREE_VERIFY_AADHAAR_ENDPOINT,
     clientId: process.env.CASHFREE_CLIENT_ID,
     clientSecret: process.env.CASHFREE_CLIENT_SECRET,
+  },
+  cashfreePayment: {
+    
   },
   subscription: {
     onboardingOffer: process.env.ONBOARDING_OFFER,

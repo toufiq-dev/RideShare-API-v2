@@ -10,7 +10,7 @@ export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSubscriptionTypes() {
-    const data = await this.prisma.pilotSubscription.findMany();
+    const data = await this.prisma.subscription.findMany();
 
     return {
       message: 'Subscription types fetched successfully.',
@@ -24,7 +24,7 @@ export class SubscriptionsService {
     const { name, coins, price, priceBeforeDiscount } =
       createSubscriptionTypeDto;
 
-    const data = await this.prisma.pilotSubscription.create({
+    const data = await this.prisma.subscription.create({
       data: {
         name,
         coins,
@@ -46,7 +46,7 @@ export class SubscriptionsService {
     const { name, coins, price, priceBeforeDiscount } =
       updateSubscriptionTypeDto;
 
-    const data = await this.prisma.pilotSubscription.update({
+    const data = await this.prisma.subscription.update({
       where: {
         id,
       },
@@ -68,7 +68,7 @@ export class SubscriptionsService {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-      const subscription = await this.prisma.pilotSubscription.findUnique({
+      const subscription = await this.prisma.subscription.findUnique({
         where: { name: 'Flexi Pack' },
       });
 

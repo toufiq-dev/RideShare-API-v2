@@ -93,12 +93,12 @@ async function main() {
   }
 
   for (const subscription of subscriptionTypes) {
-    const existingSubscription = await prisma.pilotSubscription.findUnique({
+    const existingSubscription = await prisma.subscription.findUnique({
       where: { name: subscription.name },
     });
 
     if (!existingSubscription) {
-      await prisma.pilotSubscription.create({
+      await prisma.subscription.create({
         data: subscription,
       });
       console.log(`Created subscription: ${subscription.name}`);

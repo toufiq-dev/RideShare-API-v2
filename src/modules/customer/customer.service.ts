@@ -21,7 +21,7 @@ export class CustomerService {
 
   async getCustomer(userId: string) {
     try {
-      const customer = await this.prisma.customer.findUnique({
+      const data = await this.prisma.customer.findUnique({
         where: {
           userId,
         },
@@ -31,22 +31,9 @@ export class CustomerService {
         },
       });
 
-      if (!customer) {
+      if (!data) {
         throw new NotFoundException('Customer not found.');
       }
-
-      const data = {
-        ...customer,
-        user: {
-          name: customer.name,
-          email: customer.email,
-          avatar: customer.avatar,
-          ...customer.user,
-        },
-        language: {
-          ...customer.language,
-        },
-      };
 
       return {
         message: 'Customer fetched successfully.',

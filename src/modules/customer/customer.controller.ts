@@ -38,7 +38,6 @@ export class CustomerController {
 
   @Post('onboarding')
   @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete Customer Onboarding' })
   @ApiBody({ type: CompleteCustomerOnboardingDto })

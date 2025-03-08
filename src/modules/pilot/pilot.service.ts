@@ -489,7 +489,7 @@ export class PilotService {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-      const subscription = await this.prisma.pilotSubscription.findUnique({
+      const subscription = await this.prisma.subscription.findUnique({
         where: { name: 'Flexi Pack' },
       });
 

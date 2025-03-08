@@ -263,6 +263,7 @@ model PilotSubscription {
   coins               Decimal                   @db.Decimal(10, 2)
   price               Decimal                   @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?                  @db.Decimal(10, 2)
+  description         String?
   transactions        SubscriptionTransaction[]
 }
 
@@ -271,7 +272,6 @@ model PilotEarning {
   pilotId     String
   amount      Decimal  @db.Decimal(10, 2)
   date        DateTime
-  description String?
   createdAt   DateTime @default(now())
   lastUpdated DateTime
   pilot       Pilot    @relation(fields: [pilotId], references: [id])

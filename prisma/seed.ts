@@ -34,15 +34,17 @@ async function main() {
       coins: 45000,
       price: 1390,
       priceBeforeDiscount: 1400,
+      description: "Most Popular",
     },
-    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470 },
+    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470, description: "Best Value" },
     {
       name: 'Mega Pack',
       coins: 450000,
       price: 12500,
       priceBeforeDiscount: 14900,
+      description: 'Super Saver',
     },
-    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null },
+    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null, description: "Budget Friendly" },
   ];
 
   for (const language of languages) {

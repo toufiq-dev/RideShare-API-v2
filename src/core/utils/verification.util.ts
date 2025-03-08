@@ -71,7 +71,9 @@ export class VerificationService {
       'cashfreeAadhaar.verifyAadhaarEndPoint',
     );
     this.clientId = this.configService.get<string>('cashfreeAadhaar.clientId');
-    this.clientSecret = this.configService.get<string>('cashfreeAadhaar.clientSecret');
+    this.clientSecret = this.configService.get<string>(
+      'cashfreeAadhaar.clientSecret',
+    );
     this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
   }
 

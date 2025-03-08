@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { NotFoundException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import axios from 'axios';
@@ -38,21 +38,21 @@ export class PaymentService {
         where: { id: subscriptionId },
       });
       if (!subscription)
-        throw new BadRequestException('Subscription not found');
+        throw new NotFoundException('Subscription not found');
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
       });
-      if (!user || user.role !== RoleEnum.PILOT) {
-        throw new BadRequestException('User not found');
+      if (!pilot) {
+        throw new NotFoundException('User not found');
       }
 
       const data = {
         order_currency: 'INR',
         order_amount: Number(subscription.price),
         customer_details: {
-          customer_id: user.id,
-          customer_phone: user.phone,
+          customer_id: pilot.id,
+          customer_phone: pilot.phone,
         },
       };
 

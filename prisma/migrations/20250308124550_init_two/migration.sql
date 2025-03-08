@@ -31,7 +31,6 @@ CREATE TYPE "SavedPlaceType" AS ENUM ('HOME', 'WORK', 'RESTAURANT', 'GYM', 'COLL
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "phone" TEXT NOT NULL,
     "role" "UserRole" NOT NULL,
     "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -93,6 +92,7 @@ CREATE TABLE "Support" (
 -- CreateTable
 CREATE TABLE "Customer" (
     "id" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
     "email" TEXT,
     "userId" TEXT NOT NULL,
     "isAlreadyRegistered" BOOLEAN NOT NULL DEFAULT false,
@@ -119,6 +119,7 @@ CREATE TABLE "SavedPlace" (
 -- CreateTable
 CREATE TABLE "Pilot" (
     "id" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "referralCode" TEXT NOT NULL,
     "isAlreadyRegistered" BOOLEAN NOT NULL DEFAULT false,
@@ -427,9 +428,6 @@ CREATE TABLE "VideoProgress" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
-
--- CreateIndex
 CREATE INDEX "UserSession_location_idx" ON "UserSession"("location");
 
 -- CreateIndex
@@ -448,6 +446,9 @@ CREATE UNIQUE INDEX "Support_userId_key" ON "Support"("userId");
 CREATE UNIQUE INDEX "Support_referralCode_key" ON "Support"("referralCode");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Customer_phone_key" ON "Customer"("phone");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Customer_email_key" ON "Customer"("email");
 
 -- CreateIndex
@@ -455,6 +456,9 @@ CREATE UNIQUE INDEX "Customer_userId_key" ON "Customer"("userId");
 
 -- CreateIndex
 CREATE INDEX "SavedPlace_customerId_idx" ON "SavedPlace"("customerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Pilot_phone_key" ON "Pilot"("phone");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Pilot_userId_key" ON "Pilot"("userId");

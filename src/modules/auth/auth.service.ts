@@ -143,16 +143,8 @@ export class AuthService {
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { phone },
-      });
-
-      if (!user || user.role !== RoleEnum.PILOT) {
-        throw new NotFoundException('Pilot not found.');
-      }
-
       const data = await this.prisma.pilot.findUnique({
-        where: { userId: user.id },
+        where: { phone },
         include: {
           drivingLicense: true,
         },
@@ -217,76 +209,56 @@ export class AuthService {
     let user = null;
 
     if (role === RoleEnum.CUSTOMER) {
-      user = await this.prisma.user.findUnique({
+      customer = await this.prisma.customer.findUnique({
         where: { phone },
       });
 
-      if (user) customer = await this.findOrCreateCustomer(user, languageId);
+      if (customer) {
+        user = await this.prisma.user.findUnique({
+          where: { id: customer.userId },
+        });
+      }
     } else if (role === RoleEnum.PILOT) {
-      user = await this.prisma.user.findUnique({
-        where: { phone },
-      });
-      if (user)
-        pilot = await this.findOrCreatePilot(user, languageId, referralCode);
+      pilot = await this.prisma.pilot.findUnique({ where: { phone } });
+
+      if (pilot) {
+        user = await this.prisma.user.findUnique({
+          where: { id: pilot.userId },
+        });
+      }
     }
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
           role,
-          phone,
         },
       });
 
-      if (role === RoleEnum.CUSTOMER) {
-        customer = await this.findOrCreateCustomer(user, languageId);
-      } else if (role === RoleEnum.PILOT) {
-        pilot = await this.findOrCreatePilot(user, languageId, referralCode);
+      if (role === RoleEnum.CUSTOMER && !customer) {
+        customer = await this.prisma.customer.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+          },
+        });
+      } else if (role === RoleEnum.PILOT && !pilot) {
+        pilot = await this.prisma.pilot.create({
+          data: {
+            phone,
+            userId: user.id,
+            languageId,
+            referralCode,
+            isAlreadyRegistered: true,
+          },
+        });
       }
     }
 
-    console.log(user, customer, pilot);
     return { user, customer, pilot };
   }
 
-  private async findOrCreateCustomer(user: any, languageId: string) {
-    let customer = await this.prisma.customer.findUnique({
-      where: { userId: user.id },
-    });
-
-    if (!customer) {
-      customer = await this.prisma.customer.create({
-        data: {
-          userId: user.id,
-          languageId,
-        },
-      });
-    }
-
-    return customer;
-  }
-
-  private async findOrCreatePilot(
-    user: any,
-    languageId: string,
-    referralCode: string,
-  ) {
-    let pilot = await this.prisma.pilot.findUnique({
-      where: { userId: user.id },
-    });
-    if (!pilot) {
-      pilot = await this.prisma.pilot.create({
-        data: {
-          userId: user.id,
-          languageId,
-          referralCode,
-          isAlreadyRegistered: true,
-        },
-      });
-    }
-
-    return pilot;
-  }
 
   private async generateTokens(userId: string, role: any) {
     await this.redis.del(`accessToken:${userId}`);

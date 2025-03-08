@@ -9,7 +9,6 @@ datasource db {
 
 model User {
   id             String          @id @default(uuid())
-  phone          String          @unique
   role           UserRole
   status         UserStatus      @default(ACTIVE)
   createdAt      DateTime        @default(now())
@@ -70,6 +69,7 @@ model Support {
 
 model Customer {
   id                  String           @id @default(uuid())
+  phone               String           @unique
   email               String?          @unique
   userId              String           @unique
   isAlreadyRegistered Boolean          @default(false)
@@ -98,6 +98,7 @@ model SavedPlace {
 
 model Pilot {
   id                  String             @id @default(uuid())
+  phone               String             @unique
   userId              String             @unique
   referralCode        String
   isAlreadyRegistered Boolean            @default(false)

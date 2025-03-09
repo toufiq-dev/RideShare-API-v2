@@ -40,10 +40,6 @@ export class PilotService {
         },
       });
 
-      console.log(data);
-
-      console.log(data.createdAt);
-
       this.rideGateway.server.emit('test', {
         message: 'This is test event',
       });

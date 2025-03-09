@@ -37,7 +37,7 @@ export class PilotService {
         include: {
           language: true,
           drivingLicense: true,
-          wallet: true
+          wallet: true,
         },
       });
 

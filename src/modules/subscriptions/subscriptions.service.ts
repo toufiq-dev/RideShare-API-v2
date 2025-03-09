@@ -14,19 +14,21 @@ export class SubscriptionsService {
     try {
       const data = await this.prisma.subscription.findMany();
 
-    data.forEach((subscription: any) => {
-      subscription.price = Number(subscription.price);
-      subscription.coins = Number(subscription.coins);
-      subscription.priceBeforeDiscount = Number(subscription.priceBeforeDiscount);
-    });
+      data.forEach((subscription: any) => {
+        subscription.price = Number(subscription.price);
+        subscription.coins = Number(subscription.coins);
+        subscription.priceBeforeDiscount = Number(
+          subscription.priceBeforeDiscount,
+        );
+      });
 
-    return {
-      message: 'Subscription types fetched successfully.',
-      data
-    };
+      return {
+        message: 'Subscription types fetched successfully.',
+        data,
+      };
     } catch (error) {
-      console.error(error)
-      throw error
+      console.error(error);
+      throw error;
     }
   }
 

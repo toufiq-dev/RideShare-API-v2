@@ -11,6 +11,7 @@ export class SubscriptionsService {
 
   async getSubscriptionTypes() {
     const data = await this.prisma.subscription.findMany();
+  
 
     return {
       message: 'Subscription types fetched successfully.',

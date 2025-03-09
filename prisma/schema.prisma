@@ -11,10 +11,10 @@ model User {
   id             String          @id @default(uuid())
   role           UserRole
   status         UserStatus      @default(ACTIVE)
+  metadata       Json?
+  lastLogin      DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  lastLogin      DateTime?
-  metadata       Json?
   admin          Admin?
   customer       Customer?
   deviceTokens   DeviceToken[]
@@ -76,6 +76,8 @@ model Customer {
   isEmailVerified     Boolean          @default(false)
   name                String?
   avatar              String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   languageId          String
   bookings            Booking[]
   language            Languages        @relation(fields: [languageId], references: [id])
@@ -228,7 +230,7 @@ model Subscription {
   coins               Decimal                   @db.Decimal(10, 2)
   price               Decimal                   @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?                  @db.Decimal(10, 2)
-  description         String?
+  tag                 String?
   transactions        SubscriptionTransaction[]
 }
 

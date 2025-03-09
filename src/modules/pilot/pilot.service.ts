@@ -35,11 +35,14 @@ export class PilotService {
       const data = await this.prisma.pilot.findUnique({
         where: { userId },
         include: {
-          user: true,
           language: true,
-          drivingLicense: true,
         },
       });
+
+      
+      console.log(data);
+
+      console.log(data.createdAt);
 
       this.rideGateway.server.emit('test', {
         message: 'This is test event',

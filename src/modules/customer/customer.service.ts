@@ -26,7 +26,6 @@ export class CustomerService {
           userId,
         },
         include: {
-          user: true,
           language: true,
         },
       });

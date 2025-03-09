@@ -37,8 +37,7 @@ export class PaymentService {
       const subscription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      if (!subscription)
-        throw new NotFoundException('Subscription not found');
+      if (!subscription) throw new NotFoundException('Subscription not found');
 
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },

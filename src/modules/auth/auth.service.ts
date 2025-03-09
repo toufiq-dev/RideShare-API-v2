@@ -259,7 +259,6 @@ export class AuthService {
     return { user, customer, pilot };
   }
 
-
   private async generateTokens(userId: string, role: any) {
     await this.redis.del(`accessToken:${userId}`);
     await this.redis.del(`refreshToken:${userId}`);

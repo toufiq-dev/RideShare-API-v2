@@ -244,14 +244,16 @@ model PilotTripEarning {
 }
 
 model PilotWallet {
-  id             String        @id @default(uuid())
-  pilotId        String        @unique
-  balance        Decimal       @db.Decimal(10, 2)
-  minusLimit     Decimal       @default(-100.00) @db.Decimal(10, 2)
-  lastRecharge   DateTime?
-  subscriptionId String
-  pilot          Pilot         @relation(fields: [pilotId], references: [id])
-  transactions   Transaction[]
+  id              String        @id @default(uuid())
+  pilotId         String        @unique
+  balance         Decimal       @db.Decimal(10, 2)
+  minusLimit      Decimal       @default(-100.00) @db.Decimal(10, 2)
+  lastRecharge    DateTime?
+  todaysEarning   Decimal       @db.Decimal(10, 2)
+  lastTripEarning Decimal       @db.Decimal(10, 2)
+  subscriptionId  String
+  pilot           Pilot         @relation(fields: [pilotId], references: [id])
+  transactions    Transaction[]
 }
 
 model Transaction {

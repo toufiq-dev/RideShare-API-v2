@@ -4,27 +4,30 @@ import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
 } from './dto/subscriptions.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSubscriptionTypes() {
-    const data = await this.prisma.subscription.findMany();
+    try {
+      const data = await this.prisma.subscription.findMany();
 
-    const transformedData = data.map((item) => ({
-      ...item,
-      coins: Number(item.coins),
-      price: Number(item.price),
-      priceBeforeDiscount: item.priceBeforeDiscount
-        ? Number(item.priceBeforeDiscount)
-        : null,
-    }));
+    data.forEach((subscription: any) => {
+      subscription.price = Number(subscription.price);
+      subscription.coins = Number(subscription.coins);
+      subscription.priceBeforeDiscount = Number(subscription.priceBeforeDiscount);
+    });
 
     return {
       message: 'Subscription types fetched successfully.',
-      data: transformedData,
+      data
     };
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
   }
 
   async createSubscriptionType(

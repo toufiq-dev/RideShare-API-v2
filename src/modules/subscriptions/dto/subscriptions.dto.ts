@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
+
+
 export class CreateSubscriptionTypeDto {
   @ApiProperty({ description: 'Name of the subscription type' })
   @IsString()

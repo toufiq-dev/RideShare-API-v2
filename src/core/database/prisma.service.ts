@@ -1,6 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class PrismaService

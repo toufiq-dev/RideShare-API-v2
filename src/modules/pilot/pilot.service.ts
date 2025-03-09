@@ -39,7 +39,6 @@ export class PilotService {
         },
       });
 
-      
       console.log(data);
 
       console.log(data.createdAt);

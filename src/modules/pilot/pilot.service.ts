@@ -36,6 +36,7 @@ export class PilotService {
         where: { userId },
         include: {
           language: true,
+          drivingLicense: true,
         },
       });
 

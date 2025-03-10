@@ -89,7 +89,7 @@ export class AuthService {
         otp,
       );
 
-      // const languageId = await this.validateOtp(phone, otp);
+      // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
 
       const { user, customer, pilot } = await this.findOrCreateUser(
         phone,
@@ -232,7 +232,6 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           role,
-          isPhoneVerified: true,
         },
       });
 
@@ -260,7 +259,7 @@ export class AuthService {
     return { user, customer, pilot };
   }
 
-  private async generateTokens(userId: string, role: RoleEnum) {
+  private async generateTokens(userId: string, role: any) {
     await this.redis.del(`accessToken:${userId}`);
     await this.redis.del(`refreshToken:${userId}`);
 

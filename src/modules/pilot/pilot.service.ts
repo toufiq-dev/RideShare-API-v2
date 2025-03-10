@@ -32,18 +32,19 @@ export class PilotService {
 
   async getPilot(userId: string) {
     try {
-      const data = await this.prisma.pilot.findUnique({
+      const data: any = await this.prisma.pilot.findUnique({
         where: { userId },
         include: {
-          user: true,
           language: true,
           drivingLicense: true,
+          wallet: true,
         },
       });
 
-      this.rideGateway.server.emit('test', {
-        message: 'This is test event',
-      });
+      data.wallet.balance = Number(data.wallet.balance);
+      data.wallet.minusLimit = Number(data.wallet.minusLimit);
+      data.wallet.todaysEarning = Number(data.wallet.todaysEarning);
+      data.wallet.lastTripEarning = Number(data.wallet.lastTripEarning);
 
       if (!data) {
         throw new NotFoundException('Pilot not found.');
@@ -489,7 +490,7 @@ export class PilotService {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
-      const subscription = await this.prisma.pilotSubscription.findUnique({
+      const subscription = await this.prisma.subscription.findUnique({
         where: { name: 'Flexi Pack' },
       });
 
@@ -508,6 +509,13 @@ export class PilotService {
           amount: subscription.coins,
           walletId: wallet.id,
           type: 'ONBOARDING_OFFER',
+        },
+      });
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isFairCoinAvailed: true,
         },
       });
 
@@ -688,7 +696,7 @@ export class PilotService {
       puccUpto,
       state,
     } = verificationResponse;
-    console.log(category);
+   
     const vehicleCategory = await this.prisma.vehicleType.findFirst({
       where: {
         name: category,

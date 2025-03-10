@@ -33,18 +33,18 @@ async function main() {
       name: 'Starter Pack',
       coins: 45000,
       price: 1390,
-      priceBeforeDiscount: 1400,
-      description: "Most Popular",
+      priceBeforeDiscount: 1400.99,
+      tag: "Most Popular",
     },
-    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470, description: "Best Value" },
+    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470, tag: "Best Value" },
     {
       name: 'Mega Pack',
       coins: 450000,
       price: 12500,
       priceBeforeDiscount: 14900,
-      description: 'Super Saver',
+     tag: 'Super Saver',
     },
-    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null, description: "Budget Friendly" },
+    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null, tag: "Budget Friendly" },
   ];
 
   for (const language of languages) {
@@ -93,12 +93,12 @@ async function main() {
   }
 
   for (const subscription of subscriptionTypes) {
-    const existingSubscription = await prisma.pilotSubscription.findUnique({
+    const existingSubscription = await prisma.subscription.findUnique({
       where: { name: subscription.name },
     });
 
     if (!existingSubscription) {
-      await prisma.pilotSubscription.create({
+      await prisma.subscription.create({
         data: subscription,
       });
       console.log(`Created subscription: ${subscription.name}`);

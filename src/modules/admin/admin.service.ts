@@ -18,7 +18,7 @@ export class AdminService {
     const { name, coins, price, priceBeforeDiscount } =
       createSubscriptionTypeDto;
 
-    const data = await this.prisma.pilotSubscription.create({
+    const data = await this.prisma.subscription.create({
       data: {
         name,
         coins,
@@ -34,7 +34,7 @@ export class AdminService {
   }
 
   async getSubscriptionTypes() {
-    const data = await this.prisma.pilotSubscription.findMany();
+    const data = await this.prisma.subscription.findMany();
 
     return {
       message: 'Subscription types fetched successfully.',
@@ -49,7 +49,7 @@ export class AdminService {
     const { name, coins, price, priceBeforeDiscount } =
       updateSubscriptionTypeDto;
 
-    const data = await this.prisma.pilotSubscription.update({
+    const data = await this.prisma.subscription.update({
       where: {
         id,
       },
@@ -68,7 +68,7 @@ export class AdminService {
   }
 
   async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
-    const { name, email, phone } = createSupportStuffDto;
+    const { name, phone } = createSupportStuffDto;
 
     const user = await this.prisma.user.create({
       data: {
@@ -79,8 +79,6 @@ export class AdminService {
     const data = await this.prisma.support.create({
       data: {
         name,
-        email,
-        phone,
         referralCode: randomInt(10000, 1000000).toString(),
         userId: user.id,
       },

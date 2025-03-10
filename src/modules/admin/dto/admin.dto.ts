@@ -51,11 +51,6 @@ export class CreateSupportStuffDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ description: 'Email of the support stuff' })
-  @IsString()
-  @IsNotEmpty()
-  email: string;
-
   @ApiProperty({ description: 'Phone number of the support stuff' })
   @IsString()
   @IsNotEmpty()

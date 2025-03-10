@@ -82,8 +82,8 @@ export class EmailService {
     if (storedOtp === otp) {
       await this.redis.del(`emailVerificationotp:${email}`);
 
-      await this.prisma.user.update({
-        where: { id: userId },
+      await this.prisma.customer.update({
+        where: { userId },
         data: {
           isEmailVerified: true,
         },

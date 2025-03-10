@@ -1,7 +1,9 @@
+import { randomInt } from 'node:crypto';
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -9,13 +11,20 @@ import {
   CreateSavedPlaceDto,
   UpdateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
+  UpdateCustomerNameDto,
+  UpdateCustomerPhoneDto,
+  VerifyCustomerPhoneDto,
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
+import { RedisService } from 'src/core/cache/redis.service';
+import { OTPService } from 'src/core/utils/otp.util';
 
 @Injectable()
 export class CustomerService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+    private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
   ) {}
 
@@ -74,6 +83,109 @@ export class CustomerService {
 
       return {
         message: 'Onboarding completed successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updateName(
+    userId: string,
+    updateCustomerNameDto: UpdateCustomerNameDto,
+  ) {
+    const { name } = updateCustomerNameDto;
+
+    try {
+      const customer = await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
+
+      const data = await this.prisma.customer.update({
+        where: {
+          userId,
+        },
+        data: {
+          name,
+        },
+      });
+
+      return {
+        message: 'Customer name updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updatePhone(
+    userId: string,
+    updateCustomerPhoneDto: UpdateCustomerPhoneDto,
+  ) {
+    const { phone } = updateCustomerPhoneDto;
+
+    try {
+      const customer = await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${phone}`, otp, 300);
+
+      // const requestId = await this.otpService.sendOTP(phone);
+      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+      return {
+        message: 'OTP sent to your phone successfully.',
+        data: {
+          otp,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyPhone(
+    userId: string,
+    verifyCustomerPhoneDto: VerifyCustomerPhoneDto,
+  ) {
+    const { phone, otp } = verifyCustomerPhoneDto;
+
+    try {
+      const storedOtp = await this.redis.get(`otp:${phone}`);
+
+      if (!storedOtp || storedOtp !== otp) {
+        throw new UnauthorizedException('Invalid or expired OTP.');
+      }
+      await this.redis.del(`otp:${phone}`);
+
+      const data = await this.prisma.customer.update({
+        where: {
+          userId,
+        },
+        data: {
+          phone,
+        },
+      });
+
+      return {
+        message: 'Phone number updated successfully.',
         data,
       };
     } catch (error) {
@@ -250,5 +362,22 @@ export class CustomerService {
       message: 'Vehicle categories fetched successfully.',
       data,
     };
+  }
+
+  private async validateOtp(phone: string, otp: string) {
+    const request_id = await this.redis.get(`requestId:${phone}`);
+
+    const isVerified = await this.otpService.verifyOTP(phone, otp, request_id);
+    if (!isVerified) {
+      throw new UnauthorizedException('Invalid or expired OTP.');
+    }
+
+    const languageId = await this.redis.get(`languageId:${phone}`);
+    const refferalCode = await this.redis.get(`referralCode:${phone}`);
+
+    await this.redis.del(`languageId:${phone}`);
+    await this.redis.del(`referralCode:${phone}`);
+
+    return { languageId, refferalCode };
   }
 }

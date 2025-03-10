@@ -64,7 +64,7 @@ export class AuthService {
       await this.redis.set(`languageId:${phone}`, Language.id, 300);
       await this.redis.set(`referralCode:${phone}`, referralCode, 300);
 
-      // const requestId = await this.msg91.sendOTP(phone);
+      // const requestId = await this.otpService.sendOTP(phone);
 
       // await this.redis.set(`requestId:${phone}`, requestId, 300);
 

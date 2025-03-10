@@ -2,7 +2,6 @@ import {
   IsString,
   IsNotEmpty,
   IsPhoneNumber,
-  IsEmail,
   Length,
   IsEnum,
   IsOptional,

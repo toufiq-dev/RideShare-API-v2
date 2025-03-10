@@ -14,9 +14,12 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import {
+  UpdateCustomerNameDto,
   UpdateSavedPlaceDto,
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
+  UpdateCustomerPhoneDto,
+  VerifyCustomerPhoneDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -48,6 +51,45 @@ export class CustomerController {
     return await this.customerService.completeOnboarding(
       userId,
       customerOnboardingDto,
+    );
+  }
+
+  @Patch('name')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update name' })
+  async updateName(
+    @Body() updateCustomerNameDto: UpdateCustomerNameDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.updateName(userId, updateCustomerNameDto);
+  }
+
+  @Patch('phone/otp')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async updatePhone(
+    @Body() updateCustomerPhoneDto: UpdateCustomerPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.updatePhone(
+      userId,
+      updateCustomerPhoneDto,
+    );
+  }
+
+  @Patch('phone/verify')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async verifyPhone(
+    @Body() verifyCustomerPhoneDto: VerifyCustomerPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.verifyPhone(
+      userId,
+      verifyCustomerPhoneDto,
     );
   }
 

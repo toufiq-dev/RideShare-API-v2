@@ -33,7 +33,7 @@ async function main() {
       name: 'Starter Pack',
       coins: 45000,
       price: 1390,
-      priceBeforeDiscount: 1400,
+      priceBeforeDiscount: 1400.99,
       tag: "Most Popular",
     },
     { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470, tag: "Best Value" },

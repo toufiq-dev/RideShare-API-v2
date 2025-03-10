@@ -32,7 +32,7 @@ export class PilotService {
 
   async getPilot(userId: string) {
     try {
-      const data = await this.prisma.pilot.findUnique({
+      const data: any = await this.prisma.pilot.findUnique({
         where: { userId },
         include: {
           language: true,
@@ -41,9 +41,10 @@ export class PilotService {
         },
       });
 
-      this.rideGateway.server.emit('test', {
-        message: 'This is test event',
-      });
+      data.wallet.balance = Number(data.wallet.balance);
+      data.wallet.minusLimit = Number(data.wallet.minusLimit);
+      data.wallet.todaysEarning = Number(data.wallet.todaysEarning);
+      data.wallet.lastTripEarning = Number(data.wallet.lastTripEarning);
 
       if (!data) {
         throw new NotFoundException('Pilot not found.');
@@ -511,6 +512,13 @@ export class PilotService {
         },
       });
 
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isFairCoinAvailed: true,
+        },
+      });
+
       return {
         message: 'Pilot onboarding coins availed successfully.',
       };
@@ -688,7 +696,7 @@ export class PilotService {
       puccUpto,
       state,
     } = verificationResponse;
-    console.log(category);
+   
     const vehicleCategory = await this.prisma.vehicleType.findFirst({
       where: {
         name: category,

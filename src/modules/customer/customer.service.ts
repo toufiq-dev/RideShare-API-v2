@@ -12,12 +12,11 @@ import {
   UpdateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
   UpdateCustomerNameDto,
-  UpdateCustomerPhoneDto,
-  VerifyCustomerPhoneDto,
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
+import { UpdatePhoneDto, VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @Injectable()
 export class CustomerService {
@@ -127,10 +126,7 @@ export class CustomerService {
     }
   }
 
-  async updatePhone(
-    userId: string,
-    updateCustomerPhoneDto: UpdateCustomerPhoneDto,
-  ) {
+  async updatePhone(userId: string, updateCustomerPhoneDto: UpdatePhoneDto) {
     const { phone } = updateCustomerPhoneDto;
 
     try {
@@ -161,10 +157,7 @@ export class CustomerService {
     }
   }
 
-  async verifyPhone(
-    userId: string,
-    verifyCustomerPhoneDto: VerifyCustomerPhoneDto,
-  ) {
+  async verifyPhone(userId: string, verifyCustomerPhoneDto: VerifyPhoneDto) {
     const { phone, otp } = verifyCustomerPhoneDto;
 
     try {

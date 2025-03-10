@@ -40,14 +40,21 @@ export class PilotService {
           wallet: true,
         },
       });
-
-      data.wallet.balance = Number(data.wallet.balance);
-      data.wallet.minusLimit = Number(data.wallet.minusLimit);
-      data.wallet.todaysEarning = Number(data.wallet.todaysEarning);
-      data.wallet.lastTripEarning = Number(data.wallet.lastTripEarning);
-
       if (!data) {
         throw new NotFoundException('Pilot not found.');
+      }
+
+      if (data.wallet) {
+        data.wallet.balance = data.wallet.balance
+          ? Number(data.wallet.balance)
+          : 0;
+        data.wallet.minusLimit = Number(data.wallet.minusLimit);
+        data.wallet.todaysEarning = data.wallet.todaysEarning
+          ? Number(data.wallet.todaysEarning)
+          : 0;
+        data.wallet.lastTripEarning = data.wallet.lastTripEarning
+          ? Number(data.wallet.lastTripEarning)
+          : 0;
       }
 
       return {
@@ -696,7 +703,7 @@ export class PilotService {
       puccUpto,
       state,
     } = verificationResponse;
-   
+
     const vehicleCategory = await this.prisma.vehicleType.findFirst({
       where: {
         name: category,

@@ -5,6 +5,7 @@ import { AzureService } from 'src/core/utils/azure.util';
 import { ConfigService } from '@nestjs/config';
 import { VerificationService } from 'src/core/utils/verification.util';
 import { RideModule } from '../ride/ride.module';
+import { OTPService } from 'src/core/utils/otp.util';
 
 @Module({
   imports: [RideModule],
@@ -15,6 +16,7 @@ import { RideModule } from '../ride/ride.module';
     ConfigService,
     AzureService,
     VerificationService,
+    OTPService,
   ],
 })
 export class PilotModule {}

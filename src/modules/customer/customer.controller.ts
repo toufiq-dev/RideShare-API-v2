@@ -18,12 +18,11 @@ import {
   UpdateSavedPlaceDto,
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
-  UpdateCustomerPhoneDto,
-  VerifyCustomerPhoneDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @ApiTags('Customer')
 @Controller('customer')
@@ -69,14 +68,8 @@ export class CustomerController {
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
-  async updatePhone(
-    @Body() updateCustomerPhoneDto: UpdateCustomerPhoneDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.customerService.updatePhone(
-      userId,
-      updateCustomerPhoneDto,
-    );
+  async updatePhone(@CurrentUser('userId') userId: string) {
+    return await this.customerService.updatePhone(userId);
   }
 
   @Patch('phone/verify')
@@ -84,7 +77,7 @@ export class CustomerController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
   async verifyPhone(
-    @Body() verifyCustomerPhoneDto: VerifyCustomerPhoneDto,
+    @Body() verifyCustomerPhoneDto: VerifyPhoneDto,
     @CurrentUser('userId') userId: string,
   ) {
     return await this.customerService.verifyPhone(

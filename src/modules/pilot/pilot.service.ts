@@ -1,8 +1,10 @@
+import { randomInt } from 'node:crypto';
 import {
   Injectable,
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { AzureService } from 'src/core/utils/azure.util';
@@ -20,6 +22,8 @@ import {
 import { RideGateway } from '../ride/ride.gateway';
 import formatDate from 'src/common/functions/formatDate';
 import { VerifyAadhaarDto } from './dto/pilot.dto';
+import { RedisService } from 'src/core/cache/redis.service';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @Injectable()
 export class PilotService {
@@ -28,6 +32,7 @@ export class PilotService {
     private readonly azureServicce: AzureService,
     private readonly verificationService: VerificationService,
     private readonly rideGateway: RideGateway,
+    private readonly redis: RedisService,
   ) {}
 
   async getPilot(userId: string) {
@@ -59,6 +64,87 @@ export class PilotService {
 
       return {
         message: 'Pilot fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updateLanguage(userId: string, languageId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: { languageId },
+      });
+
+      return {
+        message: 'Language updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updatePhone(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: {
+          userId,
+        },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${userId}`, otp, 300);
+
+      // const requestId = await this.otpService.sendOTP(phone);
+      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+      return {
+        message: 'OTP sent to your phone successfully.',
+        data: {
+          otp,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyPhone(userId: string, verifyCustomerPhoneDto: VerifyPhoneDto) {
+    const { phone, otp } = verifyCustomerPhoneDto;
+
+    try {
+      const storedOtp = await this.redis.get(`otp:${userId}`);
+
+      if (!storedOtp || storedOtp !== otp) {
+        throw new UnauthorizedException('Invalid or expired OTP.');
+      }
+      await this.redis.del(`otp:${userId}`);
+
+      const data = await this.prisma.pilot.update({
+        where: {
+          userId,
+        },
+        data: {
+          phone,
+        },
+      });
+
+      return {
+        message: 'Phone number updated successfully.',
         data,
       };
     } catch (error) {

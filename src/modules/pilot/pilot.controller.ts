@@ -7,6 +7,7 @@ import {
   Post,
   UploadedFile,
   Body,
+  Patch,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ import {
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @Controller('pilot')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -37,6 +39,36 @@ export class PilotController {
   @ApiOperation({ summary: 'Get pilot' })
   async getPilot(@CurrentUser('userId') userId: string) {
     return await this.pilotService.getPilot(userId);
+  }
+
+  @Patch('language')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update pilot Language' })
+  async updateLanguage(
+    @Body('languageId') languageId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.updateLanguage(userId, languageId);
+  }
+
+  @Patch('phone/otp')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async updatePhone(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.updatePhone(userId);
+  }
+
+  @Patch('phone/verify')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async verifyPhone(
+    @Body() verifyCustomerPhoneDto: VerifyPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.verifyPhone(userId, verifyCustomerPhoneDto);
   }
 
   @Post('driving-license')

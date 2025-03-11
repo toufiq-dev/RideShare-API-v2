@@ -22,7 +22,7 @@ import {
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
-import { UpdatePhoneDto, VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @ApiTags('Customer')
 @Controller('customer')
@@ -68,14 +68,8 @@ export class CustomerController {
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
-  async updatePhone(
-    @Body() updateCustomerPhoneDto: UpdatePhoneDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.customerService.updatePhone(
-      userId,
-      updateCustomerPhoneDto,
-    );
+  async updatePhone(@CurrentUser('userId') userId: string) {
+    return await this.customerService.updatePhone(userId);
   }
 
   @Patch('phone/verify')

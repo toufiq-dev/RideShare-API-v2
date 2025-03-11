@@ -23,7 +23,7 @@ import { RideGateway } from '../ride/ride.gateway';
 import formatDate from 'src/common/functions/formatDate';
 import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
-import { UpdatePhoneDto, VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @Injectable()
 export class PilotService {
@@ -94,9 +94,7 @@ export class PilotService {
     }
   }
 
-  async updatePhone(userId: string, updateCustomerPhoneDto: UpdatePhoneDto) {
-    const { phone } = updateCustomerPhoneDto;
-
+  async updatePhone(userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: {
@@ -108,7 +106,7 @@ export class PilotService {
       }
 
       const otp = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${phone}`, otp, 300);
+      await this.redis.set(`otp:${userId}`, otp, 300);
 
       // const requestId = await this.otpService.sendOTP(phone);
       // await this.redis.set(`requestId:${phone}`, requestId, 300);
@@ -129,13 +127,12 @@ export class PilotService {
     const { phone, otp } = verifyCustomerPhoneDto;
 
     try {
-      const storedOtp = await this.redis.get(`otp:${phone}`);
+      const storedOtp = await this.redis.get(`otp:${userId}`);
 
       if (!storedOtp || storedOtp !== otp) {
         throw new UnauthorizedException('Invalid or expired OTP.');
       }
-      await this.redis.del(`otp:${phone}`);
-      
+      await this.redis.del(`otp:${userId}`);
 
       const data = await this.prisma.pilot.update({
         where: {

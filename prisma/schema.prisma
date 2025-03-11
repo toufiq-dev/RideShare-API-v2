@@ -21,7 +21,6 @@ model User {
   pilot          Pilot?
   support        Support?
   supportTickets SupportTicket[]
-  transaction    Transaction[]
   session        UserSession[]
 }
 
@@ -127,13 +126,14 @@ model Pilot {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   activeBookingId     String?            @unique
-  bookings            Booking[]
   drivingLicense      DrivingLicense?
+  bookings            Booking[]
   language            Languages          @relation(fields: [languageId], references: [id])
   pilotProgram        PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
   user                User               @relation(fields: [userId], references: [id])
   activeBooking       Booking?           @relation("ActiveBooking", fields: [activeBookingId], references: [id])
   earnings            PilotTripEarning[]
+  transaction         Transaction[]
   ranking             PilotRanking?
   ratings             PilotRating[]
   wallet              PilotWallet?
@@ -238,44 +238,46 @@ model Subscription {
 }
 
 model PilotTripEarning {
-  id        String   @id @default(uuid())
-  pilotId   String
-  amount    Decimal  @db.Decimal(10, 2)
+  id        String      @id @default(uuid())
+  pilotId   String      @unique
   date      DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  pilot     Pilot    @relation(fields: [pilotId], references: [id])
+  amount    Decimal     @db.Decimal(10, 2)
+  walletId  String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  pilot     Pilot       @relation(fields: [pilotId], references: [id])
+  pWallet   PilotWallet @relation(fields: [walletId], references: [id])
 }
 
 model PilotWallet {
-  id              String        @id @default(uuid())
-  pilotId         String        @unique
-  balance         Decimal       @db.Decimal(10, 2)
-  minusLimit      Decimal       @default(-100.00) @db.Decimal(10, 2)
-  todaysEarning   Decimal?      @db.Decimal(10, 2)
-  lastTripEarning Decimal?      @db.Decimal(10, 2)
-  createdAt       DateTime      @default(now())
-  subscriptionId  String
-  pilot           Pilot         @relation(fields: [pilotId], references: [id])
-  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
-  transactions    Transaction[]
+  id               String             @id @default(uuid())
+  pilotId          String             @unique
+  balance          Decimal            @db.Decimal(10, 2)
+  minusLimit       Decimal            @default(100.00) @db.Decimal(10, 2)
+  createdAt        DateTime           @default(now())
+  subscriptionId   String
+  pilot            Pilot              @relation(fields: [pilotId], references: [id])
+  subscription     Subscription       @relation(fields: [subscriptionId], references: [id])
+  pilotTripEarning PilotTripEarning[]
+  transactions     Transaction[]
 }
 
 model Transaction {
-  id             String          @id @default(uuid())
-  userId         String
+  id             String            @id @default(uuid())
+  pilotId        String
   walletId       String?
-  type           TransactionType
   order_id       String?
-  amount         Decimal         @db.Decimal(10, 2)
-  balanceBefore  Decimal?        @db.Decimal(10, 2)
-  balanceAfter   Decimal?        @db.Decimal(10, 2)
+  status         TransactionStatus
+  type           TransactionType
+  amount         Decimal           @db.Decimal(10, 2)
+  balanceBefore  Decimal?          @db.Decimal(10, 2)
+  balanceAfter   Decimal?          @db.Decimal(10, 2)
   metadata       Json?
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime          @default(now())
   subscriptionId String?
-  subscription   Subscription?   @relation(fields: [subscriptionId], references: [id])
-  user           User            @relation(fields: [userId], references: [id])
-  pilotWallet    PilotWallet?    @relation(fields: [walletId], references: [id])
+  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
+  pilot          Pilot             @relation(fields: [pilotId], references: [id])
+  pilotWallet    PilotWallet?      @relation(fields: [walletId], references: [id])
 }
 
 model Booking {
@@ -429,6 +431,12 @@ enum BookingStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESSFULL
+  FAILED
 }
 
 enum TransactionType {

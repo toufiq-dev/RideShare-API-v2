@@ -24,6 +24,7 @@ import formatDate from 'src/common/functions/formatDate';
 import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { TransactionStatus, TransactionType } from '@prisma/client';
 
 @Injectable()
 export class PilotService {
@@ -598,10 +599,11 @@ export class PilotService {
 
       await this.prisma.transaction.create({
         data: {
-          userId: pilot.userId,
+          pilotId: pilot.id,
           amount: subscription.coins,
           walletId: wallet.id,
-          type: 'ONBOARDING_OFFER',
+          type: TransactionType.ONBOARDING_OFFER,
+          status: TransactionStatus.SUCCESSFULL
         },
       });
 

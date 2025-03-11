@@ -64,7 +64,7 @@ export class CustomerController {
     return await this.customerService.updateName(userId, updateCustomerNameDto);
   }
 
-  @Patch('phone/otp')
+  @Post('phone/otp')
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
@@ -72,7 +72,7 @@ export class CustomerController {
     return await this.customerService.updatePhone(userId);
   }
 
-  @Patch('phone/verify')
+  @Post('phone/verify')
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })

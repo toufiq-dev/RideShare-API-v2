@@ -60,11 +60,13 @@ model Admin {
 }
 
 model Support {
-  id           String @id @default(uuid())
-  userId       String @unique
+  id           String   @id @default(uuid())
+  userId       String   @unique
   name         String
-  referralCode String @unique
-  user         User   @relation(fields: [userId], references: [id])
+  referralCode String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Customer {
@@ -225,13 +227,14 @@ model Translation {
 }
 
 model Subscription {
-  id                  String                    @id @default(uuid())
-  name                String                    @unique
-  coins               Decimal                   @db.Decimal(10, 2)
-  price               Decimal                   @db.Decimal(10, 2)
-  priceBeforeDiscount Decimal?                  @db.Decimal(10, 2)
+  id                  String        @id @default(uuid())
+  name                String        @unique
+  coins               Decimal       @db.Decimal(10, 2)
+  price               Decimal       @db.Decimal(10, 2)
+  priceBeforeDiscount Decimal?      @db.Decimal(10, 2)
   tag                 String?
-  transactions        SubscriptionTransaction[]
+  transactions        Transaction[]
+  wallets             PilotWallet[]
 }
 
 model PilotTripEarning {
@@ -240,6 +243,7 @@ model PilotTripEarning {
   amount    Decimal  @db.Decimal(10, 2)
   date      DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   pilot     Pilot    @relation(fields: [pilotId], references: [id])
 }
 
@@ -250,39 +254,28 @@ model PilotWallet {
   minusLimit      Decimal       @default(-100.00) @db.Decimal(10, 2)
   todaysEarning   Decimal?      @db.Decimal(10, 2)
   lastTripEarning Decimal?      @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
   subscriptionId  String
   pilot           Pilot         @relation(fields: [pilotId], references: [id])
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
   transactions    Transaction[]
 }
 
 model Transaction {
-  id             String                   @id @default(uuid())
+  id             String          @id @default(uuid())
   userId         String
   walletId       String?
   type           TransactionType
-  amount         Decimal                  @db.Decimal(10, 2)
-  balanceBefore  Decimal?                 @db.Decimal(10, 2)
-  balanceAfter   Decimal?                 @db.Decimal(10, 2)
+  order_id       String?
+  amount         Decimal         @db.Decimal(10, 2)
+  balanceBefore  Decimal?        @db.Decimal(10, 2)
+  balanceAfter   Decimal?        @db.Decimal(10, 2)
   metadata       Json?
-  createdAt      DateTime                 @default(now())
+  createdAt      DateTime        @default(now())
   subscriptionId String?
-  subscriptionTx SubscriptionTransaction? @relation(fields: [subscriptionId], references: [id])
-  user           User                     @relation(fields: [userId], references: [id])
-  pilotWallet    PilotWallet?             @relation(fields: [walletId], references: [id])
-}
-
-model SubscriptionTransaction {
-  id             String        @id @default(uuid())
-  subscriptionId String
-  amount         Decimal       @db.Decimal(10, 2)
-  status         PaymentStatus
-  paymentMethod  String
-  startDate      DateTime
-  endDate        DateTime
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  subscription   Subscription  @relation(fields: [subscriptionId], references: [id])
-  transaction    Transaction[]
+  subscription   Subscription?   @relation(fields: [subscriptionId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  pilotWallet    PilotWallet?    @relation(fields: [walletId], references: [id])
 }
 
 model Booking {
@@ -442,13 +435,6 @@ enum TransactionType {
   SUBSCRIPTION_PURCHASE
   TRIP_DEDUCTION
   ONBOARDING_OFFER
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
 }
 
 enum SupportType {

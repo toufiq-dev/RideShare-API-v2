@@ -52,7 +52,7 @@ export class PilotController {
     return await this.pilotService.updateLanguage(userId, languageId);
   }
 
-  @Patch('phone/otp')
+  @Post('phone/otp')
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
@@ -60,7 +60,7 @@ export class PilotController {
     return await this.pilotService.updatePhone(userId);
   }
 
-  @Patch('phone/verify')
+  @Post('phone/verify')
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })

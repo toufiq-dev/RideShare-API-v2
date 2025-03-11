@@ -64,6 +64,10 @@ export class PaymentService {
         },
       });
 
+      if (response.status !== 200) {
+        throw new Error('Failed to create order');
+      }
+
       return {
         message: 'Order created successfully',
         data: {
@@ -74,6 +78,37 @@ export class PaymentService {
     } catch (error) {
       console.error(error);
       throw new error();
+    }
+  }
+
+  async verifyPayment(orderId: string, userId: string) {
+    try {
+      const response = await axios.get(
+        `${this.createOrderUrl}/${orderId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-version': this.apiVersion,
+            'x-client-id': this.testClientId,
+            'x-client-secret': this.testClientSecret,
+          },
+        },
+      );
+
+      if (response.status !== 200) {
+        throw new Error('Failed to verify payment');
+      }
+
+      if (response.data.order_status === 'PAID') {
+        const pilotWallet = await this.prisma.pilotWallet.findUnique({
+          where: { pilotId: userId },
+        })
+      }
+    
+      
+    } catch (error) {
+      console.error(error)
+      throw new error()
     }
   }
 }

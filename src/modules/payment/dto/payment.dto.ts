@@ -1,9 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateOrderDto {
   @ApiProperty({ description: 'Subscription id' })
   @IsNotEmpty()
   @IsString()
   subscriptionId: string;
+
+  @ApiProperty({ description: 'Multiplier of the subscription' })
+  @IsNotEmpty()
+  @IsNumber()
+  times: string;
 }

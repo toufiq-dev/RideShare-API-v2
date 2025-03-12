@@ -33,7 +33,7 @@ export class PaymentService {
   }
 
   async createOrder(createOrderDto: CreateOrderDto, userId: string) {
-    const { subscriptionId } = createOrderDto;
+    const { subscriptionId, times } = createOrderDto;
 
     try {
       const subscription = await this.prisma.subscription.findUnique({
@@ -50,7 +50,7 @@ export class PaymentService {
 
       const data = {
         order_currency: 'INR',
-        order_amount: Number(subscription.price),
+        order_amount: Number(Number(subscription.price) * Number(times)),
         customer_details: {
           customer_id: pilot.id,
           customer_phone: pilot.phone,

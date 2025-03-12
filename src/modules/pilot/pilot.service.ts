@@ -603,7 +603,7 @@ export class PilotService {
           amount: subscription.coins,
           walletId: wallet.id,
           type: TransactionType.ONBOARDING_OFFER,
-          status: TransactionStatus.SUCCESSFULL
+          status: TransactionStatus.SUCCESSFULL,
         },
       });
 

@@ -43,6 +43,9 @@ export class EmailService {
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
+      if (customer.email === email) {
+        throw new BadRequestException('This Email already exists.')
+      }
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),

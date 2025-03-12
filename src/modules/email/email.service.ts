@@ -47,6 +47,7 @@ export class EmailService {
         where: { email },
       })
       if (doesEmailExist) {
+        if (doesEmailExist.id !== customer.id) 
         throw new BadRequestException('Email already exists.');
       }
 

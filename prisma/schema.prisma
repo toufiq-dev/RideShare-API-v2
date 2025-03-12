@@ -191,6 +191,23 @@ model VehicleType {
   vehicle     Vehicle[]
 }
 
+model VehicleClassificationCache {
+  id              String      @id @default(uuid())
+  category        String
+  class           String
+  manufacturer    String
+  model           String
+  bodyType        String?
+  vehicleCategory String?
+  seatCapacity    String?
+  permitType      String?
+  isCommercial    Boolean
+  createdAt       DateTime    @default(now())
+
+  @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
+}
+
+
 model PilotProgram {
   id          String  @id @default(uuid())
   name        String  @unique

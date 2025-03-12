@@ -326,6 +326,12 @@ export class PilotService {
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
 
+      if (!verificationResponse.verificationFailed) {
+        return {
+          message: 'Vehicle registration or permit is expired.',
+        };
+      }
+
       const data = await this.updatePilotVehicleData(
         verificationResponse,
         pilot.id,
@@ -347,9 +353,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie.');
-      }
+      // if (!pilot.selfieUrl) {
+      //   throw new BadRequestException('Driver does not have Live selfie.');
+      // }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -800,7 +806,6 @@ export class PilotService {
     console.log(pilotId);
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        pilotId,
         regNo,
         regUpto,
         permitUpto,
@@ -813,7 +818,12 @@ export class PilotService {
         seatCapacity,
         manufacturer,
         state,
-        vehicleTypeId: vehicleCategory.id,
+        pilot: {
+          connect: { id: pilotId },
+        },
+        vehicleType: {
+          connect: { id: vehicleCategory.id },
+        },
       },
     });
 

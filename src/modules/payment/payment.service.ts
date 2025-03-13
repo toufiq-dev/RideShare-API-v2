@@ -43,6 +43,7 @@ export class PaymentService {
 
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
+        include: { drivingLicense: true },
       });
       if (!pilot) {
         throw new NotFoundException('User not found');
@@ -54,6 +55,7 @@ export class PaymentService {
         customer_details: {
           customer_id: pilot.id,
           customer_phone: pilot.phone,
+          customer_name: pilot.drivingLicense.nameOnLicense,
         },
       };
 
@@ -65,6 +67,7 @@ export class PaymentService {
           'x-client-secret': this.testClientSecret,
         },
       });
+      console.log(response.data);
 
       if (response.status !== 200) {
         throw new Error('Failed to create order');

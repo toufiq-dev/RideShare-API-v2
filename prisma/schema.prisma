@@ -103,7 +103,7 @@ model Pilot {
   id                  String             @id @default(uuid())
   phone               String             @unique
   userId              String             @unique
-  referralCode        String
+  referralCode        String             @unique
   isAlreadyRegistered Boolean            @default(false)
   isAvailable         PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
@@ -166,11 +166,11 @@ model Vehicle {
   id            String      @id @default(uuid())
   pilotId       String
   regNo         String      @unique
-  fitUpto       DateTime
-  insuranceUpto DateTime
-  puccUpto      DateTime
-  regUpto       DateTime
-  permitUpto    DateTime
+  fitUpto       DateTime?
+  insuranceUpto DateTime?
+  puccUpto      DateTime?
+  regUpto       DateTime?
+  permitUpto    String?
   manufacturer  String
   status        String
   colour        String

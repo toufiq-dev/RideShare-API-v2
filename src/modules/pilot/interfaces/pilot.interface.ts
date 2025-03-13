@@ -10,7 +10,7 @@ export interface VerificationResponseVehicle {
   category?: string;
   regNo?: string;
   regUpto?: Date;
-  permitUpto?: Date;
+  permitUpto?: any;
   status?: string;
   manufacturer?: string;
   model?: string;

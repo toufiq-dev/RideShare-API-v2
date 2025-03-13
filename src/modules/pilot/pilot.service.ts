@@ -629,6 +629,51 @@ export class PilotService {
     }
   }
 
+  async getVehicles(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.vehicle.findMany({
+        where: { pilotId: pilot.id },
+        include: {
+          vehicleType: true,
+        },
+      });
+
+      return {
+        message: 'Vehicles fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getTransactions(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.transaction.findMany({
+        where: { pilotId: pilot.id },
+      });
+
+      return {
+        message: 'Transactions fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 
@@ -803,7 +848,7 @@ export class PilotService {
         name: category,
       },
     });
-    console.log(pilotId);
+
     const vehicle = await this.prisma.vehicle.create({
       data: {
         regNo,

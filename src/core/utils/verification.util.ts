@@ -186,12 +186,7 @@ export class VerificationService {
 
       // Check if rc or permit is expired
       let isrcExpired = false;
-      let ispermitExpired = false;
-      if (
-        !responseRc.data.result.rcExpiryDate ||
-        !responseRc.data.result.permitValidUpto ||
-        responseRc.data.result.permitValidUpto.toUpperCase() == 'NA'
-      ) {
+      if (!responseRc.data.result.rcExpiryDate) {
         console.log('here not');
         throw new BadRequestException(
           'Vehicle registration or permit is expired.',
@@ -201,17 +196,12 @@ export class VerificationService {
       const rcexpiryDateUTC = moment.utc(
         formatDate(responseRc.data.result.rcExpiryDate),
       );
-      const permitexpiryDateUTC = moment.utc(
-        formatDate(responseRc.data.result.permitValidUpto),
-      );
       const nowUTC = moment.utc();
       const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
-      const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
       const nowIST = nowUTC.tz('Asia/Kolkata');
       isrcExpired = rcexpiryDateIST.isBefore(nowIST);
-      ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
 
-      if (isrcExpired || ispermitExpired) {
+      if (isrcExpired) {
         return {
           verificationFailed: true,
           regNo: responseRc.data.result.regNo,

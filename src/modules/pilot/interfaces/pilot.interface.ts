@@ -7,17 +7,18 @@ export interface VerificationResponseDL {
 }
 
 export interface VerificationResponseVehicle {
-  category: string;
-  regNo: string;
-  regUpto: Date;
-  permitUpto: Date;
-  status: string;
-  manufacturer: string;
-  model: string;
-  colour: string;
-  seatCapacity: string;
-  state: string;
-  fitUpto: Date;
-  puccUpto: Date;
-  insuranceUpto: Date;
+  category?: string;
+  regNo?: string;
+  regUpto?: Date;
+  permitUpto?: any;
+  status?: string;
+  manufacturer?: string;
+  model?: string;
+  colour?: string;
+  seatCapacity?: string;
+  state?: string;
+  fitUpto?: Date;
+  puccUpto?: Date;
+  insuranceUpto?: Date;
+  verificationFailed: boolean;
 }

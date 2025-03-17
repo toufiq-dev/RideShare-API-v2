@@ -50,6 +50,11 @@ export class VerifyOtpDto {
   })
   @IsEnum(RoleEnum, { message: 'Role must be either CUSTOMER or PILOT' })
   role: RoleEnum;
+
+  @ApiPropertyOptional({ description: 'FCM Token' })
+  @IsString()
+  @IsOptional({ message: 'FCM Token is optional' })
+  fcmToken?: string;
 }
 
 export class RefreshTokenDto {

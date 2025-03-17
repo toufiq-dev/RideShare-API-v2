@@ -5,6 +5,7 @@ import formatDate from 'src/common/functions/formatDate';
 import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.interface';
 import * as moment from 'moment-timezone';
 import OpenAI from 'openai';
+import { PrismaService } from '../database/prisma.service';
 
 type VehicleCategory =
   | 'Hatchback'
@@ -34,7 +35,10 @@ export class VerificationService {
   private readonly clientSecret: string;
   private readonly openAiApiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.productionAccessToken = this.configService.get<string>(
       'signzy.productionAccessToken',
     );
@@ -156,7 +160,7 @@ export class VerificationService {
 
   async verifyVehicleRC(
     registrationNumber: string,
-  ): Promise<VerificationResponseVehicle | any> {
+  ): Promise<VerificationResponseVehicle> {
     const data = {
       vehicleNumber: registrationNumber,
     };
@@ -182,41 +186,50 @@ export class VerificationService {
 
       // Check if rc or permit is expired
       let isrcExpired = false;
-      let ispermitExpired = false;
-      if (responseRc.data.result.rcExpiryDate) {
-        const rcexpiryDateUTC = moment.utc(
-          formatDate(responseRc.data.result.rcExpiryDate),
+      if (!responseRc.data.result.rcExpiryDate) {
+        console.log('here not');
+        throw new BadRequestException(
+          'Vehicle registration or permit is expired.',
         );
-        const permitexpiryDateUTC = moment.utc(
-          formatDate(responseRc.data.result.permitValidUpto),
-        );
-        const nowUTC = moment.utc();
-        const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
-        const pemitexpiryDateIST = permitexpiryDateUTC.tz('Asia/Kolkata');
-        const nowIST = nowUTC.tz('Asia/Kolkata');
-        isrcExpired = rcexpiryDateIST.isBefore(nowIST);
-        ispermitExpired = pemitexpiryDateIST.isBefore(nowIST);
       }
+
+      const rcexpiryDateUTC = moment.utc(
+        formatDate(responseRc.data.result.rcExpiryDate),
+      );
+      const nowUTC = moment.utc();
+      const rcexpiryDateIST = rcexpiryDateUTC.tz('Asia/Kolkata');
+      const nowIST = nowUTC.tz('Asia/Kolkata');
+      isrcExpired = rcexpiryDateIST.isBefore(nowIST);
 
       if (isrcExpired) {
         return {
-          message: 'Vehicle registration or permit is expired.',
-          data: {
-            id: null,
-            pilotId: null,
-            regNo: null,
-            vehicleTypeId: null,
-            createdAt: null,
-            updatedAt: null,
-          },
+          verificationFailed: true,
+          regNo: responseRc.data.result.regNo,
+          regUpto: formatDate(responseRc.data.result.rcExpiryDate),
+          permitUpto: formatDate(responseRc.data.result.permitValidUpto),
+          status: responseRc.data.result.status,
+          manufacturer: responseRc.data.result.vehicleManufacturerName,
+          model: responseRc.data.result.model,
+          colour: responseRc.data.result.vehicleColour,
+          seatCapacity: responseRc.data.result.vehicleSeatCapacity,
+          state: responseBasic.data.result.stateCode,
+          insuranceUpto: formatDate(
+            responseRc.data.result.vehicleInsuranceUpto,
+          ),
+          fitUpto: formatDate(responseBasic.data.result.fitUpto),
+          puccUpto: formatDate(responseRc.data.result.puccUpto),
         };
       }
 
-      const category = await this.classifyVehicleUsingOpenAI(
-        responseRc.data.result,
-      );
+      let category = await this.categoryExists(responseRc.data.result);
+      if (!category) {
+        category = await this.classifyVehicleUsingOpenAI(
+          responseRc.data.result,
+        );
+      }
 
       return {
+        verificationFailed: false,
         category,
         regNo: responseRc.data.result.regNo,
         regUpto: formatDate(responseRc.data.result.rcExpiryDate),
@@ -325,7 +338,6 @@ export class VerificationService {
     const openai = new OpenAI({
       apiKey: this.openAiApiKey,
     });
-
     const prompt = `
       You are an expert in vehicle classification for a Mumbai-based taxi booking application. 
       Based on the following vehicle details, categorize the following vehicle into one of these types:
@@ -361,10 +373,48 @@ export class VerificationService {
       const category =
         response.choices[0].message.content.trim() as VehicleCategory;
 
+      await this.prisma.vehicleClassificationCache.create({
+        data: {
+          class: vehicleData.class,
+          manufacturer: vehicleData.vehicleManufacturerName,
+          model: vehicleData.model,
+          bodyType: vehicleData.bodyType,
+          vehicleCategory: vehicleData.vehicleCategory,
+          seatCapacity: vehicleData.vehicleSeatCapacity,
+          permitType: vehicleData.permitType,
+          isCommercial: vehicleData.isCommercial,
+          category,
+        },
+      });
+
       return category;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
       return 'Other';
     }
+  }
+
+  private async categoryExists(vehicleData: any): Promise<VehicleCategory> {
+    const cached = await this.prisma.vehicleClassificationCache.findUnique({
+      where: {
+        class_manufacturer_model_bodyType_vehicleCategory_seatCapacity_permitType_isCommercial:
+          {
+            class: vehicleData.class,
+            manufacturer: vehicleData.vehicleManufacturerName,
+            model: vehicleData.model,
+            bodyType: vehicleData.bodyType,
+            vehicleCategory: vehicleData.vehicleCategory,
+            seatCapacity: vehicleData.vehicleSeatCapacity,
+            permitType: vehicleData.permitType,
+            isCommercial: vehicleData.isCommercial,
+          },
+      },
+    });
+
+    if (cached) {
+      return cached.category as VehicleCategory;
+    }
+
+    return null;
   }
 }

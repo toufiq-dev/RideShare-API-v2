@@ -25,7 +25,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         case 'P2002': // Unique constraint violation
           status = HttpStatus.BAD_REQUEST; // 400
           const targetFields = (exception.meta?.target as string[])?.join(', ');
-          errorMessage = `A record with this ${targetFields} already exists.`;
+          errorMessage = `This ${targetFields} already exists.`;
           break;
         default:
           status = HttpStatus.INTERNAL_SERVER_ERROR; // 500

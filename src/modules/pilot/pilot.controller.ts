@@ -204,4 +204,18 @@ export class PilotController {
   async getOnboardingOffer(@CurrentUser('userId') userId: string) {
     return await this.pilotService.onboardingOffer(userId);
   }
+
+  @Get('vehicle/list')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get list of vehicles' })
+  async getVehicles(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.getVehicles(userId);
+  }
+
+  @Get('transactions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get list of transactions' })
+  async getTransactions(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.getTransactions(userId);
+  }
 }

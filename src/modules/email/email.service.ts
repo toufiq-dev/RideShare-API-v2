@@ -43,6 +43,13 @@ export class EmailService {
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
+      const doesEmailExist = await this.prisma.customer.findUnique({
+        where: { email },
+      });
+      if (doesEmailExist) {
+        if (doesEmailExist.id !== customer.id)
+          throw new BadRequestException('Email already exists.');
+      }
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),

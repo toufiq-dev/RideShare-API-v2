@@ -21,31 +21,18 @@ model User {
   pilot          Pilot?
   support        Support?
   supportTickets SupportTicket[]
-  session        UserSession[]
-}
-
-model UserSession {
-  id         String  @id @default(uuid())
-  userId     String
-  deviceInfo String?
-  ipAddress  String?
-  isActive   Boolean @default(true)
-  location   Json?
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([location])
 }
 
 model DeviceToken {
   id              String   @id @default(uuid())
   userId          String
-  token           String   @unique
+  fcmToken        String   @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  appVersion      String
-  dateTime        String
-  platform        String
-  platformVersion String
+  appVersion      String?
+  dateTime        String?
+  platform        String?
+  platformVersion String?
   user            User     @relation(fields: [userId], references: [id])
 }
 
@@ -166,11 +153,11 @@ model Vehicle {
   id            String      @id @default(uuid())
   pilotId       String
   regNo         String      @unique
-  fitUpto       DateTime
-  insuranceUpto DateTime
-  puccUpto      DateTime
-  regUpto       DateTime
-  permitUpto    DateTime
+  fitUpto       DateTime?
+  insuranceUpto DateTime?
+  puccUpto      DateTime?
+  regUpto       DateTime?
+  permitUpto    String?
   manufacturer  String
   status        String
   colour        String
@@ -189,6 +176,22 @@ model VehicleType {
   name        String    @unique
   description String?
   vehicle     Vehicle[]
+}
+
+model VehicleClassificationCache {
+  id              String   @id @default(uuid())
+  category        String
+  class           String
+  manufacturer    String
+  model           String
+  bodyType        String?
+  vehicleCategory String?
+  seatCapacity    String?
+  permitType      String?
+  isCommercial    Boolean
+  createdAt       DateTime @default(now())
+
+  @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
 }
 
 model PilotProgram {

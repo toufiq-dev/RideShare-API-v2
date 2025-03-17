@@ -326,6 +326,12 @@ export class PilotService {
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
 
+      if (!verificationResponse.verificationFailed) {
+        return {
+          message: 'Vehicle registration or permit is expired.',
+        };
+      }
+
       const data = await this.updatePilotVehicleData(
         verificationResponse,
         pilot.id,
@@ -347,9 +353,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie.');
-      }
+      // if (!pilot.selfieUrl) {
+      //   throw new BadRequestException('Driver does not have Live selfie.');
+      // }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -603,7 +609,7 @@ export class PilotService {
           amount: subscription.coins,
           walletId: wallet.id,
           type: TransactionType.ONBOARDING_OFFER,
-          status: TransactionStatus.SUCCESSFULL
+          status: TransactionStatus.SUCCESSFULL,
         },
       });
 
@@ -616,6 +622,51 @@ export class PilotService {
 
       return {
         message: 'Pilot onboarding coins availed successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getVehicles(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.vehicle.findMany({
+        where: { pilotId: pilot.id },
+        include: {
+          vehicleType: true,
+        },
+      });
+
+      return {
+        message: 'Vehicles fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getTransactions(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.transaction.findMany({
+        where: { pilotId: pilot.id },
+      });
+
+      return {
+        message: 'Transactions fetched successfully.',
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -797,10 +848,9 @@ export class PilotService {
         name: category,
       },
     });
-    console.log(pilotId);
+
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        pilotId,
         regNo,
         regUpto,
         permitUpto,
@@ -813,7 +863,12 @@ export class PilotService {
         seatCapacity,
         manufacturer,
         state,
-        vehicleTypeId: vehicleCategory.id,
+        pilot: {
+          connect: { id: pilotId },
+        },
+        vehicleType: {
+          connect: { id: vehicleCategory.id },
+        },
       },
     });
 

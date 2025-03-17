@@ -20,7 +20,7 @@ async function main() {
   ];
 
   const vehicleTypes = [
-    { name: 'Hatch back' },
+    { name: 'Hatch back', description: "Faster" },
     { name: 'Sedan' },
     { name: 'SUV' },
     { name: 'Kali Peeli' },

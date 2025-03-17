@@ -26,7 +26,7 @@ model User {
 model DeviceToken {
   id              String   @id @default(uuid())
   userId          String
-  fcmToken        String   @unique
+  fcmToken        String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   appVersion      String?
@@ -67,11 +67,21 @@ model Customer {
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   languageId          String
+  couponId            String?
   bookings            Booking[]
   language            Languages        @relation(fields: [languageId], references: [id])
+  coupon              Coupon?          @relation(fields: [couponId], references: [id])
   user                User             @relation(fields: [userId], references: [id])
   ratings             CustomerRating[]
   savedPlaces         SavedPlace[]
+}
+
+model Coupon {
+  id         String     @id @default(uuid())
+  name       String     @unique
+  discount   Decimal    @db.Decimal(10, 2)
+  validUntil DateTime?
+  customers  Customer[]
 }
 
 model SavedPlace {
@@ -194,41 +204,6 @@ model VehicleClassificationCache {
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
 }
 
-model PilotProgram {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-  pilot       Pilot[]
-}
-
-model PilotRanking {
-  id      String @id @default(uuid())
-  pilotId String @unique
-  ranking Int    @default(0)
-  pilot   Pilot  @relation(fields: [pilotId], references: [id])
-}
-
-model Languages {
-  id           String        @id @default(uuid())
-  name         String        @unique
-  customers    Customer[]
-  pilots       Pilot[]
-  translations Translation[]
-}
-
-model Translation {
-  id         String    @id @default(uuid())
-  languageId String
-  key        String
-  content    String
-  category   String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  language   Languages @relation(fields: [languageId], references: [id])
-
-  @@unique([languageId, key])
-}
-
 model Subscription {
   id                  String        @id @default(uuid())
   name                String        @unique
@@ -339,6 +314,20 @@ model CustomerRating {
   feedback   Feedback?
 }
 
+model PilotProgram {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  pilot       Pilot[]
+}
+
+model PilotRanking {
+  id      String @id @default(uuid())
+  pilotId String @unique
+  ranking Int    @default(0)
+  pilot   Pilot  @relation(fields: [pilotId], references: [id])
+}
+
 model PilotRating {
   id        String     @id @default(uuid())
   bookingId String     @unique
@@ -375,6 +364,27 @@ model SupportTicket {
   updatedAt   DateTime       @updatedAt
   booking     Booking?       @relation(fields: [bookingId], references: [id])
   user        User           @relation(fields: [userId], references: [id])
+}
+
+model Languages {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  customers    Customer[]
+  pilots       Pilot[]
+  translations Translation[]
+}
+
+model Translation {
+  id         String    @id @default(uuid())
+  languageId String
+  key        String
+  content    String
+  category   String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  language   Languages @relation(fields: [languageId], references: [id])
+
+  @@unique([languageId, key])
 }
 
 model Policy {

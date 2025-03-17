@@ -10,5 +10,5 @@ export class CreateOrderDto {
   @ApiProperty({ description: 'Multiplier of the subscription' })
   @IsNotEmpty()
   @IsNumber()
-  times: string;
+  times: number;
 }

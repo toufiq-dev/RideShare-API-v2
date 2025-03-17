@@ -17,6 +17,7 @@ import { RideModule } from './modules/ride/ride.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { EmailModule } from './modules/email/email.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { FareModule } from './core/fare/fare.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PaymentModule } from './modules/payment/payment.module';
     AdminModule,
     EmailModule,
     PaymentModule,
+    FareModule
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

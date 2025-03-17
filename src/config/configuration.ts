@@ -14,6 +14,7 @@ export default () => ({
     refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
   msg91: {
+    baseUrl: process.env.MSG91_BASE_URL,
     authKey: process.env.MSG91_AUTH_KEY,
     templateId: process.env.MSG91_TEMPLATE_ID,
     senderId: process.env.MSG91_SENDER_ID,
@@ -67,5 +68,8 @@ export default () => ({
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
+  },
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY,
   },
 });

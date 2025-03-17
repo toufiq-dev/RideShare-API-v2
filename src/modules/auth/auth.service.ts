@@ -81,7 +81,7 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const { phone, otp, role } = verifyOtpDto;
+    const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
       const { languageId, refferalCode } = await this.validateOtpRedis(
@@ -97,6 +97,19 @@ export class AuthService {
         languageId,
         refferalCode,
       );
+
+      if (fcmToken) {
+        await this.prisma.deviceToken.upsert({
+          where: { id: user.id },
+          update: {
+            fcmToken,
+          },
+          create: {
+            userId: user.id,
+            fcmToken,
+          },
+        });
+      }
 
       const tokens = await this.generateTokens(user.id, user.role);
 

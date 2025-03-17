@@ -21,31 +21,18 @@ model User {
   pilot          Pilot?
   support        Support?
   supportTickets SupportTicket[]
-  session        UserSession[]
-}
-
-model UserSession {
-  id         String  @id @default(uuid())
-  userId     String
-  deviceInfo String?
-  ipAddress  String?
-  isActive   Boolean @default(true)
-  location   Json?
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([location])
 }
 
 model DeviceToken {
   id              String   @id @default(uuid())
   userId          String
-  token           String   @unique
+  fcmToken        String   @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  appVersion      String
-  dateTime        String
-  platform        String
-  platformVersion String
+  appVersion      String?
+  dateTime        String?
+  platform        String?
+  platformVersion String?
   user            User     @relation(fields: [userId], references: [id])
 }
 
@@ -103,7 +90,7 @@ model Pilot {
   id                  String             @id @default(uuid())
   phone               String             @unique
   userId              String             @unique
-  referralCode        String             @unique
+  referralCode        String
   isAlreadyRegistered Boolean            @default(false)
   isAvailable         PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
@@ -192,7 +179,7 @@ model VehicleType {
 }
 
 model VehicleClassificationCache {
-  id              String      @id @default(uuid())
+  id              String   @id @default(uuid())
   category        String
   class           String
   manufacturer    String
@@ -202,11 +189,10 @@ model VehicleClassificationCache {
   seatCapacity    String?
   permitType      String?
   isCommercial    Boolean
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime @default(now())
 
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
 }
-
 
 model PilotProgram {
   id          String  @id @default(uuid())

@@ -185,6 +185,9 @@ model VehicleType {
   id          String    @id @default(uuid())
   name        String    @unique
   description String?
+  baseFare    Decimal?  @db.Decimal(10, 2)
+  perKmRate   Decimal?  @db.Decimal(10, 2)
+  perMinRate  Decimal?  @db.Decimal(10, 2)
   vehicle     Vehicle[]
 }
 

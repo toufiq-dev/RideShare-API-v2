@@ -101,3 +101,23 @@ export class UpdateSavedPlaceDto {
   @IsEnum(SavedPlaveTypeEnum)
   type?: SavedPlaveTypeEnum;
 }
+
+export class VehicleCategoryDto {
+  @ApiProperty({
+    description: 'Pickup Location in latitude and longitude',
+    required: false,
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  pickupLocation: LocationDto;
+
+  @ApiProperty({
+    description: 'Pickup Location in latitude and longitude',
+    required: false,
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  dropLocation: LocationDto;
+}

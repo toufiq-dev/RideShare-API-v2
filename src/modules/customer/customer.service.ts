@@ -12,6 +12,7 @@ import {
   UpdateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
   UpdateCustomerNameDto,
+  VehicleCategoryDto,
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -346,13 +347,20 @@ export class CustomerService {
     }
   }
 
-  async getVehicleCategories() {
-    const data = await this.prisma.vehicleType.findMany();
+  async getVehicleCategories(vehicleCategoryDto: VehicleCategoryDto) {
+    const { pickupLocation, dropLocation } = vehicleCategoryDto;
 
-    return {
-      message: 'Vehicle categories fetched successfully.',
-      data,
-    };
+    try {
+      const data = await this.prisma.vehicleType.findMany();
+
+      return {
+        message: 'Vehicle categories fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw new error();
+    }
   }
 
   private async validateOtp(phone: string, otp: string) {

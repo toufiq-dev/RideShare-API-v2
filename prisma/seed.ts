@@ -20,7 +20,7 @@ async function main() {
   ];
 
   const vehicleTypes = [
-    { name: 'Hatch back', description: "Faster" },
+    { name: 'Hatch back', description: 'Faster' },
     { name: 'Sedan' },
     { name: 'SUV' },
     { name: 'Kali Peeli' },
@@ -34,18 +34,32 @@ async function main() {
       coins: 45000,
       price: 1390,
       priceBeforeDiscount: 1400.99,
-      tag: "Most Popular",
+      tag: 'Most Popular',
     },
-    { name: 'Pro Pack', coins: 135000, price: 3990, priceBeforeDiscount: 4470, tag: "Best Value" },
+    {
+      name: 'Pro Pack',
+      coins: 135000,
+      price: 3990,
+      priceBeforeDiscount: 4470,
+      tag: 'Best Value',
+    },
     {
       name: 'Mega Pack',
       coins: 450000,
       price: 12500,
       priceBeforeDiscount: 14900,
-     tag: 'Super Saver',
+      tag: 'Super Saver',
     },
-    { name: 'Flexi Pack', coins: 4500, price: 149, priceBeforeDiscount: null, tag: "Budget Friendly" },
+    {
+      name: 'Flexi Pack',
+      coins: 4500,
+      price: 149,
+      priceBeforeDiscount: null,
+      tag: 'Budget Friendly',
+    },
   ];
+
+  const coupons = [{ name: 'Chota coupon', discount: 49 }];
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({
@@ -104,6 +118,21 @@ async function main() {
       console.log(`Created subscription: ${subscription.name}`);
     } else {
       console.log(`Subscription ${subscription.name} already exists`);
+    }
+  }
+
+  for (const coupon of coupons) {
+    const existingCoupon = await prisma.coupon.findUnique({
+      where: { name: coupon.name },
+    });
+
+    if (!existingCoupon) {
+      await prisma.coupon.create({
+        data: coupon,
+      });
+      console.log(`Created coupon: ${coupon.name}`);
+    } else {
+      console.log(`Coupon ${coupon.name} already exists`);
     }
   }
 

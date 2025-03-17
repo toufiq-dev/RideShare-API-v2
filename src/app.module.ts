@@ -18,6 +18,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { EmailModule } from './modules/email/email.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { FareModule } from './core/fare/fare.module';
+import { FareModule } from './modules/fare/fare.module';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { FareModule } from './core/fare/fare.module';
     AdminModule,
     EmailModule,
     PaymentModule,
-    FareModule
+    FareModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

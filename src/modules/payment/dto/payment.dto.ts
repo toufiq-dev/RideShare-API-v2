@@ -18,4 +18,9 @@ export class VerifyPaymentDto {
   @IsNotEmpty()
   @IsString()
   subscriptionId: string;
+
+  @ApiProperty({ description: 'Transaction id' })
+  @IsNotEmpty()
+  @IsString()
+  transactionId: string;
 }

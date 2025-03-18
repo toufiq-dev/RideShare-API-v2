@@ -73,7 +73,7 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
-      await this.prisma.transaction.create({
+      const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
           amount: subscription.coins,
@@ -87,6 +87,7 @@ export class PaymentService {
         data: {
           payment_session_id: response.data.payment_session_id,
           order_id: response.data.order_id,
+          transactionId: transaction.id,
         },
       };
     } catch (error) {
@@ -100,7 +101,7 @@ export class PaymentService {
     verifyPaymentDto: VerifyPaymentDto,
     userId: string,
   ) {
-    const { subscriptionId } = verifyPaymentDto;
+    const { subscriptionId, transactionId } = verifyPaymentDto;
 
     try {
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
@@ -112,9 +113,9 @@ export class PaymentService {
         },
       });
 
-      if (response.status !== 200) {
-        throw new Error('Failed to verify payment');
-      }
+      const subcsription = await this.prisma.subscription.findUnique({
+        where: { id: subscriptionId },
+      });
 
       if (response.data.order_status === 'PAID') {
         const pilot = await this.prisma.pilot.findUnique({
@@ -131,34 +132,40 @@ export class PaymentService {
           throw new NotFoundException('Pilot wallet not found');
         }
 
-        const amount = Number(response.data.order_amount);
-        const balance = Number(pilotWallet.balance);
+        const balance =
+          Number(pilotWallet.balance) + Number(subcsription.coins);
 
         await this.prisma.$transaction(async (tx) => {
           await tx.pilotWallet.update({
             where: { pilotId: pilot.id },
             data: {
-              balance: balance + amount,
+              balance: balance,
               subscriptionId,
             },
           });
 
-          await tx.transaction.create({
+          await tx.transaction.update({
+            where: { id: transactionId },
             data: {
-              pilotId: pilot.id,
-              walletId: pilotWallet.id,
-              amount,
-              type: TransactionType.SUBSCRIPTION_PURCHASE,
               status: TransactionStatus.SUCCESSFULL,
-              balanceBefore: balance,
-              balanceAfter: balance + amount,
-              order_id: response.data.order_id,
             },
           });
         });
 
         return {
           message: 'Payment verified successfully',
+        };
+      } else {
+        await this.prisma.transaction.update({
+          where: { id: transactionId },
+          data: {
+            status: TransactionStatus.FAILED,
+          },
+        });
+
+        return {
+          success: false,
+          message: 'Payment failed',
         };
       }
     } catch (error) {

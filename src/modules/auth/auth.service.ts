@@ -221,6 +221,12 @@ export class AuthService {
     let pilot = null;
     let user = null;
 
+    const coupon = await this.prisma.coupon.findUnique({
+      where: {
+        name: 'Chota coupon',
+      },
+    });
+
     if (role === RoleEnum.CUSTOMER) {
       customer = await this.prisma.customer.findUnique({
         where: { phone },
@@ -254,6 +260,7 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
+            couponId: coupon.id,
           },
         });
       } else if (role === RoleEnum.PILOT && !pilot) {

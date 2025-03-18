@@ -18,6 +18,7 @@ import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { FareService } from '../fare/fare.service';
 
 @Injectable()
 export class CustomerService {
@@ -26,6 +27,7 @@ export class CustomerService {
     private readonly redis: RedisService,
     private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
+    private readonly fareService: FareService,
   ) {}
 
   async getCustomer(userId: string) {
@@ -347,19 +349,67 @@ export class CustomerService {
     }
   }
 
-  async getVehicleCategories(vehicleCategoryDto: VehicleCategoryDto) {
+  async getVehicleCategories(
+    vehicleCategoryDto: VehicleCategoryDto,
+    userId: string,
+  ) {
     const { pickupLocation, dropLocation } = vehicleCategoryDto;
 
     try {
-      const data = await this.prisma.vehicleType.findMany();
+      const customer = await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+        include: {
+          coupon: true,
+        },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
 
+      const [vehicleTypes, distanceData] = await Promise.all([
+        this.prisma.vehicleType.findMany(),
+        this.fareService.calculateDistanceAndDuration(pickupLocation, dropLocation),
+      ]);
+      
+      const { distanceKm, durationMin } = distanceData;
+      
+      const vehicleData = vehicleTypes.map(item => {
+        const originalPrice = this.fareService.estimateFare(
+          distanceKm,
+          durationMin,
+          Number(item.baseFare),
+          Number(item.perKmRate),
+          Number(item.perMinRate),
+        );
+        
+        const price = customer?.coupon?.discount
+          ? originalPrice - Number(customer.coupon.discount)
+          : originalPrice;
+          
+        return {
+          vehicleType: item.name,
+          airCondition: item.airCondition,
+          isFaster: item.isFaster,
+          passengerCapacity: item.passengerCapacity,
+          originalPrice: parseFloat(originalPrice.toFixed(2)),
+          price: parseFloat(price.toFixed(2)),
+        };
+      });
+  
+      
       return {
+        success: true,
         message: 'Vehicle categories fetched successfully.',
-        data,
+        data: {
+          vehicles: vehicleData,
+          coupon: customer.coupon || null,
+        },
       };
     } catch (error) {
       console.error(error);
-      throw new error();
+      throw error;
     }
   }
 

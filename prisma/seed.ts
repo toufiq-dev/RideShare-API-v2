@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, VehicleTypeName } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -20,12 +20,60 @@ async function main() {
   ];
 
   const vehicleTypes = [
-    { name: 'Hatch back', description: 'Faster' },
-    { name: 'Sedan' },
-    { name: 'SUV' },
-    { name: 'Kali Peeli' },
-    { name: 'Auto-Rickshaw' },
-    { name: 'Other' },
+    {
+      name: VehicleTypeName.HATCHBACK,
+      isFaster: true,
+      airCondition: ['AC'],
+      passengerCapacity: 4,
+      baseFare: 50.00,
+      perKmRate: 15.00,
+      perMinRate: 2.00,
+    },
+    {
+      name: VehicleTypeName.SEDAN,
+      isFaster: false,
+      airCondition: ['AC'],
+      passengerCapacity: 4,
+      baseFare: 55.00,
+      perKmRate: 15.00,
+      perMinRate: 2.00,
+    },
+    {
+      name: VehicleTypeName.SUV,
+      isFaster: false,
+      airCondition: ['AC'],
+      passengerCapacity: 6,
+      baseFare: 60.00,
+      perKmRate: 15.00,
+      perMinRate: 2.00,
+    },
+    {
+      name: VehicleTypeName.KALIPEELI,
+      isFaster: false,
+      airCondition: ['AC', 'Non-AC'],
+      passengerCapacity: 4,
+      baseFare: 45.00,
+      perKmRate: 15.00,
+      perMinRate: 2.00,
+    },
+    {
+      name: VehicleTypeName.AUTORICKSHAW,
+      isFaster: false,
+      airCondition: ['Non-AC'],
+      passengerCapacity: 3,
+      baseFare: 30.00,
+      perKmRate: 10.00,
+      perMinRate: 1.50,
+    },
+    {
+      name: VehicleTypeName.OTHER,
+      isFaster: false,
+      airCondition: ['Non-AC'],
+      passengerCapacity: 0,
+      baseFare: 50.00,
+      perKmRate: 15.00,
+      perMinRate: 2.00,
+    },
   ];
 
   const subscriptionTypes = [
@@ -78,7 +126,7 @@ async function main() {
 
   for (const vehicleType of vehicleTypes) {
     const existingVehicleType = await prisma.vehicleType.findUnique({
-      where: { name: vehicleType.name },
+      where: { name: vehicleType.name, },
     });
 
     if (!existingVehicleType) {

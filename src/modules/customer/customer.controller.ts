@@ -138,7 +138,13 @@ export class CustomerController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get vehicle category' })
   @ApiBody({ type: VehicleCategoryDto })
-  async getVehicleCategory(@Body() vehicleCategoryDto: VehicleCategoryDto) {
-    return await this.customerService.getVehicleCategories(vehicleCategoryDto);
+  async getVehicleCategory(
+    @Body() vehicleCategoryDto: VehicleCategoryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.getVehicleCategories(
+      vehicleCategoryDto,
+      userId,
+    );
   }
 }

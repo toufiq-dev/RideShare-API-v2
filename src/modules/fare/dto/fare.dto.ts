@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { VehicleTypeName } from '@prisma/client';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class UpdateFareDto {
   @ApiProperty({ description: 'Vehicle type' })
   @IsNotEmpty()
   @IsString()
-  vehicleType: string;
+  vehicleType: VehicleTypeName;
 
   @ApiProperty({ description: 'Base Fare' })
   @IsNotEmpty()

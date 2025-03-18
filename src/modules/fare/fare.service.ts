@@ -84,27 +84,10 @@ export class FareService {
   estimateFare(
     distanceKm: number,
     durationMin: number,
-  ): {
-    baseFare: number;
-    perKmRate: number;
-    perMinRate: number;
-    distanceKm: number;
-    durationMin: number;
-    fare: number;
-  } {
-    const baseFare = 50; // INR
-    const perKmRate = 15; // INR per km
-    const perMinRate = 2; // INR per minute
-
-    const fare = baseFare + perKmRate * distanceKm + perMinRate * durationMin;
-
-    return {
-      baseFare,
-      perKmRate,
-      perMinRate,
-      distanceKm: parseFloat(distanceKm.toFixed(2)),
-      durationMin: parseFloat(durationMin.toFixed(2)),
-      fare: parseFloat(fare.toFixed(2)),
-    };
+    baseFare: number,
+    perKmRate: number,
+    perMinRate: number,
+  ): number {
+    return baseFare + perKmRate * distanceKm + perMinRate * durationMin;
   }
 }

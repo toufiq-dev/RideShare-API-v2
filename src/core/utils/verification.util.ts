@@ -6,14 +6,7 @@ import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.
 import * as moment from 'moment-timezone';
 import OpenAI from 'openai';
 import { PrismaService } from '../database/prisma.service';
-
-type VehicleCategory =
-  | 'Hatchback'
-  | 'Sedan'
-  | 'SUV'
-  | 'Kali Peeli'
-  | 'Auto-Rickshaw'
-  | 'Other';
+import { VehicleTypeName } from '@prisma/client';
 
 @Injectable()
 export class VerificationService {
@@ -334,7 +327,7 @@ export class VerificationService {
 
   private async classifyVehicleUsingOpenAI(
     vehicleData: any,
-  ): Promise<VehicleCategory> {
+  ): Promise<VehicleTypeName> {
     const openai = new OpenAI({
       apiKey: this.openAiApiKey,
     });
@@ -353,7 +346,7 @@ export class VerificationService {
       - Permit type: ${vehicleData.permitType}
       - Is Commercial: ${vehicleData.isCommercial}
 
-      Reply with a **single word** (Hatch back, Sedan, SUV, Kali Peeli, or Auto-Rickshaw).
+      Reply with a **single word** like this (HATCHBACK, SEDAN, SUV, KALIPEELI, or AUTORICKSHAW).
     `;
 
     try {
@@ -371,7 +364,7 @@ export class VerificationService {
       });
 
       const category =
-        response.choices[0].message.content.trim() as VehicleCategory;
+        response.choices[0].message.content.trim() as VehicleTypeName;
 
       await this.prisma.vehicleClassificationCache.create({
         data: {
@@ -390,11 +383,11 @@ export class VerificationService {
       return category;
     } catch (error) {
       console.error('Error calling OpenAI:', error);
-      return 'Other';
+      return VehicleTypeName.OTHER;
     }
   }
 
-  private async categoryExists(vehicleData: any): Promise<VehicleCategory> {
+  private async categoryExists(vehicleData: any): Promise<VehicleTypeName> {
     const cached = await this.prisma.vehicleClassificationCache.findUnique({
       where: {
         class_manufacturer_model_bodyType_vehicleCategory_seatCapacity_permitType_isCommercial:
@@ -412,7 +405,7 @@ export class VerificationService {
     });
 
     if (cached) {
-      return cached.category as VehicleCategory;
+      return cached.category as VehicleTypeName;
     }
 
     return null;

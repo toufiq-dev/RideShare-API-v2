@@ -18,6 +18,7 @@ import {
   UpdateSavedPlaceDto,
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
+  VehicleCategoryDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -136,7 +137,14 @@ export class CustomerController {
   @Get('vehicle-category')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get vehicle category' })
-  async getVehicleCategory() {
-    return await this.customerService.getVehicleCategories();
+  @ApiBody({ type: VehicleCategoryDto })
+  async getVehicleCategory(
+    @Body() vehicleCategoryDto: VehicleCategoryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.getVehicleCategories(
+      vehicleCategoryDto,
+      userId,
+    );
   }
 }

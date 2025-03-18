@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -42,12 +42,12 @@ class LocationDto {
   @ApiProperty({ description: 'Latitude' })
   @IsNumber()
   @IsNotEmpty()
-  latitude: number;
+  lat: number;
 
   @ApiProperty({ description: 'Longitude' })
   @IsNumber()
   @IsNotEmpty()
-  longitude: number;
+  lng: number;
 }
 
 export class CreateSavedPlaceDto {
@@ -100,4 +100,24 @@ export class UpdateSavedPlaceDto {
   @ApiProperty({ enum: SavedPlaveTypeEnum, required: false })
   @IsEnum(SavedPlaveTypeEnum)
   type?: SavedPlaveTypeEnum;
+}
+
+export class VehicleCategoryDto {
+  @ApiProperty({
+    description: 'Pickup Location in latitude and longitude',
+    required: false,
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  pickupLocation: LocationDto;
+
+  @ApiProperty({
+    description: 'Pickup Location in latitude and longitude',
+    required: false,
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  dropLocation: LocationDto;
 }

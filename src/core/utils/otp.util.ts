@@ -4,12 +4,13 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OTPService {
-  private readonly baseUrl = 'https://control.msg91.com/api/v5';
+  private readonly baseUrl: string;
   private readonly authKey: string;
   private readonly templateId: string;
   private readonly senderId: string;
 
   constructor(private configService: ConfigService) {
+    this.baseUrl = this.configService.get<string>('msg91.baseUrl');
     this.authKey = this.configService.get<string>('msg91.authKey');
     this.templateId = this.configService.get<string>('msg91.templateId');
     this.senderId = this.configService.get<string>('msg91.senderId');

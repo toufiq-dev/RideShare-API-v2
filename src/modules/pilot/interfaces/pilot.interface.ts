@@ -1,3 +1,5 @@
+import { VehicleTypeName } from '@prisma/client';
+
 export interface VerificationResponseDL {
   licenseNumber: string;
   dateOfBirth: Date;
@@ -7,7 +9,7 @@ export interface VerificationResponseDL {
 }
 
 export interface VerificationResponseVehicle {
-  category?: string;
+  category?: VehicleTypeName;
   regNo?: string;
   regUpto?: Date;
   permitUpto?: any;

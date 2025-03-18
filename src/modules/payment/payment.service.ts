@@ -160,8 +160,6 @@ export class PaymentService {
           },
         };
       }
-
-      console.log(response.data.order_status);
     } catch (error) {
       console.error(error);
       throw new error();

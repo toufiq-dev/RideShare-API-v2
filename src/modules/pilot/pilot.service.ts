@@ -662,6 +662,9 @@ export class PilotService {
 
       const data = await this.prisma.transaction.findMany({
         where: { pilotId: pilot.id },
+        include: {
+          subscription: true,
+        },
       });
 
       return {

@@ -41,17 +41,6 @@ export class PilotController {
     return await this.pilotService.getPilot(userId);
   }
 
-  @Patch('language')
-  @HttpCode(200)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update pilot Language' })
-  async updateLanguage(
-    @Body('languageId') languageId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.pilotService.updateLanguage(userId, languageId);
-  }
-
   @Post('phone/otp')
   @HttpCode(200)
   @ApiBearerAuth()

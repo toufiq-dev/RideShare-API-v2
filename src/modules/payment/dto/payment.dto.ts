@@ -12,3 +12,10 @@ export class CreateOrderDto {
   @IsNumber()
   times: number;
 }
+
+export class VerifyPaymentDto {
+  @ApiProperty({ description: 'Subscription id' })
+  @IsNotEmpty()
+  @IsString()
+  subscriptionId: string;
+}

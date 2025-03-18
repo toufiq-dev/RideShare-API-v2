@@ -2,7 +2,7 @@ import { NotFoundException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import axios from 'axios';
-import { CreateOrderDto } from './dto/payment.dto';
+import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { TransactionType, TransactionStatus } from '@prisma/client';
 
@@ -15,7 +15,6 @@ export class PaymentService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly redis: RedisService,
     private readonly prisma: PrismaService,
   ) {
     this.testClientId = this.configService.get<string>(
@@ -39,7 +38,9 @@ export class PaymentService {
       const subscription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      if (!subscription) throw new NotFoundException('Subscription not found');
+      if (!subscription) {
+        throw new NotFoundException('Subscription not found');
+      }
 
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
@@ -72,8 +73,6 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
-      await this.redis.set(`subscriptionId:${userId}`, subscriptionId, 300);
-
       await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
@@ -92,11 +91,17 @@ export class PaymentService {
       };
     } catch (error) {
       console.error(error);
-      throw new error();
+      throw error;
     }
   }
 
-  async verifyPayment(orderId: string, userId: string) {
+  async verifyPayment(
+    orderId: string,
+    verifyPaymentDto: VerifyPaymentDto,
+    userId: string,
+  ) {
+    const { subscriptionId } = verifyPaymentDto;
+
     try {
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
         headers: {
@@ -126,7 +131,6 @@ export class PaymentService {
           throw new NotFoundException('Pilot wallet not found');
         }
 
-        const subscriptionId = await this.redis.get(`subscriptionId:${userId}`);
         const amount = Number(response.data.order_amount);
         const balance = Number(pilotWallet.balance);
 
@@ -162,7 +166,7 @@ export class PaymentService {
       }
     } catch (error) {
       console.error(error);
-      throw new error();
+      throw error;
     }
   }
 }

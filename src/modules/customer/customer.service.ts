@@ -370,12 +370,15 @@ export class CustomerService {
 
       const [vehicleTypes, distanceData] = await Promise.all([
         this.prisma.vehicleType.findMany(),
-        this.fareService.calculateDistanceAndDuration(pickupLocation, dropLocation),
+        this.fareService.calculateDistanceAndDuration(
+          pickupLocation,
+          dropLocation,
+        ),
       ]);
-      
+
       const { distanceKm, durationMin } = distanceData;
-      
-      const vehicleData = vehicleTypes.map(item => {
+
+      const vehicleData = vehicleTypes.map((item) => {
         const originalPrice = this.fareService.estimateFare(
           distanceKm,
           durationMin,
@@ -383,11 +386,11 @@ export class CustomerService {
           Number(item.perKmRate),
           Number(item.perMinRate),
         );
-        
+
         const price = customer?.coupon?.discount
           ? originalPrice - Number(customer.coupon.discount)
           : originalPrice;
-          
+
         return {
           vehicleType: item.name,
           airCondition: item.airCondition,
@@ -397,8 +400,7 @@ export class CustomerService {
           price: parseFloat(price.toFixed(2)),
         };
       });
-  
-      
+
       return {
         success: true,
         message: 'Vehicle categories fetched successfully.',

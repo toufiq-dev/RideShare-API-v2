@@ -14,7 +14,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RoleEnum } from '../auth/dto/auth.dto';
-import { CreateOrderDto } from './dto/payment.dto';
+import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 
 @ApiTags('Payment')
 @Controller('payment')
@@ -41,8 +41,9 @@ export class PaymentController {
   @ApiOperation({ summary: 'Verify payment' })
   async verifyPayment(
     @Param('orderId') orderId: string,
+    @Body() verifyPaymentDto: VerifyPaymentDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.paymentService.verifyPayment(orderId, userId);
+    return this.paymentService.verifyPayment(orderId, verifyPaymentDto, userId);
   }
 }

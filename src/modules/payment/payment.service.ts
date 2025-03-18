@@ -159,9 +159,6 @@ export class PaymentService {
 
         return {
           message: 'Payment verified successfully',
-          data: {
-            pilotWallet,
-          },
         };
       }
     } catch (error) {

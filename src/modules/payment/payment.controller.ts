@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  Get,
   Body,
   Param,
   UseGuards,
@@ -35,7 +34,7 @@ export class PaymentController {
     return this.paymentService.createOrder(createOrderDto, userId);
   }
 
-  @Get('verify/:orderId')
+  @Post('verify/:orderId')
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify payment' })

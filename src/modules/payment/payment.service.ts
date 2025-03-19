@@ -73,10 +73,17 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
+      const wallet = await this.prisma.pilotWallet.findUnique({
+        where: { pilotId: pilot.id },
+      });
+
       const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
           amount: subscription.price,
+          order_id: response.data.order_id,
+          walletId: wallet.id,
+          balanceBefore: wallet.balance,
           type: TransactionType.SUBSCRIPTION_PURCHASE,
           status: TransactionStatus.PENDING,
           subscriptionId: subscription.id,
@@ -149,6 +156,7 @@ export class PaymentService {
             where: { id: transactionId },
             data: {
               status: TransactionStatus.SUCCESSFULL,
+              balanceAfter: balance
             },
           });
         });

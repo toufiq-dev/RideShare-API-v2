@@ -76,9 +76,10 @@ export class PaymentService {
       const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
-          amount: subscription.coins,
+          amount: subscription.price,
           type: TransactionType.SUBSCRIPTION_PURCHASE,
           status: TransactionStatus.PENDING,
+          subscriptionId: subscription.id,
         },
       });
 

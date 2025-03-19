@@ -207,4 +207,11 @@ export class PilotController {
   async getTransactions(@CurrentUser('userId') userId: string) {
     return await this.pilotService.getTransactions(userId);
   }
+
+  @Post('available')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Make Pilot available for trips' })
+  async beAvailable(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.beAvailable(userId);
+  }
 }

@@ -638,11 +638,15 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
-      const data = await this.prisma.transaction.findMany({
+      const data: any = await this.prisma.transaction.findMany({
         where: { pilotId: pilot.id },
         include: {
           subscription: true,
         },
+      });
+
+      data.forEach((transaction: any) => {
+        transaction.amount = Number(transaction.amount);
       });
 
       return {
@@ -654,6 +658,8 @@ export class PilotService {
       throw error;
     }
   }
+
+  async beAvailable(userId: string) {}
 
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);

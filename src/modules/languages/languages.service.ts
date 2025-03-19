@@ -7,14 +7,6 @@ import { RoleEnum } from '../auth/dto/auth.dto';
 export class LanguagesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(name: string) {
-    return this.prisma.languages.create({
-      data: {
-        name,
-      },
-    });
-  }
-
   async findAll() {
     const languages = await this.prisma.languages.findMany();
 
@@ -35,12 +27,12 @@ export class LanguagesService {
       });
 
       let data;
-      if ((user.role = RoleEnum.PILOT)) {
+      if (user.role === RoleEnum.PILOT) {
         data = await this.prisma.pilot.update({
           where: { userId },
           data: { languageId: languageRecord.id },
         });
-      } else if ((user.role = RoleEnum.CUSTOMER)) {
+      } else if (user.role === RoleEnum.CUSTOMER) {
         data = await this.prisma.customer.update({
           where: { userId },
           data: { languageId: languageRecord.id },

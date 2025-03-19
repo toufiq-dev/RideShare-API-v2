@@ -14,6 +14,7 @@ import {
   VehicleRcDto,
   PancardDto,
   AadhaarNumberDto,
+  BeAvailableDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -24,7 +25,11 @@ import formatDate from 'src/common/functions/formatDate';
 import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
-import { TransactionStatus, TransactionType } from '@prisma/client';
+import {
+  PilotStatus,
+  TransactionStatus,
+  TransactionType,
+} from '@prisma/client';
 
 @Injectable()
 export class PilotService {
@@ -630,57 +635,61 @@ export class PilotService {
     }
   }
 
-  async getTransactions(userId: string, page: number = 1,
-    pageSize: number = 10) {
+  async getTransactions(
+    userId: string,
+    page: number = 1,
+    pageSize: number = 10,
+  ) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-  
-      
+
       const skip = (page - 1) * pageSize;
-  
+
       // Get the total count for pagination metadata
       const totalCount = await this.prisma.transaction.count({
         where: { pilotId: pilot.id },
       });
-  
+
       // Get the paginated data
-      const data = await this.prisma.transaction.findMany({
+      const data: any = await this.prisma.transaction.findMany({
         where: { pilotId: pilot.id },
         include: {
           subscription: true,
         },
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'desc',
         },
         skip,
         take: pageSize,
       });
-  
+
       // Process the Decimal fields
       data.forEach((transaction: any) => {
         transaction.amount = Number(transaction.amount);
         transaction.balanceBefore = Number(transaction.balanceBefore);
         transaction.balanceAfter = Number(transaction.balanceAfter);
       });
-  
+
       // Calculate pagination metadata
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
-  
+
       return {
         message: 'Transactions fetched successfully.',
-        data,
-        pagination: {
-          totalItems: totalCount,
-          totalPages,
-          currentPage: page,
-          pageSize,
-          hasNextPage,
-          hasPrevPage,
+        data: {
+          transactions: data,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
         },
       };
     } catch (error) {
@@ -689,7 +698,29 @@ export class PilotService {
     }
   }
 
-  async beAvailable(userId: string) {}
+  async beAvailable(userId: string, beAvailableDto: BeAvailableDto) {
+    const { isAvailable, currentLocation } = beAvailableDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isAvailable: isAvailable
+            ? PilotStatus.AVAILABLE
+            : PilotStatus.OFFLINE,
+          currentLocation: JSON.parse(JSON.stringify(currentLocation)),
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
 
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);

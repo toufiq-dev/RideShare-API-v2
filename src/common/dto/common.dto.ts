@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsPhoneNumber, Length } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsPhoneNumber,
+  Length,
+} from 'class-validator';
 
 export class VerifyPhoneDto {
   @ApiProperty({ description: 'Phone number' })
@@ -11,4 +17,16 @@ export class VerifyPhoneDto {
   @IsString()
   @Length(4, 4)
   otp: string;
+}
+
+export class LocationDto {
+  @ApiProperty({ description: 'Latitude' })
+  @IsNumber()
+  @IsNotEmpty()
+  lat: number;
+
+  @ApiProperty({ description: 'Longitude' })
+  @IsNumber()
+  @IsNotEmpty()
+  lng: number;
 }

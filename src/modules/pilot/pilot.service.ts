@@ -584,7 +584,7 @@ export class PilotService {
       await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
-          amount: subscription.coins,
+          amount: 0,
           walletId: wallet.id,
           type: TransactionType.ONBOARDING_OFFER,
           status: TransactionStatus.SUCCESSFULL,

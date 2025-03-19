@@ -3,12 +3,12 @@ import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
   IsEmail,
 } from 'class-validator';
+import { LocationDto } from 'src/common/dto/common.dto';
 
 enum SavedPlaveTypeEnum {
   WORK = 'WORK',
@@ -36,18 +36,6 @@ export class UpdateCustomerNameDto {
   @IsString()
   @IsNotEmpty()
   name: string;
-}
-
-class LocationDto {
-  @ApiProperty({ description: 'Latitude' })
-  @IsNumber()
-  @IsNotEmpty()
-  lat: number;
-
-  @ApiProperty({ description: 'Longitude' })
-  @IsNumber()
-  @IsNotEmpty()
-  lng: number;
 }
 
 export class CreateSavedPlaceDto {

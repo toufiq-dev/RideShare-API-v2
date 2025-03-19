@@ -73,12 +73,20 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
+      const wallet: any = await this.prisma.pilotWallet.findUnique({
+        where: { pilotId: pilot.id },
+      });
+
       const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
-          amount: subscription.coins,
+          amount: Number(subscription.price) * Number(times),
+          order_id: response.data.order_id,
+          walletId: wallet.id,
+          balanceBefore: Number(wallet.balance),
           type: TransactionType.SUBSCRIPTION_PURCHASE,
           status: TransactionStatus.PENDING,
+          subscriptionId: subscription.id,
         },
       });
 
@@ -101,7 +109,7 @@ export class PaymentService {
     verifyPaymentDto: VerifyPaymentDto,
     userId: string,
   ) {
-    const { subscriptionId, transactionId } = verifyPaymentDto;
+    const { subscriptionId, transactionId, times } = verifyPaymentDto;
 
     try {
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
@@ -116,7 +124,7 @@ export class PaymentService {
       const subcsription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      console.log(response.data);
+
       if (response.data.order_status === 'PAID') {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
@@ -133,7 +141,8 @@ export class PaymentService {
         }
 
         const balance =
-          Number(pilotWallet.balance) + Number(subcsription.coins);
+          Number(pilotWallet.balance) +
+          Number(subcsription.coins) * Number(times);
 
         await this.prisma.$transaction(async (tx) => {
           await tx.pilotWallet.update({
@@ -147,7 +156,8 @@ export class PaymentService {
           await tx.transaction.update({
             where: { id: transactionId },
             data: {
-              status: TransactionStatus.SUCCESSFULL,
+              status: TransactionStatus.SUCCESSFUL,
+              balanceAfter: balance,
             },
           });
         });

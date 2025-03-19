@@ -7,7 +7,9 @@ import {
   Post,
   UploadedFile,
   Body,
-  Patch,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -21,6 +23,7 @@ import {
   DrivingLicenseDto,
   PancardDto,
   VehicleRcDto,
+  BeAvailableDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -204,7 +207,21 @@ export class PilotController {
   @Get('transactions')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get list of transactions' })
-  async getTransactions(@CurrentUser('userId') userId: string) {
-    return await this.pilotService.getTransactions(userId);
+  async getTransactions(
+    @CurrentUser('userId') userId: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.pilotService.getTransactions(userId, page, pageSize);
+  }
+
+  @Post('available')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Make Pilot available for trips' })
+  async beAvailable(
+    @Body() beAvailableDto: BeAvailableDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.beAvailable(userId, beAvailableDto);
   }
 }

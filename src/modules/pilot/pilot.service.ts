@@ -643,6 +643,9 @@ export class PilotService {
         include: {
           subscription: true,
         },
+        orderBy: {
+          createdAt: 'desc' 
+        },
       });
 
       data.forEach((transaction: any) => {

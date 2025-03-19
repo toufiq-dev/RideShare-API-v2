@@ -572,7 +572,6 @@ export class PilotService {
         where: { name: 'Flexi Pack' },
       });
 
-      // Create pilot wallet
       const wallet = await this.prisma.pilotWallet.create({
         data: {
           pilotId: pilot.id,

@@ -23,7 +23,7 @@ export class LanguagesService {
 
   async updateLanguage(userId: string, updateLanguageDto: UpdateLanguageDto) {
     const { language } = updateLanguageDto;
-    console.log('here');
+
     try {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {

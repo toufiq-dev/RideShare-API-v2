@@ -44,7 +44,7 @@ export class PilotController {
   @Post('phone/otp')
   @HttpCode(200)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update phone' })
+  @ApiOperation({ summary: 'Send otp to Update phone' })
   async updatePhone(@CurrentUser('userId') userId: string) {
     return await this.pilotService.updatePhone(userId);
   }

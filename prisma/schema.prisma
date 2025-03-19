@@ -280,7 +280,6 @@ model Booking {
   tripStart            DateTime?
   tripEnd              DateTime?
   surgeMultiplier      Decimal?            @default(1.0) @db.Decimal(10, 2)
-  discount             Decimal?            @default(0.0) @db.Decimal(10, 2)
   notes                String?
   acceptedAt           DateTime?
   arrivedAt            DateTime?

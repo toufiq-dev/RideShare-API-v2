@@ -73,28 +73,6 @@ export class PilotService {
     }
   }
 
-  async updateLanguage(userId: string, languageId: string) {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-      if (!pilot) {
-        throw new NotFoundException('Pilot not found.');
-      }
-
-      const data = await this.prisma.pilot.update({
-        where: { userId },
-        data: { languageId },
-      });
-
-      return {
-        message: 'Language updated successfully.',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
   async updatePhone(userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({

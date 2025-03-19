@@ -134,7 +134,8 @@ export class CustomerController {
     return await this.customerService.deleteSavedPlace(id, userId);
   }
 
-  @Get('vehicle-category')
+  @Post('vehicle-category')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get vehicle category' })
   @ApiBody({ type: VehicleCategoryDto })

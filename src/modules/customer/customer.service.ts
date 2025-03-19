@@ -19,6 +19,8 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
+import { VehicleTypeName } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class CustomerService {
@@ -247,10 +249,10 @@ export class CustomerService {
         throw new NotFoundException('Saved places not found.');
       }
 
-      this.rideGateway.server.emit('savedPlaces', {
-        message: 'Saved places fetched successfully.',
-        data,
-      });
+      // this.rideGateway.server.emit('savedPlaces', {
+      //   message: 'Saved places fetched successfully.',
+      //   data,
+      // });
 
       return {
         message: 'Saved places fetched successfully.',
@@ -356,7 +358,7 @@ export class CustomerService {
     const { pickupLocation, dropLocation } = vehicleCategoryDto;
 
     try {
-      const customer = await this.prisma.customer.findUnique({
+      const customer: any = await this.prisma.customer.findUnique({
         where: {
           userId,
         },
@@ -368,14 +370,23 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
-      const [vehicleTypes, distanceData] = await Promise.all([
+      const [vehicleTypesWithOther, distanceData] = await Promise.all([
         this.prisma.vehicleType.findMany(),
-        this.fareService.calculateDistanceAndDuration(pickupLocation, dropLocation),
+        this.fareService.calculateDistanceAndDuration(
+          pickupLocation,
+          dropLocation,
+        ),
       ]);
-      
+
       const { distanceKm, durationMin } = distanceData;
-      
-      const vehicleData = vehicleTypes.map(item => {
+
+      const vehicleTypes = vehicleTypesWithOther.filter(
+        (item: any) => item.name !== VehicleTypeName.OTHER,
+      );
+
+      const vehicleData = [];
+
+      for (const item of vehicleTypes) {
         const originalPrice = this.fareService.estimateFare(
           distanceKm,
           durationMin,
@@ -383,22 +394,40 @@ export class CustomerService {
           Number(item.perKmRate),
           Number(item.perMinRate),
         );
-        
+
         const price = customer?.coupon?.discount
           ? originalPrice - Number(customer.coupon.discount)
           : originalPrice;
-          
-        return {
+
+        const driversLocation = {
+          lat: pickupLocation.lat,
+          lng: pickupLocation.lng,
+        };
+
+        const { distanceKm: kmAway, durationMin: minsAway } =
+          await this.fareService.calculateDistanceAndDuration(
+            driversLocation,
+            pickupLocation,
+          );
+
+        vehicleData.push({
           vehicleType: item.name,
           airCondition: item.airCondition,
           isFaster: item.isFaster,
           passengerCapacity: item.passengerCapacity,
           originalPrice: parseFloat(originalPrice.toFixed(2)),
           price: parseFloat(price.toFixed(2)),
-        };
-      });
-  
-      
+          tolls: 0.0,
+          timeAway: `${minsAway} min away`,
+        });
+      }
+
+      if (customer.coupon) {
+        customer.coupon.discount = customer.coupon.discount
+          ? Number(customer.coupon.discount)
+          : 0.0;
+      }
+
       return {
         success: true,
         message: 'Vehicle categories fetched successfully.',

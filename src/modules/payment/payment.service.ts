@@ -2,7 +2,7 @@ import { NotFoundException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import axios from 'axios';
-import { CreateOrderDto } from './dto/payment.dto';
+import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { TransactionType, TransactionStatus } from '@prisma/client';
 
@@ -15,7 +15,6 @@ export class PaymentService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly redis: RedisService,
     private readonly prisma: PrismaService,
   ) {
     this.testClientId = this.configService.get<string>(
@@ -39,7 +38,9 @@ export class PaymentService {
       const subscription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      if (!subscription) throw new NotFoundException('Subscription not found');
+      if (!subscription) {
+        throw new NotFoundException('Subscription not found');
+      }
 
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
@@ -72,9 +73,7 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
-      await this.redis.set(`subscriptionId:${userId}`, subscriptionId, 300);
-
-      await this.prisma.transaction.create({
+      const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
           amount: subscription.coins,
@@ -88,15 +87,22 @@ export class PaymentService {
         data: {
           payment_session_id: response.data.payment_session_id,
           order_id: response.data.order_id,
+          transactionId: transaction.id,
         },
       };
     } catch (error) {
       console.error(error);
-      throw new error();
+      throw error;
     }
   }
 
-  async verifyPayment(orderId: string, userId: string) {
+  async verifyPayment(
+    orderId: string,
+    verifyPaymentDto: VerifyPaymentDto,
+    userId: string,
+  ) {
+    const { subscriptionId, transactionId } = verifyPaymentDto;
+
     try {
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
         headers: {
@@ -107,10 +113,10 @@ export class PaymentService {
         },
       });
 
-      if (response.status !== 200) {
-        throw new Error('Failed to verify payment');
-      }
-
+      const subcsription = await this.prisma.subscription.findUnique({
+        where: { id: subscriptionId },
+      });
+      console.log(response.data);
       if (response.data.order_status === 'PAID') {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
@@ -126,43 +132,45 @@ export class PaymentService {
           throw new NotFoundException('Pilot wallet not found');
         }
 
-        const subscriptionId = await this.redis.get(`subscriptionId:${userId}`);
-        const amount = Number(response.data.order_amount);
-        const balance = Number(pilotWallet.balance);
+        const balance =
+          Number(pilotWallet.balance) + Number(subcsription.coins);
 
         await this.prisma.$transaction(async (tx) => {
           await tx.pilotWallet.update({
             where: { pilotId: pilot.id },
             data: {
-              balance: balance + amount,
+              balance: balance,
               subscriptionId,
             },
           });
 
-          await tx.transaction.create({
+          await tx.transaction.update({
+            where: { id: transactionId },
             data: {
-              pilotId: pilot.id,
-              walletId: pilotWallet.id,
-              amount,
-              type: TransactionType.SUBSCRIPTION_PURCHASE,
               status: TransactionStatus.SUCCESSFULL,
-              balanceBefore: balance,
-              balanceAfter: balance + amount,
-              order_id: response.data.order_id,
             },
           });
         });
 
         return {
           message: 'Payment verified successfully',
+        };
+      } else {
+        await this.prisma.transaction.update({
+          where: { id: transactionId },
           data: {
-            pilotWallet,
+            status: TransactionStatus.FAILED,
           },
+        });
+
+        return {
+          success: false,
+          message: 'Payment failed',
         };
       }
     } catch (error) {
       console.error(error);
-      throw new error();
+      throw error;
     }
   }
 }

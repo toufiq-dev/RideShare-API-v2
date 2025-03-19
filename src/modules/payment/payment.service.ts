@@ -109,7 +109,7 @@ export class PaymentService {
     verifyPaymentDto: VerifyPaymentDto,
     userId: string,
   ) {
-    const { subscriptionId, transactionId } = verifyPaymentDto;
+    const { subscriptionId, transactionId, times } = verifyPaymentDto;
 
     try {
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
@@ -124,7 +124,7 @@ export class PaymentService {
       const subcsription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      console.log(response.data);
+      
       if (response.data.order_status === 'PAID') {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
@@ -141,7 +141,7 @@ export class PaymentService {
         }
 
         const balance =
-          Number(pilotWallet.balance) + Number(subcsription.coins);
+          Number(pilotWallet.balance) + (Number(subcsription.coins) * Number(times));
 
         await this.prisma.$transaction(async (tx) => {
           await tx.pilotWallet.update({

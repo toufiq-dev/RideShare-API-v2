@@ -395,7 +395,7 @@ export class CustomerService {
           Number(item.perMinRate),
         );
 
-        const price = customer?.coupon?.discount
+        const price = customer?.coupon?.discount && originalPrice > customer.coupon.discount
           ? originalPrice - Number(customer.coupon.discount)
           : originalPrice;
 

@@ -23,4 +23,9 @@ export class VerifyPaymentDto {
   @IsNotEmpty()
   @IsString()
   transactionId: string;
+
+  @ApiProperty({ description: 'Multiplier of the subscription' })
+  @IsNotEmpty()
+  @IsNumber()
+  times: number;
 }

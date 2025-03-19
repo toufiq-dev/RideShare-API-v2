@@ -80,7 +80,7 @@ export class PaymentService {
       const transaction = await this.prisma.transaction.create({
         data: {
           pilotId: pilot.id,
-          amount: subscription.price,
+          amount: Number(subscription.price) * Number(times),
           order_id: response.data.order_id,
           walletId: wallet.id,
           balanceBefore: Number(wallet.balance),
@@ -124,7 +124,7 @@ export class PaymentService {
       const subcsription = await this.prisma.subscription.findUnique({
         where: { id: subscriptionId },
       });
-      
+
       if (response.data.order_status === 'PAID') {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
@@ -141,7 +141,8 @@ export class PaymentService {
         }
 
         const balance =
-          Number(pilotWallet.balance) + (Number(subcsription.coins) * Number(times));
+          Number(pilotWallet.balance) +
+          Number(subcsription.coins) * Number(times);
 
         await this.prisma.$transaction(async (tx) => {
           await tx.pilotWallet.update({
@@ -155,8 +156,8 @@ export class PaymentService {
           await tx.transaction.update({
             where: { id: transactionId },
             data: {
-              status: TransactionStatus.SUCCESSFULL,
-              balanceAfter: balance
+              status: TransactionStatus.SUCCESSFUL,
+              balanceAfter: balance,
             },
           });
         });

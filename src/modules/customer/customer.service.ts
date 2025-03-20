@@ -249,10 +249,10 @@ export class CustomerService {
         throw new NotFoundException('Saved places not found.');
       }
 
-      // this.rideGateway.server.emit('savedPlaces', {
-      //   message: 'Saved places fetched successfully.',
-      //   data,
-      // });
+      this.rideGateway.server.emit('savedPlaces', {
+        message: 'Saved places fetched successfully.',
+        data,
+      });
 
       return {
         message: 'Saved places fetched successfully.',

@@ -512,9 +512,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (!pilot.isPanCardVerified) {
-        throw new BadRequestException('Driver does not have pancard verfied.');
-      }
+      // if (!pilot.isPanCardVerified) {
+      //   throw new BadRequestException('Driver does not have pancard verfied.');
+      // }
 
       const verificationResponse =
         await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);

@@ -290,9 +290,7 @@ export class VerificationService {
       return response.data;
     } catch (error) {
       console.error(error);
-      throw new BadRequestException(
-        'Failed to send otp to verify aadhaar with Cashfree API.',
-      );
+      throw new BadRequestException(error?.response?.data?.message);
     }
   }
 
@@ -313,19 +311,8 @@ export class VerificationService {
 
       return response.data;
     } catch (error) {
-      // Check if it's an Axios error with a response
-      if (axios.isAxiosError(error) && error.response) {
-        const errorData = error.response.data;
-        // Throw BadRequestException with the specific message from the API
-        throw new BadRequestException(errorData.message);
-      }
-
-      // Handle other unexpected errors
-      throw new BadRequestException({
-        statusCode: 400,
-        message: 'An error occurred during Aadhaar verification',
-        error: 'unknown_error',
-      });
+      console.error(error);
+      throw new BadRequestException(error?.response?.data?.message);
     }
   }
 

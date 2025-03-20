@@ -177,6 +177,10 @@ export class VerificationService {
         },
       });
 
+      if (responseRc.data.result.status.toLowerCase() !== 'active') {
+        throw new BadRequestException('Vehicle status is not active');
+      }
+
       // Check if rc or permit is expired
       let isrcExpired = false;
       if (!responseRc.data.result.rcExpiryDate) {

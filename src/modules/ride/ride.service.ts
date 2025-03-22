@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
+import { CreateBookingDto, UpdateBookingDto } from './dto/ride.dto';
 import { BookingStatus, UserRole } from '@prisma/client';
 
 @Injectable()

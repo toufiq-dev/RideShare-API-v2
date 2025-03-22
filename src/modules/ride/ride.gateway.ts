@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
-import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
+import { CreateBookingDto, UpdateBookingDto } from './dto/ride.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
 

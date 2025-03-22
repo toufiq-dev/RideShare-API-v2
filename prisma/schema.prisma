@@ -167,7 +167,7 @@ model Vehicle {
   insuranceUpto DateTime?
   puccUpto      DateTime?
   regUpto       DateTime?
-  permitUpto    String?
+  permitUpto    DateTime?
   manufacturer  String
   status        String
   colour        String

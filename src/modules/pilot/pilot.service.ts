@@ -702,7 +702,7 @@ export class PilotService {
   }
 
   async beOnline(userId: string, beOnlineDto: BeOnlineDto) {
-    const { isAvailable, currentLocation } = beOnlineDto;
+    const { onlineStatus, currentLocation } = beOnlineDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
@@ -713,7 +713,7 @@ export class PilotService {
       await this.prisma.pilot.update({
         where: { userId },
         data: {
-          isAvailable: isAvailable
+          onlineStatus: onlineStatus
             ? PilotStatus.AVAILABLE
             : PilotStatus.OFFLINE,
           currentLocation: JSON.parse(JSON.stringify(currentLocation)),

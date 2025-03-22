@@ -102,7 +102,7 @@ model Pilot {
   userId              String             @unique
   referralCode        String
   isAlreadyRegistered Boolean            @default(false)
-  isAvailable         PilotStatus        @default(OFFLINE)
+  onlineStatus        PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
   averageRating       Float              @default(0)
   languageId          String
@@ -137,7 +137,7 @@ model Pilot {
   vehicles            Vehicle[]
   videoProgress       VideoProgress?
 
-  @@index([isAvailable])
+  @@index([onlineStatus])
   @@index([currentLocation])
 }
 

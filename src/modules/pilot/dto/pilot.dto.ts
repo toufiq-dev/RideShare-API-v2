@@ -62,7 +62,7 @@ export class BeOnlineDto {
   @ApiProperty({ description: 'Make driver available' })
   @IsNotEmpty({ message: 'Is available is required' })
   @IsBoolean()
-  isAvailable: boolean;
+  onlineStatus: boolean;
 
   @ApiProperty({
     description: 'Current Location in latitude and longitude',

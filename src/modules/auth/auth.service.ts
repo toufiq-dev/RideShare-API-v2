@@ -98,14 +98,21 @@ export class AuthService {
         refferalCode,
       );
 
-      if (fcmToken) {
-        await this.prisma.deviceToken.upsert({
-          where: { id: user.id },
-          update: {
+      const device = await this.prisma.deviceToken.findUnique({
+        where: { id: user.id },
+      });
+
+      if (!device) {
+        await this.prisma.deviceToken.create({
+          data: {
+            userId: user.id,
             fcmToken,
           },
-          create: {
-            userId: user.id,
+        });
+      } else if (device.fcmToken !== fcmToken) {
+        await this.prisma.deviceToken.update({
+          where: { id: user.id },
+          data: {
             fcmToken,
           },
         });

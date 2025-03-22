@@ -14,7 +14,7 @@ import {
   VehicleRcDto,
   PancardDto,
   AadhaarNumberDto,
-  BeAvailableDto,
+  BeOnlineDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -572,6 +572,9 @@ export class PilotService {
   async onboardingOffer(userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot.isDLVerified || !pilot.isRCVerified) {
+        throw new BadRequestException('Driving License or RC is not verfied.');
+      }
 
       const subscription = await this.prisma.subscription.findUnique({
         where: { name: 'Flexi Pack' },
@@ -698,8 +701,8 @@ export class PilotService {
     }
   }
 
-  async beAvailable(userId: string, beAvailableDto: BeAvailableDto) {
-    const { isAvailable, currentLocation } = beAvailableDto;
+  async beOnline(userId: string, beOnlineDto: BeOnlineDto) {
+    const { isAvailable, currentLocation } = beOnlineDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });

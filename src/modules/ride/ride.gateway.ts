@@ -9,7 +9,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
-import { CreateBookingDto, UpdateBookingDto } from './dto/ride.dto';
+import {
+  UpdateLocationDto,
+  CreateBookingDto,
+  UpdateBookingDto,
+} from './dto/ride.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
 
@@ -26,21 +30,9 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(private readonly rideService: RideService) {}
 
-  // Store connected users
-  private connectedUsers: Map<string, Socket> = new Map();
-
   async handleConnection(client: Socket) {
     try {
       console.log('Connection attempt from:', client.handshake.address);
-      console.log('Auth data:', client.handshake.headers);
-
-      // Temporarily disable auth check for testing
-      // const user = client.data.user;
-      // if (!user) {
-      //   console.log('No user data found, disconnecting');
-      //   client.disconnect();
-      //   return;
-      // }
 
       console.log('Client connected successfully:', client.id);
     } catch (error) {
@@ -52,22 +44,27 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('Client disconnected:', client.id);
   }
 
+  @SubscribeMessage('updateLocation')
+  async updateLocation(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() location: UpdateLocationDto,
+  ) {
+    return await this.rideService.handleUpdateLocation(client, location);
+  }
+
   @SubscribeMessage('requestRide')
   async requestRide(
     @ConnectedSocket() client: Socket,
     @MessageBody() createBookingDto: CreateBookingDto,
   ) {
-    try {
-      const booking = await this.rideService.handleRequestRide(
-        createBookingDto,
-        client.data.user,
-      );
+    const booking = await this.rideService.handleRequestRide(
+      client,
+      createBookingDto,
+      client.data.user,
+    );
 
-      // Join booking room
-      client.join(`booking:${booking.id}`);
-    } catch (error) {
-      console.error(error);
-    }
+    // Join booking room
+    client.join(`booking:${booking.id}`);
   }
 
   @SubscribeMessage('acceptRide')

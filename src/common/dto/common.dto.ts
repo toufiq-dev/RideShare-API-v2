@@ -34,5 +34,10 @@ export class LocationDto {
   @ApiProperty({ description: 'Address' })
   @IsString()
   @IsOptional()
+  name: string;
+
+  @ApiProperty({ description: 'Address' })
+  @IsString()
+  @IsOptional()
   address: string;
 }

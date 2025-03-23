@@ -275,9 +275,10 @@ model Booking {
   fare                 Decimal             @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
-  distance             String
-  estimatedDuration    Int?
-  duration             Int?
+  estimatedDistance    String
+  distance             String?
+  estimatedDuration    String
+  duration             String?
   acceptedAt           DateTime?
   arrivedAt            DateTime?
   tripStart            DateTime?

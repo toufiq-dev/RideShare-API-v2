@@ -286,7 +286,7 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
-            couponId: coupon.id,
+            couponId: coupon && coupon.id,
           },
         });
       } else if (role === RoleEnum.PILOT && !pilot) {

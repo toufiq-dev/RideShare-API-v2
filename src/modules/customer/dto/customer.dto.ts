@@ -122,6 +122,11 @@ export class CreateRideRequestDto extends RideLocationDto {
   @IsString()
   vehicleTypeId: string;
 
+  @ApiProperty({ description: 'Coupon Id' })
+  @IsNotEmpty()
+  @IsString()
+  couponId: string;
+
   @ApiProperty({
     description: 'current Location in latitude and longitude',
   })
@@ -135,5 +140,5 @@ export class CreateRideRequestDto extends RideLocationDto {
   })
   @IsNotEmpty()
   @IsEnum(RideType)
-  rideFor: string;
+  rideFor: RideType;
 }

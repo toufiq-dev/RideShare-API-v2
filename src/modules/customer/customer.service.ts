@@ -20,8 +20,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { VehicleTypeName } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 
 @Injectable()
 export class CustomerService {
@@ -451,6 +450,7 @@ export class CustomerService {
   ) {
     const {
       vehicleTypeId,
+      couponId,
       pickupLocation,
       dropLocation,
       currentLocation,
@@ -466,6 +466,72 @@ export class CustomerService {
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
+
+      const vehicleType = await this.prisma.vehicleType.findUnique({
+        where: {
+          id: vehicleTypeId,
+        },
+      });
+
+      if (!vehicleType) {
+        throw new NotFoundException('Vehicle type not found.');
+      }
+
+      const { distanceKm, durationMin } =
+        await this.fareService.calculateDistanceAndDuration(
+          pickupLocation,
+          dropLocation,
+        );
+
+      const originalPrice = this.fareService.estimateFare(
+        distanceKm,
+        durationMin,
+        Number(vehicleType.baseFare),
+        Number(vehicleType.perKmRate),
+        Number(vehicleType.perMinRate),
+      );
+
+      const coupon = await this.prisma.coupon.findUnique({
+        where: {
+          id: couponId,
+        },
+      });
+
+      const price =
+        coupon && originalPrice > Number(coupon.discount)
+          ? originalPrice - Number(coupon.discount)
+          : originalPrice;
+
+
+      
+      const bookingCode = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${customer.phone}`, bookingCode, 1200);
+
+      await this.prisma.booking.create({
+        data: {
+          bookingCode,
+          customer: { connect: { id: customer.id } },
+          status: BookingStatus.PENDING,
+          rideType: RideType.SELF,
+          estimatedFare: originalPrice,
+          fare: price,
+          pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
+          dropLocation: JSON.parse(JSON.stringify(dropLocation)),
+          estimatedDistance: distanceKm.toString(),
+          estimatedDuration: durationMin.toString(),
+        }
+      })
+
+      return {
+        success: true,
+        message: 'Ride request created successfully.',
+        data: {
+          location: [pickupLocation, dropLocation],
+          originalPrice: Number(originalPrice.toFixed(2)),
+          discountedPrice: Number(price.toFixed(2)),
+          coupon: coupon ? coupon : null,
+        },
+      };
     } catch (error) {
       console.error(error);
       throw error;

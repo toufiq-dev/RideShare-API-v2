@@ -5,6 +5,7 @@ import {
   IsString,
   IsPhoneNumber,
   Length,
+  IsOptional,
 } from 'class-validator';
 
 export class VerifyPhoneDto {
@@ -29,4 +30,9 @@ export class LocationDto {
   @IsNumber()
   @IsNotEmpty()
   lng: number;
+
+  @ApiProperty({ description: 'Address' })
+  @IsString()
+  @IsOptional()
+  address: string;
 }

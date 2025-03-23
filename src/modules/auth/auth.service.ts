@@ -168,7 +168,9 @@ export class AuthService {
     );
 
     return {
-      isInServiceArea: isInsideDhaka,
+      data: {
+        isInServiceArea: isInsideDhaka,
+      },
       message: isInsideDhaka
         ? 'Within the service area.'
         : 'Outside the service area.',

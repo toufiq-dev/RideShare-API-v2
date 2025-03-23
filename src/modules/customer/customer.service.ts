@@ -13,7 +13,7 @@ import {
   CompleteCustomerOnboardingDto,
   UpdateCustomerNameDto,
   VehicleCategoryDto,
-  CreateRideRequestDto
+  CreateRideRequestDto,
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -413,6 +413,7 @@ export class CustomerService {
           );
 
         vehicleData.push({
+          id: item.id,
           vehicleType: item.name,
           airCondition: item.airCondition,
           isFaster: item.isFaster,
@@ -448,6 +449,14 @@ export class CustomerService {
     createRideRequestDto: CreateRideRequestDto,
     userId: string,
   ) {
+    const {
+      vehicleTypeId,
+      pickupLocation,
+      dropLocation,
+      currentLocation,
+      rideFor,
+    } = createRideRequestDto;
+
     try {
       const customer = await this.prisma.customer.findUnique({
         where: {
@@ -457,10 +466,6 @@ export class CustomerService {
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
-
-      
-
-
     } catch (error) {
       console.error(error);
       throw error;

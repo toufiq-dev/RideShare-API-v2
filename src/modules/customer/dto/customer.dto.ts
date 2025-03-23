@@ -7,6 +7,7 @@ import {
   IsString,
   ValidateNested,
   IsEmail,
+  IsNumber,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
 
@@ -16,6 +17,11 @@ enum SavedPlaveTypeEnum {
   RESTAURANT = 'RESTAURANT',
   GYM = 'GYM',
   COLLEGE = 'COLLEGE',
+  OTHERS = 'OTHERS',
+}
+
+enum RideType {
+  SELF = 'SELF',
   OTHERS = 'OTHERS',
 }
 
@@ -111,8 +117,23 @@ export class RideLocationDto {
 export class VehicleCategoryDto extends RideLocationDto {}
 
 export class CreateRideRequestDto extends RideLocationDto {
-  @ApiProperty({ description: 'Ride Type' })
-  @IsNotEmpty({ message: 'Ride type is required' })
+  @ApiProperty({ description: 'Vehicle Type id' })
+  @IsNotEmpty({ message: 'Vehicle type is required' })
   @IsString()
-  type: string;
+  vehicleTypeId: string;
+
+  @ApiProperty({
+    description: 'current Location in latitude and longitude',
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  currentLocation: LocationDto;
+
+  @ApiProperty({
+    enum: RideType,
+  })
+  @IsNotEmpty()
+  @IsEnum(RideType)
+  rideFor: string;
 }

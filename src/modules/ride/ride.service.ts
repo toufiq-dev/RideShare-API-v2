@@ -22,9 +22,8 @@ export class RideService {
 
   async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
     try {
-      const user = client.data.user;
       const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: user.id },
+        where: { userId: client.data.userId },
       });
 
       if (!pilot) {

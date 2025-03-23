@@ -19,7 +19,7 @@ import {
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
   VehicleCategoryDto,
-  CreateRideRequestDto
+  CreateRideRequestDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';

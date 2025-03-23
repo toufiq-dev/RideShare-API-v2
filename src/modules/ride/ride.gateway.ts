@@ -64,7 +64,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     // Join booking room
-    client.join(`booking:${booking.id}`);
+    // client.join(`booking:${booking.id}`);
   }
 
   @SubscribeMessage('acceptRide')

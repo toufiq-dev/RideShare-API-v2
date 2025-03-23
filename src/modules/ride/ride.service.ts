@@ -21,11 +21,11 @@ export class RideService {
   ) {}
 
   async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
+    console.log(client.data)
     try {
       const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: client.data.userId },
+        where: { userId: client.data.user.userId },
       });
-
       if (!pilot) {
         throw new UnauthorizedException('User is not a pilot');
       }
@@ -48,36 +48,35 @@ export class RideService {
     createBookingDto: CreateBookingDto,
     user: any,
   ) {
-    try {
-      const customer = await this.prisma.customer.findUnique({
-        where: { userId: user.id },
-      });
+    // try {
+    //   const customer = await this.prisma.customer.findUnique({
+    //     where: { userId: user.id },
+    //   });
 
-      if (!customer) {
-        throw new UnauthorizedException('User is not a customer');
-      }
+    //   if (!customer) {
+    //     throw new UnauthorizedException('User is not a customer');
+    //   }
 
-      const pickupLocation = `point({latitude: ${createBookingDto.pickupLocation.lat}, longitude: ${createBookingDto.pickupLocation.lng}})`;
+    //   const pickupLocation = `point({latitude: ${createBookingDto.pickupLocation.lat}, longitude: ${createBookingDto.pickupLocation.lng}})`;
 
-      const dropLocation = `point({latitude: ${createBookingDto.dropLocation.lat}, longitude: ${createBookingDto.dropLocation.lng}})`;
+    //   const dropLocation = `point({latitude: ${createBookingDto.dropLocation.lat}, longitude: ${createBookingDto.dropLocation.lng}})`;
 
-      return this.prisma.booking.create({
-        data: {
-          customerId: customer.id,
-          pickupLocation,
-          dropLocation,
-          status: BookingStatus.PENDING,
-          bookingCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-          scheduledFor: createBookingDto.scheduledFor,
-        },
-        include: {
-          customer: true,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      client.emit('error', { message: 'Failed to create ride request' });
-    }
+    //   return this.prisma.booking.create({
+    //     data: {
+    //       customerId: customer.id,
+    //       pickupLocation,
+    //       dropLocation,
+    //       status: BookingStatus.PENDING,
+    //       bookingCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+    //     },
+    //     include: {
+    //       customer: true,
+    //     },
+    //   });
+    // } catch (error) {
+    //   console.error(error);
+    //   client.emit('error', { message: 'Failed to create ride request' });
+    // }
   }
 
   async handleAcceptRide(bookingId: string, user: any) {

@@ -13,6 +13,7 @@ import {
   CompleteCustomerOnboardingDto,
   UpdateCustomerNameDto,
   VehicleCategoryDto,
+  CreateRideRequestDto
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -437,6 +438,29 @@ export class CustomerService {
           coupon: customer.coupon || null,
         },
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async createRideRequest(
+    createRideRequestDto: CreateRideRequestDto,
+    userId: string,
+  ) {
+    try {
+      const customer = await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
+
+      
+
+
     } catch (error) {
       console.error(error);
       throw error;

@@ -19,6 +19,7 @@ import {
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
   VehicleCategoryDto,
+  CreateRideRequestDto
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -145,6 +146,21 @@ export class CustomerController {
   ) {
     return await this.customerService.getVehicleCategories(
       vehicleCategoryDto,
+      userId,
+    );
+  }
+
+  @Post('ride-request')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create ride request' })
+  @ApiBody({ type: CreateRideRequestDto })
+  async createRideRequest(
+    @Body() createRideRequestDto: CreateRideRequestDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.createRideRequest(
+      createRideRequestDto,
       userId,
     );
   }

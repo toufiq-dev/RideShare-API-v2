@@ -90,10 +90,9 @@ export class UpdateSavedPlaceDto {
   type?: SavedPlaveTypeEnum;
 }
 
-export class VehicleCategoryDto {
+export class RideLocationDto {
   @ApiProperty({
     description: 'Pickup Location in latitude and longitude',
-    required: false,
   })
   @IsNotEmpty()
   @ValidateNested()
@@ -101,11 +100,19 @@ export class VehicleCategoryDto {
   pickupLocation: LocationDto;
 
   @ApiProperty({
-    description: 'Pickup Location in latitude and longitude',
-    required: false,
+    description: 'Drop Location in latitude and longitude',
   })
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => LocationDto)
   dropLocation: LocationDto;
+}
+
+export class VehicleCategoryDto extends RideLocationDto {}
+
+export class CreateRideRequestDto extends RideLocationDto {
+  @ApiProperty({ description: 'Ride Type' })
+  @IsNotEmpty({ message: 'Ride type is required' })
+  @IsString()
+  type: string;
 }

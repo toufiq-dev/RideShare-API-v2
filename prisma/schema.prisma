@@ -270,8 +270,8 @@ model Booking {
   customerId           String
   pilotId              String?
   status               BookingStatus
-  estimatedFare        Decimal?            @db.Decimal(10, 2)
-  fare                 Decimal?            @db.Decimal(10, 2)
+  estimatedFare        Decimal             @db.Decimal(10, 2)
+  fare                 Decimal             @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
   actualDistance       Float?

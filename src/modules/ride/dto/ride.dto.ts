@@ -8,13 +8,7 @@ import { Type } from 'class-transformer';
 import { BookingStatus } from '@prisma/client';
 import { LocationDto } from 'src/common/dto/common.dto';
 
-export class UpdateLocationDto {
-  @IsNotEmpty()
-  @IsObject()
-  @ValidateNested()
-  @Type(() => LocationDto)
-  location: LocationDto;
-}
+export class UpdateLocationDto extends LocationDto {}
 
 export class CreateBookingDto {
   @IsNotEmpty()

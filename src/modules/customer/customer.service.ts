@@ -449,7 +449,13 @@ export class CustomerService {
     createRideRequestDto: CreateRideRequestDto,
     userId: string,
   ) {
-    const { vehicleTypeId, pickupLocation, dropLocation, currentLocation, rideFor } = createRideRequestDto;
+    const {
+      vehicleTypeId,
+      pickupLocation,
+      dropLocation,
+      currentLocation,
+      rideFor,
+    } = createRideRequestDto;
 
     try {
       const customer = await this.prisma.customer.findUnique({
@@ -460,8 +466,6 @@ export class CustomerService {
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
-
-      
     } catch (error) {
       console.error(error);
       throw error;

@@ -17,9 +17,8 @@ import {
   FindPilotDto,
 } from './dto/auth.dto';
 import { RideGateway } from '../ride/ride.gateway';
-import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
-import { point, polygon } from '@turf/helpers';
 import { LocationDto } from 'src/common/dto/common.dto';
+import { GeofencingService } from 'src/core/geofencing/geofencing.service';
 
 @Injectable()
 export class AuthService {
@@ -29,26 +28,6 @@ export class AuthService {
   private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
 
-  private dhakaBoundary = polygon([
-    [
-      [90.356, 23.78],
-      [90.37, 23.77],
-      [90.385, 23.76],
-      [90.4, 23.755],
-      [90.42, 23.76],
-      [90.44, 23.77],
-      [90.455, 23.79],
-      [90.45, 23.81],
-      [90.44, 23.825],
-      [90.42, 23.835],
-      [90.4, 23.84],
-      [90.38, 23.835],
-      [90.365, 23.82],
-      [90.356, 23.8],
-      [90.356, 23.78],
-    ],
-  ]);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -56,6 +35,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
+    private readonly geofencingService: GeofencingService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -160,12 +140,7 @@ export class AuthService {
   async checkLocation(locationDto: LocationDto) {
     const { lat, lng } = locationDto;
 
-    const userLocation = point([lng, lat]);
-
-    const isInsideDhaka = booleanPointInPolygon(
-      userLocation,
-      this.dhakaBoundary,
-    );
+    const isInsideDhaka = this.geofencingService.isWithinDhaka(lat, lng);
 
     return {
       data: {

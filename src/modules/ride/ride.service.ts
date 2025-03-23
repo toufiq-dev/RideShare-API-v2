@@ -21,7 +21,6 @@ export class RideService {
   ) {}
 
   async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
-    console.log(client.data)
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId: client.data.user.userId },
@@ -52,15 +51,11 @@ export class RideService {
     //   const customer = await this.prisma.customer.findUnique({
     //     where: { userId: user.id },
     //   });
-
     //   if (!customer) {
     //     throw new UnauthorizedException('User is not a customer');
     //   }
-
     //   const pickupLocation = `point({latitude: ${createBookingDto.pickupLocation.lat}, longitude: ${createBookingDto.pickupLocation.lng}})`;
-
     //   const dropLocation = `point({latitude: ${createBookingDto.dropLocation.lat}, longitude: ${createBookingDto.dropLocation.lng}})`;
-
     //   return this.prisma.booking.create({
     //     data: {
     //       customerId: customer.id,

@@ -249,10 +249,7 @@ export class CustomerService {
         throw new NotFoundException('Saved places not found.');
       }
 
-      this.rideGateway.server.emit('savedPlaces', {
-        message: 'Saved places fetched successfully.',
-        data,
-      });
+      
 
       return {
         message: 'Saved places fetched successfully.',
@@ -506,9 +503,10 @@ export class CustomerService {
           : originalPrice;
 
       const bookingCode = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${customer.phone}`, bookingCode, 1200);
+      await this.redis.set(`otp:${customer.id}`, bookingCode, 1200);
+      
 
-      await this.prisma.booking.create({
+      const booking = await this.prisma.booking.create({
         data: {
           bookingCode,
           customer: { connect: { id: customer.id } },
@@ -521,6 +519,15 @@ export class CustomerService {
           estimatedDistance: distanceKm.toString(),
           estimatedDuration: durationMin.toString(),
         },
+      });
+
+      this.rideGateway.server.emit(`requestRide`, {
+        bookingCode,
+        customerId: customer.id,
+        bookingId: booking.id,
+        pickupLocation,
+        currentLocation,
+        dropLocation,
       });
 
       return {

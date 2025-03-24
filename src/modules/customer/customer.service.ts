@@ -491,19 +491,20 @@ export class CustomerService {
         Number(vehicleType.perMinRate),
       );
 
-      const coupon = await this.prisma.coupon.findUnique({
-        where: {
-          id: couponId,
-        },
-      });
+      let coupon;
+      if (couponId) {
+        coupon = await this.prisma.coupon.findUnique({
+          where: {
+            id: couponId,
+          },
+        });
+      }
 
       const price =
         coupon && originalPrice > Number(coupon.discount)
           ? originalPrice - Number(coupon.discount)
           : originalPrice;
 
-
-      
       const bookingCode = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${customer.phone}`, bookingCode, 1200);
 
@@ -512,15 +513,15 @@ export class CustomerService {
           bookingCode,
           customer: { connect: { id: customer.id } },
           status: BookingStatus.PENDING,
-          rideType: RideType.SELF,
+          rideType: rideFor,
           estimatedFare: originalPrice,
           fare: price,
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
           estimatedDistance: distanceKm.toString(),
           estimatedDuration: durationMin.toString(),
-        }
-      })
+        },
+      });
 
       return {
         success: true,

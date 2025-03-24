@@ -8,8 +8,10 @@ import {
   ValidateNested,
   IsEmail,
   IsNumber,
+  IsJSON,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
+import { RideType } from '@prisma/client';
 
 enum SavedPlaveTypeEnum {
   WORK = 'WORK',
@@ -17,11 +19,6 @@ enum SavedPlaveTypeEnum {
   RESTAURANT = 'RESTAURANT',
   GYM = 'GYM',
   COLLEGE = 'COLLEGE',
-  OTHERS = 'OTHERS',
-}
-
-enum RideType {
-  SELF = 'SELF',
   OTHERS = 'OTHERS',
 }
 
@@ -116,6 +113,13 @@ export class RideLocationDto {
 
 export class VehicleCategoryDto extends RideLocationDto {}
 
+class OtherInfo {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class CreateRideRequestDto extends RideLocationDto {
   @ApiProperty({ description: 'Vehicle Type id' })
   @IsNotEmpty({ message: 'Vehicle type is required' })
@@ -123,7 +127,7 @@ export class CreateRideRequestDto extends RideLocationDto {
   vehicleTypeId: string;
 
   @ApiProperty({ description: 'Coupon Id' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   couponId: string;
 
@@ -141,4 +145,12 @@ export class CreateRideRequestDto extends RideLocationDto {
   @IsNotEmpty()
   @IsEnum(RideType)
   rideFor: RideType;
+
+  @ApiProperty({
+    description: 'Other passengers details',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OtherInfo)
+  otherPassengerInfo: OtherInfo;
 }

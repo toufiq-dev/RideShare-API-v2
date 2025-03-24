@@ -6,14 +6,9 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookingStatus } from '@prisma/client';
+import { LocationDto } from 'src/common/dto/common.dto';
 
-class LocationDto {
-  @IsNumber()
-  latitude: number;
-
-  @IsNumber()
-  longitude: number;
-}
+export class UpdateLocationDto extends LocationDto {}
 
 export class CreateBookingDto {
   @IsNotEmpty()

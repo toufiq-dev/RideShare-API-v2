@@ -17,6 +17,8 @@ import {
   FindPilotDto,
 } from './dto/auth.dto';
 import { RideGateway } from '../ride/ride.gateway';
+import { LocationDto } from 'src/common/dto/common.dto';
+import { GeofencingService } from 'src/core/geofencing/geofencing.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +27,7 @@ export class AuthService {
   private readonly jwtSecret: string;
   private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -32,6 +35,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
+    private readonly geofencingService: GeofencingService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -98,14 +102,21 @@ export class AuthService {
         refferalCode,
       );
 
-      if (fcmToken) {
-        await this.prisma.deviceToken.upsert({
-          where: { id: user.id },
-          update: {
+      const device = await this.prisma.deviceToken.findUnique({
+        where: { id: user.id },
+      });
+
+      if (!device) {
+        await this.prisma.deviceToken.create({
+          data: {
+            userId: user.id,
             fcmToken,
           },
-          create: {
-            userId: user.id,
+        });
+      } else if (device.fcmToken !== fcmToken) {
+        await this.prisma.deviceToken.update({
+          where: { id: user.id },
+          data: {
             fcmToken,
           },
         });
@@ -124,6 +135,21 @@ export class AuthService {
       console.error(error);
       throw error;
     }
+  }
+
+  async checkLocation(locationDto: LocationDto) {
+    const { lat, lng } = locationDto;
+
+    const isInsideDhaka = this.geofencingService.isWithinDhaka(lat, lng);
+
+    return {
+      data: {
+        isInServiceArea: isInsideDhaka,
+      },
+      message: isInsideDhaka
+        ? 'Within the service area.'
+        : 'Outside the service area.',
+    };
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
@@ -260,7 +286,7 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
-            couponId: coupon.id,
+            couponId: coupon && coupon.id,
           },
         });
       } else if (role === RoleEnum.PILOT && !pilot) {

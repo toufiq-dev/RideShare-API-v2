@@ -23,7 +23,7 @@ import {
   DrivingLicenseDto,
   PancardDto,
   VehicleRcDto,
-  BeAvailableDto,
+  BeOnlineDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -215,13 +215,13 @@ export class PilotController {
     return await this.pilotService.getTransactions(userId, page, pageSize);
   }
 
-  @Post('available')
+  @Post('online')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Make Pilot available for trips' })
-  async beAvailable(
-    @Body() beAvailableDto: BeAvailableDto,
+  async beOnline(
+    @Body() beOnlineDto: BeOnlineDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.pilotService.beAvailable(userId, beAvailableDto);
+    return await this.pilotService.beOnline(userId, beOnlineDto);
   }
 }

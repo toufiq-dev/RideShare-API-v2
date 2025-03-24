@@ -7,6 +7,7 @@ import {
   FindPilotDto,
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { LocationDto } from 'src/common/dto/common.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -26,6 +27,13 @@ export class AuthController {
   @ApiBody({ type: VerifyOtpDto })
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return await this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Post('location')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check location of user' })
+  async checkLocation(@Body() locationDto: LocationDto) {
+    return await this.authService.checkLocation(locationDto);
   }
 
   @Post('resend-otp')

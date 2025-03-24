@@ -107,7 +107,7 @@ async function main() {
     },
   ];
 
-  const coupons = [{ name: 'Chota coupon', discount: 49 }];
+  const coupons = [{ name: 'Chota', discount: 49 }];
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({

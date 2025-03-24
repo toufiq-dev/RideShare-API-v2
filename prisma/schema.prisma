@@ -102,7 +102,7 @@ model Pilot {
   userId              String             @unique
   referralCode        String
   isAlreadyRegistered Boolean            @default(false)
-  isAvailable         PilotStatus        @default(OFFLINE)
+  onlineStatus        PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
   averageRating       Float              @default(0)
   languageId          String
@@ -137,7 +137,7 @@ model Pilot {
   vehicles            Vehicle[]
   videoProgress       VideoProgress?
 
-  @@index([isAvailable])
+  @@index([onlineStatus])
   @@index([currentLocation])
 }
 
@@ -270,20 +270,21 @@ model Booking {
   customerId           String
   pilotId              String?
   status               BookingStatus
-  estimatedFare        Decimal?            @db.Decimal(10, 2)
-  fare                 Decimal?            @db.Decimal(10, 2)
+  rideType             RideType
+  estimatedFare        Decimal             @db.Decimal(10, 2)
+  fare                 Decimal             @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
-  actualDistance       Float?
-  duration             Int?
-  actualDuration       Int?
+  estimatedDistance    String
+  distance             String?
+  estimatedDuration    String
+  duration             String?
+  acceptedAt           DateTime?
+  arrivedAt            DateTime?
   tripStart            DateTime?
   tripEnd              DateTime?
   surgeMultiplier      Decimal?            @default(1.0) @db.Decimal(10, 2)
   notes                String?
-  acceptedAt           DateTime?
-  arrivedAt            DateTime?
-  scheduledFor         DateTime?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   cancellationReasonId String?
@@ -501,4 +502,9 @@ enum VehicleTypeName {
   KALIPEELI
   AUTORICKSHAW
   OTHER
+}
+
+enum RideType {
+  SELF
+  OTHERS
 }

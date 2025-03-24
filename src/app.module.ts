@@ -18,6 +18,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { EmailModule } from './modules/email/email.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { FareModule } from './modules/fare/fare.module';
+import { GeofencingModule } from './core/geofencing/geofencing.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { FareModule } from './modules/fare/fare.module';
     EmailModule,
     PaymentModule,
     FareModule,
+    GeofencingModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

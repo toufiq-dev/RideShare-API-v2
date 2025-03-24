@@ -1,6 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
 
 export class DrivingLicenseDto {
@@ -53,11 +58,11 @@ export class VerifyAadhaarDto {
   aadhaarNumber: string;
 }
 
-export class BeAvailableDto {
+export class BeOnlineDto {
   @ApiProperty({ description: 'Make driver available' })
   @IsNotEmpty({ message: 'Is available is required' })
-  @IsString()
-  isAvailable: boolean;
+  @IsBoolean()
+  onlineStatus: boolean;
 
   @ApiProperty({
     description: 'Current Location in latitude and longitude',

@@ -32,7 +32,7 @@ export class RideService {
       await this.redis.set(
         `pilotLocation:${pilot.id}`,
         JSON.stringify(location),
-        60,
+        10,
       );
 
       return { message: 'Location updated successfully' };

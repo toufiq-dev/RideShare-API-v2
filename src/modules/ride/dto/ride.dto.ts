@@ -2,6 +2,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsObject,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -23,15 +24,25 @@ export class CreateBookingDto {
   @Type(() => LocationDto)
   dropLocation: LocationDto;
 
-  riderName?: string;
-  riderPhone?: string;
-  scheduledFor?: Date;
-}
-
-export class UpdateBookingDto {
   @IsNotEmpty()
-  id: string;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  currentLocation: LocationDto;
 
-  status?: BookingStatus;
-  pilotId?: string;
+  @IsNotEmpty()
+  @IsString()
+  bookingId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  customerId?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  vehicleTypeId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  bookingCode?: Date;
 }

@@ -134,7 +134,7 @@ export class CreateRideRequestDto extends RideLocationDto {
   @ApiProperty({
     description: 'current Location in latitude and longitude',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @ValidateNested()
   @Type(() => LocationDto)
   currentLocation: LocationDto;

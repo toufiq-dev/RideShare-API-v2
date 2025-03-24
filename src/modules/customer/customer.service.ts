@@ -249,8 +249,6 @@ export class CustomerService {
         throw new NotFoundException('Saved places not found.');
       }
 
-      
-
       return {
         message: 'Saved places fetched successfully.',
         data,
@@ -414,8 +412,8 @@ export class CustomerService {
           airCondition: item.airCondition,
           isFaster: item.isFaster,
           passengerCapacity: item.passengerCapacity,
-          originalPrice: parseFloat(originalPrice.toFixed(2)),
-          price: parseFloat(price.toFixed(2)),
+          originalPrice: parseFloat(originalPrice.toFixed(0)),
+          price: parseFloat(price.toFixed(0)),
           tolls: 0.0,
           timeAway: `${minsAway} min away`,
         });
@@ -452,6 +450,7 @@ export class CustomerService {
       dropLocation,
       currentLocation,
       rideFor,
+      otherPassengerInfo,
     } = createRideRequestDto;
 
     try {
@@ -504,12 +503,13 @@ export class CustomerService {
 
       const bookingCode = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${customer.id}`, bookingCode, 1200);
-      
 
       const booking = await this.prisma.booking.create({
         data: {
           bookingCode,
           customer: { connect: { id: customer.id } },
+          name:
+            rideFor === RideType.SELF ? customer.name : otherPassengerInfo.name,
           status: BookingStatus.PENDING,
           rideType: rideFor,
           estimatedFare: originalPrice,
@@ -521,10 +521,11 @@ export class CustomerService {
         },
       });
 
-      this.rideGateway.server.emit(`requestRide`, {
+      this.rideGateway.server.to(`user:${customer.id}`).emit(`requestRide`, {
         bookingCode,
         customerId: customer.id,
         bookingId: booking.id,
+        vehicleTypeId,
         pickupLocation,
         currentLocation,
         dropLocation,
@@ -535,8 +536,8 @@ export class CustomerService {
         message: 'Ride request created successfully.',
         data: {
           location: [pickupLocation, dropLocation],
-          originalPrice: Number(originalPrice.toFixed(2)),
-          discountedPrice: Number(price.toFixed(2)),
+          originalPrice: Number(originalPrice.toFixed(0)),
+          discountedPrice: Number(price.toFixed(0)),
           coupon: coupon ? coupon : null,
         },
       };

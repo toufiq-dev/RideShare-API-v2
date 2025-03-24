@@ -70,6 +70,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  getClient(): Redis {
+    return this.client;
+  }
+
   async set(key: string, value: string, ttl: number): Promise<void> {
     try {
       await this.client.set(key, value, 'EX', ttl);
@@ -103,6 +107,80 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(
         `Failed to delete key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async geoAdd(
+    key: string,
+    longitude: number,
+    latitude: number,
+    member: string,
+  ): Promise<number> {
+    try {
+      const result = await this.client.geoadd(key, longitude, latitude, member);
+      this.logger.log(
+        `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,
+        this.context,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to add to geospatial set ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async geoRadius(
+    key: string,
+    longitude: number,
+    latitude: number,
+    radius: number,
+    unit: 'm' | 'km' | 'mi' | 'ft',
+    options: { withDist?: boolean; sort?: 'ASC' | 'DESC' } = {},
+  ) {
+    try {
+      const args: any[] = [key, longitude, latitude, radius, unit];
+      if (options.withDist) args.push('WITHDIST');
+      if (options.sort) args.push(options.sort);
+
+      // @ts-ignore
+      const result = await this.client.georadius(...args);
+      this.logger.log(
+        `Fetched pilots within ${radius}${unit} from (${latitude}, ${longitude})`,
+        this.context,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch geospatial radius for ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async zRem(key: string, member: string): Promise<number> {
+    try {
+      const result = await this.client.zrem(key, member);
+      this.logger.log(
+        `Removed ${member} from geospatial set ${key}`,
+        this.context,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to remove ${member} from ${key}`,
         error.stack,
         this.context,
       );

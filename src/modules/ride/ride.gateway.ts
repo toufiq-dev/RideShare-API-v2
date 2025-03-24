@@ -9,11 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
-import {
-  UpdateLocationDto,
-  CreateBookingDto,
-  UpdateBookingDto,
-} from './dto/ride.dto';
+import { UpdateLocationDto, CreateBookingDto } from './dto/ride.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
 
@@ -33,8 +29,10 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket) {
     try {
       console.log('Connection attempt from:', client.handshake.address);
-
       console.log('Client connected successfully:', client.id);
+
+      const userId = client.data.user.userId;
+      client.join(`user:${userId}`);
     } catch (error) {
       console.error('Connection error:', error);
     }
@@ -57,14 +55,11 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() createBookingDto: CreateBookingDto,
   ) {
-    const booking = await this.rideService.handleRequestRide(
+    return await this.rideService.handleRequestRide(
       client,
+      this.server,
       createBookingDto,
-      client.data.user,
     );
-
-    // Join booking room
-    // client.join(`booking:${booking.id}`);
   }
 
   @SubscribeMessage('acceptRide')
@@ -74,79 +69,29 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const booking = await this.rideService.handleAcceptRide(
+        client,
         data.bookingId,
-        client.data.user,
       );
 
-      // Join booking room
+      // Join pilot to booking-specific room
       client.join(`booking:${booking.id}`);
 
-      // Notify customer
-      this.server
-        .to(`user:${booking.customerId}`)
-        .emit('rideAccepted', booking);
+      // Notify customer in their room
+      this.server.to(`user:${booking.customerId}`).emit('rideAccepted', {
+        bookingId: booking.id,
+        pilotId: booking.pilotId,
+        status: booking.status,
+      });
 
-      return booking;
+      // Notify pilot in their room
+      this.server.to(`user:${booking.pilotId}`).emit('rideConfirmed', {
+        bookingId: booking.id,
+      });
+
+      return { success: true, data: booking };
     } catch (error) {
       console.error(error);
+      client.emit('error', { message: 'Failed to accept ride' });
     }
   }
-
-  // @SubscribeMessage('updateBooking')
-  // async update(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() updateBookingDto: UpdateBookingDto
-  // ) {
-  //   const booking = await this.bookingService.update(
-  //     updateBookingDto.id,
-  //     updateBookingDto,
-  //     client.data.user
-  //   );
-
-  //   // Notify all clients in the booking room
-  //   this.server.to(`booking:${booking.id}`).emit('bookingUpdated', booking);
-
-  //   return booking;
-  // }
-
-  // @SubscribeMessage('cancelBooking')
-  // async cancelBooking(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() data: { bookingId: string, reason?: string }
-  // ) {
-  //   const booking = await this.bookingService.cancelBooking(
-  //     data.bookingId,
-  //     client.data.user,
-  //     data.reason
-  //   );
-
-  //   // Notify all clients in the booking room
-  //   this.server.to(`booking:${booking.id}`).emit('bookingCancelled', booking);
-
-  //   return booking;
-  // }
-
-  // @SubscribeMessage('updateLocation')
-  // async updateLocation(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() location: { latitude: number; longitude: number }
-  // ) {
-  //   if (client.data.user.role !== 'PILOT') {
-  //     return;
-  //   }
-
-  //   const updatedPilot = await this.bookingService.updatePilotLocation(
-  //     client.data.user.id,
-  //     location
-  //   );
-
-  //   // If pilot is in an active booking, notify the customer
-  //   if (updatedPilot.activeBooking) {
-  //     this.server
-  //       .to(`booking:${updatedPilot.activeBooking.id}`)
-  //       .emit('pilotLocation', location);
-  //   }
-
-  //   return updatedPilot;
-  // }
 }

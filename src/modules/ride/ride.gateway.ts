@@ -38,10 +38,15 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('updateLocation')
   async updateLocation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() location: UpdateLocationDto,
+    @MessageBody() body: any,
   ) {
-    console.log('Raw location data received from client:', location);
-    return await this.rideService.handleUpdateLocation(client, location);
+    const location = JSON.parse(body);
+
+    return await this.rideService.handleUpdateLocation(
+      client,
+      location.lat,
+      location.lng,
+    );
   }
 
   // @SubscribeMessage('requestRide')

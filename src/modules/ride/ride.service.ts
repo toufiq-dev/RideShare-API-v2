@@ -38,9 +38,7 @@ export class RideService {
     }
   }
 
-  async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
-    const { lat, lng }: any = location;
-
+  async handleUpdateLocation(client: Socket, lat: number, lng: number) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId: client.data.user.userId },
@@ -48,8 +46,6 @@ export class RideService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-
-      console.log('Received location from client:', lat, lng);
 
       // Store location in Redis geospatial set
       await this.redis.geoAdd('pilotLocations', lng, lat, pilot.id);

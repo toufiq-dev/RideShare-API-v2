@@ -532,7 +532,7 @@ export class CustomerService {
 
       return {
         success: true,
-        message: 'Ride request created successfully.',
+        message: 'Your ride request is being processed. Searching for a driver...',
         data: {
           location: [pickupLocation, dropLocation],
           originalPrice: Number(originalPrice.toFixed(0)),

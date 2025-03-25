@@ -10,7 +10,6 @@ import { RideService } from '../ride/ride.service';
 @Module({
   imports: [
     RideModule,
-    RideService,
     FareModule,
     BullModule.registerQueue({ name: 'ride-request' }),
   ],

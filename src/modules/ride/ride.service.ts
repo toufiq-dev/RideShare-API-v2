@@ -91,7 +91,9 @@ export class RideService {
           return false; // No driver found in this radius
         }
 
-        await this.notifyDriver(bookingId, nearestPilot, server);
+        console.log(nearestPilot);
+
+        await this.notifyDriver(booking, customerId, server);
 
         // Use Redis expiration to track driver acceptance
         const acceptanceKey = `ride:accept:${bookingId}`;
@@ -216,21 +218,19 @@ export class RideService {
     return null;
   }
 
-  async notifyDriver(bookingId: string, pilot: any, server: Server) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { customer: true },
-    });
-
+  async notifyDriver(booking: any, customerId: string, server: Server) {
     const notificationPayload = {
-      bookingId,
+      bookingId: booking.bookingId,
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
-      customerName: booking.customer.name,
       estimatedFare: booking.estimatedFare,
     };
 
     // Notify the single driver
-    server.to(`user:${pilot.userId}`).emit('rideRequest', notificationPayload);
+    const test = server
+      // .to(`user:${customerId}`)
+      .emit('rideRequest', notificationPayload);
+
+    console.log('emitted?', test);
   }
 }

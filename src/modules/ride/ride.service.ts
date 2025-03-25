@@ -47,11 +47,14 @@ export class RideService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      console.log('Received location from client:', location);
+
+
       // Store location in Redis geospatial set
       await this.redis.geoAdd(
         'pilotLocations',
-        location.lng,
-        location.lat,
+        Number(location.lng),
+        Number(location.lat),
         pilot.id,
       );
 

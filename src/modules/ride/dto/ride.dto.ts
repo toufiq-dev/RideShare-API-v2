@@ -9,7 +9,15 @@ import { Type } from 'class-transformer';
 import { BookingStatus } from '@prisma/client';
 import { LocationDto } from 'src/common/dto/common.dto';
 
-export class UpdateLocationDto extends LocationDto {}
+export class UpdateLocationDto {
+  @IsNumber({}, { message: 'Latitude must be a number' })
+  @IsNotEmpty({ message: 'Latitude is required' })
+  lat: number;
+
+  @IsNumber({}, { message: 'Longitude must be a number' })
+  @IsNotEmpty({ message: 'Longitude is required' })
+  lng: number;
+}
 
 export class CreateBookingDto {
   @IsNotEmpty()

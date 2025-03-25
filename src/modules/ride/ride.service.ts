@@ -49,14 +49,11 @@ export class RideService {
 
       console.log('Received location from client:', location);
 
+      const lat = parseFloat((location as any).lat);
+      const lng = parseFloat((location as any).lng);
 
       // Store location in Redis geospatial set
-      await this.redis.geoAdd(
-        'pilotLocations',
-        Number(location.lng),
-        Number(location.lat),
-        pilot.id,
-      );
+      await this.redis.geoAdd('pilotLocations', lng, lat, pilot.id);
 
       return { message: 'Location updated successfully' };
     } catch (error) {

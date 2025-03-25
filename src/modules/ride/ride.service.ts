@@ -10,13 +10,33 @@ import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
 import { PilotStatus } from '@prisma/client';
 import { Server } from 'socket.io';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class RideService {
   constructor(
     private prisma: PrismaService,
     private readonly redis: RedisService,
+    @InjectQueue('ride-request') private readonly rideQueue: Queue,
   ) {}
+
+  async enqueueRideRequest(payload: CreateBookingDto) {
+    try {
+      return await this.rideQueue.add('broadcast-to-pilots', payload, {
+        jobId: `ride-request-${payload.bookingId}`,
+        removeOnComplete: true,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
 
   async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
     try {
@@ -89,24 +109,23 @@ export class RideService {
 
         await this.notifyDriver(bookingId, nearestPilot, server);
 
-        // Wait 10 seconds or until the booking is accepted
-        return new Promise((resolve) => {
-          const checkAcceptance = setInterval(async () => {
-            const updatedBooking = await this.prisma.booking.findUnique({
-              where: { id: bookingId },
-            });
+        // Use Redis expiration to track driver acceptance
+        const acceptanceKey = `ride:accept:${bookingId}`;
+        await this.redis.set(acceptanceKey, 'pending', driverTimeout / 1000);
+        const startTime = Date.now();
 
-            if (updatedBooking?.status !== BookingStatus.PENDING) {
-              clearInterval(checkAcceptance);
-              resolve(true); // Booking accepted or cancelled
-            }
-          }, 1000); // Check every 1 second
+        while (Date.now() - startTime < driverTimeout) {
+          const bookingStatus = await this.prisma.booking.findUnique({
+            where: { id: bookingId },
+          });
 
-          setTimeout(() => {
-            clearInterval(checkAcceptance);
-            resolve(false); // Driver didn’t accept within 10 seconds
-          }, driverTimeout);
-        });
+          if (bookingStatus?.status !== BookingStatus.PENDING) return true;
+
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Poll less frequently
+        }
+
+        await this.redis.del(acceptanceKey);
+        return false;
       };
 
       let driverAccepted = await searchAndNotifyNextDriver();

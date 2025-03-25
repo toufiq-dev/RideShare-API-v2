@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../../core/logging/logger.service';
 
@@ -14,14 +14,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   ) {
     const redisUrl = this.configService.get<string>('redis.url');
 
-    this.client = new Redis(redisUrl, {
-      retryStrategy: (times: number) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
+    const options: RedisOptions = {
+      retryStrategy: (times: number) => Math.min(times * 50, 2000),
       maxRetriesPerRequest: 3,
-    });
-
+    };
+    this.client = new Redis(redisUrl, options);
     this.setupEventListeners();
   }
 
@@ -144,12 +141,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     latitude: number,
     radius: number,
     unit: 'm' | 'km' | 'mi' | 'ft',
-    options: { withDist?: boolean; sort?: 'ASC' | 'DESC' } = {},
+    options: { withDist?: boolean; sort?: 'ASC' | 'DESC'; count?: number } = {},
   ) {
     try {
       const args: any[] = [key, longitude, latitude, radius, unit];
       if (options.withDist) args.push('WITHDIST');
       if (options.sort) args.push(options.sort);
+      if (options.count) args.push('COUNT', options.count);
 
       // @ts-ignore
       const result = await this.client.georadius(...args);

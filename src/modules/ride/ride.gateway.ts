@@ -27,15 +27,8 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly rideService: RideService) {}
 
   async handleConnection(client: Socket) {
-    try {
-      console.log('Connection attempt from:', client.handshake.address);
-      console.log('Client connected successfully:', client.id);
-
-      const userId = client.data.user.userId;
-      client.join(`user:${userId}`);
-    } catch (error) {
-      console.error('Connection error:', error);
-    }
+    console.log('Connection attempt from:', client.handshake.address);
+    console.log('Client connected successfully:', client.id);
   }
 
   handleDisconnect(client: Socket) {
@@ -50,17 +43,17 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return await this.rideService.handleUpdateLocation(client, location);
   }
 
-  @SubscribeMessage('requestRide')
-  async requestRide(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() createBookingDto: CreateBookingDto,
-  ) {
-    return await this.rideService.handleRequestRide(
-      client,
-      this.server,
-      createBookingDto,
-    );
-  }
+  // @SubscribeMessage('requestRide')
+  // async requestRide(
+  //   @ConnectedSocket() client: Socket,
+  //   @MessageBody() createBookingDto: CreateBookingDto,
+  // ) {
+  //   return await this.rideService.handleRequestRide(
+  //     client,
+  //     this.server,
+  //     createBookingDto,
+  //   );
+  // }
 
   @SubscribeMessage('acceptRide')
   async acceptRide(

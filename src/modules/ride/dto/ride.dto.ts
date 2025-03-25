@@ -44,5 +44,5 @@ export class CreateBookingDto {
 
   @IsNotEmpty()
   @IsString()
-  bookingCode?: Date;
+  bookingCode?: string;
 }

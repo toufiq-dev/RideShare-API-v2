@@ -21,6 +21,7 @@ import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
 import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
+import { RideService } from '../ride/ride.service';
 
 @Injectable()
 export class CustomerService {
@@ -30,6 +31,7 @@ export class CustomerService {
     private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
     private readonly fareService: FareService,
+    private readonly rideService: RideService,
   ) {}
 
   async getCustomer(userId: string) {
@@ -487,7 +489,7 @@ export class CustomerService {
         Number(vehicleType.perMinRate),
       );
 
-      let coupon;
+      let coupon = null;
       if (couponId) {
         coupon = await this.prisma.coupon.findUnique({
           where: {
@@ -521,14 +523,11 @@ export class CustomerService {
         },
       });
 
-      this.rideGateway.server.to(`user:${customer.id}`).emit(`requestRide`, {
+      await this.rideService.enqueueRideRequest({
         bookingCode,
         customerId: customer.id,
         bookingId: booking.id,
-        vehicleTypeId,
-        pickupLocation,
-        currentLocation,
-        dropLocation,
+        ...createRideRequestDto,
       });
 
       return {

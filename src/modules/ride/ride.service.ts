@@ -49,18 +49,10 @@ export class RideService {
         throw new NotFoundException('Pilot not found.');
       }
 
-      console.log('Received location from client:', location);
-
-      
-
+      console.log('Received location from client:', lat, lng);
 
       // Store location in Redis geospatial set
-      await this.redis.geoAdd(
-        'pilotLocations',
-        parseFloat(lng),
-        parseFloat(lat),
-        pilot.id,
-      );
+      await this.redis.geoAdd('pilotLocations', lng, lat, pilot.id);
 
       return { message: 'Location updated successfully' };
     } catch (error) {

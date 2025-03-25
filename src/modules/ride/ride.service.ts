@@ -38,7 +38,10 @@ export class RideService {
     }
   }
 
-  async handleUpdateLocation(client: Socket, location: UpdateLocationDto) {
+  async handleUpdateLocation(
+    client: Socket,
+    location: { lat: number; lng: number },
+  ) {
     const { lat, lng } = location;
 
     try {
@@ -50,6 +53,9 @@ export class RideService {
       }
 
       console.log('Received location from client:', location);
+
+      const lat = location.lat;
+      const lng = location.lng;
 
       // Store location in Redis geospatial set
       await this.redis.geoAdd(

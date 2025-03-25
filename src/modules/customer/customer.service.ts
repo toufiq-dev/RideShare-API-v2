@@ -21,6 +21,7 @@ import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
 import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
+import { RideService } from '../ride/ride.service';
 
 @Injectable()
 export class CustomerService {
@@ -30,6 +31,7 @@ export class CustomerService {
     private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
     private readonly fareService: FareService,
+    private readonly rideService: RideService,
   ) {}
 
   async getCustomer(userId: string) {
@@ -249,11 +251,6 @@ export class CustomerService {
         throw new NotFoundException('Saved places not found.');
       }
 
-      this.rideGateway.server.emit('savedPlaces', {
-        message: 'Saved places fetched successfully.',
-        data,
-      });
-
       return {
         message: 'Saved places fetched successfully.',
         data,
@@ -417,8 +414,8 @@ export class CustomerService {
           airCondition: item.airCondition,
           isFaster: item.isFaster,
           passengerCapacity: item.passengerCapacity,
-          originalPrice: parseFloat(originalPrice.toFixed(2)),
-          price: parseFloat(price.toFixed(2)),
+          originalPrice: parseFloat(originalPrice.toFixed(0)),
+          price: parseFloat(price.toFixed(0)),
           tolls: 0.0,
           timeAway: `${minsAway} min away`,
         });
@@ -455,6 +452,7 @@ export class CustomerService {
       dropLocation,
       currentLocation,
       rideFor,
+      otherPassengerInfo,
     } = createRideRequestDto;
 
     try {
@@ -491,44 +489,55 @@ export class CustomerService {
         Number(vehicleType.perMinRate),
       );
 
-      const coupon = await this.prisma.coupon.findUnique({
-        where: {
-          id: couponId,
-        },
-      });
+      let coupon = null;
+      if (couponId) {
+        coupon = await this.prisma.coupon.findUnique({
+          where: {
+            id: couponId,
+          },
+        });
+      }
 
       const price =
         coupon && originalPrice > Number(coupon.discount)
           ? originalPrice - Number(coupon.discount)
           : originalPrice;
 
-
-      
       const bookingCode = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${customer.phone}`, bookingCode, 1200);
+      await this.redis.set(`otp:${customer.id}`, bookingCode, 1200);
 
-      await this.prisma.booking.create({
+      const booking = await this.prisma.booking.create({
         data: {
           bookingCode,
           customer: { connect: { id: customer.id } },
+          name:
+            rideFor === RideType.SELF ? customer.name : otherPassengerInfo.name,
           status: BookingStatus.PENDING,
-          rideType: RideType.SELF,
+          rideType: rideFor,
           estimatedFare: originalPrice,
           fare: price,
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
           estimatedDistance: distanceKm.toString(),
           estimatedDuration: durationMin.toString(),
-        }
-      })
+        },
+      });
+
+      await this.rideService.enqueueRideRequest({
+        bookingCode,
+        customerId: customer.id,
+        bookingId: booking.id,
+        ...createRideRequestDto,
+      });
 
       return {
         success: true,
-        message: 'Ride request created successfully.',
+        message:
+          'Your ride request is being processed. Searching for a driver...',
         data: {
           location: [pickupLocation, dropLocation],
-          originalPrice: Number(originalPrice.toFixed(2)),
-          discountedPrice: Number(price.toFixed(2)),
+          originalPrice: Number(originalPrice.toFixed(0)),
+          discountedPrice: Number(price.toFixed(0)),
           coupon: coupon ? coupon : null,
         },
       };

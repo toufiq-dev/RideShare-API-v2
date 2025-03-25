@@ -249,7 +249,7 @@ export class AuthService {
 
     const coupon = await this.prisma.coupon.findUnique({
       where: {
-        name: 'Chota coupon',
+        name: 'Chota',
       },
     });
 

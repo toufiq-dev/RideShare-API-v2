@@ -57,11 +57,7 @@ export class RideService {
     }
   }
 
-  async handleRequestRide(
-    client: Socket,
-    server: Server,
-    createBookingDto: CreateBookingDto,
-  ) {
+  async handleRequestRide(server: Server, createBookingDto: CreateBookingDto) {
     const {
       bookingId,
       customerId,
@@ -73,13 +69,6 @@ export class RideService {
     } = createBookingDto;
 
     try {
-      const user = await this.prisma.customer.findUnique({
-        where: { userId: client.data.user.userId },
-      });
-      if (!user) {
-        throw new NotFoundException('User not found.');
-      }
-
       const booking = await this.prisma.booking.findFirst({
         where: { id: bookingId },
       });

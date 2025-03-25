@@ -19,6 +19,6 @@ export class RideRequestProcessor extends WorkerHost {
     console.log(payload);
     const server = this.rideGateway.server;
 
-    await this.rideService.handleRequestRide(null, server, payload);
+    await this.rideService.handleRequestRide(server, payload);
   }
 }

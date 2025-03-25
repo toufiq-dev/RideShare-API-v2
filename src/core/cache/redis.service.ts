@@ -118,6 +118,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     member: string,
   ): Promise<number> {
     try {
+      console.log(
+        `Adding to geo set: ${key}, lng: ${longitude}, lat: ${latitude}, member: ${member}`,
+      );
+
       const result = await this.client.geoadd(key, longitude, latitude, member);
       this.logger.log(
         `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,

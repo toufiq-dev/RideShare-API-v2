@@ -5,11 +5,13 @@ import { RideService } from './ride.service';
 import { RideGateway } from './ride.gateway';
 import { PrismaModule } from 'src/core/database/prisma.module';
 import { RideRequestProcessor } from './processor/ride.processor';
+import { FareModule } from '../fare/fare.module';
 
 @Module({
   imports: [
     PrismaModule,
     JwtModule,
+    FareModule,
     BullModule.registerQueueAsync({
       name: 'ride-request',
     }),

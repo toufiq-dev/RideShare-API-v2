@@ -12,6 +12,7 @@ import { PilotStatus } from '@prisma/client';
 import { Server } from 'socket.io';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { NotifyDriverPayload, RideRequestPayload } from './dto/ride.interface';
 
 @Injectable()
 export class RideService {
@@ -21,16 +22,10 @@ export class RideService {
     @InjectQueue('ride-request') private readonly rideQueue: Queue,
   ) {}
 
-  async enqueueRideRequest(payload: CreateBookingDto) {
+  async enqueueRideRequest(payload: RideRequestPayload) {
     try {
       return await this.rideQueue.add('broadcast-to-pilots', payload, {
-        jobId: `ride-request-${payload.bookingId}`,
-        removeOnComplete: true,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
+        jobId: `ride-${payload.bookingId}`,
       });
     } catch (error) {
       console.error(error);
@@ -48,7 +43,7 @@ export class RideService {
       }
 
       // Store location in Redis geospatial set
-      await this.redis.geoAdd('pilotLocations', lng, lat, pilot.id);
+      await this.redis.geoAdd(`pilotLocations`, lng, lat, pilot.id);
 
       return { message: 'Location updated successfully' };
     } catch (error) {
@@ -57,16 +52,16 @@ export class RideService {
     }
   }
 
-  async handleRequestRide(server: Server, createBookingDto: CreateBookingDto) {
+  async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       bookingId,
       customerId,
-      bookingCode,
       vehicleTypeId,
+      distanceKm,
+      durationMin,
       pickupLocation,
       dropLocation,
-      currentLocation,
-    } = createBookingDto;
+    } = payload;
 
     try {
       const booking = await this.prisma.booking.findFirst({
@@ -78,7 +73,7 @@ export class RideService {
 
       let radius = 500; // Initial radius in meters
       const maxRadius = 1500; // Max radius
-      const driverTimeout = 10 * 1000; // 10 seconds per driver
+      const driverTimeout = 12 * 1000; // 12 seconds per driver
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
         const nearestPilot = await this.findNearestDriver(
@@ -91,12 +86,22 @@ export class RideService {
           return false; // No driver found in this radius
         }
 
-        console.log(nearestPilot);
+        const notifyDriverPayload: NotifyDriverPayload = {
+          pilotId: nearestPilot.pilotId,
+          bookingId,
+          pickupLocation,
+          dropLocation,
+          estimatedFare: booking.estimatedFare,
+          nearestPilotDistance: nearestPilot.distance,
+          distanceKm,
+          durationMin,
+          server,
+        };
 
-        await this.notifyDriver(booking, customerId, server);
+        await this.notifyDriver(notifyDriverPayload);
 
         // Use Redis expiration to track driver acceptance
-        const acceptanceKey = `ride:accept:${bookingId}`;
+        const acceptanceKey = `ride-accept:${bookingId}`;
         await this.redis.set(acceptanceKey, 'pending', driverTimeout / 1000);
         const startTime = Date.now();
 
@@ -210,7 +215,7 @@ export class RideService {
         pilot.onlineStatus === PilotStatus.AVAILABLE &&
         pilot.vehicles.some((v) => v.vehicleTypeId === vehicleTypeId)
       ) {
-        return { ...pilot, distance: parseFloat(distance) };
+        return { pilotId, distance: parseFloat(distance) / 1000 };
       }
     }
 
@@ -218,16 +223,36 @@ export class RideService {
     return null;
   }
 
-  async notifyDriver(booking: any, customerId: string, server: Server) {
+  async notifyDriver(payload: NotifyDriverPayload) {
+    const {
+      pilotId,
+      bookingId,
+      pickupLocation,
+      dropLocation,
+      estimatedFare,
+      nearestPilotDistance,
+      distanceKm,
+      durationMin,
+      server,
+    } = payload;
+
+    const notifiedKey = `notified:${bookingId}`;
+    const alreadyNotified = await this.redis.get(`${notifiedKey}:${pilotId}`);
+    if (alreadyNotified) return; // Skip if already notified
+
     const notificationPayload = {
-      bookingId: booking.bookingId,
-      pickupLocation: booking.pickupLocation,
-      dropLocation: booking.dropLocation,
-      estimatedFare: booking.estimatedFare,
+      pickupLocation,
+      dropLocation,
+      estimatedFare,
+      nearestPilotDistance,
+      distanceKm,
+      durationMin,
     };
 
+    await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
+
     // Notify the single driver
-    const test = server
+    server
       // .to(`user:${customerId}`)
       .emit('rideRequest', notificationPayload);
 

@@ -71,13 +71,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client;
   }
 
-  async set(key: string, value: string, ttl: number): Promise<void> {
+  async set(key: string, value: string, ttl?: number): Promise<void> {
     try {
-      await this.client.set(key, value, 'EX', ttl);
-      this.logger.log(
-        `Successfully set key: ${key} with TTL: ${ttl}`,
-        this.context,
-      );
+      if (ttl !== undefined) {
+        await this.client.set(key, value, 'EX', ttl);
+        this.logger.log(
+          `Successfully set key: ${key} with TTL: ${ttl}`,
+          this.context,
+        );
+      } else {
+        await this.client.set(key, value);
+        this.logger.log(
+          `Successfully set key: ${key} with no TTL`,
+          this.context,
+        );
+      }
     } catch (error) {
       this.logger.error(`Failed to set key: ${key}`, error.stack, this.context);
       throw error;
@@ -118,10 +126,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     member: string,
   ): Promise<number> {
     try {
-      console.log(
-        `Adding to geo set: ${key}, lng: ${longitude}, lat: ${latitude}, member: ${member}`,
-      );
-
       const result = await this.client.geoadd(key, longitude, latitude, member);
       this.logger.log(
         `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,

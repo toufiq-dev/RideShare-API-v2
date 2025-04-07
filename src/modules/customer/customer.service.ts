@@ -447,7 +447,6 @@ export class CustomerService {
   ) {
     const {
       vehicleTypeId,
-      couponId,
       pickupLocation,
       dropLocation,
       currentLocation,
@@ -470,7 +469,6 @@ export class CustomerService {
           id: vehicleTypeId,
         },
       });
-
       if (!vehicleType) {
         throw new NotFoundException('Vehicle type not found.');
       }
@@ -489,14 +487,11 @@ export class CustomerService {
         Number(vehicleType.perMinRate),
       );
 
-      let coupon = null;
-      if (couponId) {
-        coupon = await this.prisma.coupon.findUnique({
-          where: {
-            id: couponId,
-          },
-        });
-      }
+      const coupon = await this.prisma.coupon.findUnique({
+        where: {
+          id: customer.couponId,
+        },
+      });
 
       const price =
         coupon && originalPrice > Number(coupon.discount)
@@ -504,7 +499,7 @@ export class CustomerService {
           : originalPrice;
 
       const bookingCode = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${customer.id}`, bookingCode, 1200);
+      await this.redis.set(`otp:${customer.id}`, bookingCode);
 
       const booking = await this.prisma.booking.create({
         data: {
@@ -524,10 +519,14 @@ export class CustomerService {
       });
 
       await this.rideService.enqueueRideRequest({
-        bookingCode,
-        customerId: customer.id,
         bookingId: booking.id,
-        ...createRideRequestDto,
+        customerId: customer.id,
+        estimatedFare: booking.estimatedFare,
+        vehicleTypeId,
+        distanceKm,
+        durationMin,
+        pickupLocation,
+        dropLocation,
       });
 
       return {

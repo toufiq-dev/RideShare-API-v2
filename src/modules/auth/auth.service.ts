@@ -140,12 +140,15 @@ export class AuthService {
   async checkLocation(locationDto: LocationDto) {
     const { lat, lng } = locationDto;
 
-    const {isInServiceArea, city} = this.geofencingService.isWithinBoundary(lat, lng);
+    const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
+      lat,
+      lng,
+    );
 
     return {
       data: {
         isInServiceArea,
-        city
+        city,
       },
       message: isInServiceArea
         ? 'Within the service area.'

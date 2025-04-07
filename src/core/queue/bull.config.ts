@@ -9,7 +9,7 @@ export const getBullConfig = (configService: ConfigService): QueueOptions => {
     },
     defaultJobOptions: {
       removeOnComplete: true,
-      removeOnFail: 100, // keep last 100 failed jobs
+      removeOnFail: 1000, // keep last 1000 failed jobs
       attempts: 3,
       backoff: {
         type: 'exponential',

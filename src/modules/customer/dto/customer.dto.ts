@@ -126,11 +126,6 @@ export class CreateRideRequestDto extends RideLocationDto {
   @IsString()
   vehicleTypeId: string;
 
-  @ApiProperty({ description: 'Coupon Id' })
-  @IsOptional()
-  @IsString()
-  couponId: string;
-
   @ApiProperty({
     description: 'current Location in latitude and longitude',
   })

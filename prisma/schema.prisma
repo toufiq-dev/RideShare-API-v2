@@ -273,7 +273,7 @@ model Booking {
   status               BookingStatus
   rideType             RideType
   estimatedFare        Decimal             @db.Decimal(10, 2)
-  fare                 Decimal             @db.Decimal(10, 2)
+  fare                 Decimal?             @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
   estimatedDistance    String

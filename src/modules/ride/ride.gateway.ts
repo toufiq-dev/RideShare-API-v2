@@ -48,49 +48,4 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       location.lng,
     );
   }
-
-  // @SubscribeMessage('requestRide')
-  // async requestRide(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() createBookingDto: CreateBookingDto,
-  // ) {
-  //   return await this.rideService.handleRequestRide(
-  //     client,
-  //     this.server,
-  //     createBookingDto,
-  //   );
-  // }
-
-  @SubscribeMessage('acceptRide')
-  async acceptRide(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { bookingId: string },
-  ) {
-    try {
-      const booking = await this.rideService.handleAcceptRide(
-        client,
-        data.bookingId,
-      );
-
-      // Join pilot to booking-specific room
-      client.join(`booking:${booking.id}`);
-
-      // Notify customer in their room
-      this.server.to(`user:${booking.customerId}`).emit('rideAccepted', {
-        bookingId: booking.id,
-        pilotId: booking.pilotId,
-        status: booking.status,
-      });
-
-      // Notify pilot in their room
-      this.server.to(`user:${booking.pilotId}`).emit('rideConfirmed', {
-        bookingId: booking.id,
-      });
-
-      return { success: true, data: booking };
-    } catch (error) {
-      console.error(error);
-      client.emit('error', { message: 'Failed to accept ride' });
-    }
-  }
 }

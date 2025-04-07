@@ -73,3 +73,10 @@ export class BeOnlineDto {
   @Type(() => LocationDto)
   currentLocation: LocationDto;
 }
+
+export class AcceptRideDto {
+  @ApiProperty({ description: 'Booking id' })
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingId: string;
+}

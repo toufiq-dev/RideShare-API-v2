@@ -499,7 +499,6 @@ export class CustomerService {
           : originalPrice;
 
       const bookingCode = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${customer.id}`, bookingCode);
 
       const booking = await this.prisma.booking.create({
         data: {
@@ -509,18 +508,17 @@ export class CustomerService {
             rideFor === RideType.SELF ? customer.name : otherPassengerInfo.name,
           status: BookingStatus.PENDING,
           rideType: rideFor,
-          estimatedFare: originalPrice,
-          fare: price,
+          estimatedFare: price,
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
           estimatedDistance: distanceKm.toString(),
           estimatedDuration: durationMin.toString(),
         },
       });
+      await this.redis.set(`bookingCode:${booking.id}`, bookingCode);
 
       await this.rideService.enqueueRideRequest({
         bookingId: booking.id,
-        customerId: customer.id,
         estimatedFare: booking.estimatedFare,
         vehicleTypeId,
         distanceKm,

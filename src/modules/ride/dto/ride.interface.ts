@@ -1,6 +1,5 @@
 export interface RideRequestPayload {
   bookingId: string;
-  customerId: string;
   estimatedFare: any;
   vehicleTypeId: string;
   distanceKm: number;

@@ -15,6 +15,7 @@ import {
   PancardDto,
   AadhaarNumberDto,
   BeOnlineDto,
+  AcceptRideDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -26,6 +27,7 @@ import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
+  BookingStatus,
   PilotStatus,
   TransactionStatus,
   TransactionType,
@@ -719,6 +721,39 @@ export class PilotService {
           currentLocation: JSON.parse(JSON.stringify(currentLocation)),
         },
       });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
+    const { bookingId } = acceptRideDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const booking = await this.prisma.booking.update({
+        where: { id: bookingId, status: BookingStatus.PENDING },
+        data: {
+          pilotId: pilot.id,
+          status: BookingStatus.ACCEPTED,
+          acceptedAt: new Date(),
+        },
+        include: { customer: true, pilot: true },
+      });
+
+      // Join pilot to booking-specific room
+      this.rideGateway.server.emit('rideAccepted', {
+        bookingId: booking.id,
+        pilotId: booking.pilotId,
+        status: booking.status,
+      });
+
+      return booking;
     } catch (error) {
       console.error(error);
       throw error;

@@ -55,7 +55,6 @@ export class RideService {
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       bookingId,
-      customerId,
       vehicleTypeId,
       distanceKm,
       durationMin,
@@ -65,9 +64,9 @@ export class RideService {
 
     try {
       const booking = await this.prisma.booking.findFirst({
-        where: { id: bookingId },
+        where: { id: bookingId, status: BookingStatus.PENDING },
       });
-      if (!booking || booking.status !== BookingStatus.PENDING) {
+      if (!booking) {
         throw new NotFoundException('Booking not found or not pending');
       }
 
@@ -141,7 +140,7 @@ export class RideService {
           where: { id: bookingId },
           data: { status: BookingStatus.CANCELLED },
         });
-        server.to(`user:${customerId}`).emit('rideCancelled', {
+        server.emit('rideCancelled', {
           bookingId,
           reason: 'No drivers available within range',
         });
@@ -150,7 +149,7 @@ export class RideService {
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.to(`user:${customerId}`).emit('error', {
+      server.emit('error', {
         message: 'Failed to process ride request',
         error: error.message,
       });
@@ -252,10 +251,6 @@ export class RideService {
     await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
 
     // Notify the single driver
-    server
-      // .to(`user:${customerId}`)
-      .emit('rideRequest', notificationPayload);
-
-    console.log('emitted?', test);
+    server.emit('rideRequest', notificationPayload);
   }
 }

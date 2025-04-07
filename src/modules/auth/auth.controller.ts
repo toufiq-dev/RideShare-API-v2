@@ -1,24 +1,13 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  UseGuards,
-  Query,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
   VerifyOtpDto,
-  CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   FindPilotDto,
 } from './dto/auth.dto';
-import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { QueryTokenGuard } from 'src/common/guards/query-token.guard';
+import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { LocationDto } from 'src/common/dto/common.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -40,6 +29,13 @@ export class AuthController {
     return await this.authService.verifyOtp(verifyOtpDto);
   }
 
+  @Post('location')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check location of user' })
+  async checkLocation(@Body() locationDto: LocationDto) {
+    return await this.authService.checkLocation(locationDto);
+  }
+
   @Post('resend-otp')
   @HttpCode(200)
   @ApiOperation({ summary: 'Resend OTP to user' })
@@ -55,36 +51,9 @@ export class AuthController {
     return await this.authService.refreshToken(refreshTokenDto);
   }
 
-  @Post('complete-onboarding')
-  @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Complete Customer Onboarding' })
-  @ApiBody({ type: CompleteCustomerOnboardingDto })
-  async completeOnboarding(
-    @Body() customerOnboardingDto: CompleteCustomerOnboardingDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.authService.completeOnboarding(
-      userId,
-      customerOnboardingDto,
-    );
-  }
-
   @Post('find-pilot')
   @ApiOperation({ summary: 'Find Pilot Account' })
   async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
     return await this.authService.findMyAccount(findPilotDto);
-  }
-
-  @Post('aadhaar')
-  @UseGuards(QueryTokenGuard)
-  @HttpCode(200)
-  async verifyAadhaar(
-    @Query('token') token: string,
-    @Req() req: Request,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.authService.verifyAadhaar(req, userId);
   }
 }

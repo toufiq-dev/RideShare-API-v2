@@ -7,15 +7,24 @@ import {
   Patch,
   Post,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { UpdateSavedPlaceDto, CreateSavedPlaceDto } from './dto/customer.dto';
+import {
+  UpdateCustomerNameDto,
+  UpdateSavedPlaceDto,
+  CreateSavedPlaceDto,
+  CompleteCustomerOnboardingDto,
+  VehicleCategoryDto,
+  CreateRideRequestDto,
+} from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 
 @ApiTags('Customer')
 @Controller('customer')
@@ -29,6 +38,54 @@ export class CustomerController {
   @ApiOperation({ summary: 'Get customer' })
   async getCustomer(@CurrentUser('userId') userId: string) {
     return await this.customerService.getCustomer(userId);
+  }
+
+  @Post('onboarding')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete Customer Onboarding' })
+  @ApiBody({ type: CompleteCustomerOnboardingDto })
+  async completeOnboarding(
+    @Body() customerOnboardingDto: CompleteCustomerOnboardingDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.completeOnboarding(
+      userId,
+      customerOnboardingDto,
+    );
+  }
+
+  @Patch('name')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update name' })
+  async updateName(
+    @Body() updateCustomerNameDto: UpdateCustomerNameDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.updateName(userId, updateCustomerNameDto);
+  }
+
+  @Post('phone/otp')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async updatePhone(@CurrentUser('userId') userId: string) {
+    return await this.customerService.updatePhone(userId);
+  }
+
+  @Post('phone/verify')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update phone' })
+  async verifyPhone(
+    @Body() verifyCustomerPhoneDto: VerifyPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.verifyPhone(
+      userId,
+      verifyCustomerPhoneDto,
+    );
   }
 
   @Post('saved-places')
@@ -78,10 +135,33 @@ export class CustomerController {
     return await this.customerService.deleteSavedPlace(id, userId);
   }
 
-  @Get('vehicle-category')
+  @Post('vehicle-category')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get vehicle category' })
-  async getVehicleCategory() {
-    return await this.customerService.getVehicleCategories();
+  @ApiBody({ type: VehicleCategoryDto })
+  async getVehicleCategory(
+    @Body() vehicleCategoryDto: VehicleCategoryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.getVehicleCategories(
+      vehicleCategoryDto,
+      userId,
+    );
+  }
+
+  @Post('ride-request')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create ride request' })
+  @ApiBody({ type: CreateRideRequestDto })
+  async createRideRequest(
+    @Body() createRideRequestDto: CreateRideRequestDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.createRideRequest(
+      createRideRequestDto,
+      userId,
+    );
   }
 }

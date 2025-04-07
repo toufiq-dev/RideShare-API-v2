@@ -2,8 +2,8 @@ export default () => ({
   app: {
     port:
       process.env.NODE_ENV === 'development'
-        ? parseInt(process.env['development.PORT'], 10) || 8080
-        : parseInt(process.env.PORT, 10) || 3000,
+        ? parseInt(process.env.PORT, 10) || 3000
+        : parseInt(process.env.PORT, 10) || 8080,
   },
   database: {
     url: process.env.DATABASE_URL,
@@ -14,6 +14,7 @@ export default () => ({
     refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
   msg91: {
+    baseUrl: process.env.MSG91_BASE_URL,
     authKey: process.env.MSG91_AUTH_KEY,
     templateId: process.env.MSG91_TEMPLATE_ID,
     senderId: process.env.MSG91_SENDER_ID,
@@ -50,7 +51,25 @@ export default () => ({
     getAadhaar: process.env.SIGNZY_GET_AADHAAR,
     getAadhaarPreproduction: process.env.SIGNZY_GET_AADHAAR_PRE,
   },
+  cashfreeAadhaar: {
+    sendOtpEndPoint: process.env.CASHFREE_GENERATE_OTP_ENDPOINT,
+    verifyAadhaarEndPoint: process.env.CASHFREE_VERIFY_AADHAAR_ENDPOINT,
+    clientId: process.env.CASHFREE_CLIENT_ID,
+    clientSecret: process.env.CASHFREE_CLIENT_SECRET,
+  },
+  cashfreePayment: {
+    createOrderURL: process.env.PAYMENT_CREATE_ORDER_URL,
+    apiVersion: process.env.PAYMENT_API_VERSION,
+    testClientId: process.env.PAYMENT_TEST_CLIENT_ID,
+    testClientSecret: process.env.PAYMENT_TEST_CLIENT_SECRET,
+  },
   subscription: {
     onboardingOffer: process.env.ONBOARDING_OFFER,
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY,
   },
 });

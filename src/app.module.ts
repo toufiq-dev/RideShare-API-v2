@@ -1,10 +1,12 @@
+import { JwtModule } from '@nestjs/jwt';
+import configuration from './config/configuration';
+import { getJwtConfig } from './config/jwt.config';
+import { BullModule } from '@nestjs/bullmq';
+import { getBullConfig } from './core/queue/bull.config';
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { getJwtConfig } from './config/jwt.config';
 import { PrismaModule } from './core/database/prisma.module';
 import { RedisModule } from './core/cache/redis.module';
-import configuration from './config/configuration';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerModule } from './core/logging/logger.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -14,6 +16,11 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { ErrorLoggingMiddleware } from './common/middleware/error-logging.middleware';
 import { CustomerModule } from './modules/customer/customer.module';
 import { RideModule } from './modules/ride/ride.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { EmailModule } from './modules/email/email.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { FareModule } from './modules/fare/fare.module';
+import { GeofencingModule } from './core/geofencing/geofencing.module';
 
 @Module({
   imports: [
@@ -26,6 +33,11 @@ import { RideModule } from './modules/ride/ride.module';
       useFactory: getJwtConfig,
       inject: [ConfigService],
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: getBullConfig,
+    }),
     PrismaModule,
     RedisModule,
     LoggerModule,
@@ -35,6 +47,11 @@ import { RideModule } from './modules/ride/ride.module';
     SubscriptionsModule,
     CustomerModule,
     RideModule,
+    AdminModule,
+    EmailModule,
+    PaymentModule,
+    FareModule,
+    GeofencingModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

@@ -7,17 +7,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
-import { Msg91Util } from 'src/core/utils/msg91.util';
+import { OTPService } from 'src/core/utils/otp.util';
 import { JwtService } from '@nestjs/jwt';
 import {
   SendOtpDto,
   VerifyOtpDto,
-  CompleteCustomerOnboardingDto,
   RefreshTokenDto,
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
 import { RideGateway } from '../ride/ride.gateway';
+import { LocationDto } from 'src/common/dto/common.dto';
+import { GeofencingService } from 'src/core/geofencing/geofencing.service';
 
 @Injectable()
 export class AuthService {
@@ -26,13 +27,15 @@ export class AuthService {
   private readonly jwtSecret: string;
   private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly msg91: Msg91Util,
+    private readonly otpService: OTPService,
     private readonly rideGateway: RideGateway,
+    private readonly geofencingService: GeofencingService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -57,7 +60,7 @@ export class AuthService {
         where: { name: language },
       });
       if (!Language) {
-        throw new NotFoundException('Language not found');
+        throw new NotFoundException('Language not found.');
       }
 
       const otp = randomInt(1000, 10000).toString();
@@ -65,12 +68,12 @@ export class AuthService {
       await this.redis.set(`languageId:${phone}`, Language.id, 300);
       await this.redis.set(`referralCode:${phone}`, referralCode, 300);
 
-      // const requestId = await this.msg91.sendOTP(phone);
+      // const requestId = await this.otpService.sendOTP(phone);
 
       // await this.redis.set(`requestId:${phone}`, requestId, 300);
 
       return {
-        message: 'OTP sent to your phone successfully',
+        message: 'OTP sent to your phone successfully.',
         data: {
           otp,
         },
@@ -82,27 +85,49 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const { phone, otp, role } = verifyOtpDto;
+    const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
-      const {languageId, refferalCode} = await this.validateOtpRedis(phone, otp);
+      const { languageId, refferalCode } = await this.validateOtpRedis(
+        phone,
+        otp,
+      );
 
-      // const languageId = await this.validateOtp(phone, otp);
+      // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
 
-      const { user, customer, pilot, isNewUser } = await this.findOrCreateUser(
+      const { user, customer, pilot } = await this.findOrCreateUser(
         phone,
         role,
         languageId,
         refferalCode,
       );
 
+      const device = await this.prisma.deviceToken.findUnique({
+        where: { id: user.id },
+      });
+
+      if (!device) {
+        await this.prisma.deviceToken.create({
+          data: {
+            userId: user.id,
+            fcmToken,
+          },
+        });
+      } else if (device.fcmToken !== fcmToken) {
+        await this.prisma.deviceToken.update({
+          where: { id: user.id },
+          data: {
+            fcmToken,
+          },
+        });
+      }
+
       const tokens = await this.generateTokens(user.id, user.role);
 
       return {
-        message: 'OTP verified successfully',
+        message: 'OTP verified successfully.',
         data: {
           ...tokens,
-          isAlreadyRegistered: !isNewUser,
           user: role === RoleEnum.CUSTOMER ? customer : pilot,
         },
       };
@@ -110,6 +135,21 @@ export class AuthService {
       console.error(error);
       throw error;
     }
+  }
+
+  async checkLocation(locationDto: LocationDto) {
+    const { lat, lng } = locationDto;
+
+    const isInsideDhaka = this.geofencingService.isWithinDhaka(lat, lng);
+
+    return {
+      data: {
+        isInServiceArea: isInsideDhaka,
+      },
+      message: isInsideDhaka
+        ? 'Within the service area.'
+        : 'Outside the service area.',
+    };
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
@@ -122,7 +162,7 @@ export class AuthService {
 
       const storedToken = await this.redis.get(`refreshToken:${userId}`);
       if (!storedToken || storedToken !== refreshToken) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException('Invalid or expired refresh token.');
       }
 
       await this.redis.del(`refreshToken:${userId}`);
@@ -130,39 +170,8 @@ export class AuthService {
       const data = await this.generateTokens(userId, role);
 
       return {
-        message: 'Refresh token generated successfully',
+        message: 'Refresh token generated successfully.',
         data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async completeOnboarding(
-    userId: string,
-    customerOnboardingDto: CompleteCustomerOnboardingDto,
-  ) {
-    const { name, email } = customerOnboardingDto;
-
-    try {
-      const user = await this.findUserById(userId);
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const updatedUser = await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          name,
-          email,
-        },
-      });
-
-      return {
-        message: 'Onboarding completed successfully',
-        data: updatedUser,
       };
     } catch (error) {
       console.error(error);
@@ -173,20 +182,20 @@ export class AuthService {
   async findMyAccount(findPilotDto: FindPilotDto) {
     const { phone } = findPilotDto;
     try {
-      const pilot = await this.prisma.pilot.findUnique({
+      const data = await this.prisma.pilot.findUnique({
         where: { phone },
         include: {
           drivingLicense: true,
         },
       });
 
-      if (!pilot) {
-        throw new NotFoundException('Pilot not found');
+      if (!data) {
+        throw new NotFoundException('Pilot not found.');
       }
 
       return {
-        message: 'Pilot found successfully',
-        data: pilot,
+        message: 'Pilot found successfully.',
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -194,45 +203,11 @@ export class AuthService {
     }
   }
 
-  async verifyAadhaar(req: any, userId: string) {
-    try {
-      console.log(req.body.aadharDetail.name);
-      console.log(req.body.aadharDetail.address);
-
-      const data = await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isAadhaarVerified: true,
-          aadhaarName: req.body.aadharDetail.name,
-          aadhaarCardAddress: req.body.aadharDetail.address,
-        },
-      });
-
-      console.log(data);
-
-      this.rideGateway.server.emit('aadhaarVerified', {
-        message: 'Aadhaar verified successfully',
-        data,
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  private async findUserById(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    return user;
-  }
-
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
 
     if (!storedOtp || storedOtp !== otp) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+      throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
@@ -242,15 +217,15 @@ export class AuthService {
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return {languageId, refferalCode};
+    return { languageId, refferalCode };
   }
 
   private async validateOtp(phone: string, otp: string) {
     const request_id = await this.redis.get(`requestId:${phone}`);
 
-    const isVerified = await this.msg91.verifyOTP(phone, otp, request_id);
+    const isVerified = await this.otpService.verifyOTP(phone, otp, request_id);
     if (!isVerified) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+      throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
@@ -259,19 +234,24 @@ export class AuthService {
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return {languageId, refferalCode};
+    return { languageId, refferalCode };
   }
 
   private async findOrCreateUser(
     phone: string,
     role: RoleEnum,
     languageId: string,
-    referralCode: string
+    referralCode: string,
   ) {
     let customer = null;
     let pilot = null;
     let user = null;
-    let isNewUser = false;
+
+    const coupon = await this.prisma.coupon.findUnique({
+      where: {
+        name: 'Chota',
+      },
+    });
 
     if (role === RoleEnum.CUSTOMER) {
       customer = await this.prisma.customer.findUnique({
@@ -297,8 +277,6 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           role,
-          isPhoneVerified: true,
-          referralCode
         },
       });
 
@@ -308,6 +286,7 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
+            couponId: coupon && coupon.id,
           },
         });
       } else if (role === RoleEnum.PILOT && !pilot) {
@@ -316,17 +295,17 @@ export class AuthService {
             phone,
             userId: user.id,
             languageId,
+            referralCode,
+            isAlreadyRegistered: true,
           },
         });
       }
-
-      isNewUser = true;
     }
 
-    return { user, customer, pilot, isNewUser };
+    return { user, customer, pilot };
   }
 
-  private async generateTokens(userId: string, role: RoleEnum) {
+  private async generateTokens(userId: string, role: any) {
     await this.redis.del(`accessToken:${userId}`);
     await this.redis.del(`refreshToken:${userId}`);
 

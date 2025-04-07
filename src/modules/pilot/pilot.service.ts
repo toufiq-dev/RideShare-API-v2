@@ -1,51 +1,134 @@
+import { randomInt } from 'node:crypto';
 import {
   Injectable,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { AzureService } from 'src/core/utils/azure.util';
-import { SignzyService } from 'src/core/utils/signzy.util';
-import { DrivingLicenseDto, VehicleRcDto, PancardDto } from './dto/pilot.dto';
+import { VerificationService } from 'src/core/utils/verification.util';
+import {
+  DrivingLicenseDto,
+  VehicleRcDto,
+  PancardDto,
+  AadhaarNumberDto,
+  BeOnlineDto,
+} from './dto/pilot.dto';
 import {
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
-import { ConfigService } from '@nestjs/config';
 import { RideGateway } from '../ride/ride.gateway';
 import formatDate from 'src/common/functions/formatDate';
+import { VerifyAadhaarDto } from './dto/pilot.dto';
+import { RedisService } from 'src/core/cache/redis.service';
+import { VerifyPhoneDto } from 'src/common/dto/common.dto';
+import {
+  PilotStatus,
+  TransactionStatus,
+  TransactionType,
+} from '@prisma/client';
 
 @Injectable()
 export class PilotService {
-  private readonly onboardingOffer: string;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly azureServicce: AzureService,
-    private readonly signzyService: SignzyService,
-    private readonly configService: ConfigService,
+    private readonly verificationService: VerificationService,
     private readonly rideGateway: RideGateway,
-  ) {
-    this.onboardingOffer = this.configService.get<string>('onboardingOffer');
-  }
+    private readonly redis: RedisService,
+  ) {}
 
   async getPilot(userId: string) {
     try {
-      const data = await this.prisma.pilot.findUnique({
+      const data: any = await this.prisma.pilot.findUnique({
         where: { userId },
         include: {
-          user: true,
           language: true,
           drivingLicense: true,
+          wallet: true,
+        },
+      });
+      if (!data) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      if (data.wallet) {
+        data.wallet.balance = data.wallet.balance
+          ? Number(data.wallet.balance)
+          : 0;
+        data.wallet.minusLimit = Number(data.wallet.minusLimit);
+        data.wallet.todaysEarning = data.wallet.todaysEarning
+          ? Number(data.wallet.todaysEarning)
+          : 0;
+        data.wallet.lastTripEarning = data.wallet.lastTripEarning
+          ? Number(data.wallet.lastTripEarning)
+          : 0;
+      }
+
+      return {
+        message: 'Pilot fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updatePhone(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: {
+          userId,
+        },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const otp = randomInt(1000, 10000).toString();
+      await this.redis.set(`otp:${userId}`, otp, 300);
+
+      // const requestId = await this.otpService.sendOTP(phone);
+      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+      return {
+        message: 'OTP sent to your phone successfully.',
+        data: {
+          otp,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyPhone(userId: string, verifyCustomerPhoneDto: VerifyPhoneDto) {
+    const { phone, otp } = verifyCustomerPhoneDto;
+
+    try {
+      const storedOtp = await this.redis.get(`otp:${userId}`);
+
+      if (!storedOtp || storedOtp !== otp) {
+        throw new UnauthorizedException('Invalid or expired OTP.');
+      }
+      await this.redis.del(`otp:${userId}`);
+
+      const data = await this.prisma.pilot.update({
+        where: {
+          userId,
+        },
+        data: {
+          phone,
         },
       });
 
-      this.rideGateway.server.emit('test', {
-        message: 'This is test event',
-      });
-
       return {
-        message: 'Pilot fetched successfully',
+        message: 'Phone number updated successfully.',
         data,
       };
     } catch (error) {
@@ -59,7 +142,7 @@ export class PilotService {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
       if (!pilot) {
-        throw new BadRequestException('Pilot not found.');
+        throw new NotFoundException('Pilot not found.');
       }
 
       if (!file) {
@@ -73,7 +156,7 @@ export class PilotService {
 
       const extractedData = this.parseLicenseData(lines);
 
-      const rawResponse = await this.signzyService.verifyDrivingLicense(
+      const rawResponse = await this.verificationService.verifyDrivingLicense(
         extractedData.dlNumber,
         extractedData.dateOfBirth,
       );
@@ -121,11 +204,11 @@ export class PilotService {
 
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
-        throw new BadRequestException('Pilot not found.');
+        throw new NotFoundException('Pilot not found.');
       }
 
       drivingLicenseNumber = drivingLicenseNumber.split(' ').join('');
-      const rawResponse = await this.signzyService.verifyDrivingLicense(
+      const rawResponse = await this.verificationService.verifyDrivingLicense(
         drivingLicenseNumber,
         dob,
       );
@@ -168,12 +251,16 @@ export class PilotService {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
 
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
       if (pilot.selfieUrl) {
-        throw new ForbiddenException('Live selfie can be uploaded only once');
+        throw new ForbiddenException('Live selfie can be uploaded only once.');
       }
       if (!pilot.isDLVerified) {
         throw new ForbiddenException(
-          'Driving License must be verified before uploading Live selfie',
+          'Driving License must be verified before uploading Live selfie.',
         );
       }
 
@@ -186,7 +273,7 @@ export class PilotService {
         });
       }
 
-      return { message: 'Live selfie uploaded successfully' };
+      return { message: 'Live selfie uploaded successfully.' };
     } catch (error) {
       console.error(error);
       throw error;
@@ -197,10 +284,10 @@ export class PilotService {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
-        throw new BadRequestException('Pilot not found.');
+        throw new NotFoundException('Pilot not found.');
       }
       if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie');
+        throw new BadRequestException('Driver does not have Live selfie.');
       }
 
       if (!file) {
@@ -211,7 +298,7 @@ export class PilotService {
       // Extract text using Azure OCR
       const lines = await this.getOcrResult(buffer);
 
-      const registrationNumber = this.extractRegistrationNumber(lines);
+      const registrationNumber = this.parseRegistrationNumber(lines);
 
       if (!registrationNumber) {
         throw new BadRequestException(
@@ -220,29 +307,11 @@ export class PilotService {
       }
 
       const verificationResponse: VerificationResponseVehicle =
-        await this.signzyService.verifyVehicleRC(registrationNumber);
+        await this.verificationService.verifyVehicleRC(registrationNumber);
 
-      if (verificationResponse.status.toLowerCase() !== 'active') {
-        throw new BadRequestException(
-          'vehicle registration number is not active',
-        );
-      }
-
-      if (
-        !verificationResponse.isrcExpired ||
-        !verificationResponse.ispermitExpired
-      ) {
+      if (!verificationResponse.verificationFailed) {
         return {
-          message: 'Vehicle registration or permit is expired',
-          data: {
-            ...verificationResponse,
-            id: null,
-            pilotId: null,
-            regNo: null,
-            vehicleTypeId: null,
-            createdAt: null,
-            updatedAt: null,
-          },
+          message: 'Vehicle registration or permit is expired.',
         };
       }
 
@@ -252,7 +321,7 @@ export class PilotService {
       );
 
       return {
-        message: 'Vehicle RC processed successfully',
+        message: 'Vehicle RC processed successfully.',
         data,
       };
     } catch (error) {
@@ -267,22 +336,16 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.selfieUrl) {
-        throw new BadRequestException('Driver does not have Live selfie');
-      }
+      // if (!pilot.selfieUrl) {
+      //   throw new BadRequestException('Driver does not have Live selfie.');
+      // }
 
       let { registrationNumber } = vehicleRcDto;
 
       registrationNumber = registrationNumber.split(' ').join('');
 
       const verificationResponse: VerificationResponseVehicle =
-        await this.signzyService.verifyVehicleRC(registrationNumber);
-
-      if (verificationResponse.status.toLowerCase() !== 'active') {
-        throw new BadRequestException(
-          'vehicle registration number is not active',
-        );
-      }
+        await this.verificationService.verifyVehicleRC(registrationNumber);
 
       const data = await this.updatePilotVehicleData(
         verificationResponse,
@@ -290,7 +353,7 @@ export class PilotService {
       );
 
       return {
-        message: 'Vehicle RC processed successfully',
+        message: 'Vehicle RC processed successfully.',
         data,
       };
     } catch (error) {
@@ -306,7 +369,7 @@ export class PilotService {
         throw new BadRequestException('Pilot not found.');
       }
       if (!pilot.isRCVerified) {
-        throw new BadRequestException('Driver does not have rc verfied');
+        throw new BadRequestException('Driver does not have rc verfied.');
       }
 
       if (!file) {
@@ -318,20 +381,20 @@ export class PilotService {
       // Extract text using Azure OCR
       const lines = await this.getOcrResult(buffer);
 
-      const panNumber = this.extractPancardData(lines);
+      const panNumber = this.parsePancardData(lines);
 
       if (!panNumber) {
         throw new BadRequestException(
-          'Could not extract pan card number from the image',
+          'Could not extract pan card number from the image.',
         );
       }
 
       const verificationResponse =
-        await this.signzyService.verifyPancard(panNumber);
+        await this.verificationService.verifyPancard(panNumber);
 
       if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
         throw new BadRequestException(
-          'This pan card is either non-existing or invalid',
+          'This pan card is either non-existing or invalid.',
         );
       }
 
@@ -347,7 +410,7 @@ export class PilotService {
       });
 
       return {
-        message: 'Pancard verified successfully',
+        message: 'Pancard verified successfully.',
         data,
       };
     } catch (error) {
@@ -363,17 +426,17 @@ export class PilotService {
         throw new BadRequestException('Pilot not found.');
       }
       if (!pilot.isRCVerified) {
-        throw new BadRequestException('Driver does not have rc verfied');
+        throw new BadRequestException('Driver does not have rc verfied.');
       }
 
       const { panNumber } = pancardDto;
 
       const verificationResponse =
-        await this.signzyService.verifyPancard(panNumber);
+        await this.verificationService.verifyPancard(panNumber);
 
       if (verificationResponse.panStatus.toLowerCase() !== 'valid') {
         throw new BadRequestException(
-          'This pan card is either non-existing or invalid',
+          'This pan card is either non-existing or invalid.',
         );
       }
 
@@ -389,9 +452,273 @@ export class PilotService {
       });
 
       return {
-        message: 'Pancard verified successfully',
+        message: 'Pancard verified successfully.',
         data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processAadhaar(file: Express.Multer.File, userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (!pilot.isPanCardVerified) {
+        throw new BadRequestException('Driver does not have pancard verfied.');
+      }
+
+      if (!file) {
+        throw new BadRequestException('No file provided.');
+      }
+
+      const buffer = file.buffer;
+
+      const lines = await this.getOcrResult(buffer);
+
+      const aadhaarNumber = this.parseAadhaarData(lines);
+      if (!aadhaarNumber) {
+        throw new BadRequestException(
+          'Could not extract aadhaar number from the image',
+        );
+      }
+
+      const verificationResponse =
+        await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);
+
+      return {
+        message: 'OTP for Aadhaar verification sent successfully',
+        data: {
+          ref_id: verificationResponse.ref_id,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processAadhaarManual(
+    aadhaarNumberDto: AadhaarNumberDto,
+    userId: string,
+  ) {
+    const { aadhaarNumber } = aadhaarNumberDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      // if (!pilot.isPanCardVerified) {
+      //   throw new BadRequestException('Driver does not have pancard verfied.');
+      // }
+
+      const verificationResponse =
+        await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);
+
+      return {
+        message: 'OTP for Aadhaar verification sent successfully',
+        data: {
+          ref_id: verificationResponse.ref_id,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyAadhaar(aadhaarNumberDto: VerifyAadhaarDto, userId: string) {
+    const { ref_id, otp, aadhaarNumber: aadhaarCardNumber } = aadhaarNumberDto;
+
+    try {
+      const verificationResponse = await this.verificationService.verifyAadhaar(
+        ref_id,
+        otp,
+      );
+
+      if (verificationResponse.status.toLowerCase() !== 'valid') {
+        throw new BadRequestException(
+          'This aadhaar is either non-existing or invalid.',
+        );
+      }
+
+      const { name: aadhaarName, address: aadhaarCardAddress } =
+        verificationResponse;
+
+      const data = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isAadhaarVerified: true,
+          aadhaarCardNumber,
+          aadhaarName,
+          aadhaarCardAddress,
+        },
+      });
+
+      return {
+        message: 'Aadhaar verified successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async onboardingOffer(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot.isDLVerified || !pilot.isRCVerified) {
+        throw new BadRequestException('Driving License or RC is not verfied.');
+      }
+
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { name: 'Flexi Pack' },
+      });
+
+      const wallet = await this.prisma.pilotWallet.create({
+        data: {
+          pilotId: pilot.id,
+          balance: subscription.coins,
+          subscriptionId: subscription.id,
+        },
+      });
+
+      await this.prisma.transaction.create({
+        data: {
+          pilotId: pilot.id,
+          amount: 0,
+          walletId: wallet.id,
+          type: TransactionType.ONBOARDING_OFFER,
+          status: TransactionStatus.SUCCESSFUL,
+        },
+      });
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isFairCoinAvailed: true,
+        },
+      });
+
+      return {
+        message: 'Pilot onboarding coins availed successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getVehicles(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const data = await this.prisma.vehicle.findMany({
+        where: { pilotId: pilot.id },
+        include: {
+          vehicleType: true,
+        },
+      });
+
+      return {
+        message: 'Vehicles fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getTransactions(
+    userId: string,
+    page: number = 1,
+    pageSize: number = 10,
+  ) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const skip = (page - 1) * pageSize;
+
+      // Get the total count for pagination metadata
+      const totalCount = await this.prisma.transaction.count({
+        where: { pilotId: pilot.id },
+      });
+
+      // Get the paginated data
+      const data: any = await this.prisma.transaction.findMany({
+        where: { pilotId: pilot.id },
+        include: {
+          subscription: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: pageSize,
+      });
+
+      // Process the Decimal fields
+      data.forEach((transaction: any) => {
+        transaction.amount = Number(transaction.amount);
+        transaction.balanceBefore = Number(transaction.balanceBefore);
+        transaction.balanceAfter = Number(transaction.balanceAfter);
+      });
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Transactions fetched successfully.',
+        data: {
+          transactions: data,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async beOnline(userId: string, beOnlineDto: BeOnlineDto) {
+    const { onlineStatus, currentLocation } = beOnlineDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          onlineStatus: onlineStatus
+            ? PilotStatus.AVAILABLE
+            : PilotStatus.OFFLINE,
+          currentLocation: JSON.parse(JSON.stringify(currentLocation)),
+        },
+      });
     } catch (error) {
       console.error(error);
       throw error;
@@ -402,9 +729,7 @@ export class PilotService {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 
     if (!ocrResult?.analyzeResult?.readResults?.[0]?.lines) {
-      throw new BadRequestException(
-        'Unable to process the image. Please provide the Driving License number and Date of Birth manually.',
-      );
+      throw new BadRequestException('Unable to process the image.');
     }
 
     return ocrResult.analyzeResult.readResults[0].lines;
@@ -481,7 +806,7 @@ export class PilotService {
     return drivingLicense;
   }
 
-  private extractRegistrationNumber(lines: any[]): string | null {
+  private parseRegistrationNumber(lines: any[]): string | null {
     for (const line of lines) {
       const text = line.text.trim();
 
@@ -506,7 +831,7 @@ export class PilotService {
   //   return false;
   // }
 
-  private extractPancardData(lines: any[]) {
+  private parsePancardData(lines: any[]) {
     const panIdentifiers = [
       'Permanent Account Number Card',
       'Permanent Account Number',
@@ -527,11 +852,34 @@ export class PilotService {
       }
     }
   }
+
+  private parseAadhaarData(lines: any[]): string | null {
+    console.log(lines);
+    for (const line of lines) {
+      const text = line.text.trim();
+
+      const aadhaarRegex = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g;
+      const match = text.match(aadhaarRegex);
+
+      // Add a check to see if the match is null
+      if (match && match[0]) {
+        const cleanedNumber = match[0].replace(/[\s-]/g, '');
+
+        if (cleanedNumber.length === 12) {
+          return cleanedNumber;
+        }
+      }
+    }
+
+    return null;
+  }
+
   private async updatePilotVehicleData(
     verificationResponse: VerificationResponseVehicle,
     pilotId: string,
   ) {
     const {
+      category,
       regNo,
       regUpto,
       permitUpto,
@@ -540,20 +888,20 @@ export class PilotService {
       manufacturer,
       model,
       colour,
+      seatCapacity,
       fitUpto,
       puccUpto,
       state,
     } = verificationResponse;
 
-    const vehicleType = await this.prisma.vehicleType.findFirst({
+    const vehicleCategory = await this.prisma.vehicleType.findFirst({
       where: {
-        name: 'Sedan',
+        name: category,
       },
     });
 
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        pilotId,
         regNo,
         regUpto,
         permitUpto,
@@ -563,9 +911,15 @@ export class PilotService {
         insuranceUpto,
         model,
         colour,
+        seatCapacity,
         manufacturer,
         state,
-        vehicleTypeId: vehicleType.id,
+        pilot: {
+          connect: { id: pilotId },
+        },
+        vehicleType: {
+          connect: { id: vehicleCategory.id },
+        },
       },
     });
 
@@ -592,7 +946,7 @@ export class PilotService {
 
     if (drivingLicense.nameOnLicense !== name) {
       throw new BadRequestException(
-        'Pancard name does not match with driving license name',
+        'Pancard name does not match with driving license name.',
       );
     }
   }

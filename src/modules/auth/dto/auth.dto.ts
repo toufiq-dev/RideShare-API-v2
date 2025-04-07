@@ -2,7 +2,6 @@ import {
   IsString,
   IsNotEmpty,
   IsPhoneNumber,
-  IsEmail,
   Length,
   IsEnum,
   IsOptional,
@@ -12,6 +11,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum RoleEnum {
   CUSTOMER = 'CUSTOMER',
   PILOT = 'PILOT',
+  ADMIN = 'ADMIN',
+  SUPPORT = 'SUPPORT',
 }
 
 export class SendOtpDto {
@@ -49,6 +50,11 @@ export class VerifyOtpDto {
   })
   @IsEnum(RoleEnum, { message: 'Role must be either CUSTOMER or PILOT' })
   role: RoleEnum;
+
+  @ApiPropertyOptional({ description: 'FCM Token' })
+  @IsString()
+  @IsNotEmpty({ message: 'FCM Token must be given' })
+  fcmToken?: string;
 }
 
 export class RefreshTokenDto {
@@ -56,18 +62,6 @@ export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty({ message: 'Refresh token is required' })
   refreshToken: string;
-}
-
-export class CompleteCustomerOnboardingDto {
-  @ApiProperty({ description: 'Name' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @ApiProperty({ description: 'Email' })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
 }
 
 export class FindPilotDto {

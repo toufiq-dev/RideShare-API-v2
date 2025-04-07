@@ -3,11 +3,15 @@ import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
+  IsEmail,
+  IsNumber,
+  IsJSON,
 } from 'class-validator';
+import { LocationDto } from 'src/common/dto/common.dto';
+import { RideType } from '@prisma/client';
 
 enum SavedPlaveTypeEnum {
   WORK = 'WORK',
@@ -18,16 +22,23 @@ enum SavedPlaveTypeEnum {
   OTHERS = 'OTHERS',
 }
 
-class LocationDto {
-  @ApiProperty({ description: 'Latitude' })
-  @IsNumber()
+export class CompleteCustomerOnboardingDto {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
   @IsNotEmpty()
-  latitude: number;
+  name: string;
 
-  @ApiProperty({ description: 'Longitude' })
-  @IsNumber()
+  @ApiProperty({ description: 'Email' })
+  @IsEmail()
+  @IsOptional()
+  email: string;
+}
+
+export class UpdateCustomerNameDto {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
   @IsNotEmpty()
-  longitude: number;
+  name: string;
 }
 
 export class CreateSavedPlaceDto {
@@ -80,4 +91,66 @@ export class UpdateSavedPlaceDto {
   @ApiProperty({ enum: SavedPlaveTypeEnum, required: false })
   @IsEnum(SavedPlaveTypeEnum)
   type?: SavedPlaveTypeEnum;
+}
+
+export class RideLocationDto {
+  @ApiProperty({
+    description: 'Pickup Location in latitude and longitude',
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  pickupLocation: LocationDto;
+
+  @ApiProperty({
+    description: 'Drop Location in latitude and longitude',
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  dropLocation: LocationDto;
+}
+
+export class VehicleCategoryDto extends RideLocationDto {}
+
+class OtherInfo {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
+export class CreateRideRequestDto extends RideLocationDto {
+  @ApiProperty({ description: 'Vehicle Type id' })
+  @IsNotEmpty({ message: 'Vehicle type is required' })
+  @IsString()
+  vehicleTypeId: string;
+
+  @ApiProperty({ description: 'Coupon Id' })
+  @IsOptional()
+  @IsString()
+  couponId: string;
+
+  @ApiProperty({
+    description: 'current Location in latitude and longitude',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  currentLocation: LocationDto;
+
+  @ApiProperty({
+    enum: RideType,
+  })
+  @IsNotEmpty()
+  @IsEnum(RideType)
+  rideFor: RideType;
+
+  @ApiProperty({
+    description: 'Other passengers details',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OtherInfo)
+  otherPassengerInfo: OtherInfo;
 }

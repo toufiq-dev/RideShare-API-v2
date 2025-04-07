@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class EmailService {
@@ -18,6 +20,7 @@ export class EmailService {
     private configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    @InjectQueue('otp-email') private readonly otpQueue: Queue,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
@@ -31,24 +34,29 @@ export class EmailService {
   }
 
   async sendOtpEmail(sendOtpDto: sendOtpDto, userId: string) {
+    // enqueue the sending email job
+    await this.otpQueue.add('send-otp', { sendOtpDto, userId });
+    return { message: 'OTP will be sent shortly' };
+  }
+
+  async _sendOtpEmail(sendOtpDto: sendOtpDto, userId: string) {
     try {
       const { email } = sendOtpDto;
-
       const otp = randomInt(1000, 10000).toString();
-      await this.redis.set(`emailVerificationotp:${email}`, otp, 270);
 
+      await this.redis.set(`emailVerificationotp:${email}`, otp, 270);
       const customer = await this.prisma.customer.findUnique({
         where: { userId },
       });
+
       if (!customer) {
         throw new NotFoundException('Customer not found.');
       }
       const doesEmailExist = await this.prisma.customer.findUnique({
         where: { email },
       });
-      if (doesEmailExist) {
-        if (doesEmailExist.id !== customer.id)
-          throw new BadRequestException('Email already exists.');
+      if (doesEmailExist && doesEmailExist.id !== customer.id) {
+        throw new BadRequestException('Email already exists.');
       }
 
       const mailOptions = {
@@ -67,10 +75,6 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-
-      return {
-        message: 'OTP sent successfully',
-      };
     } catch (error) {
       console.error(error);
       throw error;

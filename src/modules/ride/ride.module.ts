@@ -4,7 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { RideService } from './ride.service';
 import { RideGateway } from './ride.gateway';
 import { PrismaModule } from 'src/core/database/prisma.module';
-import { RideRequestProcessor } from './processors/ride.processor';
+import { RideRequestProcessor } from './processor/ride.processor';
 
 @Module({
   imports: [

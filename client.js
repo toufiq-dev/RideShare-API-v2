@@ -1,58 +1,48 @@
 const io = require('socket.io-client');
 
-// Configuration
-const SOCKET_URL = 'http://localhost:3000/socket'; // Update with your server URL
-const JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4MjEzZDg0ZC02M2E3LTQzNDYtYjY3NS01NTE1NmE3NTczODEiLCJyb2xlIjoiUElMT1QiLCJpYXQiOjE3NDI4ODkxNDEsImV4cCI6MTc0Mjk3NTU0MX0.VE1BNp0Tf8SL-huYqwVq-S0TaLtDJ7TJNqv4Znc3VYc";    // Replace with a valid pilot JWT token
+// Parse command line arguments
+const args = process.argv.slice(2);
+const url = 'http://localhost:3000/socket';
+const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzOTQzYTZjZC0wOGFmLTQxY2YtYWIwOS0wNzMyZDJmMWU1YjciLCJyb2xlIjoiUElMT1QiLCJpYXQiOjE3NDQxMTQ2MzcsImV4cCI6MTc0NDIwMTAzN30.eJfvR2MruC8fq_dL0KZCkwlwMga4NpwTTQTf4gO71kI';
 
-// Predefined locations (Kolkata area)
-const locations = [
-  { lat: 22.5743533, lng: 88.3628733 },  // Base location
-  { lat: 22.5745, lng: 88.3630 },        // Small variation 1 (~50m NE)
-  { lat: 22.5742, lng: 88.3627 },        // Small variation 2 (~50m SW)
-  { lat: 22.5739, lng: 88.3632 },        // Larger variation (~100m WSW)
-  { lat: 22.5751, lng: 88.3625 }         // Larger variation (~100m ENE)
-];
+console.log(`Connecting to: ${url}`);
 
-// Create socket connection
-const socket = io(SOCKET_URL, {
-  extraHeaders: {
-    Authorization: `Bearer ${JWT_TOKEN}`
-  }
+const socket = io(url, {
+  auth: {
+    token,
+  },
+  reconnection: true,
+  timeout: 10000,
 });
 
-// Socket event handlers
+// Connection events
 socket.on('connect', () => {
-  console.log('Connected to server');
-  startLocationUpdates();
+  console.log('Connected to the server!');
+  console.log('Socket ID:', socket.id);
 });
 
-socket.on('disconnect', () => {
-  console.log('Disconnected from server');
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected:', reason);
 });
 
-socket.on('error', (error) => {
-  console.error('Socket error:', error);
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error.message);
 });
 
-socket.on('connect_error', (err) => {
-  console.error('Connection error:', err.message);
+// Listen for all events
+socket.onAny((event, ...args) => {
+  console.log(`\n[${new Date().toISOString()}] Event: ${event}`);
+  console.log('Data:', JSON.stringify(args, null, 2));
 });
 
-// Send location updates in sequence
-function startLocationUpdates() {
-  let index = 0;
-  
-  const interval = setInterval(() => {
-    if (index >= locations.length) {
-      clearInterval(interval);
-      console.log('All test locations sent');
-      socket.disconnect();
-      return;
-    }
-    
-    const location = locations[index];
-    console.log(`Sending location ${index + 1}:`, location);
-    socket.emit('updateLocation', location);
-    index++;
-  }, 3000); // Send every 3 seconds
-}
+// Listen for specific events
+const eventsToListen = ['rideRequest', 'rideAccepted', 'rideCancelled', 'error'];
+eventsToListen.forEach(event => {
+  socket.on(event, (data) => {
+    console.log(`\n[${new Date().toISOString()}] Specific handler for: ${event}`);
+    console.log('Data:', JSON.stringify(data, null, 2));
+  });
+});
+
+console.log(`Listening for events: ${eventsToListen.join(', ')}`);
+console.log('Press Ctrl+C to exit');

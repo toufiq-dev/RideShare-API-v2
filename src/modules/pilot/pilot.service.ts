@@ -748,10 +748,7 @@ export class PilotService {
           where: { id: bookingId, status: BookingStatus.PENDING },
         });
 
-        if (!booking || booking.bookingCode !== bookingCode)
-          throw new BadRequestException(
-            'Booking not found or invalid booking code.',
-          );
+        if (!booking) throw new BadRequestException('Booking not found.');
 
         const updated = await tx.booking.update({
           where: { id: booking.id },
@@ -803,9 +800,7 @@ export class PilotService {
       };
 
       // rideAccepted event triggered for customer
-      this.rideGateway.server
-        .to(result.updated.customer.userId)
-        .emit('rideAccepted', rideAcceptedPayload);
+      this.rideGateway.server.emit('rideAccepted', rideAcceptedPayload);
 
       return result.updated;
     } catch (error) {

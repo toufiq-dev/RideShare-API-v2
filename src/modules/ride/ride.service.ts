@@ -124,7 +124,7 @@ export class RideService {
 
         await this.redis.del(acceptanceKey);
 
-        server.to(nearestPilot.pilotId).emit('rideRequestTimeout', {
+        server.emit('rideRequestTimeout', {
           bookingId,
           reason: 'Time expired. You did not respond to the ride request.',
         });
@@ -258,11 +258,12 @@ export class RideService {
       server,
     } = payload;
 
-    const notifiedKey = `notified:${bookingId}`;
-    const alreadyNotified = await this.redis.get(`${notifiedKey}:${pilotId}`);
+    const notifiedKey = `notified-${bookingId}:${pilotId}`;
+    const alreadyNotified = await this.redis.get(notifiedKey);
     if (alreadyNotified) return; // Skip if already notified
 
     const notificationPayload = {
+      bookingId,
       vehicleTypeId,
       pickupLocation,
       dropLocation,
@@ -272,12 +273,10 @@ export class RideService {
       durationMin,
     };
 
-    await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
+    await this.redis.set(`${notifiedKey}`, 'true', 300);
 
     // Notify the single driver
-    const test = server
-    // .to(userId)
-    .emit('rideRequest', notificationPayload);
+    const test = server.emit('rideRequest', notificationPayload);
 
     console.log('eveint Emitted? ', test, 'for', pilotId);
   }

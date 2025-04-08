@@ -78,14 +78,4 @@ export class AcceptRideDto {
   @IsNotEmpty({ message: 'Booking id is required' })
   @IsString()
   bookingId: string;
-
-  @ApiProperty({ description: 'Booking code' })
-  @IsNotEmpty({ message: 'Booking code is required' })
-  @IsString()
-  bookingCode: string;
-
-  @ApiProperty({ description: 'Vehicle Type id' })
-  @IsNotEmpty({ message: 'Vehicle type is required' })
-  @IsString()
-  vehicleTypeId: string;
 }

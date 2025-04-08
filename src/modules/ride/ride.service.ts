@@ -220,22 +220,16 @@ export class RideService {
     for (const [pilotId, distance] of nearbyPilots) {
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: pilotId },
-        include: { vehicles: true },
+        include: { vehicle: true },
       });
 
       if (pilot && pilot.onlineStatus === PilotStatus.AVAILABLE) {
-        const matchedVehicle = pilot.vehicles.find(
-          (v) => v.vehicleTypeId === vehicleTypeId,
-        );
-
-        if (matchedVehicle) {
-          return {
-            pilotId,
-            userId: pilot.userId,
-            distance: parseFloat(distance) / 1000,
-            vehicle: matchedVehicle,
-          };
-        }
+        return {
+          pilotId,
+          userId: pilot.userId,
+          distance: parseFloat(distance) / 1000,
+          vehicle: pilot.vehicle,
+        };
       }
     }
 
@@ -267,7 +261,7 @@ export class RideService {
       vehicleTypeId,
       pickupLocation,
       dropLocation,
-      estimatedFare,
+      estimatedFare: Number(estimatedFare),
       nearestPilotDistance,
       distanceKm,
       durationMin,

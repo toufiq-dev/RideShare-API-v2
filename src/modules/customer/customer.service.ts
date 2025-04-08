@@ -534,7 +534,7 @@ export class CustomerService {
         pickupLocation,
         dropLocation,
       });
-
+      console.log('booking, ' + booking.id);
       return {
         success: true,
         message:

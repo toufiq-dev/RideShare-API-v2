@@ -134,7 +134,7 @@ model Pilot {
   ranking             PilotRanking?
   ratings             PilotRating[]
   wallet              PilotWallet?
-  vehicles            Vehicle[]
+  vehicle             Vehicle?           @relation("PilotVehicle")
   videoProgress       VideoProgress?
 
   @@index([onlineStatus])
@@ -161,7 +161,7 @@ model DrivingLicense {
 
 model Vehicle {
   id            String      @id @default(uuid())
-  pilotId       String
+  pilotId       String      @unique
   regNo         String      @unique
   fitUpto       DateTime?
   insuranceUpto DateTime?
@@ -177,7 +177,7 @@ model Vehicle {
   vehicleTypeId String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  pilot         Pilot       @relation(fields: [pilotId], references: [id])
+  pilot         Pilot       @relation("PilotVehicle", fields: [pilotId], references: [id])
   vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
 }
 
@@ -273,7 +273,7 @@ model Booking {
   status               BookingStatus
   rideType             RideType
   estimatedFare        Decimal             @db.Decimal(10, 2)
-  fare                 Decimal?             @db.Decimal(10, 2)
+  fare                 Decimal?            @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
   estimatedDistance    String

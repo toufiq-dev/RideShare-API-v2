@@ -734,14 +734,21 @@ export class PilotService {
   }
 
   async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
-    const { bookingId, bookingCode, vehicleTypeId } = acceptRideDto;
+    const { bookingId } = acceptRideDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
-        include: { drivingLicense: true, vehicles: true },
+        include: { drivingLicense: true, vehicle: true },
       });
       if (!pilot) throw new NotFoundException('Pilot not found.');
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          activeBookingId: bookingId,
+        },
+      });
 
       const result = await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findFirst({

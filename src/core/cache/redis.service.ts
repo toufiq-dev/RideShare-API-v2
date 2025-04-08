@@ -143,6 +143,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async geoPos(key: string, member: string): Promise<[number, number] | null> {
+    try {
+      const result = await this.client.geopos(key, member);
+
+      if (result && result[0]) {
+        const [longitude, latitude] = result[0];
+        this.logger.log(
+          `Fetched pilot ${member} location from ${key}: (${latitude}, ${longitude})`,
+          this.context,
+        );
+        return [Number(latitude), Number(longitude)];
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get geopos for ${member}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
   async geoRadius(
     key: string,
     longitude: number,

@@ -11,6 +11,7 @@ export interface RideRequestPayload {
 export interface NotifyDriverPayload {
   pilotId: string;
   bookingId: string;
+  vehicleTypeId: string;
   pickupLocation: { name: string; address: string; lat: number; lng: number };
   dropLocation: { name: string; address: string; lat: number; lng: number };
   estimatedFare: any;

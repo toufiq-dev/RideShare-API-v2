@@ -459,6 +459,9 @@ export class CustomerService {
         where: {
           userId,
         },
+        include: {
+          coupon: true,
+        },
       });
       if (!customer) {
         throw new NotFoundException('Customer not found.');
@@ -471,6 +474,15 @@ export class CustomerService {
       });
       if (!vehicleType) {
         throw new NotFoundException('Vehicle type not found.');
+      }
+
+      const activeBooking = await this.prisma.booking.findFirst({
+        where: { customerId: customer.id, status: BookingStatus.PENDING },
+      });
+      if (activeBooking) {
+        throw new BadRequestException(
+          'You already have an active ride request.',
+        );
       }
 
       const { distanceKm, durationMin } =
@@ -487,11 +499,7 @@ export class CustomerService {
         Number(vehicleType.perMinRate),
       );
 
-      const coupon = await this.prisma.coupon.findUnique({
-        where: {
-          id: customer.couponId,
-        },
-      });
+      const coupon = customer?.coupon;
 
       const price =
         coupon && originalPrice > Number(coupon.discount)
@@ -515,7 +523,7 @@ export class CustomerService {
           estimatedDuration: durationMin.toString(),
         },
       });
-      await this.redis.set(`bookingCode:${booking.id}`, bookingCode);
+      // await this.redis.set(`bookingCode:${booking.id}`, bookingCode);
 
       await this.rideService.enqueueRideRequest({
         bookingId: booking.id,

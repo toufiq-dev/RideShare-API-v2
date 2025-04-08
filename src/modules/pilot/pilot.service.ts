@@ -32,6 +32,7 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
+import { FareService } from '../fare/fare.service';
 
 @Injectable()
 export class PilotService {
@@ -41,6 +42,7 @@ export class PilotService {
     private readonly verificationService: VerificationService,
     private readonly rideGateway: RideGateway,
     private readonly redis: RedisService,
+    private readonly fareService: FareService,
   ) {}
 
   async getPilot(userId: string) {
@@ -712,6 +714,10 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      if (!onlineStatus) {
+        await this.redis.zRem('pilotLocations', pilot.id);
+      }
+
       await this.prisma.pilot.update({
         where: { userId },
         data: {
@@ -728,32 +734,80 @@ export class PilotService {
   }
 
   async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
-    const { bookingId } = acceptRideDto;
+    const { bookingId, bookingCode, vehicleTypeId } = acceptRideDto;
 
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-      if (!pilot) {
-        throw new NotFoundException('Pilot not found.');
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        include: { drivingLicense: true, vehicles: true },
+      });
+      if (!pilot) throw new NotFoundException('Pilot not found.');
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        const booking = await tx.booking.findFirst({
+          where: { id: bookingId, status: BookingStatus.PENDING },
+        });
+
+        if (!booking || booking.bookingCode !== bookingCode)
+          throw new BadRequestException(
+            'Booking not found or invalid booking code.',
+          );
+
+        const updated = await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            pilotId: pilot.id,
+            status: BookingStatus.ACCEPTED,
+            acceptedAt: new Date(),
+          },
+          include: { customer: true, pilot: true },
+        });
+
+        return { updated, pilot };
+      });
+
+      const pilotLocation = await this.redis.geoPos(
+        'pilotLocations',
+        result.pilot.id,
+      );
+      let pickupInMinutes: number | null = null;
+      if (pilotLocation) {
+        const [lat, lng] = pilotLocation;
+        const { durationMin } =
+          await this.fareService.calculateDistanceAndDuration(
+            { lat, lng },
+            result.updated.pickupLocation as any,
+          );
+        pickupInMinutes = Math.ceil(durationMin);
       }
 
-      const booking = await this.prisma.booking.update({
-        where: { id: bookingId, status: BookingStatus.PENDING },
-        data: {
-          pilotId: pilot.id,
-          status: BookingStatus.ACCEPTED,
-          acceptedAt: new Date(),
-        },
-        include: { customer: true, pilot: true },
-      });
+      const vehicleId = await this.redis.get(
+        `booking-vehicle:${bookingId}:${pilot.id}`,
+      );
+      const vehicle = vehicleId
+        ? await this.prisma.vehicle.findUnique({
+            where: { id: vehicleId },
+            include: { vehicleType: true },
+          })
+        : null;
 
-      // Join pilot to booking-specific room
-      this.rideGateway.server.emit('rideAccepted', {
-        bookingId: booking.id,
-        pilotId: booking.pilotId,
-        status: booking.status,
-      });
+      const rideAcceptedPayload = {
+        bookingCode: result.updated.bookingCode,
+        pilotName: result.pilot.drivingLicense.nameOnLicense,
+        pickupInMinutes,
+        pickupLocation: result.updated.pickupLocation,
+        vehicleNumber: vehicle.regNo,
+        model: vehicle.model,
+        colour: vehicle.colour,
+        vehicleType: vehicle.vehicleType.name,
+      };
 
-      return booking;
+      // rideAccepted event triggered for customer
+      this.rideGateway.server
+        .to(result.updated.customer.userId)
+        .emit('rideAccepted', rideAcceptedPayload);
+
+      return result.updated;
     } catch (error) {
       console.error(error);
       throw error;

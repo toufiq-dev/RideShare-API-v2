@@ -85,9 +85,16 @@ export class RideService {
           return false; // No driver found in this radius
         }
 
+        await this.redis.set(
+          `booking-vehicle:${bookingId}:${nearestPilot.pilotId}`,
+          nearestPilot.vehicle.id,
+          20,
+        ); // 20 seconds TTL
+
         const notifyDriverPayload: NotifyDriverPayload = {
           pilotId: nearestPilot.pilotId,
           bookingId,
+          vehicleTypeId,
           pickupLocation,
           dropLocation,
           estimatedFare: booking.estimatedFare,
@@ -115,6 +122,12 @@ export class RideService {
         }
 
         await this.redis.del(acceptanceKey);
+
+        server.to(nearestPilot.pilotId).emit('rideRequestTimeout', {
+          bookingId,
+          reason: 'Time expired. You did not respond to the ride request.',
+        });
+
         return false;
       };
 
@@ -209,12 +222,18 @@ export class RideService {
         include: { vehicles: true },
       });
 
-      if (
-        pilot &&
-        pilot.onlineStatus === PilotStatus.AVAILABLE &&
-        pilot.vehicles.some((v) => v.vehicleTypeId === vehicleTypeId)
-      ) {
-        return { pilotId, distance: parseFloat(distance) / 1000 };
+      if (pilot && pilot.onlineStatus === PilotStatus.AVAILABLE) {
+        const matchedVehicle = pilot.vehicles.find(
+          (v) => v.vehicleTypeId === vehicleTypeId,
+        );
+
+        if (matchedVehicle) {
+          return {
+            pilotId,
+            distance: parseFloat(distance) / 1000,
+            vehicle: matchedVehicle,
+          };
+        }
       }
     }
 
@@ -226,6 +245,7 @@ export class RideService {
     const {
       pilotId,
       bookingId,
+      vehicleTypeId,
       pickupLocation,
       dropLocation,
       estimatedFare,
@@ -240,6 +260,7 @@ export class RideService {
     if (alreadyNotified) return; // Skip if already notified
 
     const notificationPayload = {
+      vehicleTypeId,
       pickupLocation,
       dropLocation,
       estimatedFare,
@@ -251,6 +272,6 @@ export class RideService {
     await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
 
     // Notify the single driver
-    server.emit('rideRequest', notificationPayload);
+    server.to(pilotId).emit('rideRequest', notificationPayload);
   }
 }

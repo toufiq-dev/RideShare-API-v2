@@ -93,6 +93,7 @@ export class RideService {
 
         const notifyDriverPayload: NotifyDriverPayload = {
           pilotId: nearestPilot.pilotId,
+          userId: nearestPilot.userId,
           bookingId,
           vehicleTypeId,
           pickupLocation,
@@ -230,6 +231,7 @@ export class RideService {
         if (matchedVehicle) {
           return {
             pilotId,
+            userId: pilot.userId,
             distance: parseFloat(distance) / 1000,
             vehicle: matchedVehicle,
           };
@@ -244,6 +246,7 @@ export class RideService {
   async notifyDriver(payload: NotifyDriverPayload) {
     const {
       pilotId,
+      userId,
       bookingId,
       vehicleTypeId,
       pickupLocation,
@@ -272,6 +275,8 @@ export class RideService {
     await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
 
     // Notify the single driver
-    server.to(pilotId).emit('rideRequest', notificationPayload);
+    const test = server.to(userId).emit('rideRequest', notificationPayload);
+
+    console.log('eveint Emitted? ', test, 'for', pilotId);
   }
 }

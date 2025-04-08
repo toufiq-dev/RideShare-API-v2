@@ -10,6 +10,7 @@ export interface RideRequestPayload {
 
 export interface NotifyDriverPayload {
   pilotId: string;
+  userId: string;
   bookingId: string;
   vehicleTypeId: string;
   pickupLocation: { name: string; address: string; lat: number; lng: number };

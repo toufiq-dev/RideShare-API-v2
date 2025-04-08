@@ -30,6 +30,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('Connection attempt from:', client.handshake.address);
 
     const userId = client.data?.user?.userId;
+
     if (userId) {
       client.join(userId);
     }

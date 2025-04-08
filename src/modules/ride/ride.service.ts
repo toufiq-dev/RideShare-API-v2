@@ -275,7 +275,9 @@ export class RideService {
     await this.redis.set(`${notifiedKey}:${pilotId}`, 'true', 12);
 
     // Notify the single driver
-    const test = server.to(userId).emit('rideRequest', notificationPayload);
+    const test = server
+    // .to(userId)
+    .emit('rideRequest', notificationPayload);
 
     console.log('eveint Emitted? ', test, 'for', pilotId);
   }

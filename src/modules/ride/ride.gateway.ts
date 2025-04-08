@@ -29,11 +29,11 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket) {
     console.log('Connection attempt from:', client.handshake.address);
 
-    const userId = client.data?.user?.userId;
+    // const userId = client.data?.user?.userId;
 
-    if (userId) {
-      client.join(userId);
-    }
+    // if (userId) {
+    //   client.join(userId);
+    // }
 
     console.log('Client connected successfully:', client.id);
   }

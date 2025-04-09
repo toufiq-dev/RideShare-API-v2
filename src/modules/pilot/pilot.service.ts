@@ -817,8 +817,8 @@ export class PilotService {
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
           pilotLocation: {
-            lat: pilotLocation[1],
-            lng: pilotLocation[0],
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
           },
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,

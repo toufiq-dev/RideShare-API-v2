@@ -18,6 +18,7 @@ import {
   AcceptRideDto,
 } from './dto/pilot.dto';
 import {
+  AcceptRideRequest,
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
@@ -829,7 +830,21 @@ export class PilotService {
         .to(pilot.userId)
         .emit('rideAccepted', rideAcceptedPayload);
 
-      return result.updated;
+      const data: AcceptRideRequest = {
+        bookingId: result.updated.id,
+        fare: Number(result.updated.discountedFare),
+        customerName: result.booking.customer.name,
+        customerPhone: result.booking.customer.phone,
+        avarageRating: result.booking.customer.averageRating,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        rideStatus: result.updated.status,
+      };
+
+      return {
+        message: 'Ride accepted successfully.',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;

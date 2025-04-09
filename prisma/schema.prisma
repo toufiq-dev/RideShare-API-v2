@@ -64,6 +64,7 @@ model Customer {
   isEmailVerified     Boolean          @default(false)
   name                String?
   avatar              String?
+  averageRating       Float            @default(5.0)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   languageId          String

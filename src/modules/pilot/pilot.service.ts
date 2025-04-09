@@ -773,16 +773,13 @@ export class PilotService {
       });
 
       const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
-      const location: any = pilotLocation[0];
+
+      console.log('pilotLocation in acceptRide');
+      console.log(pilotLocation);
+
       let pickupInMinutes: number | null = null;
-      let lat: number | null = null;
-      let lng: number | null = null;
-
-      if (location) {
-        const [lngVal, latVal] = location;
-        lng = lngVal;
-        lat = latVal;
-
+      if (pilotLocation) {
+        const [lat, lng] = pilotLocation;
         const { durationMin } =
           await this.fareService.calculateDistanceAndDuration(
             { lat, lng },
@@ -820,8 +817,8 @@ export class PilotService {
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
           pilotLocation: {
-            lat,
-            lng,
+            lat: pilotLocation[1],
+            lng: pilotLocation[0],
           },
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,

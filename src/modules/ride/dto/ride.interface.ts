@@ -1,5 +1,3 @@
-import { LocationType } from 'src/common/types/location.type';
-
 export interface RideRequestPayload {
   userId: string;
   bookingId: string;
@@ -7,8 +5,8 @@ export interface RideRequestPayload {
   vehicleTypeId: string;
   distanceKm: number;
   durationMin: number;
-  pickupLocation: LocationType;
-  dropLocation: LocationType;
+  pickupLocation: any;
+  dropLocation: any;
 }
 
 export interface NotifyDriverPayload {
@@ -16,8 +14,8 @@ export interface NotifyDriverPayload {
   userId: string;
   bookingId: string;
   vehicleTypeId: string;
-  pickupLocation: LocationType;
-  dropLocation: LocationType;
+  pickupLocation: any;
+  dropLocation: any;
   estimatedFare: any;
   nearestPilotDistance: number;
   distanceKm: number;

@@ -1,5 +1,4 @@
 import { BookingStatus, VehicleTypeName } from '@prisma/client';
-import { LocationType } from 'src/common/types/location.type';
 
 export interface VerificationResponseDL {
   licenseNumber: string;

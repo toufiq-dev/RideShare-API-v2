@@ -10,7 +10,6 @@ import { FareModule } from '../fare/fare.module';
 @Module({
   imports: [
     PrismaModule,
-    JwtModule,
     FareModule,
     BullModule.registerQueueAsync({
       name: 'ride-request',

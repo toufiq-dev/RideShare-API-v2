@@ -1,10 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { UpdateLocationDto, CreateBookingDto } from './dto/ride.dto';
 import { BookingStatus } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -54,6 +49,7 @@ export class RideService {
 
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
+      userId,
       bookingId,
       vehicleTypeId,
       distanceKm,
@@ -98,7 +94,7 @@ export class RideService {
           vehicleTypeId,
           pickupLocation,
           dropLocation,
-          estimatedFare: booking.estimatedFare,
+          estimatedFare: booking.discountedFare,
           nearestPilotDistance: nearestPilot.distance,
           distanceKm,
           durationMin,
@@ -124,7 +120,7 @@ export class RideService {
 
         await this.redis.del(acceptanceKey);
 
-        server.emit('rideRequestTimeout', {
+        server.to(nearestPilot.userId).emit('rideRequestTimeout', {
           bookingId,
           reason: 'Time expired. You did not respond to the ride request.',
         });
@@ -154,45 +150,19 @@ export class RideService {
           where: { id: bookingId },
           data: { status: BookingStatus.CANCELLED },
         });
-        server.emit('rideCancelled', {
+        server.to(userId).emit('rideCancelled', {
           bookingId,
-          reason: 'No drivers available within range',
+          reason: 'Unfortunately ride request has been cancelled.',
         });
       }
 
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.emit('error', {
+      server.to(userId).emit('error', {
         message: 'Failed to process ride request',
         error: error.message,
       });
-      throw error;
-    }
-  }
-
-  async handleAcceptRide(client: Socket, bookingId: string) {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: client.data.user.userId },
-      });
-      if (!pilot) {
-        throw new NotFoundException('User not found.');
-      }
-
-      const booking = await this.prisma.booking.update({
-        where: { id: bookingId, status: BookingStatus.PENDING },
-        data: {
-          pilotId: pilot.id,
-          status: BookingStatus.ACCEPTED,
-          acceptedAt: new Date(),
-        },
-        include: { customer: true, pilot: true },
-      });
-
-      return booking;
-    } catch (error) {
-      console.error(error);
       throw error;
     }
   }
@@ -270,7 +240,7 @@ export class RideService {
     await this.redis.set(`${notifiedKey}`, 'true', 300);
 
     // Notify the single driver
-    const test = server.emit('rideRequest', notificationPayload);
+    const test = server.to(userId).emit('rideRequest', notificationPayload);
 
     console.log('eveint Emitted? ', test, 'for', pilotId);
   }

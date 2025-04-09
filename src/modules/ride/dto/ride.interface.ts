@@ -1,4 +1,5 @@
 export interface RideRequestPayload {
+  userId: string;
   bookingId: string;
   estimatedFare: any;
   vehicleTypeId: string;

@@ -524,9 +524,9 @@ export class CustomerService {
           estimatedDuration: durationMin.toString(),
         },
       });
-      // await this.redis.set(`bookingCode:${booking.id}`, bookingCode);
 
       await this.rideService.enqueueRideRequest({
+        userId: customer.userId,
         bookingId: booking.id,
         estimatedFare: booking.estimatedFare,
         vehicleTypeId,
@@ -535,7 +535,7 @@ export class CustomerService {
         pickupLocation,
         dropLocation,
       });
-      console.log('booking, ' + booking.id);
+
       return {
         success: true,
         message:

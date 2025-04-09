@@ -799,6 +799,10 @@ export class PilotService {
         },
       });
 
+      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
+      // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
+      await this.redis.del(`ride-accept:${bookingId}`);
+
       const rideAcceptedPayload = {
         bookingCode: result.updated.bookingCode,
         pilot: {
@@ -821,7 +825,9 @@ export class PilotService {
       };
 
       // rideAccepted event triggered for customer
-      this.rideGateway.server.emit('rideAccepted', rideAcceptedPayload);
+      this.rideGateway.server
+        .to(pilot.userId)
+        .emit('rideAccepted', rideAcceptedPayload);
 
       return result.updated;
     } catch (error) {

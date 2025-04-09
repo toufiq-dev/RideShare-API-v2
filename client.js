@@ -3,7 +3,7 @@ const io = require('socket.io-client');
 // Parse command line arguments
 const args = process.argv.slice(2);
 const url = 'http://localhost:3000/socket';
-const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzOTQzYTZjZC0wOGFmLTQxY2YtYWIwOS0wNzMyZDJmMWU1YjciLCJyb2xlIjoiUElMT1QiLCJpYXQiOjE3NDQxMTQ2MzcsImV4cCI6MTc0NDIwMTAzN30.eJfvR2MruC8fq_dL0KZCkwlwMga4NpwTTQTf4gO71kI';
+const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYzVlMzIyYi03ZjIzLTQ0NmYtYThiMi0yOWFlNzUxODhlMGIiLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NDQxODI4ODksImV4cCI6MTc0NDI2OTI4OX0.HIW0EQMDlk_CONyQw5Wqu3D1b6yxc6FwWGWAFa4q62c'
 
 console.log(`Connecting to: ${url}`);
 

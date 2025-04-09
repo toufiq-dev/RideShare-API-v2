@@ -44,6 +44,7 @@ export interface CustomerRideAcceptedEventPayload {
     profilePicture: string;
     pilotPhone: string;
     rating: number;
+    pilotLocation: any;
     vehicleNumber: string;
     model: string;
     colour: string;

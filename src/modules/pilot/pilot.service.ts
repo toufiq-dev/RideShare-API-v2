@@ -812,6 +812,7 @@ export class PilotService {
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
+          pilotLocation,
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,
           colour: vehicle.colour,

@@ -754,7 +754,6 @@ export class PilotService {
       const result = await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findFirst({
           where: { id: bookingId, status: BookingStatus.PENDING },
-          include: { customer: true },
         });
 
         if (!booking) throw new BadRequestException('Booking not found.');
@@ -769,7 +768,7 @@ export class PilotService {
           include: { customer: true, pilot: true },
         });
 
-        return { updated, booking };
+        return { updated };
       });
 
       const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
@@ -796,7 +795,7 @@ export class PilotService {
 
       const coupon = await this.prisma.coupon.findUnique({
         where: {
-          id: result.booking.customer.couponId,
+          id: result.updated.customer.couponId,
         },
       });
 
@@ -827,15 +826,15 @@ export class PilotService {
 
       // rideAccepted event triggered for customer
       this.rideGateway.server
-        .to(pilot.userId)
+        .to(result.updated.customer.userId)
         .emit('rideAccepted', rideAcceptedPayload);
 
       const data: AcceptRideRequest = {
         bookingId: result.updated.id,
         fare: Number(result.updated.discountedFare),
-        customerName: result.booking.customer.name,
-        customerPhone: result.booking.customer.phone,
-        avarageRating: result.booking.customer.averageRating,
+        customerName: result.updated.customer.name,
+        customerPhone: result.updated.customer.phone,
+        avarageRating: result.updated.customer.averageRating,
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,

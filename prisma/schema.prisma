@@ -453,6 +453,7 @@ enum BookingStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  NOT_FOUND
 }
 
 enum TransactionStatus {

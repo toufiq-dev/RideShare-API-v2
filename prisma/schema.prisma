@@ -104,7 +104,7 @@ model Pilot {
   isAlreadyRegistered Boolean            @default(false)
   onlineStatus        PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
-  averageRating       Float              @default(0)
+  averageRating       Float              @default(5.0)
   languageId          String
   pilotProgramId      String?
   selfieUrl           String?
@@ -273,7 +273,8 @@ model Booking {
   status               BookingStatus
   rideType             RideType
   estimatedFare        Decimal             @db.Decimal(10, 2)
-  fare                 Decimal?            @db.Decimal(10, 2)
+  discountedFare       Decimal             @db.Decimal(10, 2)
+  tripEndFare          Decimal?            @db.Decimal(10, 2)
   pickupLocation       Json
   dropLocation         Json
   estimatedDistance    String

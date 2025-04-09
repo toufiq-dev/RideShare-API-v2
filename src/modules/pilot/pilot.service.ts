@@ -222,7 +222,7 @@ export class PilotService {
 
       if (rawResponse.isExpired) {
         return {
-          message: 'Transport license is expired.',
+          message: 'Driving license is expired.',
           data: {
             ...verificationResponse,
             id: null,
@@ -340,9 +340,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      // if (!pilot.selfieUrl) {
-      //   throw new BadRequestException('Driver does not have Live selfie.');
-      // }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie.');
+      }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -516,9 +516,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      // if (!pilot.isPanCardVerified) {
-      //   throw new BadRequestException('Driver does not have pancard verfied.');
-      // }
+      if (!pilot.isPanCardVerified) {
+        throw new BadRequestException('Driver does not have pancard verfied.');
+      }
 
       const verificationResponse =
         await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);
@@ -753,6 +753,7 @@ export class PilotService {
       const result = await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findFirst({
           where: { id: bookingId, status: BookingStatus.PENDING },
+          include: { customer: true },
         });
 
         if (!booking) throw new BadRequestException('Booking not found.');
@@ -767,13 +768,10 @@ export class PilotService {
           include: { customer: true, pilot: true },
         });
 
-        return { updated, pilot };
+        return { updated, booking };
       });
 
-      const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
-        result.pilot.id,
-      );
+      const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
       let pickupInMinutes: number | null = null;
       if (pilotLocation) {
         const [lat, lng] = pilotLocation;
@@ -795,15 +793,31 @@ export class PilotService {
           })
         : null;
 
+      const coupon = await this.prisma.coupon.findUnique({
+        where: {
+          id: result.booking.customer.couponId,
+        },
+      });
+
       const rideAcceptedPayload = {
         bookingCode: result.updated.bookingCode,
-        pilotName: result.pilot.drivingLicense.nameOnLicense,
+        pilot: {
+          pilotName: pilot.drivingLicense.nameOnLicense,
+          profilePicture: pilot.selfieUrl,
+          rating: pilot.averageRating,
+          vehicleNumber: vehicle.regNo,
+          model: vehicle.model,
+          colour: vehicle.colour,
+          vehicleType: vehicle.vehicleType.name,
+        },
         pickupInMinutes,
         pickupLocation: result.updated.pickupLocation,
-        vehicleNumber: vehicle.regNo,
-        model: vehicle.model,
-        colour: vehicle.colour,
-        vehicleType: vehicle.vehicleType.name,
+        dropLocation: result.updated.dropLocation,
+        fairDetails: {
+          origialFare: result.updated.estimatedFare,
+          discountedFare: result.updated.discountedFare,
+          coupon,
+        },
       };
 
       // rideAccepted event triggered for customer

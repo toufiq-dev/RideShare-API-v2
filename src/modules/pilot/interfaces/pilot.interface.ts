@@ -28,10 +28,31 @@ export interface VerificationResponseVehicle {
 export interface AcceptRideRequest {
   customerName: string;
   customerPhone: string;
-  avarageRating: number;
+  averageRating: number;
   pickupLocation: any;
   dropLocation: any;
   rideStatus: BookingStatus;
   bookingId: string;
   fare: number;
+}
+
+export interface CustomerRideAcceptedEventPayload {
+  bookingCode: string;
+  pilot: {
+    pilotName: string;
+    profilePicture: string;
+    rating: number;
+    vehicleNumber: string;
+    model: string;
+    colour: string;
+    vehicleType: string;
+  };
+  pickupInMinutes: number;
+  pickupLocation: any;
+  dropLocation: any;
+  fairDetails: {
+    origialFare: number;
+    discountedFare: number;
+    coupon: any;
+  };
 }

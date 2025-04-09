@@ -19,6 +19,7 @@ import {
 } from './dto/pilot.dto';
 import {
   AcceptRideRequest,
+  CustomerRideAcceptedEventPayload,
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
@@ -803,7 +804,7 @@ export class PilotService {
       // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
       await this.redis.del(`ride-accept:${bookingId}`);
 
-      const rideAcceptedPayload = {
+      const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
         bookingCode: result.updated.bookingCode,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
@@ -818,8 +819,8 @@ export class PilotService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: result.updated.estimatedFare,
-          discountedFare: result.updated.discountedFare,
+          origialFare: Number(result.updated.estimatedFare),
+          discountedFare: Number(result.updated.discountedFare),
           coupon,
         },
       };
@@ -834,7 +835,7 @@ export class PilotService {
         fare: Number(result.updated.discountedFare),
         customerName: result.updated.customer.name,
         customerPhone: result.updated.customer.phone,
-        avarageRating: result.updated.customer.averageRating,
+        averageRating: result.updated.customer.averageRating,
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,

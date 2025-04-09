@@ -806,9 +806,11 @@ export class PilotService {
 
       const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
         bookingCode: result.updated.bookingCode,
+        bookingId: result.updated.id,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
+          pilotPhone: pilot.phone,
           rating: pilot.averageRating,
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,

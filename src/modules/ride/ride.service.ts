@@ -50,6 +50,7 @@ export class RideService {
   async getActiveRideForPilot(pilotId: string) {
     const cachedRide = await this.redis.getActiveRide(pilotId);
     if (cachedRide) {
+      console.log('getActiveRideForPilot\n', cachedRide);
       return cachedRide;
     }
 

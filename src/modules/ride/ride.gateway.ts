@@ -70,16 +70,19 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const pilotId = client.data.user.userId;
       const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
-
+      console.log('activeRide\n', activeRide);
       if (activeRide) {
         const payload = {
           bookingId: activeRide.bookingId,
           lat,
           lng,
         };
-        this.server
+
+        const test = this.server
           .to(activeRide.customerId)
           .emit('driverLiveLocation', payload);
+
+        console.log('Emitting driverLiveLocation:', test);
       }
     } catch (error) {
       console.error(error);

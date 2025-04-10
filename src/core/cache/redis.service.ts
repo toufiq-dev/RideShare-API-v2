@@ -226,10 +226,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const key = `active-ride:${pilotId}`;
     const value = JSON.stringify({ bookingId, customerId });
     await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
-    this.logger.log(
-      `Set active ride for pilot ${pilotId}: ${value}`,
-      this.context,
-    );
+    this.logger.log(`Set active ride cache ${pilotId}: ${value}`, this.context);
   }
 
   async getActiveRide(

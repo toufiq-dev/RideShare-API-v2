@@ -220,18 +220,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async setActiveRide(
     pilotId: string,
     bookingId: string,
-    customerId: string,
+    customerUserId: string,
     ttl: number = 3600,
   ): Promise<void> {
     const key = `active-ride:${pilotId}`;
-    const value = JSON.stringify({ bookingId, customerId });
+    const value = JSON.stringify({ bookingId, customerUserId });
     await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
     this.logger.log(`Set active ride cache ${pilotId}: ${value}`, this.context);
   }
 
   async getActiveRide(
     pilotId: string,
-  ): Promise<{ bookingId: string; customerId: string } | null> {
+  ): Promise<{ bookingId: string; customerUserId: string } | null> {
     const key = `active-ride:${pilotId}`;
     const value = await this.client.get(key);
     return value ? JSON.parse(value) : null;

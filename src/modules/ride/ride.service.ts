@@ -40,7 +40,7 @@ export class RideService {
       // Store location in Redis geospatial set
       await this.redis.geoAdd(`pilotLocations`, lng, lat, pilot.id);
 
-      return pilot.id
+      return pilot.id;
     } catch (error) {
       console.error(error);
       client.emit('error', { message: 'Failed to update location' });
@@ -66,19 +66,19 @@ export class RideService {
           ],
         }, // Adjust statuses as needed
       },
-      select: { id: true, customerId: true },
+      include: { customer: true, pilot: true },
     });
 
     if (booking) {
       const rideData = {
         bookingId: booking.id,
-        customerId: booking.customerId,
+        customerUserId: booking.customerId,
       };
       // Cache in Redis with TTL (1 hour)
       await this.redis.setActiveRide(
         pilotId,
         booking.id,
-        booking.customerId,
+        booking.customer.userId,
         3600,
       );
       return rideData;

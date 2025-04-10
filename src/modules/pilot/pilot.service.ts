@@ -772,13 +772,6 @@ export class PilotService {
         return { updated };
       });
 
-      // Cache active ride in Redis
-      await this.redis.setActiveRide(
-        pilot.id,
-        result.updated.id,
-        result.updated.customerId,
-      );
-
       const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
       console.log('pilotLocation in acceptRide');
       console.log(pilotLocation);
@@ -813,6 +806,13 @@ export class PilotService {
       await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
       // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
       await this.redis.del(`ride-accept:${bookingId}`);
+
+      // Cache active ride in Redis
+      await this.redis.setActiveRide(
+        pilot.id,
+        result.updated.id,
+        result.updated.customer.userId,
+      );
 
       const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
         bookingCode: result.updated.bookingCode,

@@ -66,7 +66,11 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { lat, lng } = JSON.parse(body);
 
     try {
-      const pilotId = await this.rideService.handleUpdateLocation(client, lat, lng);
+      const pilotId = await this.rideService.handleUpdateLocation(
+        client,
+        lat,
+        lng,
+      );
 
       const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
       console.log('activeRide\n', activeRide);
@@ -78,7 +82,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
         };
 
         const test = this.server
-          .to(activeRide.customerId)
+          .to(activeRide.customerUserId)
           .emit('driverLiveLocation', payload);
 
         console.log('Emitting driverLiveLocation:', test);

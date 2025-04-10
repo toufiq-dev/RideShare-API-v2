@@ -449,7 +449,7 @@ enum PilotStatus {
 enum BookingStatus {
   PENDING
   ACCEPTED
-  ARRIVED
+  STARTED
   IN_PROGRESS
   COMPLETED
   CANCELLED

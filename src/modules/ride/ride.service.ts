@@ -47,6 +47,45 @@ export class RideService {
     }
   }
 
+  async getActiveRideForPilot(pilotId: string) {
+    const cachedRide = await this.redis.getActiveRide(pilotId);
+    if (cachedRide) {
+      return cachedRide;
+    }
+
+    // Fallback to Prisma if not in Redis
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        pilotId,
+        status: {
+          in: [
+            BookingStatus.ACCEPTED,
+            BookingStatus.IN_PROGRESS,
+            BookingStatus.STARTED,
+          ],
+        }, // Adjust statuses as needed
+      },
+      select: { id: true, customerId: true },
+    });
+
+    if (booking) {
+      const rideData = {
+        bookingId: booking.id,
+        customerId: booking.customerId,
+      };
+      // Cache in Redis with TTL (1 hour)
+      await this.redis.setActiveRide(
+        pilotId,
+        booking.id,
+        booking.customerId,
+        3600,
+      );
+      return rideData;
+    }
+
+    return null;
+  }
+
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       userId,
@@ -184,9 +223,17 @@ export class RideService {
           where: { id: bookingId },
           data: { status: BookingStatus.CANCELLED },
         });
-        server.to(userId).emit('rideCancelled', {
+
+        await this.prisma.cancellationReason.create({
+          data: {
+            bookingId,
+            reason: 'Driver not found',
+          },
+        });
+
+        server.to(userId).emit('driverNotFound', {
           bookingId,
-          reason: 'Unfortunately ride request has been cancelled.',
+          message: 'Unfortunately ride request has been cancelled.',
         });
       }
 

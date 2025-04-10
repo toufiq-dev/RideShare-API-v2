@@ -39,6 +39,7 @@ export interface AcceptRideRequest {
 export interface CustomerRideAcceptedEventPayload {
   bookingCode: string;
   bookingId: string;
+  bookingStatus: BookingStatus;
   pilot: {
     pilotName: string;
     profilePicture: string;

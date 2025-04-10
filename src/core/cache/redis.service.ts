@@ -216,4 +216,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
   }
+
+  async setActiveRide(
+    pilotId: string,
+    bookingId: string,
+    customerId: string,
+    ttl: number = 3600,
+  ): Promise<void> {
+    const key = `active-ride:${pilotId}`;
+    const value = JSON.stringify({ bookingId, customerId });
+    await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
+    this.logger.log(
+      `Set active ride for pilot ${pilotId}: ${value}`,
+      this.context,
+    );
+  }
+
+  async getActiveRide(
+    pilotId: string,
+  ): Promise<{ bookingId: string; customerId: string } | null> {
+    const key = `active-ride:${pilotId}`;
+    const value = await this.client.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async removeActiveRide(pilotId: string): Promise<void> {
+    const key = `active-ride:${pilotId}`;
+    await this.client.del(key);
+    this.logger.log(`Removed active ride for pilot ${pilotId}`, this.context);
+  }
 }

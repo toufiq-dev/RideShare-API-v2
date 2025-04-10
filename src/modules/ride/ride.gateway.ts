@@ -63,12 +63,27 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() body: any,
   ) {
-    const location = JSON.parse(body);
+    const { lat, lng } = JSON.parse(body);
 
-    return await this.rideService.handleUpdateLocation(
-      client,
-      location.lat,
-      location.lng,
-    );
+    try {
+      await this.rideService.handleUpdateLocation(client, lat, lng);
+
+      const pilotId = client.data.user.userId;
+      const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
+
+      if (activeRide) {
+        const payload = {
+          bookingId: activeRide.bookingId,
+          lat,
+          lng,
+        };
+        this.server
+          .to(activeRide.customerId)
+          .emit('driverLiveLocation', payload);
+      }
+    } catch (error) {
+      console.error(error);
+      client.emit('error', { message: 'Failed to update location' });
+    }
   }
 }

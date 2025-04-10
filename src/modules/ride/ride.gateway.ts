@@ -66,9 +66,8 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { lat, lng } = JSON.parse(body);
 
     try {
-      await this.rideService.handleUpdateLocation(client, lat, lng);
+      const pilotId = await this.rideService.handleUpdateLocation(client, lat, lng);
 
-      const pilotId = client.data.user.userId;
       const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
       console.log('activeRide\n', activeRide);
       if (activeRide) {

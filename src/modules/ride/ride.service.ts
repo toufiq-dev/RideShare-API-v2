@@ -40,7 +40,7 @@ export class RideService {
       // Store location in Redis geospatial set
       await this.redis.geoAdd(`pilotLocations`, lng, lat, pilot.id);
 
-      return { message: 'Location updated successfully' };
+      return pilot.id
     } catch (error) {
       console.error(error);
       client.emit('error', { message: 'Failed to update location' });

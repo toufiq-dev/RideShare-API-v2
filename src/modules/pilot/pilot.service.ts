@@ -775,7 +775,7 @@ export class PilotService {
       // Cache active ride in Redis
       await this.redis.setActiveRide(
         pilot.id,
-        bookingId,
+        result.updated.id,
         result.updated.customerId,
       );
 

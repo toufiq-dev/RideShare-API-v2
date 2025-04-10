@@ -780,15 +780,15 @@ export class PilotService {
       );
 
       const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
+      console.log('pilotLocation in acceptRide');
+      console.log(pilotLocation);
       let pickupInMinutes: number | null = null;
-      let driverCurrentLocation: { lat: number; lng: number } | null = null;
 
       if (pilotLocation) {
-        const [lng, lat] = pilotLocation; // Redis returns [longitude, latitude]
-        driverCurrentLocation = { lat, lng };
+        const [lat, lng] = pilotLocation;
         const { durationMin } =
           await this.fareService.calculateDistanceAndDuration(
-            driverCurrentLocation,
+            { lat, lng },
             result.updated.pickupLocation as any,
           );
         pickupInMinutes = Math.ceil(durationMin);
@@ -823,7 +823,10 @@ export class PilotService {
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
-          pilotLocation: driverCurrentLocation,
+          pilotLocation: {
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
+          },
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,
           colour: vehicle.colour,

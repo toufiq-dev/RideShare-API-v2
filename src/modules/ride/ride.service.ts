@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, CancelledBy } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
 import { PilotStatus } from '@prisma/client';
@@ -229,6 +229,7 @@ export class RideService {
           data: {
             bookingId,
             reason: 'Driver not found',
+            cancelledBy: CancelledBy.SYSTEM,
           },
         });
 

@@ -14,13 +14,19 @@ import {
   UpdateCustomerNameDto,
   VehicleCategoryDto,
   CreateRideRequestDto,
+  CancelRideRequestDto,
 } from './dto/customer.dto';
 import { RideGateway } from '../ride/ride.gateway';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
+import {
+  VehicleTypeName,
+  BookingStatus,
+  RideType,
+  CancelledBy,
+} from '@prisma/client';
 import { RideService } from '../ride/ride.service';
 
 @Injectable()
@@ -546,6 +552,63 @@ export class CustomerService {
           discountedPrice: Number(price.toFixed(0)),
           coupon: coupon ? coupon : null,
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async cancelRideRequest(
+    cancelRideRequestDto: CancelRideRequestDto,
+    userId: string,
+  ) {
+    const { bookingId, reason } = cancelRideRequestDto;
+    try {
+      const customer = await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
+
+      const booking = await this.prisma.booking.findUnique({
+        where: {
+          id: bookingId,
+        },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      if (booking.customerId !== customer.id) {
+        throw new UnauthorizedException(
+          'You are not authorized to cancel this booking.',
+        );
+      }
+
+      await this.prisma.booking.update({
+        where: {
+          id: bookingId,
+        },
+        data: {
+          status: BookingStatus.CANCELLED,
+        },
+      });
+
+      await this.prisma.cancellationReason.create({
+        data: {
+          bookingId: bookingId,
+          reason: reason,
+          cancelledBy: CancelledBy.CUSTOMER,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Ride request cancelled successfully.',
       };
     } catch (error) {
       console.error(error);

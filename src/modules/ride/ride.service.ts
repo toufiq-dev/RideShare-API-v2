@@ -1,17 +1,13 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { UpdateLocationDto, CreateBookingDto } from './dto/ride.dto';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, CancelledBy } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
 import { PilotStatus } from '@prisma/client';
 import { Server } from 'socket.io';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { NotifyDriverPayload, RideRequestPayload } from './dto/ride.interface';
 
 @Injectable()
 export class RideService {
@@ -21,16 +17,10 @@ export class RideService {
     @InjectQueue('ride-request') private readonly rideQueue: Queue,
   ) {}
 
-  async enqueueRideRequest(payload: CreateBookingDto) {
+  async enqueueRideRequest(payload: RideRequestPayload) {
     try {
       return await this.rideQueue.add('broadcast-to-pilots', payload, {
-        jobId: `ride-request-${payload.bookingId}`,
-        removeOnComplete: true,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
+        jobId: `ride-${payload.bookingId}`,
       });
     } catch (error) {
       console.error(error);
@@ -48,86 +38,178 @@ export class RideService {
       }
 
       // Store location in Redis geospatial set
-      await this.redis.geoAdd('pilotLocations', lng, lat, pilot.id);
+      await this.redis.geoAdd(`pilotLocations`, lng, lat, pilot.id);
 
-      return { message: 'Location updated successfully' };
+      return pilot.id;
     } catch (error) {
       console.error(error);
       client.emit('error', { message: 'Failed to update location' });
     }
   }
 
-  async handleRequestRide(server: Server, createBookingDto: CreateBookingDto) {
+  async getActiveRideForPilot(pilotId: string) {
+    const cachedRide = await this.redis.getActiveRide(pilotId);
+    if (cachedRide) {
+      return cachedRide;
+    }
+
+    // Fallback to Prisma if not in Redis
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        pilotId,
+        status: {
+          in: [
+            BookingStatus.ACCEPTED,
+            BookingStatus.IN_PROGRESS,
+            BookingStatus.STARTED,
+          ],
+        }, // Adjust statuses as needed
+      },
+      include: { customer: true, pilot: true },
+    });
+
+    if (booking) {
+      const rideData = {
+        bookingId: booking.id,
+        customerUserId: booking.customer.userId,
+      };
+      // Cache in Redis with TTL (1 hour)
+      await this.redis.setActiveRide(
+        pilotId,
+        booking.id,
+        booking.customer.userId,
+        3600,
+      );
+      return rideData;
+    }
+
+    return null;
+  }
+
+  async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
+      userId,
       bookingId,
-      customerId,
-      bookingCode,
       vehicleTypeId,
+      distanceKm,
+      durationMin,
       pickupLocation,
       dropLocation,
-      currentLocation,
-    } = createBookingDto;
+    } = payload;
 
     try {
       const booking = await this.prisma.booking.findFirst({
-        where: { id: bookingId },
+        where: { id: bookingId, status: BookingStatus.PENDING },
       });
-      if (!booking || booking.status !== BookingStatus.PENDING) {
+      if (!booking)
         throw new NotFoundException('Booking not found or not pending');
-      }
 
       let radius = 500; // Initial radius in meters
       const maxRadius = 1500; // Max radius
-      const driverTimeout = 10 * 1000; // 10 seconds per driver
+      const driverTimeout = 12 * 1000; // 12 seconds per driver
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
-        const nearestPilot = await this.findNearestDriver(
-          pickupLocation,
+        // Fetch all nearby pilots in the current radius
+        const nearbyPilots: any = await this.redis.geoRadius(
+          `pilotLocations`,
+          pickupLocation.lng,
+          pickupLocation.lat,
           radius,
-          vehicleTypeId,
+          'm',
+          { withDist: true, sort: 'ASC' },
         );
 
-        if (!nearestPilot) {
-          return false; // No driver found in this radius
+        if (!nearbyPilots.length) {
+          return false; // No drivers in this radius
         }
 
-        console.log(nearestPilot);
+        // Iterate through all pilots in the radius
+        for (const [pilotId, distance] of nearbyPilots) {
+          // Check if this pilot was already notified
+          const notifiedKey = `notified-${bookingId}:${pilotId}`;
+          const alreadyNotified = await this.redis.get(notifiedKey);
+          if (alreadyNotified) {
+            continue; // Skip already notified driver
+          }
 
-        await this.notifyDriver(booking, customerId, server);
-
-        // Use Redis expiration to track driver acceptance
-        const acceptanceKey = `ride:accept:${bookingId}`;
-        await this.redis.set(acceptanceKey, 'pending', driverTimeout / 1000);
-        const startTime = Date.now();
-
-        while (Date.now() - startTime < driverTimeout) {
-          const bookingStatus = await this.prisma.booking.findUnique({
-            where: { id: bookingId },
+          // Fetch pilot details
+          const pilot = await this.prisma.pilot.findUnique({
+            where: { id: pilotId, onlineStatus: PilotStatus.AVAILABLE },
+            include: { vehicle: true },
           });
 
-          if (bookingStatus?.status !== BookingStatus.PENDING) return true;
+          if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
+            await this.redis.set(
+              `booking-vehicle:${bookingId}:${pilotId}`,
+              pilot.vehicle.id,
+              20,
+            ); // 20 seconds TTL
 
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Poll less frequently
+            const notifyDriverPayload: NotifyDriverPayload = {
+              pilotId,
+              userId: pilot.userId,
+              bookingId,
+              vehicleTypeId,
+              pickupLocation,
+              dropLocation,
+              estimatedFare: booking.discountedFare,
+              nearestPilotDistance: parseFloat(distance) / 1000,
+              distanceKm,
+              durationMin,
+              server,
+            };
+
+            await this.notifyDriver(notifyDriverPayload);
+
+            // Track driver acceptance
+            const acceptanceKey = `ride-accept:${bookingId}`;
+            await this.redis.set(
+              acceptanceKey,
+              'pending',
+              driverTimeout / 1000,
+            );
+
+            const startTime = Date.now();
+            while (Date.now() - startTime < driverTimeout) {
+              const bookingStatus = await this.prisma.booking.findUnique({
+                where: { id: bookingId },
+              });
+
+              if (bookingStatus?.status !== BookingStatus.PENDING) {
+                return true; // Booking was accepted or cancelled
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+
+            await this.redis.del(acceptanceKey);
+
+            server.to(pilot.userId).emit('rideRequestTimeout', {
+              bookingId,
+              reason: 'Time expired. You did not respond to the ride request.',
+            });
+
+            // Booking is still pending, continue to the next driver
+            continue;
+          }
         }
-
-        await this.redis.del(acceptanceKey);
-        return false;
+        
+        return false; // No eligible drivers found in this radius
       };
 
-      let driverAccepted = await searchAndNotifyNextDriver();
+      let driverAccepted = false;
 
-      while (!driverAccepted && radius < maxRadius) {
-        radius += 200; // Expand radius by 200 meters
+      while (!driverAccepted && radius <= maxRadius) {
         driverAccepted = await searchAndNotifyNextDriver();
 
-        // Early exit if booking status changes (e.g., cancelled manually)
         if (!driverAccepted) {
           const updatedBooking = await this.prisma.booking.findUnique({
             where: { id: bookingId },
           });
           if (updatedBooking?.status !== BookingStatus.PENDING) {
-            break;
+            break; // Exit if booking is no longer pending
           }
+          radius += 200; // Expand radius
         }
       }
 
@@ -136,16 +218,25 @@ export class RideService {
           where: { id: bookingId },
           data: { status: BookingStatus.CANCELLED },
         });
-        server.to(`user:${customerId}`).emit('rideCancelled', {
+
+        await this.prisma.cancellationReason.create({
+          data: {
+            bookingId,
+            reason: 'Driver not found',
+            cancelledBy: CancelledBy.SYSTEM,
+          },
+        });
+
+        server.to(userId).emit('driverNotFound', {
           bookingId,
-          reason: 'No drivers available within range',
+          message: 'Unfortunately ride request has been cancelled.',
         });
       }
 
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.to(`user:${customerId}`).emit('error', {
+      server.to(userId).emit('error', {
         message: 'Failed to process ride request',
         error: error.message,
       });
@@ -153,84 +244,38 @@ export class RideService {
     }
   }
 
-  async handleAcceptRide(client: Socket, bookingId: string) {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: client.data.user.userId },
-      });
-      if (!pilot) {
-        throw new NotFoundException('User not found.');
-      }
+  private async notifyDriver(payload: NotifyDriverPayload) {
+    const {
+      pilotId,
+      userId,
+      bookingId,
+      vehicleTypeId,
+      pickupLocation,
+      dropLocation,
+      estimatedFare,
+      nearestPilotDistance,
+      distanceKm,
+      durationMin,
+      server,
+    } = payload;
 
-      const booking = await this.prisma.booking.update({
-        where: { id: bookingId, status: BookingStatus.PENDING },
-        data: {
-          pilotId: pilot.id,
-          status: BookingStatus.ACCEPTED,
-          acceptedAt: new Date(),
-        },
-        include: { customer: true, pilot: true },
-      });
+    const notifiedKey = `notified-${bookingId}:${pilotId}`;
+    await this.redis.set(notifiedKey, 'true', 300); // Mark as notified
 
-      return booking;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  private async findNearestDriver(
-    pickupLocation: { lat: number; lng: number },
-    radius: number,
-    vehicleTypeId: string,
-  ) {
-    // Fetch pilots within radius from Redis
-    const nearbyPilots: any = await this.redis.geoRadius(
-      `pilotLocations`,
-      pickupLocation.lng,
-      pickupLocation.lat,
-      radius,
-      'm',
-      { withDist: true, sort: 'ASC' },
-    );
-
-    // nearbyPilots format: [[pilotId, distance], ...]
-    if (!nearbyPilots.length) {
-      return null; // No pilots in this radius
-    }
-
-    for (const [pilotId, distance] of nearbyPilots) {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { id: pilotId },
-        include: { vehicles: true },
-      });
-
-      if (
-        pilot &&
-        pilot.onlineStatus === PilotStatus.AVAILABLE &&
-        pilot.vehicles.some((v) => v.vehicleTypeId === vehicleTypeId)
-      ) {
-        return { ...pilot, distance: parseFloat(distance) };
-      }
-    }
-
-    // No pilots in this radius
-    return null;
-  }
-
-  async notifyDriver(booking: any, customerId: string, server: Server) {
     const notificationPayload = {
-      bookingId: booking.bookingId,
-      pickupLocation: booking.pickupLocation,
-      dropLocation: booking.dropLocation,
-      estimatedFare: booking.estimatedFare,
+      bookingId,
+      vehicleTypeId,
+      pickupLocation,
+      dropLocation,
+      estimatedFare: Number(estimatedFare),
+      nearestPilotDistance,
+      distanceKm,
+      durationMin,
     };
 
-    // Notify the single driver
-    const test = server
-      // .to(`user:${customerId}`)
-      .emit('rideRequest', notificationPayload);
+    // Emit the ride request to the driver
+    server.to(userId).emit('rideRequest', notificationPayload);
 
-    console.log('emitted?', test);
+    console.log(`Ride request emitted to pilot ${pilotId} (userId: ${userId})`);
   }
 }

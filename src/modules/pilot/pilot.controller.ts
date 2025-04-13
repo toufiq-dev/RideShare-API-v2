@@ -24,6 +24,7 @@ import {
   PancardDto,
   VehicleRcDto,
   BeOnlineDto,
+  AcceptRideDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -223,5 +224,15 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.beOnline(userId, beOnlineDto);
+  }
+
+  @Post('accept-ride')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Accept a trip' })
+  async acceptRide(
+    @Body() acceptRideDto: AcceptRideDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.acceptRide(acceptRideDto, userId);
   }
 }

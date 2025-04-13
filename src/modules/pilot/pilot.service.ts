@@ -15,8 +15,11 @@ import {
   PancardDto,
   AadhaarNumberDto,
   BeOnlineDto,
+  AcceptRideDto,
 } from './dto/pilot.dto';
 import {
+  AcceptRideRequest,
+  CustomerRideAcceptedEventPayload,
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
@@ -26,10 +29,12 @@ import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
+  BookingStatus,
   PilotStatus,
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
+import { FareService } from '../fare/fare.service';
 
 @Injectable()
 export class PilotService {
@@ -39,6 +44,7 @@ export class PilotService {
     private readonly verificationService: VerificationService,
     private readonly rideGateway: RideGateway,
     private readonly redis: RedisService,
+    private readonly fareService: FareService,
   ) {}
 
   async getPilot(userId: string) {
@@ -218,7 +224,7 @@ export class PilotService {
 
       if (rawResponse.isExpired) {
         return {
-          message: 'Transport license is expired.',
+          message: 'Driving license is expired.',
           data: {
             ...verificationResponse,
             id: null,
@@ -336,9 +342,9 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      // if (!pilot.selfieUrl) {
-      //   throw new BadRequestException('Driver does not have Live selfie.');
-      // }
+      if (!pilot.selfieUrl) {
+        throw new BadRequestException('Driver does not have Live selfie.');
+      }
 
       let { registrationNumber } = vehicleRcDto;
 
@@ -512,9 +518,9 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      // if (!pilot.isPanCardVerified) {
-      //   throw new BadRequestException('Driver does not have pancard verfied.');
-      // }
+      if (!pilot.isPanCardVerified) {
+        throw new BadRequestException('Driver does not have pancard verfied.');
+      }
 
       const verificationResponse =
         await this.verificationService.sendOtpToverifyAadhaar(aadhaarNumber);
@@ -710,6 +716,10 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      if (!onlineStatus) {
+        await this.redis.zRem('pilotLocations', pilot.id);
+      }
+
       await this.prisma.pilot.update({
         where: { userId },
         data: {
@@ -719,6 +729,137 @@ export class PilotService {
           currentLocation: JSON.parse(JSON.stringify(currentLocation)),
         },
       });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
+    const { bookingId } = acceptRideDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        include: { drivingLicense: true, vehicle: true },
+      });
+      if (!pilot) throw new NotFoundException('Pilot not found.');
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        await tx.pilot.update({
+          where: { userId },
+          data: {
+            activeBookingId: bookingId,
+          },
+        });
+
+        const booking = await tx.booking.findFirst({
+          where: { id: bookingId, status: BookingStatus.PENDING },
+        });
+        if (!booking) throw new BadRequestException('Booking not found.');
+
+        const updated = await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            pilotId: pilot.id,
+            status: BookingStatus.ACCEPTED,
+            acceptedAt: new Date(),
+          },
+          include: { customer: true, pilot: true },
+        });
+
+        return { updated };
+      });
+
+      const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
+
+      let pickupInMinutes: number | null = null;
+
+      if (pilotLocation) {
+        const [lat, lng] = pilotLocation;
+        const { durationMin } =
+          await this.fareService.calculateDistanceAndDuration(
+            { lat, lng },
+            result.updated.pickupLocation as any,
+          );
+        pickupInMinutes = Math.ceil(durationMin);
+      }
+
+      const vehicleId = await this.redis.get(
+        `booking-vehicle:${bookingId}:${pilot.id}`,
+      );
+      const vehicle = vehicleId
+        ? await this.prisma.vehicle.findUnique({
+            where: { id: vehicleId },
+            include: { vehicleType: true },
+          })
+        : null;
+
+      const coupon = await this.prisma.coupon.findUnique({
+        where: {
+          id: result.updated.customer.couponId,
+        },
+      });
+
+      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
+      // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
+      await this.redis.del(`ride-accept:${bookingId}`);
+
+      // Cache active ride in Redis
+      await this.redis.setActiveRide(
+        pilot.id,
+        result.updated.id,
+        result.updated.customer.userId,
+      );
+
+      const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
+        bookingCode: result.updated.bookingCode,
+        bookingId: result.updated.id,
+        bookingStatus: result.updated.status,
+        pilot: {
+          pilotName: pilot.drivingLicense.nameOnLicense,
+          profilePicture: pilot.selfieUrl,
+          pilotPhone: pilot.phone,
+          rating: pilot.averageRating,
+          pilotLocation: {
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
+          },
+          vehicleNumber: vehicle.regNo,
+          model: vehicle.model,
+          colour: vehicle.colour,
+          vehicleType: vehicle.vehicleType.name,
+        },
+        pickupInMinutes,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        fairDetails: {
+          origialFare: Number(result.updated.estimatedFare),
+          discountedFare: Number(result.updated.discountedFare),
+          coupon,
+        },
+      };
+
+      // rideAccepted event triggered for customer
+      this.rideGateway.server
+        .to(result.updated.customer.userId)
+        .emit('rideAccepted', rideAcceptedPayload);
+
+      const data: AcceptRideRequest = {
+        bookingId: result.updated.id,
+        fare: Number(result.updated.discountedFare),
+        customerName: result.updated.customer.name,
+        customerPhone: result.updated.customer.phone,
+        averageRating: result.updated.customer.averageRating,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        rideStatus: result.updated.status,
+      };
+
+      return {
+        message: 'Ride accepted successfully.',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;

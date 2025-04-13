@@ -9,9 +9,10 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
-import { UpdateLocationDto, CreateBookingDto } from './dto/ride.dto';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
+import { SocketService } from 'src/core/socket/socket.service';
 
 @WebSocketGateway({
   cors: {
@@ -24,15 +25,21 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly rideService: RideService) {}
+  constructor(
+    private readonly socketService: SocketService,
+    private readonly rideService: RideService,
+  ) {}
+
+  onModuleInit() {
+    this.socketService.setServer(this.server); // Initialize shared server
+  }
 
   async handleConnection(client: Socket) {
-    console.log('Connection attempt from:', client.handshake.address);
-    console.log('Client connected successfully:', client.id);
+    await this.socketService.handleConnection(client);
   }
 
   handleDisconnect(client: Socket) {
-    console.log('Client disconnected:', client.id);
+    this.socketService.handleDisconnect(client);
   }
 
   @SubscribeMessage('updateLocation')
@@ -40,57 +47,33 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() body: any,
   ) {
-    const location = JSON.parse(body);
+    const { lat, lng } = JSON.parse(body);
 
-    return await this.rideService.handleUpdateLocation(
-      client,
-      location.lat,
-      location.lng,
-    );
-  }
-
-  // @SubscribeMessage('requestRide')
-  // async requestRide(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() createBookingDto: CreateBookingDto,
-  // ) {
-  //   return await this.rideService.handleRequestRide(
-  //     client,
-  //     this.server,
-  //     createBookingDto,
-  //   );
-  // }
-
-  @SubscribeMessage('acceptRide')
-  async acceptRide(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { bookingId: string },
-  ) {
     try {
-      const booking = await this.rideService.handleAcceptRide(
+      const pilotId = await this.rideService.handleUpdateLocation(
         client,
-        data.bookingId,
+        lat,
+        lng,
       );
 
-      // Join pilot to booking-specific room
-      client.join(`booking:${booking.id}`);
+      const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
 
-      // Notify customer in their room
-      this.server.to(`user:${booking.customerId}`).emit('rideAccepted', {
-        bookingId: booking.id,
-        pilotId: booking.pilotId,
-        status: booking.status,
-      });
+      if (activeRide) {
+        const payload = {
+          bookingId: activeRide.bookingId,
+          lat,
+          lng,
+        };
 
-      // Notify pilot in their room
-      this.server.to(`user:${booking.pilotId}`).emit('rideConfirmed', {
-        bookingId: booking.id,
-      });
+        const test = this.server
+          .to(activeRide.customerUserId)
+          .emit('driverLiveLocation', payload);
 
-      return { success: true, data: booking };
+        console.log('Emitting driverLiveLocation:', test);
+      }
     } catch (error) {
       console.error(error);
-      client.emit('error', { message: 'Failed to accept ride' });
+      client.emit('error', { message: 'Failed to update location' });
     }
   }
 }

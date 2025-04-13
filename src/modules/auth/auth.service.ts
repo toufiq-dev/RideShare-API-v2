@@ -16,7 +16,6 @@ import {
   RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
-import { RideGateway } from '../ride/ride.gateway';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
 
@@ -34,7 +33,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly otpService: OTPService,
-    private readonly rideGateway: RideGateway,
     private readonly geofencingService: GeofencingService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
@@ -140,13 +138,17 @@ export class AuthService {
   async checkLocation(locationDto: LocationDto) {
     const { lat, lng } = locationDto;
 
-    const isInsideDhaka = this.geofencingService.isWithinDhaka(lat, lng);
+    const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
+      lat,
+      lng,
+    );
 
     return {
       data: {
-        isInServiceArea: isInsideDhaka,
+        isInServiceArea,
+        city,
       },
-      message: isInsideDhaka
+      message: isInServiceArea
         ? 'Within the service area.'
         : 'Outside the service area.',
     };

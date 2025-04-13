@@ -184,7 +184,6 @@ export class VerificationService {
       // Check if rc or permit is expired
       let isrcExpired = false;
       if (!responseRc.data.result.rcExpiryDate) {
-        console.log('here not');
         throw new BadRequestException(
           'Vehicle registration or permit is expired.',
         );

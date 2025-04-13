@@ -66,10 +66,16 @@ export class BeOnlineDto {
 
   @ApiProperty({
     description: 'Current Location in latitude and longitude',
-    required: false,
   })
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => LocationDto)
   currentLocation: LocationDto;
+}
+
+export class AcceptRideDto {
+  @ApiProperty({ description: 'Booking id' })
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingId: string;
 }

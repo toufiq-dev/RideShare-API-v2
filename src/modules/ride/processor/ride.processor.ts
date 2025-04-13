@@ -16,9 +16,8 @@ export class RideRequestProcessor extends WorkerHost {
 
   async process(job: Job): Promise<any> {
     const payload = job.data;
-    console.log(payload);
     const server = this.rideGateway.server;
 
-    await this.rideService.handleRequestRide(server, payload);
+    await this.rideService.handleRideRequest(server, payload);
   }
 }

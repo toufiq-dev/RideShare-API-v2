@@ -1,4 +1,4 @@
-import { VehicleTypeName } from '@prisma/client';
+import { BookingStatus, VehicleTypeName } from '@prisma/client';
 
 export interface VerificationResponseDL {
   licenseNumber: string;
@@ -23,4 +23,40 @@ export interface VerificationResponseVehicle {
   puccUpto?: Date;
   insuranceUpto?: Date;
   verificationFailed: boolean;
+}
+
+export interface AcceptRideRequest {
+  customerName: string;
+  customerPhone: string;
+  averageRating: number;
+  pickupLocation: any;
+  dropLocation: any;
+  rideStatus: BookingStatus;
+  bookingId: string;
+  fare: number;
+}
+
+export interface CustomerRideAcceptedEventPayload {
+  bookingCode: string;
+  bookingId: string;
+  bookingStatus: BookingStatus;
+  pilot: {
+    pilotName: string;
+    profilePicture: string;
+    pilotPhone: string;
+    rating: number;
+    pilotLocation: any;
+    vehicleNumber: string;
+    model: string;
+    colour: string;
+    vehicleType: string;
+  };
+  pickupInMinutes: number;
+  pickupLocation: any;
+  dropLocation: any;
+  fairDetails: {
+    origialFare: number;
+    discountedFare: number;
+    coupon: any;
+  };
 }

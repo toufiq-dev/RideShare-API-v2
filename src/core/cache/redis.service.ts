@@ -71,13 +71,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client;
   }
 
-  async set(key: string, value: string, ttl: number): Promise<void> {
+  async set(key: string, value: string, ttl?: number): Promise<void> {
     try {
-      await this.client.set(key, value, 'EX', ttl);
-      this.logger.log(
-        `Successfully set key: ${key} with TTL: ${ttl}`,
-        this.context,
-      );
+      if (ttl !== undefined) {
+        await this.client.set(key, value, 'EX', ttl);
+        this.logger.log(
+          `Successfully set key: ${key} with TTL: ${ttl}`,
+          this.context,
+        );
+      } else {
+        await this.client.set(key, value);
+        this.logger.log(
+          `Successfully set key: ${key} with no TTL`,
+          this.context,
+        );
+      }
     } catch (error) {
       this.logger.error(`Failed to set key: ${key}`, error.stack, this.context);
       throw error;
@@ -118,10 +126,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     member: string,
   ): Promise<number> {
     try {
-      console.log(
-        `Adding to geo set: ${key}, lng: ${longitude}, lat: ${latitude}, member: ${member}`,
-      );
-
       const result = await this.client.geoadd(key, longitude, latitude, member);
       this.logger.log(
         `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,
@@ -132,6 +136,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(
         `Failed to add to geospatial set ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async geoPos(key: string, member: string): Promise<[number, number] | null> {
+    try {
+      const result = await this.client.geopos(key, member);
+
+      if (result && result[0]) {
+        const [longitude, latitude] = result[0];
+        this.logger.log(
+          `Fetched pilot ${member} location from ${key}: (${latitude}, ${longitude})`,
+          this.context,
+        );
+        return [Number(latitude), Number(longitude)];
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get geopos for ${member}`,
         error.stack,
         this.context,
       );
@@ -188,5 +215,31 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       );
       throw error;
     }
+  }
+
+  async setActiveRide(
+    pilotId: string,
+    bookingId: string,
+    customerUserId: string,
+    ttl: number = 3600,
+  ): Promise<void> {
+    const key = `active-ride:${pilotId}`;
+    const value = JSON.stringify({ bookingId, customerUserId });
+    await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
+    this.logger.log(`Set active ride cache ${pilotId}: ${value}`, this.context);
+  }
+
+  async getActiveRide(
+    pilotId: string,
+  ): Promise<{ bookingId: string; customerUserId: string } | null> {
+    const key = `active-ride:${pilotId}`;
+    const value = await this.client.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async removeActiveRide(pilotId: string): Promise<void> {
+    const key = `active-ride:${pilotId}`;
+    await this.client.del(key);
+    this.logger.log(`Removed active ride for pilot ${pilotId}`, this.context);
   }
 }

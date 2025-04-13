@@ -745,18 +745,17 @@ export class PilotService {
       });
       if (!pilot) throw new NotFoundException('Pilot not found.');
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          activeBookingId: bookingId,
-        },
-      });
-
       const result = await this.prisma.$transaction(async (tx) => {
+        await tx.pilot.update({
+          where: { userId },
+          data: {
+            activeBookingId: bookingId,
+          },
+        });
+
         const booking = await tx.booking.findFirst({
           where: { id: bookingId, status: BookingStatus.PENDING },
         });
-
         if (!booking) throw new BadRequestException('Booking not found.');
 
         const updated = await tx.booking.update({
@@ -773,8 +772,7 @@ export class PilotService {
       });
 
       const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
-      console.log('pilotLocation in acceptRide');
-      console.log(pilotLocation);
+
       let pickupInMinutes: number | null = null;
 
       if (pilotLocation) {

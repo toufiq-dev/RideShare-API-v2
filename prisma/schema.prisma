@@ -268,7 +268,7 @@ model Transaction {
 
 model Booking {
   id                 String              @id @default(uuid())
-  bookingCode        String              @unique
+  bookingCode        String
   customerId         String
   pilotId            String?
   name               String
@@ -298,6 +298,7 @@ model Booking {
   customerRating     CustomerRating?
   pilotRating        PilotRating?
   supportTicket      SupportTicket?
+  message            Message[]
 
   @@index([customerId])
   @@index([pilotId])
@@ -312,6 +313,17 @@ model CancellationReason {
   supportId   String?
   booking     Booking     @relation(fields: [bookingId], references: [id])
   support     Support?    @relation(fields: [supportId], references: [id])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  bookingId String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
 }
 
 model CustomerRating {

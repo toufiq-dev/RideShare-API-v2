@@ -50,7 +50,6 @@ export class RideService {
   async getActiveRideForPilot(pilotId: string) {
     const cachedRide = await this.redis.getActiveRide(pilotId);
     if (cachedRide) {
-      console.log('getActiveRideForPilot\n', cachedRide);
       return cachedRide;
     }
 
@@ -72,7 +71,7 @@ export class RideService {
     if (booking) {
       const rideData = {
         bookingId: booking.id,
-        customerUserId: booking.customerId,
+        customerUserId: booking.customer.userId,
       };
       // Cache in Redis with TTL (1 hour)
       await this.redis.setActiveRide(
@@ -102,9 +101,8 @@ export class RideService {
       const booking = await this.prisma.booking.findFirst({
         where: { id: bookingId, status: BookingStatus.PENDING },
       });
-      if (!booking) {
+      if (!booking)
         throw new NotFoundException('Booking not found or not pending');
-      }
 
       let radius = 500; // Initial radius in meters
       const maxRadius = 1500; // Max radius
@@ -136,15 +134,11 @@ export class RideService {
 
           // Fetch pilot details
           const pilot = await this.prisma.pilot.findUnique({
-            where: { id: pilotId },
+            where: { id: pilotId, onlineStatus: PilotStatus.AVAILABLE },
             include: { vehicle: true },
           });
 
-          if (
-            pilot &&
-            pilot.onlineStatus === PilotStatus.AVAILABLE &&
-            pilot.vehicle?.vehicleTypeId === vehicleTypeId
-          ) {
+          if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
             await this.redis.set(
               `booking-vehicle:${bookingId}:${pilotId}`,
               pilot.vehicle.id,
@@ -174,8 +168,8 @@ export class RideService {
               'pending',
               driverTimeout / 1000,
             );
-            const startTime = Date.now();
 
+            const startTime = Date.now();
             while (Date.now() - startTime < driverTimeout) {
               const bookingStatus = await this.prisma.booking.findUnique({
                 where: { id: bookingId },

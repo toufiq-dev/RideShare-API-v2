@@ -11,8 +11,8 @@ import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
+import { SocketService } from 'src/core/socket/socket.service';
 
 @WebSocketGateway({
   cors: {
@@ -26,36 +26,20 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   constructor(
+    private readonly socketService: SocketService,
     private readonly rideService: RideService,
-    private readonly jwtService: JwtService,
   ) {}
 
+  onModuleInit() {
+    this.socketService.setServer(this.server); // Initialize shared server
+  }
+
   async handleConnection(client: Socket) {
-    const token = client.handshake.auth?.token;
-
-    if (!token) {
-      throw new WsException('Missing authentication token');
-    }
-
-    try {
-      const payload = await this.jwtService.verifyAsync(token);
-      if (!payload) {
-        console.error('Invalid token: no userId');
-        client.disconnect();
-        return;
-      }
-
-      await client.join(payload.userId);
-      console.log(`${payload.role} joined room: ${payload.userId}`);
-    } catch (err) {
-      console.error('JWT verification failed:', err.message);
-      client.disconnect();
-    }
+    await this.socketService.handleConnection(client);
   }
 
   handleDisconnect(client: Socket) {
-    client.disconnect();
-    console.log('Client disconnected:', client.id);
+    this.socketService.handleDisconnect(client);
   }
 
   @SubscribeMessage('updateLocation')
@@ -73,7 +57,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
 
       const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
-      console.log('activeRide\n', activeRide);
+
       if (activeRide) {
         const payload = {
           bookingId: activeRide.bookingId,

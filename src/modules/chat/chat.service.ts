@@ -3,7 +3,7 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { BookingStatus } from '@prisma/client';
 import { SendMessageDto } from './dto/send-message.dto';
-import { Message } from './dto/message.interface';
+import { Message } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
@@ -12,16 +12,17 @@ export class ChatService {
   async sendMessage(
     userId: string,
     sendMessageDto: SendMessageDto,
-  ): Promise<Message> {
+  ): Promise<{ message: Message; recipientId: string }> {
     const { bookingId, content } = sendMessageDto;
 
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { customer: true, pilot: true },
     });
-    if (!booking || booking.status === BookingStatus.PENDING) {
+    if (!(booking.status in [BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.STARTED])) {
       throw new ForbiddenException('No active ride for this booking');
     }
+    
     if (userId !== booking.customer.userId && userId !== booking.pilot.userId) {
       throw new ForbiddenException('Unauthorized to chat for this booking');
     }
@@ -34,12 +35,22 @@ export class ChatService {
       },
     });
 
+    console.log('usrid\n', userId);
+    console.log('recipientId\n', booking);
+    const recipientId =
+      userId === booking.customer.userId
+        ? booking.pilot.userId
+        : booking.customer.userId;
+    console.log('recipientId\n', recipientId);
     return {
-      id: message.id,
-      bookingId: message.bookingId,
-      senderId: message.senderId,
-      content: message.content,
-      createdAt: message.createdAt,
+      message: {
+        id: message.id,
+        bookingId: message.bookingId,
+        senderId: message.senderId,
+        content: message.content,
+        createdAt: message.createdAt,
+      },
+      recipientId,
     };
   }
 

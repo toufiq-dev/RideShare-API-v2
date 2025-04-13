@@ -193,7 +193,7 @@ export class RideService {
             continue;
           }
         }
-
+        
         return false; // No eligible drivers found in this radius
       };
 

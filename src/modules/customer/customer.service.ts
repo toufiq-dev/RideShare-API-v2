@@ -542,6 +542,7 @@ export class CustomerService {
         message:
           'Your ride request is being processed. Searching for a driver...',
         data: {
+          bookingId: booking.id,
           location: [pickupLocation, dropLocation],
           originalPrice: Number(originalPrice.toFixed(0)),
           discountedPrice: Number(price.toFixed(0)),

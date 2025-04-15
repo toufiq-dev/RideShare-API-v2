@@ -100,19 +100,21 @@ export class ChatService {
     const hasPrevPage = page > 1;
 
     return {
-      messages: messages.map((msg) => ({
-        id: msg.id,
-        senderId: msg.senderId,
-        content: msg.content,
-        createdAt: msg.createdAt,
-      })),
-      pagination: {
-        totalItems: totalCount,
-        totalPages,
-        currentPage: page,
-        pageSize: pageSize,
-        hasNextPage,
-        hasPrevPage,
+      data: {
+        messages: messages.map((message) => ({
+          id: message.id,
+          senderId: message.senderId,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+        pagination: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: page,
+          pageSize: pageSize,
+          hasNextPage,
+          hasPrevPage,
+        },
       },
     };
   }

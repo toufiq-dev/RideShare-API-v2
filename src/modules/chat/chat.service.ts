@@ -15,14 +15,21 @@ export class ChatService {
   ): Promise<{ message: Message; recipientId: string }> {
     const { bookingId, content } = sendMessageDto;
 
-    const booking = await this.prisma.booking.findUnique({
+    const booking: any = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { customer: true, pilot: true },
     });
-    if (!(booking.status in [BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.STARTED])) {
+
+    if (
+      ![
+        BookingStatus.ACCEPTED,
+        BookingStatus.IN_PROGRESS,
+        BookingStatus.STARTED,
+      ].includes(booking.status)
+    ) {
       throw new ForbiddenException('No active ride for this booking');
     }
-    
+
     if (userId !== booking.customer.userId && userId !== booking.pilot.userId) {
       throw new ForbiddenException('Unauthorized to chat for this booking');
     }
@@ -35,13 +42,11 @@ export class ChatService {
       },
     });
 
-    console.log('usrid\n', userId);
-    console.log('recipientId\n', booking);
     const recipientId =
       userId === booking.customer.userId
         ? booking.pilot.userId
         : booking.customer.userId;
-    console.log('recipientId\n', recipientId);
+
     return {
       message: {
         id: message.id,
@@ -54,30 +59,57 @@ export class ChatService {
     };
   }
 
-  async getMessages(bookingId: string, userId: string): Promise<Message[]> {
+  async getMessages(
+    userId: string,
+    bookingId: string,
+    page: number,
+    pageSize: number,
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { customer: true, pilot: true },
     });
-    if (
-      !booking ||
-      (userId !== booking.customer.userId && userId !== booking.pilot.userId)
-    ) {
-      throw new ForbiddenException('Unauthorized to view messages');
+    if (!booking) {
+      throw new ForbiddenException('No active ride for this booking');
+    }
+    if (userId !== booking.customer.userId || userId !== booking.pilot.userId) {
+      throw new ForbiddenException('Unauthorized to chat for this booking');
     }
 
+    // Calculate skip value
+    const skip = (page - 1) * pageSize;
+
+    // Get total count of messages
+    const totalCount = await this.prisma.message.count({
+      where: { bookingId },
+    });
     const messages = await this.prisma.message.findMany({
       where: { bookingId },
       orderBy: { createdAt: 'asc' },
-      take: 100,
+      skip,
+      take: pageSize,
     });
 
-    return messages.map((msg) => ({
-      id: msg.id,
-      bookingId: msg.bookingId,
-      senderId: msg.senderId,
-      content: msg.content,
-      createdAt: msg.createdAt,
-    }));
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return {
+      messages: messages.map((msg) => ({
+        id: msg.id,
+        senderId: msg.senderId,
+        content: msg.content,
+        createdAt: msg.createdAt,
+      })),
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: page,
+        pageSize: pageSize,
+        hasNextPage,
+        hasPrevPage,
+      },
+    };
   }
 }

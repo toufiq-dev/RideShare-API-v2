@@ -41,7 +41,6 @@ export class ChatService {
         content: content.trim(),
       },
     });
-
     const recipientId =
       userId === booking.customer.userId
         ? booking.pilot.userId
@@ -65,10 +64,6 @@ export class ChatService {
     page: number,
     pageSize: number,
   ) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { userId },
-    });
-
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { customer: true, pilot: true },

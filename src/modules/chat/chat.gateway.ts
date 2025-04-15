@@ -40,16 +40,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const userId = client.data.user.userId;
+
       const { message, recipientId } = await this.chatService.sendMessage(
         userId,
         sendMessageDto,
       );
 
-      this.server
+      console.log(`${client.data.user.role} sent: ${message.content}`);
+
+      const ms = this.server
         .to(userId)
         .to(recipientId)
         .emit('rideReceiveMessage', message);
 
+      console.log('Emitting rideReceiveMessage:', ms);
       return { success: true };
     } catch (error) {
       console.error('sendMessage error:', error);

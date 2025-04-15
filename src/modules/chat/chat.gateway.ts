@@ -39,6 +39,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() sendMessageDto: SendMessageDto,
   ) {
     try {
+      console.log(
+        `${client.data.user.role} sending message: ${sendMessageDto}`,)
+
       const userId = client.data.user.userId;
 
       const { message, recipientId } = await this.chatService.sendMessage(

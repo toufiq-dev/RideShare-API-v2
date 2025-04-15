@@ -65,6 +65,10 @@ export class ChatService {
     page: number,
     pageSize: number,
   ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { userId },
+    });
+
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { customer: true, pilot: true },
@@ -72,7 +76,7 @@ export class ChatService {
     if (!booking) {
       throw new ForbiddenException('No active ride for this booking');
     }
-    if (userId !== booking.customer.userId || userId !== booking.pilot.userId) {
+    if (userId !== booking.customer.userId && userId !== booking.pilot.userId) {
       throw new ForbiddenException('Unauthorized to chat for this booking');
     }
 

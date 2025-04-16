@@ -98,6 +98,7 @@ export class ChatService {
       data: {
         messages: messages.map((message) => ({
           id: message.id,
+          bookingId: message.bookingId,
           senderId: message.senderId,
           content: message.content,
           createdAt: message.createdAt,

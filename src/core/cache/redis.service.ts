@@ -244,6 +244,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     const key = `active-ride:${pilotId}`;
     const value = await this.client.get(key);
+
+    this.logger.log(
+      `Retrieved active ride for pilot ${pilotId}: ${value}`,
+      this.context,
+    );
+
     return value ? JSON.parse(value) : null;
   }
 

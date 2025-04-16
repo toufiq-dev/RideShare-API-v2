@@ -561,30 +561,25 @@ export class CustomerService {
   ) {
     const { bookingId, reason } = cancelRideRequestDto;
     try {
-      const customer = await this.prisma.customer.findUnique({
-        where: {
-          userId,
-        },
-      });
-      if (!customer) {
-        throw new NotFoundException('Customer not found.');
-      }
-
       const booking = await this.prisma.booking.findUnique({
         where: {
           id: bookingId,
         },
+        include: { customer: true, pilot: true },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
       }
 
-      if (booking.customerId !== customer.id) {
+      if (
+        booking.customer.userId !== userId &&
+        booking.pilot.userId !== userId
+      ) {
         throw new UnauthorizedException(
           'You are not authorized to cancel this booking.',
         );
       }
-
+      let newPilot = null;
       await this.prisma.$transaction(async (tx) => {
         await tx.booking.update({
           where: {
@@ -603,7 +598,7 @@ export class CustomerService {
           },
         });
 
-        await this.prisma.pilot.update({
+        newPilot = await this.prisma.pilot.update({
           where: {
             id: booking.pilotId,
           },
@@ -612,6 +607,9 @@ export class CustomerService {
           },
         });
       });
+
+      console.log(booking.pilot);
+      console.log(newPilot);
 
       return {
         success: true,

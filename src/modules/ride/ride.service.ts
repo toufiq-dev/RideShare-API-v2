@@ -48,6 +48,14 @@ export class RideService {
   }
 
   async getActiveRideForPilot(pilotId: string) {
+    const pilot = await this.prisma.pilot.findUnique({
+      where: { id: pilotId },
+    });
+    if (!pilot && pilot.activeBookingId === null) {
+      await this.redis.removeActiveRide(pilotId);
+      return null;
+    }
+
     const cachedRide = await this.redis.getActiveRide(pilotId);
     if (cachedRide) {
       return cachedRide;

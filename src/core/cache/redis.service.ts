@@ -12,7 +12,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
-    private readonly prisma: PrismaService,
   ) {
     const redisUrl = this.configService.get<string>('redis.url');
 
@@ -234,14 +233,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async getActiveRide(
     pilotId: string,
   ): Promise<{ bookingId: string; customerUserId: string } | null> {
-    const pilot = await this.prisma.pilot.findUnique({
-      where: { id: pilotId },
-    });
-    if (!pilot || pilot.activeBookingId === null) {
-      await this.removeActiveRide(pilotId);
-      return null;
-    }
-
     const key = `active-ride:${pilotId}`;
     const value = await this.client.get(key);
 

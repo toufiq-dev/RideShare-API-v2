@@ -15,7 +15,7 @@ export class SocketService {
 
   get server(): Server {
     if (!this._server) {
-      throw new Error('Socket.IO server not initialized');
+      throw new WsException('Socket.IO server not initialized');
     }
     return this._server;
   }
@@ -49,6 +49,5 @@ export class SocketService {
 
   handleDisconnect(client: Socket) {
     console.log('Client disconnected:', client.id);
-    client.disconnect();
   }
 }

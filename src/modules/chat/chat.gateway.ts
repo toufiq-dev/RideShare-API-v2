@@ -1,4 +1,3 @@
-// src/modules/chat/chat.gateway.ts
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -34,13 +33,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketService.handleDisconnect(client);
   }
 
-  @SubscribeMessage('chat.sendMessage')
+  @SubscribeMessage('rideSendMessage')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() sendMessageDto: SendMessageDto,
   ) {
     try {
       const userId = client.data.user.userId;
+
       const { message, recipientId } = await this.chatService.sendMessage(
         userId,
         sendMessageDto,
@@ -49,7 +49,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(userId)
         .to(recipientId)
-        .emit('chat.receiveMessage', message);
+        .emit('rideReceiveMessage', message);
 
       return { success: true };
     } catch (error) {

@@ -13,11 +13,7 @@ export class ChatService {
     userId: string,
     sendMessageDto: SendMessageDto,
   ): Promise<{ message: Message; recipientId: string }> {
-    console.log('sendMessageDto from service:', sendMessageDto);
-
     const { bookingId, content } = sendMessageDto;
-
-    console.log('bookingId from service:', bookingId);
 
     const booking: any = await this.prisma.booking.findUnique({
       where: { id: bookingId },

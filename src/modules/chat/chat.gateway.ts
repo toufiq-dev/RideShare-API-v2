@@ -39,9 +39,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() sendMessageDto: SendMessageDto,
   ) {
     try {
-      console.log(
-        `${client.data.user.role} sending message: ${sendMessageDto}`,)
-
       const userId = client.data.user.userId;
 
       const { message, recipientId } = await this.chatService.sendMessage(
@@ -49,14 +46,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         sendMessageDto,
       );
 
-      console.log(`${client.data.user.role} sent: ${message.content}`);
-
-      const ms = this.server
+      this.server
         .to(userId)
         .to(recipientId)
         .emit('rideReceiveMessage', message);
 
-      console.log('Emitting rideReceiveMessage:', ms);
       return { success: true };
     } catch (error) {
       console.error('sendMessage error:', error);

@@ -48,14 +48,6 @@ export class RideService {
   }
 
   async getActiveRideForPilot(pilotId: string) {
-    const pilot = await this.prisma.pilot.findUnique({
-      where: { id: pilotId },
-    });
-    if (!pilot && pilot.activeBookingId === null) {
-      await this.redis.removeActiveRide(pilotId);
-      return null;
-    }
-
     const cachedRide = await this.redis.getActiveRide(pilotId);
     if (cachedRide) {
       return cachedRide;
@@ -65,15 +57,12 @@ export class RideService {
     const booking = await this.prisma.booking.findFirst({
       where: {
         pilotId,
-        status: {
-          in: [
-            BookingStatus.ACCEPTED,
-            BookingStatus.IN_PROGRESS,
-            BookingStatus.STARTED,
-          ],
-        }, // Adjust statuses as needed
+        status: BookingStatus.ACCEPTED,
       },
-      include: { customer: true, pilot: true },
+      select: {
+        id: true,
+        customer: { select: { userId: true } },
+      },
     });
 
     if (booking) {
@@ -250,6 +239,21 @@ export class RideService {
       });
       throw error;
     }
+  }
+
+  async getBookingStatus(bookingId: string) {
+    return this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+  }
+
+  async getCachedBookingStatus(bookingId: string) {
+    return this.redis.getBookingStatus(bookingId);
+  }
+
+  async cacheBookingStatus(bookingId: string, status: string) {
+    return this.redis.setBookingStatus(bookingId, status);
   }
 
   private async notifyDriver(payload: NotifyDriverPayload) {

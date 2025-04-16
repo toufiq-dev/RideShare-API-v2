@@ -31,7 +31,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   onModuleInit() {
-    this.socketService.setServer(this.server); // Initialize shared server
+    this.socketService.setServer(this.server);
   }
 
   async handleConnection(client: Socket) {
@@ -47,9 +47,10 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() body: any,
   ) {
-    const { lat, lng } = JSON.parse(body);
-    console.log('Received pilot updateLocation:', lat, lng);
     try {
+      const { lat, lng } = JSON.parse(body);
+      console.log('Received pilot updateLocation:', lat, lng);
+
       const pilotId = await this.rideService.handleUpdateLocation(
         client,
         lat,
@@ -59,17 +60,40 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
 
       if (activeRide) {
-        const payload = {
-          bookingId: activeRide.bookingId,
-          lat,
-          lng,
-        };
+        // Check status from Redis first
+        let status = await this.rideService.getCachedBookingStatus(
+          activeRide.bookingId,
+        );
 
-        const test = this.server
-          .to(activeRide.customerUserId)
-          .emit('driverLiveLocation', payload);
+        // If not found in Redis, fallback to Prisma and cache it
+        if (!status) {
+          const booking = await this.rideService.getBookingStatus(
+            activeRide.bookingId,
+          );
+          status = booking?.status;
+          if (status) {
+            await this.rideService.cacheBookingStatus(
+              activeRide.bookingId,
+              status,
+            );
+          }
+        }
 
-        console.log('Emitting driverLiveLocation:', test);
+        if (status && status !== 'CANCELLED' && status !== 'STARTED') {
+          const payload = {
+            bookingId: activeRide.bookingId,
+            lat,
+            lng,
+          };
+          this.server
+            .to(activeRide.customerUserId)
+            .emit('driverLiveLocation', payload);
+          console.log('Emitting driverLiveLocation:', payload);
+        } else {
+          console.log(
+            `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
+          );
+        }
       }
     } catch (error) {
       console.error(error);

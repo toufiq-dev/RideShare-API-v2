@@ -249,4 +249,37 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.del(key);
     this.logger.log(`Removed active ride for pilot ${pilotId}`, this.context);
   }
+
+  // Cache booking status with optional TTL (default 1 hour)
+  async setBookingStatus(
+    bookingId: string,
+    status: string,
+    ttl: number = 3600,
+  ): Promise<void> {
+    const key = `booking-status:${bookingId}`;
+    await this.client.set(key, status, 'EX', ttl);
+    this.logger.log(
+      `Cached booking status for ${bookingId}: ${status}`,
+      this.context,
+    );
+  }
+
+  async getBookingStatus(bookingId: string): Promise<string | null> {
+    const key = `booking-status:${bookingId}`;
+    const status = await this.client.get(key);
+    this.logger.log(
+      `Fetched cached booking status for ${bookingId}: ${status}`,
+      this.context,
+    );
+    return status;
+  }
+
+  async removeBookingStatus(bookingId: string): Promise<void> {
+    const key = `booking-status:${bookingId}`;
+    await this.client.del(key);
+    this.logger.log(
+      `Removed cached booking status for ${bookingId}`,
+      this.context,
+    );
+  }
 }

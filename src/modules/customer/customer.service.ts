@@ -27,6 +27,7 @@ import {
   CancelledBy,
 } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
+import { RideGateway } from '../ride/ride.gateway';
 
 @Injectable()
 export class CustomerService {
@@ -36,6 +37,7 @@ export class CustomerService {
     private readonly otpService: OTPService,
     private readonly fareService: FareService,
     private readonly rideService: RideService,
+    private readonly rideGateway: RideGateway,
   ) {}
 
   async getCustomer(userId: string) {
@@ -590,6 +592,10 @@ export class CustomerService {
           },
         });
 
+        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+        // Later, when you implement the start ride feature, add:
+        // await this.redis.setBookingStatus(bookingId, BookingStatus.STARTED);
+
         await this.prisma.cancellationReason.create({
           data: {
             bookingId: bookingId,
@@ -608,8 +614,17 @@ export class CustomerService {
         });
       });
 
-      console.log(booking.pilot);
-      console.log(newPilot);
+      // Clear Redis cache for the pilot's active ride
+      if (booking.pilotId) {
+        await this.redis.removeActiveRide(booking.pilotId);
+
+        this.rideGateway.server.to(booking.pilot.userId).emit('rideCancelled', {
+          message: 'The ride has been cancelled by the customer.',
+        });
+      }
+
+      console.log('booking.pilot\n', booking.pilot);
+      console.log('new pilot \n', newPilot);
 
       return {
         success: true,

@@ -48,7 +48,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: any,
   ) {
     const { lat, lng } = JSON.parse(body);
-    console.log('Received updateLocation:', lat, lng);
+    console.log('Received pilot updateLocation:', lat, lng);
     try {
       const pilotId = await this.rideService.handleUpdateLocation(
         client,
@@ -65,7 +65,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           lng,
         };
 
-        this.server
+        const test = this.server
           .to(activeRide.customerUserId)
           .emit('driverLiveLocation', payload);
 

@@ -585,21 +585,32 @@ export class CustomerService {
         );
       }
 
-      await this.prisma.booking.update({
-        where: {
-          id: bookingId,
-        },
-        data: {
-          status: BookingStatus.CANCELLED,
-        },
-      });
+      await this.prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: {
+            id: bookingId,
+          },
+          data: {
+            status: BookingStatus.CANCELLED,
+          },
+        });
 
-      await this.prisma.cancellationReason.create({
-        data: {
-          bookingId: bookingId,
-          reason: reason,
-          cancelledBy: CancelledBy.CUSTOMER,
-        },
+        await this.prisma.cancellationReason.create({
+          data: {
+            bookingId: bookingId,
+            reason: reason,
+            cancelledBy: CancelledBy.CUSTOMER,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: {
+            id: booking.pilotId,
+          },
+          data: {
+            activeBookingId: null,
+          },
+        });
       });
 
       return {

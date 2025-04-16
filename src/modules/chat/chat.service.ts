@@ -84,7 +84,7 @@ export class ChatService {
     });
     const messages = await this.prisma.message.findMany({
       where: { bookingId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
     });

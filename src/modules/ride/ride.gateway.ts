@@ -65,7 +65,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           lng,
         };
 
-        const test = this.server
+        this.server
           .to(activeRide.customerUserId)
           .emit('driverLiveLocation', payload);
 

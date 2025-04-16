@@ -235,7 +235,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     pilotId: string,
   ): Promise<{ bookingId: string; customerUserId: string } | null> {
     const pilot = await this.prisma.pilot.findUnique({
-      where: { userId: pilotId },
+      where: { id: pilotId },
     });
     if (!pilot || pilot.activeBookingId === null) {
       await this.removeActiveRide(pilotId);

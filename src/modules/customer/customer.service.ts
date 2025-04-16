@@ -471,7 +471,7 @@ export class CustomerService {
         throw new NotFoundException('Customer not found');
       }
       if (!vehicleType) {
-        throw new NotFoundException('Customer not found');
+        throw new NotFoundException('Vehicle type not found');
       }
 
       // Check active booking
@@ -497,34 +497,34 @@ export class CustomerService {
       );
 
       const coupon = customer.coupon;
-      if (coupon && isNaN(Number(coupon.discount)))
+      if (coupon && isNaN(Number(coupon.discount))) {
         throw new BadRequestException('Invalid coupon discount');
+      }
+
       const price =
         coupon && originalPrice > Number(coupon.discount)
           ? originalPrice - Number(coupon.discount)
           : originalPrice;
 
       // Use transaction for atomicity
-      const [booking] = await this.prisma.$transaction([
-        this.prisma.booking.create({
-          data: {
-            bookingCode: randomInt(1000, 10000).toString(),
-            customer: { connect: { id: customer.id } },
-            name:
-              rideFor === RideType.SELF
-                ? customer.name
-                : otherPassengerInfo?.name,
-            status: BookingStatus.PENDING,
-            rideType: rideFor,
-            estimatedFare: originalPrice,
-            discountedFare: price,
-            pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
-            dropLocation: JSON.parse(JSON.stringify(dropLocation)),
-            estimatedDistance: distanceKm.toString(),
-            estimatedDuration: durationMin.toString(),
-          },
-        }),
-      ]);
+      const booking = await this.prisma.booking.create({
+        data: {
+          bookingCode: randomInt(1000, 10000).toString(),
+          customer: { connect: { id: customer.id } },
+          name:
+            rideFor === RideType.SELF
+              ? customer.name
+              : otherPassengerInfo?.name,
+          status: BookingStatus.PENDING,
+          rideType: rideFor,
+          estimatedFare: originalPrice,
+          discountedFare: price,
+          pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
+          dropLocation: JSON.parse(JSON.stringify(dropLocation)),
+          estimatedDistance: distanceKm.toString(),
+          estimatedDuration: durationMin.toString(),
+        },
+      });
 
       await this.rideService.enqueueRideRequest({
         userId: customer.userId,

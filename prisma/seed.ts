@@ -107,7 +107,16 @@ async function main() {
     },
   ];
 
-  const coupons = [{ name: 'Chota', discount: 49 }];
+  const coupons = [{ name: 'Chota', discount: 49, validUntil: new Date('2025-12-12') }];
+
+  const pilots = [
+    {
+      id: "8a76ab2f-dd6e-44bb-a348-1fa9a09f06fw",
+      phone: "+911234567892",
+      userId: "8a76ab2f-dd6e-44bb-a348-1fa9a09f06fq",
+      languageId: "8a76ab2f-dd6e-44bb-a348-1fa9a09f06fd"
+    }
+  ]
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({

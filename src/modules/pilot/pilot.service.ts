@@ -35,6 +35,7 @@ import {
   TransactionType,
 } from '@prisma/client';
 import { FareService } from '../fare/fare.service';
+import { RideEvents } from 'src/core/socket/socket-events';
 
 @Injectable()
 export class PilotService {
@@ -765,7 +766,14 @@ export class PilotService {
             status: BookingStatus.ACCEPTED,
             acceptedAt: new Date(),
           },
-          include: { customer: true, pilot: true },
+          include: {
+            customer: {
+              include: {
+                coupon: true,
+              },
+            },
+            pilot: true,
+          },
         });
 
         return { updated };
@@ -795,12 +803,6 @@ export class PilotService {
           })
         : null;
 
-      const coupon = await this.prisma.coupon.findUnique({
-        where: {
-          id: result.updated.customer.couponId,
-        },
-      });
-
       await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
       // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
       await this.redis.del(`ride-accept:${bookingId}`);
@@ -811,6 +813,16 @@ export class PilotService {
         result.updated.id,
         result.updated.customer.userId,
       );
+
+      let couponForPayload = null;
+      if (result?.updated?.customer?.coupon) {
+        couponForPayload = {
+          ...result.updated.customer.coupon,
+          discount: result.updated.customer.coupon.discount
+            ? Number(result.updated.customer.coupon.discount)
+            : 0.0,
+        };
+      }
 
       const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
         bookingCode: result.updated.bookingCode,
@@ -836,14 +848,14 @@ export class PilotService {
         fairDetails: {
           origialFare: Number(result.updated.estimatedFare),
           discountedFare: Number(result.updated.discountedFare),
-          coupon,
+          coupon: couponForPayload,
         },
       };
 
       // rideAccepted event triggered for customer
       this.rideGateway.server
         .to(result.updated.customer.userId)
-        .emit('rideAccepted', rideAcceptedPayload);
+        .emit(RideEvents.RIDE_ACCEPTED, rideAcceptedPayload);
 
       const data: AcceptRideRequest = {
         bookingId: result.updated.id,

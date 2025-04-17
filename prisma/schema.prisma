@@ -102,7 +102,7 @@ model Pilot {
   id                  String             @id @default(uuid())
   phone               String             @unique
   userId              String             @unique
-  referralCode        String
+  referralCode        String?
   isAlreadyRegistered Boolean            @default(false)
   onlineStatus        PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)

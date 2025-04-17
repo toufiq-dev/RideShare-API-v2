@@ -149,22 +149,3 @@ export class CreateRideRequestDto extends RideLocationDto {
   @Type(() => OtherInfo)
   otherPassengerInfo: OtherInfo;
 }
-
-export class CancelRideRequestDto {
-  @ApiProperty({ description: 'Booking id' })
-  @IsNotEmpty({ message: 'Booking id is required' })
-  @IsString()
-  bookingId: string;
-
-  @ApiProperty({ description: 'Reason for cancellation' })
-  @IsNotEmpty({ message: 'Reason for cancellation is required' })
-  @IsString()
-  reason: string;
-
-  @ApiProperty({
-    description: "Cancelled by 'customer' or 'pilot' or 'support'",
-  })
-  @IsNotEmpty({ message: 'Cancelled by is required' })
-  @IsString()
-  cancelledBy: string;
-}

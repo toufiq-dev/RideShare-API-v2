@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { BookingStatus, CancelledBy } from '@prisma/client';
 import { Socket } from 'socket.io';
@@ -8,12 +12,16 @@ import { Server } from 'socket.io';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { NotifyDriverPayload, RideRequestPayload } from './dto/ride.interface';
+import { CancelRideRequestDto } from './dto/ride.dto';
+import { RideNotificationService } from './ride-notification.service';
+import { RideEvents } from 'src/core/socket/socket-events';
 
 @Injectable()
 export class RideService {
   constructor(
     private prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly rideNotificationService: RideNotificationService,
     @InjectQueue('ride-request') private readonly rideQueue: Queue,
   ) {}
 
@@ -181,10 +189,10 @@ export class RideService {
 
             await this.redis.del(acceptanceKey);
 
-            server.to(pilot.userId).emit('rideRequestTimeout', {
+            this.rideNotificationService.notifyRideRequestTimeout(
               bookingId,
-              reason: 'Time expired. You did not respond to the ride request.',
-            });
+              pilot.userId,
+            );
 
             // Booking is still pending, continue to the next driver
             continue;
@@ -224,10 +232,9 @@ export class RideService {
           },
         });
 
-        server.to(userId).emit('driverNotFound', {
-          bookingId,
-          message: 'Unfortunately ride request has been cancelled.',
-        });
+        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+
+        this.rideNotificationService.notifyDriverNotFound(bookingId, userId);
       }
 
       return { success: true, message: 'Ride request processed' };
@@ -254,6 +261,94 @@ export class RideService {
 
   async cacheBookingStatus(bookingId: string, status: string) {
     return this.redis.setBookingStatus(bookingId, status);
+  }
+
+  async cancelRideRequest(
+    cancelRideRequestDto: CancelRideRequestDto,
+    userId: string,
+  ) {
+    const { bookingId, reason } = cancelRideRequestDto;
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: {
+          id: bookingId,
+        },
+        include: { customer: true, pilot: true },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      if (
+        booking.customer.userId !== userId &&
+        booking.pilot.userId !== userId
+      ) {
+        throw new UnauthorizedException(
+          'You are not authorized to cancel this booking.',
+        );
+      }
+
+      const cancelledBy =
+        booking.customer.userId === userId
+          ? CancelledBy.CUSTOMER
+          : CancelledBy.PILOT;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: {
+            id: bookingId,
+          },
+          data: {
+            status: BookingStatus.CANCELLED,
+          },
+        });
+
+        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+        // Later, when you implement the start ride feature, add:
+        // await this.redis.setBookingStatus(bookingId, BookingStatus.STARTED);
+
+        await this.prisma.cancellationReason.create({
+          data: {
+            bookingId: bookingId,
+            reason: reason,
+            cancelledBy,
+          },
+        });
+
+        if (booking.pilotId) {
+          await tx.pilot.update({
+            where: { id: booking.pilotId },
+            data: { activeBookingId: null },
+          });
+        }
+      });
+
+      // Cache booking status in Redis
+      await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+
+      // Clear Redis cache for the pilot's active ride and notify the other party
+      if (booking.pilotId) {
+        await this.redis.removeActiveRide(booking.pilotId);
+
+        const recipientUserId =
+          cancelledBy === CancelledBy.CUSTOMER
+            ? booking.pilot.userId
+            : booking.customer.userId;
+        this.rideNotificationService.notifyRideCancelled(
+          bookingId,
+          recipientUserId,
+          cancelledBy,
+        );
+      }
+
+      return {
+        success: true,
+        message: 'Ride request cancelled successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   private async notifyDriver(payload: NotifyDriverPayload) {
@@ -286,7 +381,7 @@ export class RideService {
     };
 
     // Emit the ride request to the driver
-    server.to(userId).emit('rideRequest', notificationPayload);
+    server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
 
     console.log(`Ride request emitted to pilot ${pilotId} (userId: ${userId})`);
   }

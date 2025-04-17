@@ -11,8 +11,10 @@ import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { UseGuards } from '@nestjs/common';
-import { WsException } from '@nestjs/websockets';
 import { SocketService } from 'src/core/socket/socket.service';
+import { BookingStatus } from '@prisma/client';
+import { RideNotificationService } from './ride-notification.service';
+import { RideEvents } from 'src/core/socket/socket-events';
 
 @WebSocketGateway({
   cors: {
@@ -28,6 +30,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly socketService: SocketService,
     private readonly rideService: RideService,
+    private readonly rideNotificationService: RideNotificationService,
   ) {}
 
   onModuleInit() {
@@ -42,7 +45,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketService.handleDisconnect(client);
   }
 
-  @SubscribeMessage('updateLocation')
+  @SubscribeMessage(RideEvents.UPDATE_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: any,
@@ -79,16 +82,14 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }
         }
 
-        if (status && status !== 'CANCELLED' && status !== 'STARTED') {
-          const payload = {
-            bookingId: activeRide.bookingId,
+        if (status && status === BookingStatus.ACCEPTED) {
+          const test = this.rideNotificationService.notifyDriverLiveLocation(
+            activeRide.bookingId,
+            activeRide.customerUserId,
             lat,
             lng,
-          };
-          this.server
-            .to(activeRide.customerUserId)
-            .emit('driverLiveLocation', payload);
-          console.log('Emitting driverLiveLocation:', payload);
+          );
+          console.log('Emitting driverLiveLocation:', test);
         } else {
           console.log(
             `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,

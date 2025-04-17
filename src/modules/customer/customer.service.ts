@@ -14,7 +14,6 @@ import {
   UpdateCustomerNameDto,
   VehicleCategoryDto,
   CreateRideRequestDto,
-  CancelRideRequestDto,
 } from './dto/customer.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
@@ -37,7 +36,6 @@ export class CustomerService {
     private readonly otpService: OTPService,
     private readonly fareService: FareService,
     private readonly rideService: RideService,
-    private readonly rideGateway: RideGateway,
   ) {}
 
   async getCustomer(userId: string) {
@@ -550,85 +548,6 @@ export class CustomerService {
           discountedPrice: Number(price.toFixed(0)),
           coupon: coupon || null,
         },
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async cancelRideRequest(
-    cancelRideRequestDto: CancelRideRequestDto,
-    userId: string,
-  ) {
-    const { bookingId, reason } = cancelRideRequestDto;
-    try {
-      const booking = await this.prisma.booking.findUnique({
-        where: {
-          id: bookingId,
-        },
-        include: { customer: true, pilot: true },
-      });
-      if (!booking) {
-        throw new NotFoundException('Booking not found.');
-      }
-
-      if (
-        booking.customer.userId !== userId &&
-        booking.pilot.userId !== userId
-      ) {
-        throw new UnauthorizedException(
-          'You are not authorized to cancel this booking.',
-        );
-      }
-      let newPilot = null;
-      await this.prisma.$transaction(async (tx) => {
-        await tx.booking.update({
-          where: {
-            id: bookingId,
-          },
-          data: {
-            status: BookingStatus.CANCELLED,
-          },
-        });
-
-        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
-        // Later, when you implement the start ride feature, add:
-        // await this.redis.setBookingStatus(bookingId, BookingStatus.STARTED);
-
-        await this.prisma.cancellationReason.create({
-          data: {
-            bookingId: bookingId,
-            reason: reason,
-            cancelledBy: CancelledBy.CUSTOMER,
-          },
-        });
-
-        newPilot = await this.prisma.pilot.update({
-          where: {
-            id: booking.pilotId,
-          },
-          data: {
-            activeBookingId: null,
-          },
-        });
-      });
-
-      // Clear Redis cache for the pilot's active ride
-      if (booking.pilotId) {
-        await this.redis.removeActiveRide(booking.pilotId);
-
-        this.rideGateway.server.to(booking.pilot.userId).emit('rideCancelled', {
-          message: 'The ride has been cancelled by the customer.',
-        });
-      }
-
-      console.log('booking.pilot\n', booking.pilot);
-      console.log('new pilot \n', newPilot);
-
-      return {
-        success: true,
-        message: 'Ride request cancelled successfully.',
       };
     } catch (error) {
       console.error(error);

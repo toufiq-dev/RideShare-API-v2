@@ -79,3 +79,10 @@ export class AcceptRideDto {
   @IsString()
   bookingId: string;
 }
+
+export class StartRideDto extends AcceptRideDto {
+  @ApiProperty({ description: 'Booking id' })
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingCode: string;
+}

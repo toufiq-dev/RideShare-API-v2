@@ -3,6 +3,7 @@ export const RideEvents = {
   DRIVER_LIVE_LOCATION: 'driverLiveLocation',
   RIDE_REQUEST: 'rideRequest',
   RIDE_ACCEPTED: 'rideAccepted',
+  RIDE_STARTED: 'rideStarted',
   RIDE_REQUEST_TIMEOUT: 'rideRequestTimeout',
   RIDE_CANCELLED: 'rideCancelled',
   DRIVER_NOT_FOUND: 'driverNotFound',

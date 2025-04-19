@@ -7,8 +7,6 @@ import {
   IsString,
   ValidateNested,
   IsEmail,
-  IsNumber,
-  IsJSON,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RideType } from '@prisma/client';

@@ -70,6 +70,8 @@ model Customer {
   updatedAt           DateTime         @updatedAt
   languageId          String
   couponId            String?
+  activeBookingId     String?          @unique
+  activeBooking       Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
   bookings            Booking[]
   language            Languages        @relation(fields: [languageId], references: [id])
   coupon              Coupon?          @relation(fields: [couponId], references: [id])
@@ -130,7 +132,7 @@ model Pilot {
   language            Languages          @relation(fields: [languageId], references: [id])
   pilotProgram        PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
   user                User               @relation(fields: [userId], references: [id])
-  activeBooking       Booking?           @relation("ActiveBooking", fields: [activeBookingId], references: [id])
+  activeBooking       Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
   earnings            PilotTripEarning[]
   transaction         Transaction[]
   ranking             PilotRanking?
@@ -294,7 +296,8 @@ model Booking {
   cancellationReason CancellationReason?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
-  activePilot        Pilot?              @relation("ActiveBooking")
+  activePilot        Pilot?              @relation("PilotActiveBooking")
+  activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?
   pilotRating        PilotRating?
   supportTicket      SupportTicket?

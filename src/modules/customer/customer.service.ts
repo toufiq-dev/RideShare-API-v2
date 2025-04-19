@@ -19,14 +19,9 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import {
-  VehicleTypeName,
-  BookingStatus,
-  RideType,
-  CancelledBy,
-} from '@prisma/client';
+import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
-import { RideGateway } from '../ride/ride.gateway';
+import { RideResponse } from './interfaces/customer.interface';
 
 @Injectable()
 export class CustomerService {
@@ -506,7 +501,6 @@ export class CustomerService {
           ? originalPrice - Number(coupon.discount)
           : originalPrice;
 
-      // Use transaction for atomicity
       const booking = await this.prisma.booking.create({
         data: {
           bookingCode: randomInt(1000, 10000).toString(),
@@ -537,17 +531,19 @@ export class CustomerService {
         dropLocation,
       });
 
+      const data: RideResponse = {
+        bookingId: booking.id,
+        location: [pickupLocation, dropLocation],
+        originalPrice: Number(originalPrice.toFixed(0)),
+        discountedPrice: Number(price.toFixed(0)),
+        coupon: coupon || null,
+      };
+
       return {
         success: true,
         message:
           'Your ride request is being processed. Searching for a driver...',
-        data: {
-          bookingId: booking.id,
-          location: [pickupLocation, dropLocation],
-          originalPrice: Number(originalPrice.toFixed(0)),
-          discountedPrice: Number(price.toFixed(0)),
-          coupon: coupon || null,
-        },
+        data,
       };
     } catch (error) {
       console.error(error);

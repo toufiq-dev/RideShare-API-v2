@@ -16,10 +16,11 @@ import {
   AadhaarNumberDto,
   BeOnlineDto,
   AcceptRideDto,
+  StartRideDto,
 } from './dto/pilot.dto';
 import {
-  AcceptRideRequest,
-  CustomerRideAcceptedEventPayload,
+  RideResponse,
+  CustomerRidePayload,
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
@@ -824,7 +825,7 @@ export class PilotService {
         };
       }
 
-      const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
+      const rideAcceptedPayload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
@@ -857,7 +858,7 @@ export class PilotService {
         .to(result.updated.customer.userId)
         .emit(RideEvents.RIDE_ACCEPTED, rideAcceptedPayload);
 
-      const data: AcceptRideRequest = {
+      const data: RideResponse = {
         bookingId: result.updated.id,
         fare: Number(result.updated.discountedFare),
         customerName: result.updated.customer.name,
@@ -870,6 +871,93 @@ export class PilotService {
 
       return {
         message: 'Ride accepted successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async startRide(startRideDto: StartRideDto, userId: string) {
+    const { bookingId, bookingCode } = startRideDto;
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          customer: { include: { coupon: true } },
+          pilot: {
+            include: {
+              drivingLicense: true,
+              vehicle: { include: { vehicleType: true } },
+            },
+          },
+        },
+      });
+
+      if (!booking || booking.bookingCode !== bookingCode) {
+        throw new BadRequestException('Invalid Booking.');
+      }
+
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.STARTED,
+          tripStart: new Date(),
+        },
+      });
+
+      const pilotLocation = await this.redis.geoPos(
+        'pilotLocations',
+        booking.pilot.id,
+      );
+
+      const payload: CustomerRidePayload = {
+        bookingCode: booking.bookingCode,
+        bookingId: booking.id,
+        bookingStatus: booking.status,
+        pilot: {
+          pilotName: booking.pilot.drivingLicense.nameOnLicense,
+          profilePicture: booking.pilot.selfieUrl,
+          pilotPhone: booking.pilot.phone,
+          rating: booking.pilot.averageRating,
+          pilotLocation: {
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
+          },
+          vehicleNumber: booking.pilot.vehicle.regNo,
+          model: booking.pilot.vehicle.model,
+          colour: booking.pilot.vehicle.colour,
+          vehicleType: booking.pilot.vehicle.vehicleType.name,
+        },
+        pickupInMinutes: null,
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
+        fairDetails: {
+          origialFare: Number(booking.estimatedFare),
+          discountedFare: Number(booking.discountedFare),
+          coupon: booking.customer.coupon,
+        },
+      };
+
+      this.rideGateway.server
+        .to(booking.customer.userId)
+        .emit(RideEvents.RIDE_STARTED, payload);
+
+      const data: RideResponse = {
+        bookingId: booking.id,
+        fare: Number(booking.discountedFare),
+        customerName: booking.customer.name,
+        customerPhone: booking.customer.phone,
+        averageRating: booking.customer.averageRating,
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
+        rideStatus: booking.status,
+      };
+
+      return {
+        message: 'Ride started successfully.',
         data,
       };
     } catch (error) {

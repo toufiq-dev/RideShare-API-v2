@@ -903,7 +903,7 @@ export class PilotService {
       await this.prisma.booking.update({
         where: { id: bookingId },
         data: {
-          status: BookingStatus.STARTED,
+          status: BookingStatus.ONGOING,
           tripStart: new Date(),
         },
       });

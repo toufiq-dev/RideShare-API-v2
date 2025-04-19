@@ -21,11 +21,7 @@ export class ChatService {
     });
 
     if (
-      ![
-        BookingStatus.ACCEPTED,
-        BookingStatus.IN_PROGRESS,
-        BookingStatus.STARTED,
-      ].includes(booking.status)
+      ![BookingStatus.ACCEPTED, BookingStatus.ONGOING].includes(booking.status)
     ) {
       throw new ForbiddenException('No active ride for this booking');
     }

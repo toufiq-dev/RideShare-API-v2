@@ -857,9 +857,11 @@ export class PilotService {
       };
 
       // rideAccepted event triggered for customer
-      this.rideGateway.server
+      const test = this.rideGateway.server
         .to(result.updated.customer.userId)
         .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
+
+      console.log(`${RideEvents.RIDE_STATUS_UPDATE} event triggered`, test);
 
       const data: PilotRideResponse = {
         bookingId: result.updated.id,

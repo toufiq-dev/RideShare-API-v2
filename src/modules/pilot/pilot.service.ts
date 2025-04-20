@@ -945,12 +945,15 @@ export class PilotService {
         throw new BadRequestException('Invalid Booking.');
       }
 
-      await this.prisma.booking.update({
-        where: { id: bookingId },
-        data: {
-          status: BookingStatus.ONGOING,
-          tripStart: new Date(),
-        },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.pilot.update({
+          where: { id: pilot.id },
+          data: { onlineStatus: PilotStatus.ON_TRIP },
+        });
+        await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.ONGOING, tripStart: new Date() },
+        });
       });
 
       const pilotLocation = await this.redis.geoPos(

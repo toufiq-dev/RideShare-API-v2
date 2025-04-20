@@ -15,6 +15,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port');
 
+  app.useLogger(logger);
+
   app.enableCors();
   app.setGlobalPrefix('api');
 
@@ -44,8 +46,6 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api-docs', app, document);
-
-  app.useLogger(logger);
 
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);

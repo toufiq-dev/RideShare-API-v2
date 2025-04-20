@@ -908,7 +908,7 @@ export class PilotService {
 
       this.rideGateway.server
         .to(booking.customer.userId)
-        .emit(RideEvents.REACHED_PICKUP_POINT);
+        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
 
       return {
         message: 'Reached pickup point successfully.',

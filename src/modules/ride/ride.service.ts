@@ -49,7 +49,7 @@ export class RideService {
       console.log('Updating Pilot Location', result);
     } catch (error) {
       console.error(error);
-      client.emit('error', { message: 'Failed to update location' });
+      client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
     }
   }
 
@@ -252,7 +252,7 @@ export class RideService {
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.to(userId).emit('error', {
+      server.to(userId).emit(RideEvents.ERROR, {
         message: 'Failed to process ride request',
         error: error.message,
       });

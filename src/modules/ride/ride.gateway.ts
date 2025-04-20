@@ -93,7 +93,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     } catch (error) {
       console.error(error);
-      client.emit('error', { message: 'Failed to update location' });
+      client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
     }
   }
 }

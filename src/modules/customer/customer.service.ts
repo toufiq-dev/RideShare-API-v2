@@ -14,19 +14,14 @@ import {
   UpdateCustomerNameDto,
   VehicleCategoryDto,
   CreateRideRequestDto,
-  CancelRideRequestDto,
 } from './dto/customer.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import {
-  VehicleTypeName,
-  BookingStatus,
-  RideType,
-  CancelledBy,
-} from '@prisma/client';
+import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
+import { CustomerRideResponse } from './interfaces/customer.interface';
 
 @Injectable()
 export class CustomerService {
@@ -471,7 +466,7 @@ export class CustomerService {
         throw new NotFoundException('Customer not found');
       }
       if (!vehicleType) {
-        throw new NotFoundException('Customer not found');
+        throw new NotFoundException('Vehicle type not found');
       }
 
       // Check active booking
@@ -497,34 +492,33 @@ export class CustomerService {
       );
 
       const coupon = customer.coupon;
-      if (coupon && isNaN(Number(coupon.discount)))
+      if (coupon && isNaN(Number(coupon.discount))) {
         throw new BadRequestException('Invalid coupon discount');
+      }
+
       const price =
         coupon && originalPrice > Number(coupon.discount)
           ? originalPrice - Number(coupon.discount)
           : originalPrice;
 
-      // Use transaction for atomicity
-      const [booking] = await this.prisma.$transaction([
-        this.prisma.booking.create({
-          data: {
-            bookingCode: randomInt(1000, 10000).toString(),
-            customer: { connect: { id: customer.id } },
-            name:
-              rideFor === RideType.SELF
-                ? customer.name
-                : otherPassengerInfo?.name,
-            status: BookingStatus.PENDING,
-            rideType: rideFor,
-            estimatedFare: originalPrice,
-            discountedFare: price,
-            pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
-            dropLocation: JSON.parse(JSON.stringify(dropLocation)),
-            estimatedDistance: distanceKm.toString(),
-            estimatedDuration: durationMin.toString(),
-          },
-        }),
-      ]);
+      const booking = await this.prisma.booking.create({
+        data: {
+          bookingCode: randomInt(1000, 10000).toString(),
+          customerId: customer.id,
+          name:
+            rideFor === RideType.SELF
+              ? customer.name
+              : otherPassengerInfo?.name,
+          status: BookingStatus.PENDING,
+          rideType: rideFor,
+          estimatedFare: originalPrice,
+          discountedFare: price,
+          pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
+          dropLocation: JSON.parse(JSON.stringify(dropLocation)),
+          estimatedDistance: Math.ceil(distanceKm).toString(),
+          estimatedDuration: Math.ceil(durationMin).toString(),
+        },
+      });
 
       await this.rideService.enqueueRideRequest({
         userId: customer.userId,
@@ -537,74 +531,23 @@ export class CustomerService {
         dropLocation,
       });
 
+      const data: CustomerRideResponse = {
+        bookingId: booking.id,
+        location: [pickupLocation, dropLocation],
+        originalPrice: Number(originalPrice.toFixed(0)),
+        discountedPrice: Number(price.toFixed(0)),
+        coupon: coupon || null,
+        otherPassengerInfo:
+          booking.rideType === RideType.OTHERS
+            ? { name: otherPassengerInfo.name }
+            : null,
+      };
+
       return {
         success: true,
         message:
           'Your ride request is being processed. Searching for a driver...',
-        data: {
-          bookingId: booking.id,
-          location: [pickupLocation, dropLocation],
-          originalPrice: Number(originalPrice.toFixed(0)),
-          discountedPrice: Number(price.toFixed(0)),
-          coupon: coupon || null,
-        },
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async cancelRideRequest(
-    cancelRideRequestDto: CancelRideRequestDto,
-    userId: string,
-  ) {
-    const { bookingId, reason } = cancelRideRequestDto;
-    try {
-      const customer = await this.prisma.customer.findUnique({
-        where: {
-          userId,
-        },
-      });
-      if (!customer) {
-        throw new NotFoundException('Customer not found.');
-      }
-
-      const booking = await this.prisma.booking.findUnique({
-        where: {
-          id: bookingId,
-        },
-      });
-      if (!booking) {
-        throw new NotFoundException('Booking not found.');
-      }
-
-      if (booking.customerId !== customer.id) {
-        throw new UnauthorizedException(
-          'You are not authorized to cancel this booking.',
-        );
-      }
-
-      await this.prisma.booking.update({
-        where: {
-          id: bookingId,
-        },
-        data: {
-          status: BookingStatus.CANCELLED,
-        },
-      });
-
-      await this.prisma.cancellationReason.create({
-        data: {
-          bookingId: bookingId,
-          reason: reason,
-          cancelledBy: CancelledBy.CUSTOMER,
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Ride request cancelled successfully.',
+        data,
       };
     } catch (error) {
       console.error(error);

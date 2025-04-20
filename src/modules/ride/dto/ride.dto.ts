@@ -54,3 +54,17 @@ export class CreateBookingDto {
   @IsString()
   bookingCode?: string;
 }
+
+export class CancelRideRequestDto {
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingId: string;
+
+  @IsNotEmpty({ message: 'Reason for cancellation is required' })
+  @IsString()
+  reason: string;
+
+  @IsNotEmpty({ message: 'Cancelled by is required' })
+  @IsString()
+  cancelledBy: string;
+}

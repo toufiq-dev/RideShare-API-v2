@@ -21,11 +21,7 @@ export class ChatService {
     });
 
     if (
-      ![
-        BookingStatus.ACCEPTED,
-        BookingStatus.IN_PROGRESS,
-        BookingStatus.STARTED,
-      ].includes(booking.status)
+      ![BookingStatus.ACCEPTED, BookingStatus.ONGOING].includes(booking.status)
     ) {
       throw new ForbiddenException('No active ride for this booking');
     }
@@ -84,7 +80,7 @@ export class ChatService {
     });
     const messages = await this.prisma.message.findMany({
       where: { bookingId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
     });
@@ -98,6 +94,7 @@ export class ChatService {
       data: {
         messages: messages.map((message) => ({
           id: message.id,
+          bookingId: message.bookingId,
           senderId: message.senderId,
           content: message.content,
           createdAt: message.createdAt,

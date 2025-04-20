@@ -15,11 +15,12 @@ import {
   PancardDto,
   AadhaarNumberDto,
   BeOnlineDto,
-  AcceptRideDto,
+  BookingIdDto,
+  StartRideDto,
 } from './dto/pilot.dto';
 import {
-  AcceptRideRequest,
-  CustomerRideAcceptedEventPayload,
+  PilotRideResponse,
+  CustomerRidePayload,
   VerificationResponseDL,
   VerificationResponseVehicle,
 } from './interfaces/pilot.interface';
@@ -31,10 +32,12 @@ import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
   BookingStatus,
   PilotStatus,
+  RideType,
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
 import { FareService } from '../fare/fare.service';
+import { RideEvents } from 'src/core/socket/socket-events';
 
 @Injectable()
 export class PilotService {
@@ -717,7 +720,7 @@ export class PilotService {
       }
 
       if (!onlineStatus) {
-        await this.redis.zRem('pilotLocations', pilot.id);
+        await this.redis.zRem('pilotLocations', pilot.userId);
       }
 
       await this.prisma.pilot.update({
@@ -735,7 +738,7 @@ export class PilotService {
     }
   }
 
-  async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
+  async acceptRide(acceptRideDto: BookingIdDto, userId: string) {
     const { bookingId } = acceptRideDto;
 
     try {
@@ -765,13 +768,23 @@ export class PilotService {
             status: BookingStatus.ACCEPTED,
             acceptedAt: new Date(),
           },
-          include: { customer: true, pilot: true },
+          include: {
+            customer: {
+              include: {
+                coupon: true,
+              },
+            },
+            pilot: true,
+          },
         });
 
         return { updated };
       });
 
-      const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
+      const pilotLocation = await this.redis.geoPos(
+        'pilotLocations',
+        pilot.userId,
+      );
 
       let pickupInMinutes: number | null = null;
 
@@ -795,12 +808,6 @@ export class PilotService {
           })
         : null;
 
-      const coupon = await this.prisma.coupon.findUnique({
-        where: {
-          id: result.updated.customer.couponId,
-        },
-      });
-
       await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
       // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
       await this.redis.del(`ride-accept:${bookingId}`);
@@ -812,10 +819,21 @@ export class PilotService {
         result.updated.customer.userId,
       );
 
-      const rideAcceptedPayload: CustomerRideAcceptedEventPayload = {
+      let couponForPayload = null;
+      if (result?.updated?.customer?.coupon) {
+        couponForPayload = {
+          ...result.updated.customer.coupon,
+          discount: result.updated.customer.coupon.discount
+            ? Number(result.updated.customer.coupon.discount)
+            : 0.0,
+        };
+      }
+
+      const rideAcceptedPayload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
+        estimatedDuration: result.updated.estimatedDuration,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
@@ -836,16 +854,20 @@ export class PilotService {
         fairDetails: {
           origialFare: Number(result.updated.estimatedFare),
           discountedFare: Number(result.updated.discountedFare),
-          coupon,
+          coupon: couponForPayload,
         },
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       // rideAccepted event triggered for customer
       this.rideGateway.server
         .to(result.updated.customer.userId)
-        .emit('rideAccepted', rideAcceptedPayload);
+        .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
 
-      const data: AcceptRideRequest = {
+      const data: PilotRideResponse = {
         bookingId: result.updated.id,
         fare: Number(result.updated.discountedFare),
         customerName: result.updated.customer.name,
@@ -854,10 +876,159 @@ export class PilotService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       return {
         message: 'Ride accepted successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async reachedPickupPoint(
+    reachedPickupPointDto: BookingIdDto,
+    userId: string,
+  ) {
+    const { bookingId } = reachedPickupPointDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const booking = await this.prisma.booking.findUnique({
+        where: {
+          id: bookingId,
+          pilotId: pilot.id,
+          status: BookingStatus.ACCEPTED,
+        },
+        include: { customer: true },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      this.rideGateway.server
+        .to(booking.customer.userId)
+        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
+
+      return {
+        message: 'Reached pickup point successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async startRide(startRideDto: StartRideDto, userId: string) {
+    const { bookingId, bookingCode } = startRideDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId, pilotId: pilot.id },
+        select: { id: true, bookingCode: true },
+      });
+
+      if (!booking || booking.bookingCode !== bookingCode) {
+        throw new BadRequestException('Invalid Booking.');
+      }
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        // await tx.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: { onlineStatus: PilotStatus.ON_TRIP },
+        // });
+        const updated = await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.ONGOING, tripStart: new Date() },
+          include: {
+            customer: { include: { coupon: true } },
+            pilot: {
+              include: {
+                drivingLicense: true,
+                vehicle: { include: { vehicleType: true } },
+              },
+            },
+          },
+        });
+
+        return { updated };
+      });
+
+      const pilotLocation = await this.redis.geoPos(
+        'pilotLocations',
+        result.updated.pilot.userId,
+      );
+
+      const payload: CustomerRidePayload = {
+        bookingCode: result.updated.bookingCode,
+        bookingId: result.updated.id,
+        bookingStatus: result.updated.status,
+        estimatedDuration: result.updated.estimatedDuration,
+        pilot: {
+          pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
+          profilePicture: result.updated.pilot.selfieUrl,
+          pilotPhone: result.updated.pilot.phone,
+          rating: result.updated.pilot.averageRating,
+          pilotLocation: {
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
+          },
+          vehicleNumber: result.updated.pilot.vehicle.regNo,
+          model: result.updated.pilot.vehicle.model,
+          colour: result.updated.pilot.vehicle.colour,
+          vehicleType: result.updated.pilot.vehicle.vehicleType.name,
+        },
+        pickupInMinutes: null,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        fairDetails: {
+          origialFare: Number(result.updated.estimatedFare),
+          discountedFare: Number(result.updated.discountedFare),
+          coupon: result.updated.customer.coupon,
+        },
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
+      };
+
+      // rideStarted event triggered for customer
+      this.rideGateway.server
+        .to(result.updated.customer.userId)
+        .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+
+      const data: PilotRideResponse = {
+        bookingId: booking.id,
+        fare: Number(result.updated.discountedFare),
+        customerName: result.updated.customer.name,
+        customerPhone: result.updated.customer.phone,
+        averageRating: result.updated.customer.averageRating,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        rideStatus: result.updated.status,
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
+      };
+
+      return {
+        message: 'Ride started successfully.',
         data,
       };
     } catch (error) {

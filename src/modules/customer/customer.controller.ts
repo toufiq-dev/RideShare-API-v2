@@ -20,7 +20,6 @@ import {
   CompleteCustomerOnboardingDto,
   VehicleCategoryDto,
   CreateRideRequestDto,
-  CancelRideRequestDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -161,21 +160,6 @@ export class CustomerController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.customerService.createRideRequest(
-      createRideRequestDto,
-      userId,
-    );
-  }
-
-  @Post('cancel-ride-request')
-  @HttpCode(200)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancel ride request' })
-  @ApiBody({ type: CancelRideRequestDto })
-  async cancelRideRequest(
-    @Body() createRideRequestDto: CancelRideRequestDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.customerService.cancelRideRequest(
       createRideRequestDto,
       userId,
     );

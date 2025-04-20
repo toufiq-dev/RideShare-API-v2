@@ -70,6 +70,8 @@ model Customer {
   updatedAt           DateTime         @updatedAt
   languageId          String
   couponId            String?
+  activeBookingId     String?          @unique
+  activeBooking       Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
   bookings            Booking[]
   language            Languages        @relation(fields: [languageId], references: [id])
   coupon              Coupon?          @relation(fields: [couponId], references: [id])
@@ -102,7 +104,7 @@ model Pilot {
   id                  String             @id @default(uuid())
   phone               String             @unique
   userId              String             @unique
-  referralCode        String
+  referralCode        String?
   isAlreadyRegistered Boolean            @default(false)
   onlineStatus        PilotStatus        @default(OFFLINE)
   totalTrips          Int                @default(0)
@@ -122,15 +124,15 @@ model Pilot {
   panCardNumber       String?            @unique
   aadhaarCardNumber   String?            @unique
   aadhaarCardAddress  String?
+  activeBookingId     String?            @unique
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
-  activeBookingId     String?            @unique
   drivingLicense      DrivingLicense?
   bookings            Booking[]
   language            Languages          @relation(fields: [languageId], references: [id])
   pilotProgram        PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
   user                User               @relation(fields: [userId], references: [id])
-  activeBooking       Booking?           @relation("ActiveBooking", fields: [activeBookingId], references: [id])
+  activeBooking       Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
   earnings            PilotTripEarning[]
   transaction         Transaction[]
   ranking             PilotRanking?
@@ -294,7 +296,8 @@ model Booking {
   cancellationReason CancellationReason?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
-  activePilot        Pilot?              @relation("ActiveBooking")
+  activePilot        Pilot?              @relation("PilotActiveBooking")
+  activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?
   pilotRating        PilotRating?
   supportTicket      SupportTicket?
@@ -464,8 +467,7 @@ enum PilotStatus {
 enum BookingStatus {
   PENDING
   ACCEPTED
-  STARTED
-  IN_PROGRESS
+  ONGOING
   COMPLETED
   CANCELLED
   NOT_FOUND

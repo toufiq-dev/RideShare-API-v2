@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import Redis, { RedisOptions } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../../core/logging/logger.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -123,12 +124,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     key: string,
     longitude: number,
     latitude: number,
-    member: string,
+    userId: string,
   ): Promise<number> {
     try {
-      const result = await this.client.geoadd(key, longitude, latitude, member);
+      const result = await this.client.geoadd(key, longitude, latitude, userId);
       this.logger.log(
-        `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,
+        `Added ${userId} to geospatial set ${key} at (${latitude}, ${longitude})`,
         this.context,
       );
 
@@ -218,28 +219,67 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async setActiveRide(
-    pilotId: string,
+    userId: string,
     bookingId: string,
     customerUserId: string,
     ttl: number = 3600,
   ): Promise<void> {
-    const key = `active-ride:${pilotId}`;
+    const key = `active-ride:${userId}`;
     const value = JSON.stringify({ bookingId, customerUserId });
     await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
-    this.logger.log(`Set active ride cache ${pilotId}: ${value}`, this.context);
+    this.logger.log(`Set active ride cache ${userId}: ${value}`, this.context);
   }
 
   async getActiveRide(
-    pilotId: string,
+    userId: string,
   ): Promise<{ bookingId: string; customerUserId: string } | null> {
-    const key = `active-ride:${pilotId}`;
+    const key = `active-ride:${userId}`;
     const value = await this.client.get(key);
+
+    this.logger.log(
+      `Retrieved active ride for pilot ${userId}: ${value}`,
+      this.context,
+    );
+
     return value ? JSON.parse(value) : null;
   }
 
-  async removeActiveRide(pilotId: string): Promise<void> {
-    const key = `active-ride:${pilotId}`;
+  async removeActiveRide(userId: string): Promise<void> {
+    const key = `active-ride:${userId}`;
     await this.client.del(key);
-    this.logger.log(`Removed active ride for pilot ${pilotId}`, this.context);
+    this.logger.log(`Removed active ride for pilot ${userId}`, this.context);
+  }
+
+  // Cache booking status with optional TTL (default 1 hour)
+  async setBookingStatus(
+    bookingId: string,
+    status: string,
+    ttl: number = 3600,
+  ): Promise<void> {
+    const key = `booking-status:${bookingId}`;
+    await this.client.set(key, status, 'EX', ttl);
+    this.logger.log(
+      `Cached booking status for ${bookingId}: ${status}`,
+      this.context,
+    );
+  }
+
+  async getBookingStatus(bookingId: string): Promise<string | null> {
+    const key = `booking-status:${bookingId}`;
+    const status = await this.client.get(key);
+    this.logger.log(
+      `Fetched cached booking status for ${bookingId}: ${status}`,
+      this.context,
+    );
+    return status;
+  }
+
+  async removeBookingStatus(bookingId: string): Promise<void> {
+    const key = `booking-status:${bookingId}`;
+    await this.client.del(key);
+    this.logger.log(
+      `Removed cached booking status for ${bookingId}`,
+      this.context,
+    );
   }
 }

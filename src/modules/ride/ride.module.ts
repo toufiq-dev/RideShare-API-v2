@@ -5,6 +5,8 @@ import { RideGateway } from './ride.gateway';
 import { RideRequestProcessor } from './processor/ride.processor';
 import { FareModule } from '../fare/fare.module';
 import { SocketModule } from 'src/core/socket/socket.module';
+import { RideController } from './ride.controller';
+import { RideNotificationService } from './ride-notification.service';
 
 @Module({
   imports: [
@@ -14,7 +16,13 @@ import { SocketModule } from 'src/core/socket/socket.module';
       name: 'ride-request',
     }),
   ],
-  providers: [RideGateway, RideService, RideRequestProcessor],
+  providers: [
+    RideGateway,
+    RideService,
+    RideNotificationService,
+    RideRequestProcessor,
+  ],
   exports: [RideGateway, RideService],
+  controllers: [RideController],
 })
 export class RideModule {}

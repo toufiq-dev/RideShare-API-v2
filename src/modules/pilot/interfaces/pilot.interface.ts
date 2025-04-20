@@ -1,4 +1,5 @@
 import { BookingStatus, VehicleTypeName } from '@prisma/client';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 export interface VerificationResponseDL {
   licenseNumber: string;
@@ -25,7 +26,11 @@ export interface VerificationResponseVehicle {
   verificationFailed: boolean;
 }
 
-export interface AcceptRideRequest {
+export interface OtherPassengerInfo {
+  name: string;
+}
+
+export interface PilotRideResponse {
   customerName: string;
   customerPhone: string;
   averageRating: number;
@@ -34,12 +39,14 @@ export interface AcceptRideRequest {
   rideStatus: BookingStatus;
   bookingId: string;
   fare: number;
+  otherPassengerInfo: OtherPassengerInfo | null;
 }
 
-export interface CustomerRideAcceptedEventPayload {
+export interface CustomerRidePayload {
   bookingCode: string;
   bookingId: string;
   bookingStatus: BookingStatus;
+  estimatedDuration: string;
   pilot: {
     pilotName: string;
     profilePicture: string;
@@ -51,12 +58,13 @@ export interface CustomerRideAcceptedEventPayload {
     colour: string;
     vehicleType: string;
   };
-  pickupInMinutes: number;
-  pickupLocation: any;
-  dropLocation: any;
+  pickupInMinutes: number | null;
+  pickupLocation: JsonValue;
+  dropLocation: JsonValue;
   fairDetails: {
     origialFare: number;
     discountedFare: number;
     coupon: any;
   };
+  otherPassengerInfo: OtherPassengerInfo | null;
 }

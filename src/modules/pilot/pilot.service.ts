@@ -889,8 +889,17 @@ export class PilotService {
     const { bookingId } = reachedPickupPointDto;
 
     try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
       const booking = await this.prisma.booking.findUnique({
-        where: { id: bookingId },
+        where: {
+          id: bookingId,
+          pilotId: pilot.id,
+          status: BookingStatus.ACCEPTED,
+        },
         include: { customer: true },
       });
       if (!booking) {
@@ -914,8 +923,13 @@ export class PilotService {
     const { bookingId, bookingCode } = startRideDto;
 
     try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
       const booking = await this.prisma.booking.findUnique({
-        where: { id: bookingId },
+        where: { id: bookingId, pilotId: pilot.id },
         include: {
           customer: { include: { coupon: true } },
           pilot: {

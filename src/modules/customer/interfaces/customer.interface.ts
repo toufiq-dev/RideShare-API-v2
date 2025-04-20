@@ -1,4 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
+import { OtherPassengerInfo } from 'src/modules/pilot/interfaces/pilot.interface';
 
 export interface Location {
   lat: number;
@@ -20,4 +21,5 @@ export interface CustomerRideResponse {
   originalPrice: number;
   discountedPrice: number;
   coupon: Coupon | null;
+  otherPassengerInfo: OtherPassengerInfo | null;
 }

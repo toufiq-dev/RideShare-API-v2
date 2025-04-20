@@ -26,6 +26,10 @@ export interface VerificationResponseVehicle {
   verificationFailed: boolean;
 }
 
+export interface OtherPassengerInfo {
+  name: string;
+}
+
 export interface PilotRideResponse {
   customerName: string;
   customerPhone: string;
@@ -35,6 +39,7 @@ export interface PilotRideResponse {
   rideStatus: BookingStatus;
   bookingId: string;
   fare: number;
+  otherPassengerInfo: OtherPassengerInfo | null;
 }
 
 export interface CustomerRidePayload {
@@ -61,4 +66,5 @@ export interface CustomerRidePayload {
     discountedFare: number;
     coupon: any;
   };
+  otherPassengerInfo: OtherPassengerInfo | null;
 }

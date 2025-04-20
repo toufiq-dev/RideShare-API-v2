@@ -32,6 +32,7 @@ import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
   BookingStatus,
   PilotStatus,
+  RideType,
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
@@ -855,6 +856,10 @@ export class PilotService {
           discountedFare: Number(result.updated.discountedFare),
           coupon: couponForPayload,
         },
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       // rideAccepted event triggered for customer
@@ -871,6 +876,10 @@ export class PilotService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       return {
@@ -992,6 +1001,10 @@ export class PilotService {
           discountedFare: Number(result.updated.discountedFare),
           coupon: result.updated.customer.coupon,
         },
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       // rideStarted event triggered for customer
@@ -1008,6 +1021,10 @@ export class PilotService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
       };
 
       return {

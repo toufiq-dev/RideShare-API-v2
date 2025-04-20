@@ -515,8 +515,8 @@ export class CustomerService {
           discountedFare: price,
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
-          estimatedDistance: distanceKm.toString(),
-          estimatedDuration: durationMin.toString(),
+          estimatedDistance: Math.ceil(distanceKm).toString(),
+          estimatedDuration: Math.ceil(durationMin).toString(),
         },
       });
 
@@ -537,6 +537,10 @@ export class CustomerService {
         originalPrice: Number(originalPrice.toFixed(0)),
         discountedPrice: Number(price.toFixed(0)),
         coupon: coupon || null,
+        otherPassengerInfo:
+          booking.rideType === RideType.OTHERS
+            ? { name: otherPassengerInfo.name }
+            : null,
       };
 
       return {

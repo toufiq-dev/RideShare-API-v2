@@ -259,4 +259,14 @@ export class PilotController {
   ) {
     return await this.pilotService.startRide(startRideDto, userId);
   }
+
+  @Post('end-ride')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'End the ride' })
+  async endRide(
+    @Body() endRideDto: BookingIdDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    // return await this.pilotService.endRide(endRideDto, userId);
+  }
 }

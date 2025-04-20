@@ -832,6 +832,7 @@ export class PilotService {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
+        estimatedDuration: result.updated.estimatedDuration,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
@@ -857,11 +858,9 @@ export class PilotService {
       };
 
       // rideAccepted event triggered for customer
-      const test = this.rideGateway.server
+      this.rideGateway.server
         .to(result.updated.customer.userId)
         .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
-
-      console.log(`${RideEvents.RIDE_STATUS_UPDATE} event triggered`, test);
 
       const data: PilotRideResponse = {
         bookingId: result.updated.id,
@@ -932,15 +931,7 @@ export class PilotService {
 
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId, pilotId: pilot.id },
-        include: {
-          customer: { include: { coupon: true } },
-          pilot: {
-            include: {
-              drivingLicense: true,
-              vehicle: { include: { vehicleType: true } },
-            },
-          },
-        },
+        select: { id: true, bookingCode: true },
       });
 
       if (!booking || booking.bookingCode !== bookingCode) {
@@ -955,6 +946,15 @@ export class PilotService {
         const updated = await tx.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.ONGOING, tripStart: new Date() },
+          include: {
+            customer: { include: { coupon: true } },
+            pilot: {
+              include: {
+                drivingLicense: true,
+                vehicle: { include: { vehicleType: true } },
+              },
+            },
+          },
         });
 
         return { updated };
@@ -962,51 +962,52 @@ export class PilotService {
 
       const pilotLocation = await this.redis.geoPos(
         'pilotLocations',
-        booking.pilot.userId,
+        result.updated.pilot.userId,
       );
 
       const payload: CustomerRidePayload = {
-        bookingCode: booking.bookingCode,
-        bookingId: booking.id,
+        bookingCode: result.updated.bookingCode,
+        bookingId: result.updated.id,
         bookingStatus: result.updated.status,
+        estimatedDuration: result.updated.estimatedDuration,
         pilot: {
-          pilotName: booking.pilot.drivingLicense.nameOnLicense,
-          profilePicture: booking.pilot.selfieUrl,
-          pilotPhone: booking.pilot.phone,
-          rating: booking.pilot.averageRating,
+          pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
+          profilePicture: result.updated.pilot.selfieUrl,
+          pilotPhone: result.updated.pilot.phone,
+          rating: result.updated.pilot.averageRating,
           pilotLocation: {
             lat: pilotLocation[0],
             lng: pilotLocation[1],
           },
-          vehicleNumber: booking.pilot.vehicle.regNo,
-          model: booking.pilot.vehicle.model,
-          colour: booking.pilot.vehicle.colour,
-          vehicleType: booking.pilot.vehicle.vehicleType.name,
+          vehicleNumber: result.updated.pilot.vehicle.regNo,
+          model: result.updated.pilot.vehicle.model,
+          colour: result.updated.pilot.vehicle.colour,
+          vehicleType: result.updated.pilot.vehicle.vehicleType.name,
         },
         pickupInMinutes: null,
-        pickupLocation: booking.pickupLocation,
-        dropLocation: booking.dropLocation,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Number(booking.estimatedFare),
-          discountedFare: Number(booking.discountedFare),
-          coupon: booking.customer.coupon,
+          origialFare: Number(result.updated.estimatedFare),
+          discountedFare: Number(result.updated.discountedFare),
+          coupon: result.updated.customer.coupon,
         },
       };
 
       // rideStarted event triggered for customer
       this.rideGateway.server
-        .to(booking.customer.userId)
+        .to(result.updated.customer.userId)
         .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
 
       const data: PilotRideResponse = {
         bookingId: booking.id,
-        fare: Number(booking.discountedFare),
-        customerName: booking.customer.name,
-        customerPhone: booking.customer.phone,
-        averageRating: booking.customer.averageRating,
-        pickupLocation: booking.pickupLocation,
-        dropLocation: booking.dropLocation,
-        rideStatus: booking.status,
+        fare: Number(result.updated.discountedFare),
+        customerName: result.updated.customer.name,
+        customerPhone: result.updated.customer.phone,
+        averageRating: result.updated.customer.averageRating,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        rideStatus: result.updated.status,
       };
 
       return {

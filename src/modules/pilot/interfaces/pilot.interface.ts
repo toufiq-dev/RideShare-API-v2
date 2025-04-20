@@ -26,7 +26,7 @@ export interface VerificationResponseVehicle {
   verificationFailed: boolean;
 }
 
-export interface RideResponse {
+export interface PilotRideResponse {
   customerName: string;
   customerPhone: string;
   averageRating: number;

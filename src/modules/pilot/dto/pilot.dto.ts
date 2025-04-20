@@ -73,14 +73,14 @@ export class BeOnlineDto {
   currentLocation: LocationDto;
 }
 
-export class AcceptRideDto {
+export class BookingIdDto {
   @ApiProperty({ description: 'Booking id' })
   @IsNotEmpty({ message: 'Booking id is required' })
   @IsString()
   bookingId: string;
 }
 
-export class StartRideDto extends AcceptRideDto {
+export class StartRideDto extends BookingIdDto {
   @ApiProperty({ description: 'Booking id' })
   @IsNotEmpty({ message: 'Booking id is required' })
   @IsString()

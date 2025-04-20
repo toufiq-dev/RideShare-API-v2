@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { SocketService } from 'src/core/socket/socket.service';
-import { CancelledBy } from '@prisma/client';
+import { BookingStatus, CancelledBy } from '@prisma/client';
 import { RideEvents } from 'src/core/socket/socket-events';
+import { NotifyDriverPayload } from './dto/ride.interface';
+import { RedisService } from 'src/core/cache/redis.service';
 
 @Injectable()
 export class RideNotificationService {
-  constructor(private readonly socketService: SocketService) {}
+  constructor(
+    private readonly socketService: SocketService,
+    private readonly redis: RedisService,
+  ) {}
 
   private get server(): Server {
     return this.socketService.server;
@@ -25,9 +30,14 @@ export class RideNotificationService {
     });
   }
 
-  notifyDriverNotFound(bookingId: string, userId: string) {
+  notifyDriverNotFound(
+    bookingId: string,
+    bookingStatus: BookingStatus,
+    userId: string,
+  ) {
     this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
       bookingId,
+      bookingStatus,
       message: 'Unfortunately ride request has been cancelled.',
     });
   }
@@ -39,18 +49,9 @@ export class RideNotificationService {
     });
   }
 
-  notifyRideRequest(payload: {
-    userId: string;
-    bookingId: string;
-    vehicleTypeId: string;
-    pickupLocation: any;
-    dropLocation: any;
-    estimatedFare: number;
-    nearestPilotDistance: number;
-    distanceKm: number;
-    durationMin: number;
-  }) {
+  async notifyRideRequest(payload: NotifyDriverPayload) {
     const {
+      pilotId,
       userId,
       bookingId,
       vehicleTypeId,
@@ -60,20 +61,27 @@ export class RideNotificationService {
       nearestPilotDistance,
       distanceKm,
       durationMin,
+      server,
     } = payload;
+
+    const notifiedKey = `notified-${bookingId}:${pilotId}`;
+    await this.redis.set(notifiedKey, 'true', 300);
 
     const notificationPayload = {
       bookingId,
       vehicleTypeId,
       pickupLocation,
       dropLocation,
-      estimatedFare,
+      estimatedFare: Number(estimatedFare),
       nearestPilotDistance,
       distanceKm,
       durationMin,
     };
 
-    this.server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
+    // Emit the ride request to the driver
+    server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
+
+    console.log(`Ride request emitted to pilot ${pilotId} (userId: ${userId})`);
   }
 
   notifyDriverLiveLocation(

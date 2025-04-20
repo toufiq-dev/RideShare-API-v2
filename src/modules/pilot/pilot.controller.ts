@@ -24,7 +24,7 @@ import {
   PancardDto,
   VehicleRcDto,
   BeOnlineDto,
-  AcceptRideDto,
+  BookingIdDto,
   StartRideDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -231,10 +231,23 @@ export class PilotController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a ride' })
   async acceptRide(
-    @Body() acceptRideDto: AcceptRideDto,
+    @Body() acceptRideDto: BookingIdDto,
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.acceptRide(acceptRideDto, userId);
+  }
+
+  @Post('reached-pickup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reached the pick up point' })
+  async reachedPickupPoint(
+    @Body() reachedPickupPointDto: BookingIdDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.reachedPickupPoint(
+      reachedPickupPointDto,
+      userId,
+    );
   }
 
   @Post('start-ride')

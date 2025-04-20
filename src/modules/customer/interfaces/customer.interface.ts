@@ -14,7 +14,7 @@ interface Coupon {
   validUntil: Date | null;
 }
 
-export interface RideResponse {
+export interface CustomerRideResponse {
   bookingId: string;
   location: [Location, Location];
   originalPrice: number;

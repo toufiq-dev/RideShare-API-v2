@@ -124,12 +124,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     key: string,
     longitude: number,
     latitude: number,
-    member: string,
+    userId: string,
   ): Promise<number> {
     try {
-      const result = await this.client.geoadd(key, longitude, latitude, member);
+      const result = await this.client.geoadd(key, longitude, latitude, userId);
       this.logger.log(
-        `Added ${member} to geospatial set ${key} at (${latitude}, ${longitude})`,
+        `Added ${userId} to geospatial set ${key} at (${latitude}, ${longitude})`,
         this.context,
       );
 
@@ -219,35 +219,35 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async setActiveRide(
-    pilotId: string,
+    userId: string,
     bookingId: string,
     customerUserId: string,
     ttl: number = 3600,
   ): Promise<void> {
-    const key = `active-ride:${pilotId}`;
+    const key = `active-ride:${userId}`;
     const value = JSON.stringify({ bookingId, customerUserId });
     await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
-    this.logger.log(`Set active ride cache ${pilotId}: ${value}`, this.context);
+    this.logger.log(`Set active ride cache ${userId}: ${value}`, this.context);
   }
 
   async getActiveRide(
-    pilotId: string,
+    userId: string,
   ): Promise<{ bookingId: string; customerUserId: string } | null> {
-    const key = `active-ride:${pilotId}`;
+    const key = `active-ride:${userId}`;
     const value = await this.client.get(key);
 
     this.logger.log(
-      `Retrieved active ride for pilot ${pilotId}: ${value}`,
+      `Retrieved active ride for pilot ${userId}: ${value}`,
       this.context,
     );
 
     return value ? JSON.parse(value) : null;
   }
 
-  async removeActiveRide(pilotId: string): Promise<void> {
-    const key = `active-ride:${pilotId}`;
+  async removeActiveRide(userId: string): Promise<void> {
+    const key = `active-ride:${userId}`;
     await this.client.del(key);
-    this.logger.log(`Removed active ride for pilot ${pilotId}`, this.context);
+    this.logger.log(`Removed active ride for pilot ${userId}`, this.context);
   }
 
   // Cache booking status with optional TTL (default 1 hour)

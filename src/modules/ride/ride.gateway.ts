@@ -45,22 +45,17 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketService.handleDisconnect(client);
   }
 
-  @SubscribeMessage(RideEvents.UPDATE_LOCATION)
+  @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: any,
   ) {
     try {
       const { lat, lng } = JSON.parse(body);
-      console.log('Received pilot updateLocation:', lat, lng);
 
-      const pilotId = await this.rideService.handleUpdateLocation(
-        client,
-        lat,
-        lng,
-      );
+      await this.rideService.handleUpdateLocation(client, lat, lng);
 
-      const activeRide = await this.rideService.getActiveRideForPilot(pilotId);
+      const activeRide = await this.rideService.getActiveRideForPilot(client);
 
       if (activeRide) {
         // Check status from Redis first

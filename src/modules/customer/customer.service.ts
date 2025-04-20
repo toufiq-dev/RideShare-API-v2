@@ -21,7 +21,7 @@ import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
 import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
-import { RideResponse } from './interfaces/customer.interface';
+import { CustomerRideResponse } from './interfaces/customer.interface';
 
 @Injectable()
 export class CustomerService {
@@ -504,7 +504,7 @@ export class CustomerService {
       const booking = await this.prisma.booking.create({
         data: {
           bookingCode: randomInt(1000, 10000).toString(),
-          customer: { connect: { id: customer.id } },
+          customerId: customer.id,
           name:
             rideFor === RideType.SELF
               ? customer.name
@@ -531,7 +531,7 @@ export class CustomerService {
         dropLocation,
       });
 
-      const data: RideResponse = {
+      const data: CustomerRideResponse = {
         bookingId: booking.id,
         location: [pickupLocation, dropLocation],
         originalPrice: Number(originalPrice.toFixed(0)),

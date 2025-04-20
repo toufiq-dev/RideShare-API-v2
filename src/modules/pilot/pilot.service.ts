@@ -15,11 +15,11 @@ import {
   PancardDto,
   AadhaarNumberDto,
   BeOnlineDto,
-  AcceptRideDto,
+  BookingIdDto,
   StartRideDto,
 } from './dto/pilot.dto';
 import {
-  RideResponse,
+  PilotRideResponse,
   CustomerRidePayload,
   VerificationResponseDL,
   VerificationResponseVehicle,
@@ -719,7 +719,7 @@ export class PilotService {
       }
 
       if (!onlineStatus) {
-        await this.redis.zRem('pilotLocations', pilot.id);
+        await this.redis.zRem('pilotLocations', pilot.userId);
       }
 
       await this.prisma.pilot.update({
@@ -737,7 +737,7 @@ export class PilotService {
     }
   }
 
-  async acceptRide(acceptRideDto: AcceptRideDto, userId: string) {
+  async acceptRide(acceptRideDto: BookingIdDto, userId: string) {
     const { bookingId } = acceptRideDto;
 
     try {
@@ -780,7 +780,10 @@ export class PilotService {
         return { updated };
       });
 
-      const pilotLocation = await this.redis.geoPos('pilotLocations', pilot.id);
+      const pilotLocation = await this.redis.geoPos(
+        'pilotLocations',
+        pilot.userId,
+      );
 
       let pickupInMinutes: number | null = null;
 
@@ -856,9 +859,9 @@ export class PilotService {
       // rideAccepted event triggered for customer
       this.rideGateway.server
         .to(result.updated.customer.userId)
-        .emit(RideEvents.RIDE_ACCEPTED, rideAcceptedPayload);
+        .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
 
-      const data: RideResponse = {
+      const data: PilotRideResponse = {
         bookingId: result.updated.id,
         fare: Number(result.updated.discountedFare),
         customerName: result.updated.customer.name,
@@ -872,6 +875,34 @@ export class PilotService {
       return {
         message: 'Ride accepted successfully.',
         data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async reachedPickupPoint(
+    reachedPickupPointDto: BookingIdDto,
+    userId: string,
+  ) {
+    const { bookingId } = reachedPickupPointDto;
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: { customer: true },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      this.rideGateway.server
+        .to(booking.customer.userId)
+        .emit(RideEvents.REACHED_PICKUP_POINT);
+
+      return {
+        message: 'Reached pickup point successfully.',
       };
     } catch (error) {
       console.error(error);
@@ -910,7 +941,7 @@ export class PilotService {
 
       const pilotLocation = await this.redis.geoPos(
         'pilotLocations',
-        booking.pilot.id,
+        booking.pilot.userId,
       );
 
       const payload: CustomerRidePayload = {
@@ -941,11 +972,12 @@ export class PilotService {
         },
       };
 
+      // rideStarted event triggered for customer
       this.rideGateway.server
         .to(booking.customer.userId)
-        .emit(RideEvents.RIDE_STARTED, payload);
+        .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
 
-      const data: RideResponse = {
+      const data: PilotRideResponse = {
         bookingId: booking.id,
         fare: Number(booking.discountedFare),
         customerName: booking.customer.name,

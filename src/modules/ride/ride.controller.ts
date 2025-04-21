@@ -63,7 +63,7 @@ export class RideController {
     @Body() endRideDto: BookingIdDto,
     @CurrentUser('userId') userId: string,
   ) {
-    // return await this.pilotService.endRide(endRideDto, userId);
+    return await this.rideService.endRide(endRideDto, userId);
   }
 
   @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)

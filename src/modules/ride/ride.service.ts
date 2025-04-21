@@ -609,6 +609,112 @@ export class RideService {
     }
   }
 
+  async endRide(endRideDto: BookingIdDto, userId: string) {
+    const { bookingId } = endRideDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId, pilotId: pilot.id },
+        select: { id: true, bookingCode: true, customerId: true },
+      });
+      if (!booking) {
+        throw new BadRequestException('Invalid Booking.');
+      }
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        await tx.pilot.update({
+          where: { id: pilot.id },
+          data: { activeBookingId: null },
+        });
+
+        await tx.customer.update({
+          where: { id: booking.customerId },
+          data: { activeBookingId: null },
+        });
+
+        const updated = await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.COMPLETED, tripEnd: new Date() },
+          include: {
+            customer: { include: { coupon: true } },
+            pilot: {
+              include: {
+                drivingLicense: true,
+                vehicle: { include: { vehicleType: true } },
+              },
+            },
+          },
+        });
+
+        return { updated };
+      });
+
+      const payload: CustomerRidePayload = {
+        bookingCode: result.updated.bookingCode,
+        bookingId: result.updated.id,
+        bookingStatus: result.updated.status,
+        estimatedDuration: result.updated.estimatedDuration,
+        pilot: {
+          pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
+          profilePicture: result.updated.pilot.selfieUrl,
+          pilotPhone: result.updated.pilot.phone,
+          rating: result.updated.pilot.averageRating,
+          pilotLocation: null,
+          vehicleNumber: result.updated.pilot.vehicle.regNo,
+          model: result.updated.pilot.vehicle.model,
+          colour: result.updated.pilot.vehicle.colour,
+          vehicleType: result.updated.pilot.vehicle.vehicleType.name,
+        },
+        pickupInMinutes: null,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        fairDetails: {
+          origialFare: Number(result.updated.estimatedFare),
+          discountedFare: Number(result.updated.discountedFare),
+          coupon: result.updated.customer.coupon,
+        },
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
+      };
+
+      // rideEnded event triggered for customer
+      this.rideNotificationService.notifyRideStatusUpdate(
+        result.updated.customer.userId,
+        payload,
+      );
+
+      const data: PilotRideResponse = {
+        bookingId: booking.id,
+        fare: Number(result.updated.discountedFare),
+        customerName: result.updated.customer.name,
+        customerPhone: result.updated.customer.phone,
+        averageRating: result.updated.customer.averageRating,
+        pickupLocation: result.updated.pickupLocation,
+        dropLocation: result.updated.dropLocation,
+        rideStatus: result.updated.status,
+        otherPassengerInfo:
+          result.updated.rideType === RideType.OTHERS
+            ? { name: result.updated.name }
+            : null,
+      };
+
+      return {
+        message: 'Ride ended successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async cancelRideRequest(
     cancelRideRequestDto: CancelRideRequestDto,
     userId: string,

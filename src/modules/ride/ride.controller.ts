@@ -56,7 +56,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
-  @Post('end-ride')
+  @Post('end')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'End the ride' })
   async endRide(

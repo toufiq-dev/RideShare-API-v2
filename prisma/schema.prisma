@@ -283,7 +283,7 @@ model Booking {
   dropLocation       Json
   estimatedDistance  String
   distance           String?
-  estimatedDuration  String
+  estimatedDuration  Int
   duration           String?
   acceptedAt         DateTime?
   arrivedAt          DateTime?

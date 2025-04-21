@@ -35,17 +35,22 @@ export class CustomerService {
 
   async getCustomer(userId: string) {
     try {
-      const data = await this.prisma.customer.findUnique({
+      const data: any = await this.prisma.customer.findUnique({
         where: {
           userId,
         },
         include: {
           language: true,
+          activeBooking: true,
         },
       });
 
       if (!data) {
         throw new NotFoundException('Customer not found.');
+      }
+
+      if (data.activeBookingId) {
+        data.bookingDetails = data.activeBooking;
       }
 
       return {
@@ -516,7 +521,7 @@ export class CustomerService {
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
           estimatedDistance: Math.ceil(distanceKm).toString(),
-          estimatedDuration: Math.ceil(durationMin).toString(),
+          estimatedDuration: Math.ceil(durationMin),
         },
       });
 

@@ -58,6 +58,7 @@ export class PilotService {
           language: true,
           drivingLicense: true,
           wallet: true,
+          activeBooking: true,
         },
       });
       if (!data) {
@@ -75,6 +76,10 @@ export class PilotService {
         data.wallet.lastTripEarning = data.wallet.lastTripEarning
           ? Number(data.wallet.lastTripEarning)
           : 0;
+      }
+
+      if (data.activeBookingId) {
+        data.bookingDetails = data.activeBooking;
       }
 
       return {
@@ -940,7 +945,7 @@ export class PilotService {
 
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId, pilotId: pilot.id },
-        select: { id: true, bookingCode: true },
+        select: { id: true, bookingCode: true, customerId: true },
       });
 
       if (!booking || booking.bookingCode !== bookingCode) {
@@ -952,8 +957,14 @@ export class PilotService {
         //   where: { id: pilot.id },
         //   data: { onlineStatus: PilotStatus.ON_TRIP },
         // });
+
+        await tx.customer.update({
+          where: { id: booking.customerId },
+          data: { activeBookingId: booking.id },
+        });
+
         const updated = await tx.booking.update({
-          where: { id: bookingId },
+          where: { id: booking.id },
           data: { status: BookingStatus.ONGOING, tripStart: new Date() },
           include: {
             customer: { include: { coupon: true } },

@@ -46,7 +46,7 @@ export interface CustomerRidePayload {
   bookingCode: string;
   bookingId: string;
   bookingStatus: BookingStatus;
-  estimatedDuration: string;
+  estimatedDuration: number;
   pilot: {
     pilotName: string;
     profilePicture: string;

@@ -22,6 +22,7 @@ import { FareService } from '../fare/fare.service';
 import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
 import { CustomerRideResponse } from './interfaces/customer.interface';
+import { CustomerRidePayload } from '../ride/dto/ride.interface';
 
 @Injectable()
 export class CustomerService {
@@ -40,6 +41,7 @@ export class CustomerService {
           userId,
         },
         include: {
+          coupon: true,
           language: true,
           activeBooking: true,
         },
@@ -50,7 +52,66 @@ export class CustomerService {
       }
 
       if (data.activeBookingId) {
-        data.bookingDetails = data.activeBooking;
+        const pilot = await this.prisma.pilot.findUnique({
+          where: {
+            id: data.activeBooking.pilotId,
+          },
+          select: {
+            selfieUrl: true,
+            phone: true,
+            averageRating: true,
+            currentLocation: true,
+            drivingLicense: {
+              select: {
+                nameOnLicense: true,
+              },
+            },
+            vehicle: {
+              select: {
+                regNo: true,
+                model: true,
+                colour: true,
+                vehicleType: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const payload: CustomerRidePayload = {
+          bookingCode: data.activeBooking.bookingCode,
+          bookingId: data.activeBooking.id,
+          bookingStatus: data.activeBooking.status,
+          estimatedDuration: data.activeBooking.estimatedDuration,
+          pilot: {
+            pilotName: pilot.drivingLicense.nameOnLicense,
+            profilePicture: pilot.selfieUrl,
+            pilotPhone: pilot.phone,
+            rating: pilot.averageRating,
+            pilotLocation: pilot.currentLocation,
+            vehicleNumber: pilot.vehicle.regNo,
+            model: pilot.vehicle.model,
+            colour: pilot.vehicle.colour,
+            vehicleType: pilot.vehicle.vehicleType.name,
+          },
+          pickupInMinutes: null,
+          pickupLocation: data.activeBooking.pickupLocation,
+          dropLocation: data.activeBooking.dropLocation,
+          fairDetails: {
+            origialFare: Number(data.activeBooking.estimatedFare),
+            discountedFare: Number(data.activeBooking.discountedFare),
+            coupon: data.coupon,
+          },
+          otherPassengerInfo:
+            data.activeBooking.rideType === RideType.OTHERS
+              ? { name: data.activeBooking.name }
+              : null,
+        };
+
+        data.activeBooking = payload;
       }
 
       return {

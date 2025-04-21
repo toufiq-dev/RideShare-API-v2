@@ -63,8 +63,16 @@ export class CancelRideRequestDto {
   @IsNotEmpty({ message: 'Reason for cancellation is required' })
   @IsString()
   reason: string;
+}
 
-  @IsNotEmpty({ message: 'Cancelled by is required' })
+export class BookingIdDto {
+  @IsNotEmpty({ message: 'Booking id is required' })
   @IsString()
-  cancelledBy: string;
+  bookingId: string;
+}
+
+export class StartRideDto extends BookingIdDto {
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingCode: string;
 }

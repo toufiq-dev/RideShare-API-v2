@@ -273,7 +273,7 @@ model Booking {
   bookingCode        String
   customerId         String
   pilotId            String?
-  name               String
+  name               String // name when rideType is for others
   status             BookingStatus
   rideType           RideType
   estimatedFare      Decimal             @db.Decimal(10, 2)

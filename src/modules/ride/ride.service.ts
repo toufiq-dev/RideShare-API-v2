@@ -767,15 +767,17 @@ export class RideService {
           },
         });
 
-        await tx.pilot.update({
-          where: { id: booking.pilotId },
-          data: { activeBookingId: null },
-        });
-
-        await tx.customer.update({
-          where: { id: booking.customerId },
-          data: { activeBookingId: null },
-        });
+        if (cancelledBy === CancelledBy.PILOT) {
+          await tx.pilot.update({
+            where: { id: booking.pilotId },
+            data: { activeBookingId: null },
+          });
+        } else if (cancelledBy === CancelledBy.CUSTOMER) {
+          await tx.customer.update({
+            where: { id: booking.customerId },
+            data: { activeBookingId: null },
+          });
+        }
       });
 
       // Cache booking status in Redis

@@ -63,10 +63,6 @@ export class CancelRideRequestDto {
   @IsNotEmpty({ message: 'Reason for cancellation is required' })
   @IsString()
   reason: string;
-
-  @IsNotEmpty({ message: 'Cancelled by is required' })
-  @IsString()
-  cancelledBy: string;
 }
 
 export class BookingIdDto {

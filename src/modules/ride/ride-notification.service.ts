@@ -3,7 +3,7 @@ import { Server } from 'socket.io';
 import { SocketService } from 'src/core/socket/socket.service';
 import { BookingStatus, CancelledBy } from '@prisma/client';
 import { RideEvents } from 'src/core/socket/socket-events';
-import { NotifyDriverPayload } from './dto/ride.interface';
+import { NotifyDriverPayload, CustomerRidePayload } from './dto/ride.interface';
 import { RedisService } from 'src/core/cache/redis.service';
 
 @Injectable()
@@ -61,7 +61,6 @@ export class RideNotificationService {
       nearestPilotDistance,
       distanceKm,
       durationMin,
-      server,
     } = payload;
 
     const notifiedKey = `notified-${bookingId}:${pilotId}`;
@@ -79,9 +78,22 @@ export class RideNotificationService {
     };
 
     // Emit the ride request to the driver
-    server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
+    this.server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
 
     console.log(`Ride request emitted to pilot ${pilotId} (userId: ${userId})`);
+  }
+
+  async notifyRideStatusUpdate(
+    customerUserId: string,
+    payload: CustomerRidePayload,
+  ) {
+    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+  }
+
+  async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
+    this.server
+      .to(customerUserId)
+      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
   }
 
   notifyDriverLiveLocation(

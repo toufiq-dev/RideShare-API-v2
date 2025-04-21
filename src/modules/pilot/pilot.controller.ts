@@ -24,8 +24,6 @@ import {
   PancardDto,
   VehicleRcDto,
   BeOnlineDto,
-  BookingIdDto,
-  StartRideDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -225,48 +223,5 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.beOnline(userId, beOnlineDto);
-  }
-
-  @Post('accept-ride')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Accept a ride' })
-  async acceptRide(
-    @Body() acceptRideDto: BookingIdDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.pilotService.acceptRide(acceptRideDto, userId);
-  }
-
-  @Post('reached-pickup')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reached the pick up point' })
-  async reachedPickupPoint(
-    @Body() reachedPickupPointDto: BookingIdDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.pilotService.reachedPickupPoint(
-      reachedPickupPointDto,
-      userId,
-    );
-  }
-
-  @Post('start-ride')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Start the ride' })
-  async startRide(
-    @Body() startRideDto: StartRideDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.pilotService.startRide(startRideDto, userId);
-  }
-
-  @Post('end-ride')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'End the ride' })
-  async endRide(
-    @Body() endRideDto: BookingIdDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    // return await this.pilotService.endRide(endRideDto, userId);
   }
 }

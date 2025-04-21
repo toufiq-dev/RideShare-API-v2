@@ -1,5 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library';
-import { OtherPassengerInfo } from 'src/modules/pilot/interfaces/pilot.interface';
+import { OtherPassengerInfo } from 'src/modules/ride/dto/ride.interface';
 
 export interface Location {
   lat: number;

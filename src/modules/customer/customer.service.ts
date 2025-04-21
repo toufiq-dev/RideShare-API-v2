@@ -21,8 +21,8 @@ import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
 import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
-import { CustomerRidePayload } from '../pilot/interfaces/pilot.interface';
 import { CustomerRideResponse } from './interfaces/customer.interface';
+import { CustomerRidePayload } from '../ride/dto/ride.interface';
 
 @Injectable()
 export class CustomerService {

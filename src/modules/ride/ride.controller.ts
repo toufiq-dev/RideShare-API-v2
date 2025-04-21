@@ -4,7 +4,11 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { RoleEnum } from '../auth/dto/auth.dto';
-import { CancelRideRequestDto } from './dto/ride.dto';
+import {
+  CancelRideRequestDto,
+  BookingIdDto,
+  StartRideDto,
+} from './dto/ride.dto';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { RideService } from './ride.service';
@@ -12,10 +16,57 @@ import { RideService } from './ride.service';
 @ApiTags('Ride')
 @Controller('ride')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
 export class RideController {
   constructor(private readonly rideService: RideService) {}
 
+  @Roles(RoleEnum.PILOT)
+  @Post('accept-ride')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Accept a ride' })
+  async acceptRide(
+    @Body() acceptRideDto: BookingIdDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.acceptRide(acceptRideDto, userId);
+  }
+
+  @Roles(RoleEnum.PILOT)
+  @Post('reached-pickup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reached the pick up point' })
+  async reachedPickupPoint(
+    @Body() reachedPickupPointDto: BookingIdDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.reachedPickupPoint(
+      reachedPickupPointDto,
+      userId,
+    );
+  }
+
+  @Roles(RoleEnum.PILOT)
+  @Post('start-ride')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Start the ride' })
+  async startRide(
+    @Body() startRideDto: StartRideDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.startRide(startRideDto, userId);
+  }
+
+  @Roles(RoleEnum.PILOT)
+  @Post('end-ride')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'End the ride' })
+  async endRide(
+    @Body() endRideDto: BookingIdDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    // return await this.pilotService.endRide(endRideDto, userId);
+  }
+
+  @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
   @Post('cancel')
   @HttpCode(200)
   @ApiBearerAuth()

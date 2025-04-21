@@ -20,7 +20,7 @@ export class RideController {
   constructor(private readonly rideService: RideService) {}
 
   @Roles(RoleEnum.PILOT)
-  @Post('accept-ride')
+  @Post('accept')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a ride' })
   async acceptRide(
@@ -45,7 +45,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
-  @Post('start-ride')
+  @Post('start')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Start the ride' })
   async startRide(

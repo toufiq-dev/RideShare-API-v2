@@ -61,6 +61,7 @@ export class RideNotificationService {
       nearestPilotDistance,
       distanceKm,
       durationMin,
+      server,
     } = payload;
 
     const notifiedKey = `notified-${bookingId}:${pilotId}`;
@@ -78,7 +79,7 @@ export class RideNotificationService {
     };
 
     // Emit the ride request to the driver
-    this.server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
+    server.to(userId).emit(RideEvents.RIDE_REQUEST, notificationPayload);
 
     console.log(`Ride request emitted to pilot ${pilotId} (userId: ${userId})`);
   }

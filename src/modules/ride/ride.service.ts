@@ -178,6 +178,7 @@ export class RideService {
               nearestPilotDistance: parseFloat(distance) / 1000,
               distanceKm,
               durationMin,
+              server,
             };
 
             await this.rideNotificationService.notifyRideRequest(

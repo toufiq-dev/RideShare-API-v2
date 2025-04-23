@@ -34,27 +34,22 @@ export class SocketService {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      if (!payload.userId) {
-        console.error('Invalid token: no userId');
-        client.disconnect();
-        throw new WsException('Invalid token');
-      }
-
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
       });
-      if (!user || user.role !== payload.role) {
-        console.error('User not found');
-        client.disconnect();
-        throw new WsException('User not found');
+
+      if (!user || user.role !== payload.role)
+        throw new WsException('Invalid user/role');
+
+      client.data.user = { userId: payload.userId, role: payload.role };
+
+      if (!client.rooms.has(payload.userId)) {
+        await client.join(payload.userId);
+        console.log(`${payload.role} joined room: ${payload.userId}`);
       }
 
-      await client.join(payload.userId);
-      console.log(`${payload.role} joined room: ${payload.userId}`);
-
-      return { userId: payload.userId, role: payload.role };
+      return client.data.user;
     } catch (err) {
-      console.error('JWT verification failed:', err.message);
       client.disconnect();
       throw new WsException('Authentication failed');
     }

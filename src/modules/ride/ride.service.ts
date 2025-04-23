@@ -139,16 +139,14 @@ export class RideService {
           { withDist: true, sort: 'ASC' },
         );
 
-        console.log('nearby pilots: ', nearbyPilots.length);
-
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
 
         // Iterate through all pilots in the radius
-        for (const [pilotId, distance] of nearbyPilots) {
+        for (const [pilotUserId, distance] of nearbyPilots) {
           // Check if this pilot was already notified
-          const notifiedKey = `notified-${bookingId}:${pilotId}`;
+          const notifiedKey = `notified-${bookingId}:${pilotUserId}`;
           const alreadyNotified = await this.redis.get(notifiedKey);
           if (alreadyNotified) {
             continue; // Skip already notified driver
@@ -156,19 +154,19 @@ export class RideService {
 
           // Fetch pilot details
           const pilot = await this.prisma.pilot.findUnique({
-            where: { id: pilotId, onlineStatus: PilotStatus.AVAILABLE },
+            where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE },
             include: { vehicle: true },
           });
 
           if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
             await this.redis.set(
-              `booking-vehicle:${bookingId}:${pilotId}`,
+              `booking-vehicle:${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
               20,
             ); // 20 seconds TTL
 
             const notifyDriverPayload: NotifyDriverPayload = {
-              pilotId,
+              pilotId: pilotUserId,
               userId: pilot.userId,
               bookingId,
               vehicleTypeId,
@@ -353,7 +351,7 @@ export class RideService {
       }
 
       const vehicleId = await this.redis.get(
-        `booking-vehicle:${bookingId}:${pilot.id}`,
+        `booking-vehicle:${bookingId}:${pilot.userId}`,
       );
       const vehicle = vehicleId
         ? await this.prisma.vehicle.findUnique({
@@ -362,7 +360,7 @@ export class RideService {
           })
         : null;
 
-      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.id}`);
+      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.userId}`);
       // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
       await this.redis.del(`ride-accept:${bookingId}`);
 

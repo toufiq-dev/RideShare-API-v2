@@ -6,6 +6,8 @@ import {
   IsPhoneNumber,
   Length,
   IsOptional,
+  Min,
+  Max,
 } from 'class-validator';
 
 export class VerifyPhoneDto {
@@ -23,11 +25,15 @@ export class VerifyPhoneDto {
 export class LocationDto {
   @ApiProperty({ description: 'Latitude' })
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   @IsNotEmpty()
   lat: number;
 
   @ApiProperty({ description: 'Longitude' })
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   @IsNotEmpty()
   lng: number;
 

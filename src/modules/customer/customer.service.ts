@@ -544,11 +544,15 @@ export class CustomerService {
           'You already have an active ride request',
         );
 
+      const origin = { lat: pickupLocation.lat, lng: pickupLocation.lng };
+      const destination = { lat: dropLocation.lat, lng: dropLocation.lng };
+
       const { distanceKm, durationMin } =
         await this.fareService.calculateDistanceAndDuration(
-          pickupLocation,
-          dropLocation,
+          origin,
+          destination,
         );
+
       const originalPrice = this.fareService.estimateFare(
         distanceKm,
         durationMin,

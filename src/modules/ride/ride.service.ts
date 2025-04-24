@@ -22,10 +22,12 @@ import {
   CancelRideRequestDto,
   BookingIdDto,
   StartRideDto,
+  EditRideRequestDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
+import { LocationDto } from 'src/common/dto/common.dto';
 
 @Injectable()
 export class RideService {
@@ -167,7 +169,7 @@ export class RideService {
 
             const notifyDriverPayload: NotifyDriverPayload = {
               pilotId: pilotUserId,
-              userId: pilot.userId,
+              pilotUserId: pilot.userId,
               bookingId,
               vehicleTypeId,
               pickupLocation,
@@ -805,5 +807,196 @@ export class RideService {
       console.error(error);
       throw error;
     }
+  }
+
+  async editRideRequest(
+    id: string,
+    editRideRequestDto: EditRideRequestDto,
+    userId: string,
+  ) {
+    const { pickupLocation, dropLocation } = editRideRequestDto;
+
+    try {
+      const [customer, booking]: any = await Promise.all([
+        await this.prisma.customer.findUnique({
+          where: { userId },
+          include: { coupon: true },
+        }),
+        await this.prisma.booking.findFirst({
+          where: { id },
+        }),
+      ]);
+
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+      if (!booking) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id: booking.pilotId },
+        select: {
+          userId: true,
+          selfieUrl: true,
+          phone: true,
+          averageRating: true,
+          currentLocation: true,
+          drivingLicense: {
+            select: {
+              nameOnLicense: true,
+            },
+          },
+          vehicle: {
+            select: {
+              regNo: true,
+              model: true,
+              colour: true,
+              vehicleType: {
+                select: {
+                  name: true,
+                  baseFare: true,
+                  perKmRate: true,
+                  perMinRate: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let distanceKm: number;
+      let durationMin: number;
+      if (pickupLocation) {
+        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
+          true,
+          pickupLocation,
+          booking,
+        ));
+      } else if (dropLocation) {
+        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
+          false,
+          dropLocation,
+          booking,
+        ));
+      } else {
+        throw new BadRequestException('No location provided for update');
+      }
+
+      const originalPrice = this.fareService.estimateFare(
+        distanceKm,
+        durationMin,
+        Number(pilot?.vehicle?.vehicleType.baseFare),
+        Number(pilot?.vehicle?.vehicleType.perKmRate),
+        Number(pilot?.vehicle?.vehicleType.perMinRate),
+      );
+
+      const coupon = customer.coupon;
+      if (coupon && isNaN(Number(coupon.discount))) {
+        throw new BadRequestException('Invalid coupon discount');
+      }
+
+      const price =
+        coupon && originalPrice > Number(coupon.discount)
+          ? originalPrice - Number(coupon.discount)
+          : originalPrice;
+
+      const updatedBooking = await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          pickupLocation: pickupLocation
+            ? pickupLocation
+            : booking.pickupLocation,
+          dropLocation: dropLocation ? dropLocation : booking.dropLocation,
+          estimatedDistance: Math.ceil(distanceKm).toString(),
+          estimatedDuration: Math.ceil(durationMin),
+          estimatedFare: originalPrice,
+          discountedFare: price,
+        },
+      });
+
+      const payload: PilotRideResponse = {
+        bookingId: updatedBooking.id,
+        fare: Number(updatedBooking.discountedFare),
+        customerName:
+          updatedBooking.rideType === RideType.SELF
+            ? customer.name
+            : updatedBooking.name,
+        customerPhone: customer.phone,
+        averageRating: customer.averageRating,
+        pickupLocation: pickupLocation
+          ? pickupLocation
+          : updatedBooking.pickupLocation,
+        dropLocation: dropLocation ? dropLocation : updatedBooking.dropLocation,
+        rideStatus: updatedBooking.status,
+        otherPassengerInfo:
+          updatedBooking.rideType === RideType.OTHERS
+            ? { name: updatedBooking.name }
+            : null,
+      };
+
+      const notify = this.rideNotificationService.notifyDriverForEditLocation(
+        pilot.userId,
+        payload,
+      );
+
+      console.log('pilot edit ride location', notify);
+
+      const data: CustomerRidePayload = {
+        bookingCode: updatedBooking.bookingCode,
+        bookingId: updatedBooking.id,
+        bookingStatus: updatedBooking.status,
+        estimatedDuration: updatedBooking.estimatedDuration,
+        pilot: {
+          pilotName: pilot.drivingLicense.nameOnLicense,
+          profilePicture: pilot.selfieUrl,
+          pilotPhone: pilot.phone,
+          rating: pilot.averageRating,
+          pilotLocation: pilot.currentLocation,
+          vehicleNumber: pilot.vehicle.regNo,
+          model: pilot.vehicle.model,
+          colour: pilot.vehicle.colour,
+          vehicleType: pilot.vehicle.vehicleType.name,
+        },
+        pickupInMinutes: null,
+        pickupLocation: updatedBooking.pickupLocation,
+        dropLocation: updatedBooking.dropLocation,
+        fairDetails: {
+          origialFare: Number(updatedBooking.estimatedFare),
+          discountedFare: Number(updatedBooking.discountedFare),
+          coupon,
+        },
+        otherPassengerInfo:
+          updatedBooking.rideType === RideType.OTHERS
+            ? { name: updatedBooking.name }
+            : null,
+      };
+
+      return {
+        message: 'Pickup or Drop Location has been changed',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  private async newDistanceAndDuration(
+    isPickup: boolean,
+    location: LocationDto,
+    booking: any,
+  ): Promise<{ distanceKm: number; durationMin: number }> {
+    const origin = isPickup
+      ? { lat: location.lat, lng: location.lng }
+      : { lat: booking.pickupLocation.lat, lng: booking.pickupLocation.lng };
+    const destination = isPickup
+      ? { lat: booking.dropLocation.lat, lng: booking.dropLocation.lng }
+      : { lat: location.lat, lng: location.lng };
+
+    const { distanceKm, durationMin } =
+      await this.fareService.calculateDistanceAndDuration(origin, destination);
+
+    return { distanceKm, durationMin };
   }
 }

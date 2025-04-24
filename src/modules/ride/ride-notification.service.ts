@@ -3,7 +3,11 @@ import { Server } from 'socket.io';
 import { SocketService } from 'src/core/socket/socket.service';
 import { BookingStatus, CancelledBy } from '@prisma/client';
 import { RideEvents } from 'src/core/socket/socket-events';
-import { NotifyDriverPayload, CustomerRidePayload } from './dto/ride.interface';
+import {
+  NotifyDriverPayload,
+  CustomerRidePayload,
+  PilotRideResponse,
+} from './dto/ride.interface';
 import { RedisService } from 'src/core/cache/redis.service';
 
 @Injectable()
@@ -52,7 +56,7 @@ export class RideNotificationService {
   async notifyRideRequest(payload: NotifyDriverPayload) {
     const {
       pilotId,
-      userId,
+      pilotUserId,
       bookingId,
       vehicleTypeId,
       pickupLocation,
@@ -79,28 +83,27 @@ export class RideNotificationService {
 
     // Emit the ride request to the driver
     const pilotSocket = this.server
-      .to(userId)
+      .to(pilotUserId)
       .emit(RideEvents.RIDE_REQUEST, notificationPayload);
 
     console.log(
-      `Ride request emitted to pilot ${pilotId} (userId: ${userId}), and socket: ${pilotSocket}`,
+      `Ride request emitted to pilot ${pilotId} (userId: ${pilotUserId}), and socket: ${pilotSocket}`,
     );
   }
 
-  async notifyRideStatusUpdate(
-    customerUserId: string,
-    payload: CustomerRidePayload,
-  ) {
-    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+  notifyRideStatusUpdate(customerUserId: string, payload: CustomerRidePayload) {
+    return this.server
+      .to(customerUserId)
+      .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
   }
 
-  async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
+  notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
     this.server
       .to(customerUserId)
       .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
   }
 
-  notifyDriverLiveLocation(
+  async notifyDriverLiveLocation(
     bookingId: string,
     customerUserId: string,
     lat: number,
@@ -110,6 +113,12 @@ export class RideNotificationService {
     return this.server
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
+  }
+
+  notifyDriverForEditLocation(pilotUserId: string, payload: PilotRideResponse) {
+    return this.server
+      .to(pilotUserId)
+      .emit(RideEvents.RIDE_EDIT_LOCATION, payload);
   }
 
   notifyError(userId: string, message: string, error?: string) {

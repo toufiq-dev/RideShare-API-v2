@@ -1,4 +1,12 @@
-import { Controller, UseGuards, Post, Body, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  UseGuards,
+  Post,
+  Body,
+  HttpCode,
+  Patch,
+  Param,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -8,6 +16,7 @@ import {
   CancelRideRequestDto,
   BookingIdDto,
   StartRideDto,
+  EditRideRequestDto,
 } from './dto/ride.dto';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -73,11 +82,29 @@ export class RideController {
   @ApiOperation({ summary: 'Cancel ride request' })
   @ApiBody({ type: CancelRideRequestDto })
   async cancelRideRequest(
-    @Body() createRideRequestDto: CancelRideRequestDto,
+    @Body() cancelRideRequestDto: CancelRideRequestDto,
     @CurrentUser('userId') userId: string,
   ) {
     return await this.rideService.cancelRideRequest(
-      createRideRequestDto,
+      cancelRideRequestDto,
+      userId,
+    );
+  }
+
+  @Roles(RoleEnum.CUSTOMER)
+  @Patch('edit/:bookingId')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edit ride request' })
+  @ApiBody({ type: CancelRideRequestDto })
+  async editRideRequest(
+    @Param('bookingId') id: string,
+    @Body() editRideRequestDto: EditRideRequestDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.editRideRequest(
+      id,
+      editRideRequestDto,
       userId,
     );
   }

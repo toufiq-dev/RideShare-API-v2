@@ -1,11 +1,10 @@
 export const RideEvents = {
-  UPDATE_PILOT_LOCATION: 'updateDriverLocation',
-  DRIVER_LIVE_LOCATION: 'driverLiveLocation',
-  RIDE_REQUEST: 'rideRequest',
-  // RIDE_ACCEPTED: 'rideAccepted',
-  // RIDE_STARTED: 'rideStarted',
-  RIDE_STATUS_UPDATE: 'rideStatusUpdate',
-  REACHED_PICKUP_POINT: 'reachedPickupPoint',
+  UPDATE_PILOT_LOCATION: 'updateDriverLocation', // for pilot
+  DRIVER_LIVE_LOCATION: 'driverLiveLocation', // for customer
+  RIDE_REQUEST: 'rideRequest', // for pilot
+  RIDE_EDIT_LOCATION: 'rideEditLocation', // for pilot
+  RIDE_STATUS_UPDATE: 'rideStatusUpdate', // for customer
+  REACHED_PICKUP_POINT: 'reachedPickupPoint', // for customer
   RIDE_REQUEST_TIMEOUT: 'rideRequestTimeout',
   RIDE_CANCELLED: 'rideCancelled',
   DRIVER_NOT_FOUND: 'driverNotFound',

@@ -57,6 +57,7 @@ export class CustomerService {
             id: data.activeBooking.pilotId,
           },
           select: {
+            userId: true,
             selfieUrl: true,
             phone: true,
             averageRating: true,
@@ -81,6 +82,11 @@ export class CustomerService {
           },
         });
 
+        const pilotLocation = await this.redis.geoPos(
+          'pilotLocations',
+          pilot.userId,
+        );
+
         const payload: CustomerRidePayload = {
           bookingCode: data.activeBooking.bookingCode,
           bookingId: data.activeBooking.id,
@@ -91,7 +97,10 @@ export class CustomerService {
             profilePicture: pilot.selfieUrl,
             pilotPhone: pilot.phone,
             rating: pilot.averageRating,
-            pilotLocation: pilot.currentLocation,
+            pilotLocation: {
+              lat: pilotLocation[0],
+              lng: pilotLocation[1],
+            },
             vehicleNumber: pilot.vehicle.regNo,
             model: pilot.vehicle.model,
             colour: pilot.vehicle.colour,

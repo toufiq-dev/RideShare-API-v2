@@ -891,7 +891,7 @@ export class RideService {
         Number(pilot?.vehicle?.vehicleType.perMinRate),
       );
 
-      const coupon = customer.coupon;
+      const coupon = customer?.coupon;
       if (coupon && isNaN(Number(coupon.discount))) {
         throw new BadRequestException('Invalid coupon discount');
       }
@@ -944,6 +944,10 @@ export class RideService {
         'pilotLocations',
         pilot.userId,
       );
+
+      if (coupon) {
+        coupon.discount = Number(coupon.discount);
+      }
 
       const data: CustomerRidePayload = {
         bookingCode: updatedBooking.bookingCode,

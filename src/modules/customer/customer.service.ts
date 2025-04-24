@@ -63,6 +63,10 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
+      if (data?.coupon) {
+        data.coupon.discount = Number(data.coupon.discount);
+      }
+
       if (data.activeBookingId) {
         const pilot = await this.prisma.pilot.findUnique({
           where: {

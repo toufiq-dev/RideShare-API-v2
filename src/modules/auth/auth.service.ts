@@ -18,6 +18,7 @@ import {
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -205,6 +206,30 @@ export class AuthService {
     }
   }
 
+  async deleteAccount(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { status: UserStatus.DELETED },
+      });
+
+      await this.redis.del(`accessToken:${userId}`);
+      await this.redis.del(`refreshToken:${userId}`);
+
+      return {
+        message: 'User deleted successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
 
@@ -303,6 +328,11 @@ export class AuthService {
         });
       }
     }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { status: UserStatus.ACTIVE },
+    });
 
     return { user, customer, pilot };
   }

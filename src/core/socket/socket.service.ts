@@ -3,6 +3,7 @@ import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { PrismaService } from '../database/prisma.service';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class SocketService {
@@ -36,7 +37,7 @@ export class SocketService {
     try {
       const payload = await this.jwtService.verifyAsync(token);
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
+        where: { id: payload.userId, status: UserStatus.ACTIVE },
       });
 
       if (!user || user.role !== payload.role)

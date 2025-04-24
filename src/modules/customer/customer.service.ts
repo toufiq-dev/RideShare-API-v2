@@ -19,7 +19,12 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { VehicleTypeName, BookingStatus, RideType } from '@prisma/client';
+import {
+  VehicleTypeName,
+  BookingStatus,
+  RideType,
+  UserStatus,
+} from '@prisma/client';
 import { RideService } from '../ride/ride.service';
 import { CustomerRideResponse } from './interfaces/customer.interface';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
@@ -36,6 +41,13 @@ export class CustomerService {
 
   async getCustomer(userId: string) {
     try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId, status: UserStatus.ACTIVE },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
       const data: any = await this.prisma.customer.findUnique({
         where: {
           userId,

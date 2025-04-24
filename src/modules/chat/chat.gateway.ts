@@ -12,6 +12,7 @@ import { UseGuards } from '@nestjs/common';
 import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { SocketService } from 'src/core/socket/socket.service';
 import { SendMessageDto } from './dto/send-message.dto';
+import { ChatEvents } from 'src/core/socket/socket-events';
 
 @WebSocketGateway({ namespace: '/socket' })
 @UseGuards(WsJwtAuthGuard)
@@ -33,7 +34,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketService.handleDisconnect(client);
   }
 
-  @SubscribeMessage('rideSendMessage')
+  @SubscribeMessage(ChatEvents.SEND_MESSAGE)
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() sendMessageDto: SendMessageDto,
@@ -49,7 +50,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(userId)
         .to(recipientId)
-        .emit('rideReceiveMessage', message);
+        .emit(ChatEvents.RECEIVE_MESSAGE, message);
 
       return { success: true };
     } catch (error) {

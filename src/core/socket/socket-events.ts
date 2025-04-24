@@ -13,6 +13,6 @@ export const RideEvents = {
 
 export const ChatEvents = {
   SEND_MESSAGE: 'rideSendMessage',
-  MESSAGE_RECEIVED: 'rideReceiveMessage',
+  RECEIVE_MESSAGE: 'rideReceiveMessage',
   TYPING: 'typing',
 } as const;

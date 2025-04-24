@@ -7,6 +7,7 @@ import { PrismaService } from '../database/prisma.service';
 @Injectable()
 export class SocketService {
   private _server: Server | null = null;
+  private activeConnections: Map<string, string> = new Map();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -43,10 +44,26 @@ export class SocketService {
 
       client.data.user = { userId: payload.userId, role: payload.role };
 
-      if (!client.rooms.has(payload.userId)) {
-        await client.join(payload.userId);
-        console.log(`${payload.role} joined room: ${payload.userId}`);
+      const existingSocketId = this.activeConnections.get(payload.userId);
+      if (existingSocketId) {
+        this.server.sockets.sockets.get(existingSocketId)?.disconnect(true);
+        console.log(
+          `Disconnected existing socket for userId: ${payload.userId}`,
+        );
       }
+
+      client.data.user = { userId: payload.userId, role: payload.role };
+
+      // Leave client.id room
+      await client.leave(client.id);
+      console.log(`Client ${client.id} left room: ${client.id}`);
+
+      // Join userId room
+      await client.join(payload.userId);
+      console.log(`${payload.role} joined room: ${payload.userId}`);
+
+      // Update active connections
+      this.activeConnections.set(payload.userId, client.id);
 
       return client.data.user;
     } catch (err) {
@@ -56,6 +73,10 @@ export class SocketService {
   }
 
   handleDisconnect(client: Socket) {
+    const userId = client.data.user?.userId;
+    if (userId && this.activeConnections.get(userId) === client.id) {
+      this.activeConnections.delete(userId);
+    }
     console.log('Client disconnected:', client.id);
   }
 }

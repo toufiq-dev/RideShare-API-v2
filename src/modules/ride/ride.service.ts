@@ -474,10 +474,12 @@ export class RideService {
         throw new NotFoundException('Booking not found.');
       }
 
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.ARRIVED },
+      });
+
       // Emit reachedPickupPoint event to customer
-      // this.rideGateway.server
-      //   .to(booking.customer.userId)
-      //   .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
       this.rideNotificationService.notifyReachedPickupPoint(
         booking.customer.userId,
         bookingId,
@@ -768,17 +770,15 @@ export class RideService {
           },
         });
 
-        if (cancelledBy === CancelledBy.PILOT) {
-          await tx.pilot.update({
-            where: { id: booking.pilotId },
-            data: { activeBookingId: null },
-          });
-        } else if (cancelledBy === CancelledBy.CUSTOMER) {
-          await tx.customer.update({
-            where: { id: booking.customerId },
-            data: { activeBookingId: null },
-          });
-        }
+        await tx.pilot.update({
+          where: { id: booking.pilotId },
+          data: { activeBookingId: null },
+        });
+
+        await tx.customer.update({
+          where: { id: booking.customerId },
+          data: { activeBookingId: null },
+        });
       });
 
       // Cache booking status in Redis

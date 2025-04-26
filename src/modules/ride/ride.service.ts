@@ -822,7 +822,7 @@ export class RideService {
           where: { userId },
           include: { coupon: true },
         }),
-        await this.prisma.booking.findFirst({
+        await this.prisma.booking.findUnique({
           where: { id },
         }),
       ]);

@@ -102,7 +102,7 @@ export class AuthService {
       );
 
       const device = await this.prisma.deviceToken.findUnique({
-        where: { id: user.id },
+        where: { userId: user.id },
       });
 
       if (!device) {
@@ -114,7 +114,7 @@ export class AuthService {
         });
       } else if (device.fcmToken !== fcmToken) {
         await this.prisma.deviceToken.update({
-          where: { id: user.id },
+          where: { userId: user.id },
           data: {
             fcmToken,
           },

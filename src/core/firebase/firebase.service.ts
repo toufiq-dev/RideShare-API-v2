@@ -9,7 +9,9 @@ export class FirebaseService {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: this.configService.get<string>('firebase.projectId'),
-          privateKey: this.configService.get<string>('firebase.privateKey').replace(/\\n/g, '\n'),
+          privateKey: this.configService
+            .get<string>('firebase.privateKey')
+            .replace(/\\n/g, '\n'),
           clientEmail: this.configService.get<string>('firebase.clientEmail'),
         }),
       });
@@ -23,10 +25,15 @@ export class FirebaseService {
     data: any,
   ) {
     try {
+      const stringifiedData = {};
+      for (const [key, value] of Object.entries(data)) {
+        stringifiedData[key] = String(value); // Convert value to string
+      }
+
       const message = {
         token,
         notification: { title, body },
-        data,
+        data: stringifiedData,
       };
 
       const response = await admin.messaging().send(message);

@@ -77,8 +77,6 @@ export class CreateRideRequestDto extends RideLocationDto {
   otherPassengerInfo: OtherInfo;
 }
 
-
-
 export class CreateBookingDto {
   @IsNotEmpty()
   @IsObject()

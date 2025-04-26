@@ -1,5 +1,28 @@
 import { BookingStatus } from '@prisma/client';
-import { JsonValue } from '@prisma/client/runtime/library';
+import { Decimal, JsonValue } from '@prisma/client/runtime/library';
+
+interface Coupon {
+  id: string;
+  name: string;
+  discount: Decimal;
+  validUntil: Date | null;
+}
+
+export interface Location {
+  lat: number;
+  lng: number;
+  name?: string;
+  address?: string;
+}
+
+export interface CustomerRideResponse {
+  bookingId: string;
+  location: [Location, Location];
+  originalPrice: number;
+  discountedPrice: number;
+  coupon: Coupon | null;
+  otherPassengerInfo: OtherPassengerInfo | null;
+}
 
 export interface RideRequestPayload {
   userId: string;

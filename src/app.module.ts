@@ -22,6 +22,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { FareModule } from './modules/fare/fare.module';
 import { GeofencingModule } from './core/geofencing/geofencing.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { FirebaseModule } from './core/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ChatModule } from './modules/chat/chat.module';
     FareModule,
     GeofencingModule,
     ChatModule,
+    FirebaseModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

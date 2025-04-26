@@ -7,11 +7,13 @@ import { FareModule } from '../fare/fare.module';
 import { SocketModule } from 'src/core/socket/socket.module';
 import { RideController } from './ride.controller';
 import { RideNotificationService } from './ride-notification.service';
+import { FirebaseModule } from 'src/core/firebase/firebase.module';
 
 @Module({
   imports: [
     SocketModule,
     FareModule,
+    FirebaseModule,
     BullModule.registerQueueAsync({
       name: 'ride-request',
     }),

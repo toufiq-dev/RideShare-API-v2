@@ -7,12 +7,11 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { diskStorage } from 'multer';
+import multer, { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { AzureService } from 'src/core/utils/azure.util';
 import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config';
-import * as multer from 'multer';
 import { promisify } from 'util';
 import { Request } from 'express';
 

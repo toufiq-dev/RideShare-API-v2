@@ -40,6 +40,13 @@ export class RideLocationDto {
   dropLocation: LocationDto;
 }
 
+class OtherInfo {
+  @ApiProperty({ description: 'Name' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class CreateRideRequestDto extends RideLocationDto {
   @ApiProperty({ description: 'Vehicle Type id' })
   @IsNotEmpty({ message: 'Vehicle type is required' })
@@ -70,12 +77,7 @@ export class CreateRideRequestDto extends RideLocationDto {
   otherPassengerInfo: OtherInfo;
 }
 
-class OtherInfo {
-  @ApiProperty({ description: 'Name' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-}
+
 
 export class CreateBookingDto {
   @IsNotEmpty()

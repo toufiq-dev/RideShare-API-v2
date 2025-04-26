@@ -9,7 +9,7 @@ export class FirebaseService {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: this.configService.get<string>('firebase.projectId'),
-          privateKey: this.configService.get<string>('firebase.privateKey'),
+          privateKey: this.configService.get<string>('firebase.privateKey').replace(/\\n/g, '\n'),
           clientEmail: this.configService.get<string>('firebase.clientEmail'),
         }),
       });

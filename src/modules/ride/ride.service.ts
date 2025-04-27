@@ -177,10 +177,10 @@ export class RideService {
               vehicleTypeId,
               pickupLocation,
               dropLocation,
-              estimatedFare: booking.discountedFare,
-              nearestPilotDistance: parseFloat(distance) / 1000,
-              distanceKm,
-              durationMin,
+              estimatedFare: Math.ceil(Number(booking.discountedFare)),
+              nearestPilotDistance: Math.ceil(parseFloat(distance) / 1000),
+              distanceKm: Math.ceil(distanceKm),
+              durationMin: Math.ceil(durationMin),
               server,
             };
 

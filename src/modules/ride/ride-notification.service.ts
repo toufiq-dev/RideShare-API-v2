@@ -76,19 +76,15 @@ export class RideNotificationService {
       vehicleTypeId,
       pickupLocation,
       dropLocation,
-      estimatedFare: Number(estimatedFare),
+      estimatedFare,
       nearestPilotDistance,
       distanceKm,
       durationMin,
     };
 
-    // Emit the ride request to the driver
-    const pilotSocket = this.server
-      .to(pilotUserId)
-      .emit(RideEvents.RIDE_REQUEST, notificationPayload);
-
     const fcmPayload = {
-      ...notificationPayload,
+      bookingId,
+      vehicleTypeId: vehicleTypeId,
       pickupLocation: JSON.stringify(pickupLocation),
       dropLocation: JSON.stringify(dropLocation),
       estimatedFare: estimatedFare.toString(),
@@ -105,6 +101,11 @@ export class RideNotificationService {
       fcmPayload,
     );
 
+    // Emit the ride request to the driver
+    const pilotSocket = this.server
+      .to(pilotUserId)
+      .emit(RideEvents.RIDE_REQUEST, notificationPayload);
+
     console.log(
       `Ride request emitted to pilot ${pilotId} (userId: ${pilotUserId}), and socket: ${pilotSocket}`,
     );
@@ -115,13 +116,6 @@ export class RideNotificationService {
     recipientUserId: string,
     cancelledBy: CancelledBy,
   ) {
-    this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
-      bookingId,
-      message: `The ride has been cancelled by the ${
-        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-      }.`,
-    });
-
     await this.sendPushNotification(
       recipientUserId,
       'Ride Cancelled',
@@ -130,6 +124,13 @@ export class RideNotificationService {
       }`,
       { bookingId },
     );
+
+    this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+      bookingId,
+      message: `The ride has been cancelled by the ${
+        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+      }.`,
+    });
   }
 
   async notifyDriverNotFound(
@@ -137,18 +138,18 @@ export class RideNotificationService {
     bookingStatus: BookingStatus,
     userId: string,
   ) {
-    this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
-      bookingId,
-      bookingStatus,
-      message: 'Unfortunately ride request has been cancelled.',
-    });
-
     await this.sendPushNotification(
       userId,
       'Ride Cancelled',
       'Unfortunately ride request has been cancelled.',
       { bookingId, bookingStatus },
     );
+
+    this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+      bookingId,
+      bookingStatus,
+      message: 'Unfortunately ride request has been cancelled.',
+    });
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {

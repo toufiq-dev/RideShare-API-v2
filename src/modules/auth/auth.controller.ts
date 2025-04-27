@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
@@ -8,6 +8,8 @@ import {
 } from './dto/auth.dto';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { LocationDto } from 'src/common/dto/common.dto';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/common/decorators/user.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -52,8 +54,17 @@ export class AuthController {
   }
 
   @Post('find-pilot')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Find Pilot Account' })
   async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
     return await this.authService.findMyAccount(findPilotDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('delete-account')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Delete Account' })
+  async deleteAccount(@CurrentUser('userId') userId: string) {
+    return await this.authService.deleteAccount(userId);
   }
 }

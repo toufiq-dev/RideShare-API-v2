@@ -18,6 +18,7 @@ import {
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -101,7 +102,7 @@ export class AuthService {
       );
 
       const device = await this.prisma.deviceToken.findUnique({
-        where: { id: user.id },
+        where: { userId: user.id },
       });
 
       if (!device) {
@@ -113,7 +114,7 @@ export class AuthService {
         });
       } else if (device.fcmToken !== fcmToken) {
         await this.prisma.deviceToken.update({
-          where: { id: user.id },
+          where: { userId: user.id },
           data: {
             fcmToken,
           },
@@ -198,6 +199,30 @@ export class AuthService {
       return {
         message: 'Pilot found successfully.',
         data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async deleteAccount(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { status: UserStatus.DELETED },
+      });
+
+      await this.redis.del(`accessToken:${userId}`);
+      await this.redis.del(`refreshToken:${userId}`);
+
+      return {
+        message: 'User deleted successfully.',
       };
     } catch (error) {
       console.error(error);
@@ -303,6 +328,11 @@ export class AuthService {
         });
       }
     }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { status: UserStatus.ACTIVE },
+    });
 
     return { user, customer, pilot };
   }

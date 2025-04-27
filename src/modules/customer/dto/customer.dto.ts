@@ -9,7 +9,8 @@ import {
   IsEmail,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
-import { RideType } from '@prisma/client';
+
+import { RideLocationDto } from 'src/modules/ride/dto/ride.dto';
 
 enum SavedPlaveTypeEnum {
   WORK = 'WORK',
@@ -91,59 +92,4 @@ export class UpdateSavedPlaceDto {
   type?: SavedPlaveTypeEnum;
 }
 
-export class RideLocationDto {
-  @ApiProperty({
-    description: 'Pickup Location in latitude and longitude',
-  })
-  @IsNotEmpty()
-  @ValidateNested()
-  @Type(() => LocationDto)
-  pickupLocation: LocationDto;
-
-  @ApiProperty({
-    description: 'Drop Location in latitude and longitude',
-  })
-  @IsNotEmpty()
-  @ValidateNested()
-  @Type(() => LocationDto)
-  dropLocation: LocationDto;
-}
-
 export class VehicleCategoryDto extends RideLocationDto {}
-
-class OtherInfo {
-  @ApiProperty({ description: 'Name' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-}
-
-export class CreateRideRequestDto extends RideLocationDto {
-  @ApiProperty({ description: 'Vehicle Type id' })
-  @IsNotEmpty({ message: 'Vehicle type is required' })
-  @IsString()
-  vehicleTypeId: string;
-
-  @ApiProperty({
-    description: 'current Location in latitude and longitude',
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => LocationDto)
-  currentLocation: LocationDto;
-
-  @ApiProperty({
-    enum: RideType,
-  })
-  @IsNotEmpty()
-  @IsEnum(RideType)
-  rideFor: RideType;
-
-  @ApiProperty({
-    description: 'Other passengers details',
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => OtherInfo)
-  otherPassengerInfo: OtherInfo;
-}

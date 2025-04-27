@@ -17,6 +17,7 @@ import {
   BookingIdDto,
   StartRideDto,
   EditRideRequestDto,
+  CreateRideRequestDto,
 } from './dto/ride.dto';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -27,6 +28,22 @@ import { RideService } from './ride.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RideController {
   constructor(private readonly rideService: RideService) {}
+
+  @Roles(RoleEnum.CUSTOMER)
+  @Post('request')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create ride request' })
+  @ApiBody({ type: CreateRideRequestDto })
+  async createRideRequest(
+    @Body() createRideRequestDto: CreateRideRequestDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.createRideRequest(
+      createRideRequestDto,
+      userId,
+    );
+  }
 
   @Roles(RoleEnum.PILOT)
   @Post('accept')

@@ -29,6 +29,7 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
+  UserStatus,
 } from '@prisma/client';
 import { PilotRideResponse } from '../ride/dto/ride.interface';
 
@@ -43,6 +44,13 @@ export class PilotService {
 
   async getPilot(userId: string) {
     try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId, status: UserStatus.ACTIVE },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
       const data: any = await this.prisma.pilot.findUnique({
         where: { userId },
         include: {

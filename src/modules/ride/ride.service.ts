@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { BookingStatus, CancelledBy, RideType } from '@prisma/client';
@@ -26,11 +27,13 @@ import {
   StartRideDto,
   EditRideRequestDto,
   CreateRideRequestDto,
+  RatingRideDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
+import { RoleEnum } from '../auth/dto/auth.dto';
 
 @Injectable()
 export class RideService {
@@ -211,7 +214,7 @@ export class RideService {
 
             await this.redis.del(acceptanceKey);
 
-            this.rideNotificationService.notifyRideRequestTimeout(
+            await this.rideNotificationService.notifyRideRequestTimeout(
               bookingId,
               pilot.userId,
             );
@@ -257,7 +260,7 @@ export class RideService {
 
         await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
 
-        this.rideNotificationService.notifyDriverNotFound(
+        await this.rideNotificationService.notifyDriverNotFound(
           bookingId,
           booking.status,
           userId,
@@ -542,7 +545,7 @@ export class RideService {
       // this.rideGateway.server
       //   .to(result.updated.customer.userId)
       //   .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
-      this.rideNotificationService.notifyRideStatusUpdate(
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
         rideAcceptedPayload,
       );
@@ -602,7 +605,7 @@ export class RideService {
       });
 
       // Emit reachedPickupPoint event to customer
-      this.rideNotificationService.notifyReachedPickupPoint(
+      await this.rideNotificationService.notifyReachedPickupPoint(
         booking.customer.userId,
         bookingId,
       );
@@ -704,7 +707,7 @@ export class RideService {
       // this.rideGateway.server
       //   .to(result.updated.customer.userId)
       //   .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
-      this.rideNotificationService.notifyRideStatusUpdate(
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
         payload,
       );
@@ -810,7 +813,7 @@ export class RideService {
       };
 
       // rideEnded event triggered for customer
-      this.rideNotificationService.notifyRideStatusUpdate(
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
         payload,
       );
@@ -914,7 +917,7 @@ export class RideService {
           cancelledBy === CancelledBy.CUSTOMER
             ? booking.pilot.userId
             : booking.customer.userId;
-        this.rideNotificationService.notifyRideCancelled(
+        await this.rideNotificationService.notifyRideCancelled(
           bookingId,
           recipientUserId,
           cancelledBy,
@@ -1057,7 +1060,7 @@ export class RideService {
             : null,
       };
 
-      this.rideNotificationService.notifyDriverForEditLocation(
+      await this.rideNotificationService.notifyDriverForEditLocation(
         pilot.userId,
         payload,
       );
@@ -1108,6 +1111,94 @@ export class RideService {
         message: 'Pickup or Drop Location has been changed',
         data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async ratingRide(
+    ratingRideDto: RatingRideDto,
+    userId: string,
+    role: RoleEnum,
+  ) {
+    const { bookingId, rating, feedback } = ratingRideDto;
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+      });
+
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      if (booking.status !== BookingStatus.COMPLETED) {
+        throw new BadRequestException('Booking is not completed yet.');
+      }
+
+      // 2. Verify user permissions based on role
+      if (role === RoleEnum.PILOT) {
+        const pilot = await this.prisma.pilot.findUnique({
+          where: { userId },
+        });
+
+        if (!pilot) {
+          throw new NotFoundException('Pilot not found.');
+        }
+
+        if (pilot.id !== booking.pilotId) {
+          throw new ForbiddenException(
+            'You can only rate rides you have completed.',
+          );
+        }
+
+        // Create pilot rating
+        const ratingRecord = await this.prisma.pilotRating.create({
+          data: {
+            pilotId: pilot.id,
+            bookingId,
+            rating,
+            feedback,
+          },
+        });
+
+        return {
+          message: 'Rating has been submitted',
+          data: ratingRecord,
+        };
+      } else if (role === RoleEnum.CUSTOMER) {
+        const customer = await this.prisma.customer.findUnique({
+          where: { userId },
+        });
+
+        if (!customer) {
+          throw new NotFoundException('Customer not found.');
+        }
+
+        if (customer.id !== booking.customerId) {
+          throw new ForbiddenException(
+            'You can only rate rides you have booked.',
+          );
+        }
+
+        // Create customer rating
+        const ratingRecord = await this.prisma.customerRating.create({
+          data: {
+            customerId: customer.id,
+            bookingId,
+            rating,
+            feedback,
+          },
+        });
+
+        return {
+          message: 'Rating has been submitted',
+          data: ratingRecord,
+        };
+      }
+
+      throw new BadRequestException('Invalid role specified.');
     } catch (error) {
       console.error(error);
       throw error;

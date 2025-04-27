@@ -152,3 +152,17 @@ export class EditRideRequestDto {
   @Type(() => LocationDto)
   dropLocation?: LocationDto;
 }
+
+export class RatingRideDto {
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingId: string;
+
+  @IsNotEmpty({ message: 'Rating is required' })
+  @IsNumber()
+  rating: number;
+
+  @IsOptional({ message: 'Review is required' })
+  @IsString()
+  feedback: string;
+}

@@ -18,6 +18,7 @@ import {
   StartRideDto,
   EditRideRequestDto,
   CreateRideRequestDto,
+  RatingRideDto,
 } from './dto/ride.dto';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -124,5 +125,18 @@ export class RideController {
       editRideRequestDto,
       userId,
     );
+  }
+
+  @Roles(RoleEnum.PILOT, RoleEnum.CUSTOMER)
+  @Post('rating')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Rating a ride' })
+  async ratingRide(
+    @Body() ratingRideDto: RatingRideDto,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: RoleEnum,
+  ) {
+    return await this.rideService.ratingRide(ratingRideDto, userId, role);
   }
 }

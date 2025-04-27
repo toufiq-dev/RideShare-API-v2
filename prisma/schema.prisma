@@ -141,9 +141,6 @@ model Pilot {
   wallet              PilotWallet?
   vehicle             Vehicle?           @relation("PilotVehicle")
   videoProgress       VideoProgress?
-
-  @@index([onlineStatus])
-  @@index([currentLocation])
 }
 
 model DrivingLicense {
@@ -160,8 +157,6 @@ model DrivingLicense {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   pilot            Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-
-  @@index([licenseNumber])
 }
 
 model Vehicle {
@@ -196,7 +191,6 @@ model VehicleType {
   perKmRate         Decimal?        @db.Decimal(10, 2)
   perMinRate        Decimal?        @db.Decimal(10, 2)
   vehicle           Vehicle[]
-  @@index([name])
 }
 
 model VehicleClassificationCache {
@@ -305,9 +299,8 @@ model Booking {
   supportTicket      SupportTicket?
   message            Message[]
 
-  @@index([customerId])
-  @@index([pilotId])
-  @@index([status])
+  @@index([customerId, status])
+  @@index([pilotId, status])
 }
 
 model CancellationReason {
@@ -332,15 +325,14 @@ model Message {
 }
 
 model CustomerRating {
-  id         String    @id @default(uuid())
-  bookingId  String    @unique
+  id         String   @id @default(uuid())
+  bookingId  String   @unique
   customerId String
-  rating     Int       @db.SmallInt
-  comment    String?
-  createdAt  DateTime  @default(now())
-  booking    Booking   @relation(fields: [bookingId], references: [id])
-  customer   Customer  @relation(fields: [customerId], references: [id])
-  feedback   Feedback?
+  rating     Int      @db.SmallInt
+  feedback   String?
+  createdAt  DateTime @default(now())
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id])
 }
 
 model PilotProgram {
@@ -358,27 +350,14 @@ model PilotRanking {
 }
 
 model PilotRating {
-  id        String     @id @default(uuid())
-  bookingId String     @unique
+  id        String   @id @default(uuid())
+  bookingId String   @unique
   pilotId   String
-  rating    Int        @db.SmallInt
-  comment   String?
-  createdAt DateTime   @default(now())
-  feedback  Feedback[]
-  booking   Booking    @relation(fields: [bookingId], references: [id])
-  pilot     Pilot      @relation(fields: [pilotId], references: [id])
-}
-
-model Feedback {
-  id               String         @id @default(uuid())
-  ratingId         String?
-  customerRatingId String         @unique
-  pilotRatingId    String
-  tags             String[]
-  comment          String?
-  createdAt        DateTime       @default(now())
-  customerRating   CustomerRating @relation(fields: [customerRatingId], references: [id])
-  pilotRating      PilotRating    @relation(fields: [pilotRatingId], references: [id])
+  rating    Int      @db.SmallInt
+  feedback  String?
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  pilot     Pilot    @relation(fields: [pilotId], references: [id])
 }
 
 model SupportTicket {

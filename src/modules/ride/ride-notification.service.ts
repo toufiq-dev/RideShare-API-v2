@@ -91,6 +91,10 @@ export class RideNotificationService {
       ...notificationPayload,
       pickupLocation: JSON.stringify(pickupLocation),
       dropLocation: JSON.stringify(dropLocation),
+      estimatedFare: estimatedFare.toString(),
+      nearestPilotDistance: nearestPilotDistance.toString(),
+      distanceKm: distanceKm.toString(),
+      durationMin: durationMin.toString(),
     };
 
     // Send push notification to the driver

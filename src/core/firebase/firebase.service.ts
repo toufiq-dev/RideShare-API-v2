@@ -25,15 +25,10 @@ export class FirebaseService {
     data: any,
   ) {
     try {
-      const stringifiedData = {};
-      for (const [key, value] of Object.entries(data)) {
-        stringifiedData[key] = String(value); // Convert value to string
-      }
-
       const message = {
         token,
         notification: { title, body },
-        data: stringifiedData,
+        data,
       };
 
       const response = await admin.messaging().send(message);

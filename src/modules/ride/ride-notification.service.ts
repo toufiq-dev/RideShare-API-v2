@@ -87,12 +87,18 @@ export class RideNotificationService {
       .to(pilotUserId)
       .emit(RideEvents.RIDE_REQUEST, notificationPayload);
 
+    const fcmPayload = {
+      ...notificationPayload,
+      pickupLocation: JSON.stringify(pickupLocation),
+      dropLocation: JSON.stringify(dropLocation),
+    };
+
     // Send push notification to the driver
     await this.sendPushNotification(
       pilotUserId,
       'New Ride Request',
       'You have a new ride request',
-      notificationPayload,
+      fcmPayload,
     );
 
     console.log(

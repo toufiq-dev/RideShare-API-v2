@@ -59,14 +59,12 @@ export class RideService {
   async handleUpdateLocation(client: Socket, lat: number, lng: number) {
     try {
       // Store location in Redis geospatial set
-      const result = await this.redis.geoAdd(
+      await this.redis.geoAdd(
         `pilotLocations`,
         lng,
         lat,
         client.data.user.userId,
       );
-
-      console.log('Updating Pilot Location', result);
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
@@ -368,8 +366,8 @@ export class RideService {
               : otherPassengerInfo?.name,
           status: BookingStatus.PENDING,
           rideType: rideFor,
-          estimatedFare: originalPrice,
-          discountedFare: price,
+          estimatedFare: Math.ceil(originalPrice),
+          discountedFare: Math.ceil(price),
           pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
           dropLocation: JSON.parse(JSON.stringify(dropLocation)),
           estimatedDistance: Math.ceil(distanceKm).toString(),
@@ -391,8 +389,8 @@ export class RideService {
       const data: CustomerRideResponse = {
         bookingId: booking.id,
         location: [pickupLocation, dropLocation],
-        originalPrice: Number(originalPrice.toFixed(0)),
-        discountedPrice: Number(price.toFixed(0)),
+        originalPrice: Math.ceil(Number(originalPrice)),
+        discountedPrice: Math.ceil(Number(price)),
         coupon: coupon || null,
         otherPassengerInfo:
           booking.rideType === RideType.OTHERS
@@ -531,8 +529,8 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Number(result.updated.estimatedFare),
-          discountedFare: Number(result.updated.discountedFare),
+          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: couponForPayload,
         },
         otherPassengerInfo:
@@ -552,7 +550,7 @@ export class RideService {
 
       const data: PilotRideResponse = {
         bookingId: result.updated.id,
-        fare: Number(result.updated.discountedFare),
+        fare: Math.ceil(Number(result.updated.discountedFare)),
         customerName: result.updated.customer.name,
         customerPhone: result.updated.customer.phone,
         averageRating: result.updated.customer.averageRating,
@@ -601,7 +599,7 @@ export class RideService {
 
       await this.prisma.booking.update({
         where: { id: bookingId },
-        data: { status: BookingStatus.ARRIVED },
+        data: { status: BookingStatus.ARRIVED, arrivedAt: new Date() },
       });
 
       // Emit reachedPickupPoint event to customer
@@ -638,10 +636,10 @@ export class RideService {
       }
 
       const result = await this.prisma.$transaction(async (tx) => {
-        // await tx.pilot.update({
-        //   where: { id: pilot.id },
-        //   data: { onlineStatus: PilotStatus.ON_TRIP },
-        // });
+        await tx.pilot.update({
+          where: { id: pilot.id },
+          data: { onlineStatus: PilotStatus.ON_TRIP },
+        });
 
         await tx.customer.update({
           where: { id: booking.customerId },
@@ -660,6 +658,12 @@ export class RideService {
               },
             },
           },
+        });
+
+        // Cut farecoins from pilot wallet
+        await this.prisma.pilotWallet.update({
+          where: { pilotId: pilot.id },
+          data: { balance: { decrement: updated.discountedFare } },
         });
 
         return { updated };
@@ -693,8 +697,8 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Number(result.updated.estimatedFare),
-          discountedFare: Number(result.updated.discountedFare),
+          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: result.updated.customer.coupon,
         },
         otherPassengerInfo:

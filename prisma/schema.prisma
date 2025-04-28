@@ -281,14 +281,14 @@ model Booking {
   distance           String?
   estimatedDuration  Int
   duration           String?
-  acceptedAt         DateTime?
-  arrivedAt          DateTime?
-  tripStart          DateTime?
-  tripEnd            DateTime?
+  acceptedAt         DateTime?           @db.Timestamptz
+  arrivedAt          DateTime?           @db.Timestamptz
+  tripStart          DateTime?           @db.Timestamptz
+  tripEnd            DateTime?           @db.Timestamptz
   surgeMultiplier    Decimal?            @default(1.0) @db.Decimal(10, 2)
   notes              String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime            @default(now()) @db.Timestamptz
+  updatedAt          DateTime            @updatedAt @db.Timestamptz
   cancellationReason CancellationReason?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
@@ -301,6 +301,7 @@ model Booking {
 
   @@index([customerId, status])
   @@index([pilotId, status])
+  @@index([tripStart])
 }
 
 model CancellationReason {

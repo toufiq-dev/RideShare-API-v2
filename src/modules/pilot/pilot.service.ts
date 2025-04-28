@@ -91,7 +91,7 @@ export class PilotService {
 
         const payload: PilotRideResponse = {
           bookingId: data.activeBooking.id,
-          fare: Number(data.activeBooking.fare),
+          fare: Math.ceil(Number(data.activeBooking.fare)),
           customerName: customer.name,
           customerPhone: customer.phone,
           averageRating: customer.averageRating,

@@ -139,4 +139,6 @@ export class RideController {
   ) {
     return await this.rideService.ratingRide(ratingRideDto, userId, role);
   }
+
+  // @Get('history')
 }

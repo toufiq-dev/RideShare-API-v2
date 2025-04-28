@@ -34,7 +34,6 @@ export class CustomerService {
     private readonly redis: RedisService,
     private readonly otpService: OTPService,
     private readonly fareService: FareService,
-    private readonly rideService: RideService,
   ) {}
 
   async getCustomer(userId: string) {
@@ -124,8 +123,10 @@ export class CustomerService {
           pickupLocation: data.activeBooking.pickupLocation,
           dropLocation: data.activeBooking.dropLocation,
           fairDetails: {
-            origialFare: Number(data.activeBooking.estimatedFare),
-            discountedFare: Number(data.activeBooking.discountedFare),
+            origialFare: Math.ceil(Number(data.activeBooking.estimatedFare)),
+            discountedFare: Math.ceil(
+              Number(data.activeBooking.discountedFare),
+            ),
             coupon: data.coupon,
           },
           otherPassengerInfo:
@@ -502,8 +503,8 @@ export class CustomerService {
           airCondition: item.airCondition,
           isFaster: item.isFaster,
           passengerCapacity: item.passengerCapacity,
-          originalPrice: parseFloat(originalPrice.toFixed(0)),
-          price: parseFloat(price.toFixed(0)),
+          originalPrice: Math.ceil(Number(originalPrice)),
+          price: Math.ceil(Number(price)),
           tolls: 0.0,
           timeAway: `${minsAway} min away`,
         });

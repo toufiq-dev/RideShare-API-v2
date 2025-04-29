@@ -15,7 +15,7 @@ export interface Location {
   address?: string;
 }
 
-export interface CustomerRideResponse {
+export interface CustomerCreateRideResponse {
   bookingId: string;
   location: [Location, Location];
   originalPrice: number;
@@ -59,6 +59,7 @@ export interface CustomerRidePayload {
   bookingId: string;
   bookingStatus: BookingStatus;
   estimatedDuration: number;
+  tripStart: Date | null;
   pilot: {
     pilotName: string;
     profilePicture: string;

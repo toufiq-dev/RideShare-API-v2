@@ -105,6 +105,7 @@ export class CustomerService {
           bookingId: data.activeBooking.id,
           bookingStatus: data.activeBooking.status,
           estimatedDuration: data.activeBooking.estimatedDuration,
+          tripStart: data.activeBooking.tripStart,
           pilot: {
             pilotName: pilot.drivingLicense.nameOnLicense,
             profilePicture: pilot.selfieUrl,

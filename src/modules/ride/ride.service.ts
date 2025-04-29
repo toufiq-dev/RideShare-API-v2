@@ -25,7 +25,7 @@ import {
   RideRequestPayload,
   CustomerRidePayload,
   PilotRideResponse,
-  CustomerRideResponse,
+  CustomerCreateRideResponse,
 } from './dto/ride.interface';
 import {
   CancelRideRequestDto,
@@ -215,7 +215,7 @@ export class RideService {
         dropLocation,
       });
 
-      const data: CustomerRideResponse = {
+      const data: CustomerCreateRideResponse = {
         bookingId: booking.id,
         location: [pickupLocation, dropLocation],
         originalPrice: Math.ceil(Number(originalPrice)),
@@ -443,13 +443,29 @@ export class RideService {
             status: BookingStatus.ACCEPTED,
             acceptedAt: moment.utc().toDate(),
           },
-          include: {
+          select: {
+            id: true,
+            status: true,
+            rideType: true,
+            name: true,
+            bookingCode: true,
+            estimatedFare: true,
+            estimatedDuration: true,
+            discountedFare: true,
+            pickupLocation: true,
+            dropLocation: true,
             customer: {
-              include: {
+              select: {
+                id: true,
+                userId: true,
+                name: true,
+                email: true,
+                phone: true,
+                averageRating: true,
+                activeBookingId: true,
                 coupon: true,
               },
             },
-            pilot: true,
           },
         });
 
@@ -514,6 +530,7 @@ export class RideService {
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
+        tripStart: null,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
@@ -543,9 +560,6 @@ export class RideService {
       };
 
       // rideAccepted event triggered for customer
-      // this.rideGateway.server
-      //   .to(result.updated.customer.userId)
-      //   .emit(RideEvents.RIDE_STATUS_UPDATE, rideAcceptedPayload);
       await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
         rideAcceptedPayload,
@@ -672,6 +686,7 @@ export class RideService {
             dropLocation: true,
             estimatedFare: true,
             discountedFare: true,
+            tripStart: true,
             customer: {
               select: {
                 userId: true,
@@ -738,6 +753,7 @@ export class RideService {
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
+        tripStart: result.updated.tripStart,
         pilot: {
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
           profilePicture: result.updated.pilot.selfieUrl,
@@ -838,12 +854,45 @@ export class RideService {
             tripEnd: moment.utc().toDate(),
             tripEndFare: booking.discountedFare,
           },
-          include: {
-            customer: { include: { coupon: true } },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            rideType: true,
+            bookingCode: true,
+            estimatedDuration: true,
+            estimatedFare: true,
+            discountedFare: true,
+            tripStart: true,
+            pickupLocation: true,
+            dropLocation: true,
+            customer: {
+              select: {
+                name: true,
+                userId: true,
+                phone: true,
+                averageRating: true,
+                coupon: true,
+              },
+            },
             pilot: {
-              include: {
+              select: {
                 drivingLicense: true,
-                vehicle: { include: { vehicleType: true } },
+                selfieUrl: true,
+                phone: true,
+                averageRating: true,
+                vehicle: {
+                  select: {
+                    regNo: true,
+                    model: true,
+                    colour: true,
+                    vehicleType: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -866,6 +915,7 @@ export class RideService {
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
+        tripStart: result.updated.tripStart,
         pilot: {
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
           profilePicture: result.updated.pilot.selfieUrl,
@@ -881,8 +931,8 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Number(result.updated.estimatedFare),
-          discountedFare: Number(result.updated.discountedFare),
+          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: result.updated.customer.coupon,
         },
         otherPassengerInfo:
@@ -1158,6 +1208,7 @@ export class RideService {
         bookingId: updatedBooking.id,
         bookingStatus: updatedBooking.status,
         estimatedDuration: updatedBooking.estimatedDuration,
+        tripStart: updatedBooking.tripStart,
         pilot: {
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
@@ -1396,6 +1447,7 @@ export class RideService {
           },
           select: {
             id: true,
+            name: true,
             rideType: true,
             pickupLocation: true,
             dropLocation: true,
@@ -1426,18 +1478,34 @@ export class RideService {
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
-      for (const booking of bookings) {
+      const transformedBookings = bookings.map((booking) => {
+        const {
+          id,
+          status,
+          name,
+          rideType,
+          discountedFare,
+          estimatedFare,
+          ...rest
+        } = booking;
+
         const fairDetails = {
-          origialFare: booking.estimatedFare,
-          discount: booking.discountedFare,
+          origialFare: Math.ceil(Number(estimatedFare)),
+          discountedFare: Math.ceil(Number(discountedFare)),
           coupon: customer.coupon,
         };
 
-        booking.fairDetails = fairDetails;
-      }
+        return {
+          ...rest,
+          bookingId: id,
+          bookingStatus: status,
+          fairDetails,
+          otherPassengerInfo: rideType === RideType.OTHERS ? { name } : null,
+        };
+      });
 
       const data = {
-        bookings,
+        bookings: transformedBookings,
         pagination: {
           totalItems: total,
           currentPage: page,

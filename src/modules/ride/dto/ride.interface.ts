@@ -28,6 +28,7 @@ export interface RideRequestPayload {
   userId: string;
   bookingId: string;
   estimatedFare: any;
+  discountedFare: any;
   vehicleTypeId: string;
   distanceKm: number;
   durationMin: number;

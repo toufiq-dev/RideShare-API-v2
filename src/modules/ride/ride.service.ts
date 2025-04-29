@@ -7,7 +7,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
-import { BookingStatus, CancelledBy, RideType } from '@prisma/client';
+import {
+  BookingStatus,
+  CancelledBy,
+  RideType,
+  TransactionStatus,
+  TransactionType,
+} from '@prisma/client';
 import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
 import { PilotStatus } from '@prisma/client';
@@ -34,6 +40,7 @@ import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class RideService {
@@ -112,10 +119,131 @@ export class RideService {
     return null;
   }
 
+  async createRideRequest(
+    createRideRequestDto: CreateRideRequestDto,
+    userId: string,
+  ) {
+    const {
+      vehicleTypeId,
+      pickupLocation,
+      dropLocation,
+      currentLocation,
+      rideFor,
+      otherPassengerInfo,
+    } = createRideRequestDto;
+
+    try {
+      // Fetch customer and vehicle type in one query
+      const [customer, vehicleType] = await Promise.all([
+        this.prisma.customer.findUnique({
+          where: { userId },
+          include: { coupon: true },
+        }),
+        this.prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } }),
+      ]);
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+      if (!vehicleType) {
+        throw new NotFoundException('Vehicle type not found');
+      }
+
+      // Check active booking
+      const activeBooking = await this.prisma.booking.findFirst({
+        where: { customerId: customer.id, status: BookingStatus.PENDING },
+      });
+      if (activeBooking)
+        throw new BadRequestException(
+          'You already have an active ride request',
+        );
+
+      const origin = { lat: pickupLocation.lat, lng: pickupLocation.lng };
+      const destination = { lat: dropLocation.lat, lng: dropLocation.lng };
+
+      const { distanceKm, durationMin } =
+        await this.fareService.calculateDistanceAndDuration(
+          origin,
+          destination,
+        );
+
+      const originalPrice = this.fareService.estimateFare(
+        distanceKm,
+        durationMin,
+        Number(vehicleType.baseFare),
+        Number(vehicleType.perKmRate),
+        Number(vehicleType.perMinRate),
+      );
+
+      const coupon = customer.coupon;
+      if (coupon && isNaN(Number(coupon.discount))) {
+        throw new BadRequestException('Invalid coupon discount');
+      }
+
+      const price =
+        coupon && originalPrice > Number(coupon.discount)
+          ? originalPrice - Number(coupon.discount)
+          : originalPrice;
+
+      const booking = await this.prisma.booking.create({
+        data: {
+          bookingCode: randomInt(1000, 10000).toString(),
+          customerId: customer.id,
+          name:
+            rideFor === RideType.SELF
+              ? customer.name
+              : otherPassengerInfo?.name,
+          status: BookingStatus.PENDING,
+          rideType: rideFor,
+          estimatedFare: Math.ceil(originalPrice),
+          discountedFare: Math.ceil(price),
+          pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
+          dropLocation: JSON.parse(JSON.stringify(dropLocation)),
+          estimatedDistance: Math.ceil(distanceKm).toString(),
+          estimatedDuration: Math.ceil(durationMin),
+        },
+      });
+
+      await this.enqueueRideRequest({
+        userId: customer.userId,
+        bookingId: booking.id,
+        estimatedFare: booking.estimatedFare,
+        discountedFare: booking.discountedFare,
+        vehicleTypeId,
+        distanceKm,
+        durationMin,
+        pickupLocation,
+        dropLocation,
+      });
+
+      const data: CustomerRideResponse = {
+        bookingId: booking.id,
+        location: [pickupLocation, dropLocation],
+        originalPrice: Math.ceil(Number(originalPrice)),
+        discountedPrice: Math.ceil(Number(price)),
+        coupon: coupon || null,
+        otherPassengerInfo:
+          booking.rideType === RideType.OTHERS
+            ? { name: otherPassengerInfo.name }
+            : null,
+      };
+
+      return {
+        success: true,
+        message:
+          'Your ride request is being processed. Searching for a driver...',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       userId,
       bookingId,
+      discountedFare,
       vehicleTypeId,
       distanceKm,
       durationMin,
@@ -124,15 +252,9 @@ export class RideService {
     } = payload;
 
     try {
-      const booking = await this.prisma.booking.findFirst({
-        where: { id: bookingId, status: BookingStatus.PENDING },
-      });
-      if (!booking)
-        throw new NotFoundException('Booking not found or not pending');
-
       let radius = 500; // Initial radius in meters
-      const maxRadius = 1500; // Max radius
-      const driverTimeout = 12 * 1000; // 12 seconds per driver
+      const maxRadius = 2000; // Max radius
+      const driverTimeout = 15 * 1000; // 15 seconds per driver
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
         // Fetch all nearby pilots in the current radius
@@ -178,7 +300,7 @@ export class RideService {
               vehicleTypeId,
               pickupLocation,
               dropLocation,
-              estimatedFare: Math.ceil(Number(booking.discountedFare)),
+              estimatedFare: Math.ceil(Number(discountedFare)),
               nearestPilotDistance: Math.ceil(parseFloat(distance) / 1000),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
@@ -291,125 +413,6 @@ export class RideService {
     return this.redis.setBookingStatus(bookingId, status);
   }
 
-  async createRideRequest(
-    createRideRequestDto: CreateRideRequestDto,
-    userId: string,
-  ) {
-    const {
-      vehicleTypeId,
-      pickupLocation,
-      dropLocation,
-      currentLocation,
-      rideFor,
-      otherPassengerInfo,
-    } = createRideRequestDto;
-
-    try {
-      // Fetch customer and vehicle type in one query
-      const [customer, vehicleType] = await Promise.all([
-        this.prisma.customer.findUnique({
-          where: { userId },
-          include: { coupon: true },
-        }),
-        this.prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } }),
-      ]);
-      if (!customer) {
-        throw new NotFoundException('Customer not found');
-      }
-      if (!vehicleType) {
-        throw new NotFoundException('Vehicle type not found');
-      }
-
-      // Check active booking
-      const activeBooking = await this.prisma.booking.findFirst({
-        where: { customerId: customer.id, status: BookingStatus.PENDING },
-      });
-      if (activeBooking)
-        throw new BadRequestException(
-          'You already have an active ride request',
-        );
-
-      const origin = { lat: pickupLocation.lat, lng: pickupLocation.lng };
-      const destination = { lat: dropLocation.lat, lng: dropLocation.lng };
-
-      const { distanceKm, durationMin } =
-        await this.fareService.calculateDistanceAndDuration(
-          origin,
-          destination,
-        );
-
-      const originalPrice = this.fareService.estimateFare(
-        distanceKm,
-        durationMin,
-        Number(vehicleType.baseFare),
-        Number(vehicleType.perKmRate),
-        Number(vehicleType.perMinRate),
-      );
-
-      const coupon = customer.coupon;
-      if (coupon && isNaN(Number(coupon.discount))) {
-        throw new BadRequestException('Invalid coupon discount');
-      }
-
-      const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
-          : originalPrice;
-
-      const booking = await this.prisma.booking.create({
-        data: {
-          bookingCode: randomInt(1000, 10000).toString(),
-          customerId: customer.id,
-          name:
-            rideFor === RideType.SELF
-              ? customer.name
-              : otherPassengerInfo?.name,
-          status: BookingStatus.PENDING,
-          rideType: rideFor,
-          estimatedFare: Math.ceil(originalPrice),
-          discountedFare: Math.ceil(price),
-          pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
-          dropLocation: JSON.parse(JSON.stringify(dropLocation)),
-          estimatedDistance: Math.ceil(distanceKm).toString(),
-          estimatedDuration: Math.ceil(durationMin),
-        },
-      });
-
-      await this.enqueueRideRequest({
-        userId: customer.userId,
-        bookingId: booking.id,
-        estimatedFare: booking.estimatedFare,
-        vehicleTypeId,
-        distanceKm,
-        durationMin,
-        pickupLocation,
-        dropLocation,
-      });
-
-      const data: CustomerRideResponse = {
-        bookingId: booking.id,
-        location: [pickupLocation, dropLocation],
-        originalPrice: Math.ceil(Number(originalPrice)),
-        discountedPrice: Math.ceil(Number(price)),
-        coupon: coupon || null,
-        otherPassengerInfo:
-          booking.rideType === RideType.OTHERS
-            ? { name: otherPassengerInfo.name }
-            : null,
-      };
-
-      return {
-        success: true,
-        message:
-          'Your ride request is being processed. Searching for a driver...',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
   async acceptRide(acceptRideDto: BookingIdDto, userId: string) {
     const { bookingId } = acceptRideDto;
 
@@ -438,7 +441,7 @@ export class RideService {
           data: {
             pilotId: pilot.id,
             status: BookingStatus.ACCEPTED,
-            acceptedAt: new Date(),
+            acceptedAt: moment.utc().toDate(),
           },
           include: {
             customer: {
@@ -599,7 +602,10 @@ export class RideService {
 
       await this.prisma.booking.update({
         where: { id: bookingId },
-        data: { status: BookingStatus.ARRIVED, arrivedAt: new Date() },
+        data: {
+          status: BookingStatus.ARRIVED,
+          arrivedAt: moment.utc().toDate(),
+        },
       });
 
       // Emit reachedPickupPoint event to customer
@@ -621,7 +627,10 @@ export class RideService {
     const { bookingId, bookingCode } = startRideDto;
 
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
@@ -648,22 +657,72 @@ export class RideService {
 
         const updated = await tx.booking.update({
           where: { id: booking.id },
-          data: { status: BookingStatus.ONGOING, tripStart: new Date() },
-          include: {
-            customer: { include: { coupon: true } },
+          data: {
+            status: BookingStatus.ONGOING,
+            tripStart: moment.utc().toDate(),
+          },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            rideType: true,
+            bookingCode: true,
+            estimatedDuration: true,
+            pickupLocation: true,
+            dropLocation: true,
+            estimatedFare: true,
+            discountedFare: true,
+            customer: {
+              select: {
+                userId: true,
+                name: true,
+                phone: true,
+                averageRating: true,
+                coupon: true,
+              },
+            },
             pilot: {
-              include: {
-                drivingLicense: true,
-                vehicle: { include: { vehicleType: true } },
+              select: {
+                userId: true,
+                selfieUrl: true,
+                phone: true,
+                averageRating: true,
+                drivingLicense: { select: { nameOnLicense: true } },
+                vehicle: {
+                  select: {
+                    regNo: true,
+                    model: true,
+                    colour: true,
+                    vehicleType: { select: { name: true } },
+                  },
+                },
               },
             },
           },
         });
 
         // Cut farecoins from pilot wallet
-        await this.prisma.pilotWallet.update({
+        await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
-          data: { balance: { decrement: updated.discountedFare } },
+          data: {
+            balance: { decrement: Math.ceil(Number(updated.discountedFare)) },
+          },
+        });
+
+        const wallet = await tx.pilotWallet.findUnique({
+          where: { pilotId: pilot.id },
+          select: { id: true, balance: true },
+        });
+
+        await tx.transaction.create({
+          data: {
+            pilotId: pilot.id,
+            amount: Math.ceil(Number(updated.discountedFare)),
+            walletId: wallet.id,
+            type: TransactionType.TRIP_DEDUCTION,
+            balanceBefore: Math.ceil(Number(wallet.balance)),
+            status: TransactionStatus.SUCCESSFUL,
+          },
         });
 
         return { updated };
@@ -707,10 +766,6 @@ export class RideService {
             : null,
       };
 
-      // rideStarted event triggered for customer
-      // this.rideGateway.server
-      //   .to(result.updated.customer.userId)
-      //   .emit(RideEvents.RIDE_STATUS_UPDATE, payload);
       await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
         payload,
@@ -752,16 +807,23 @@ export class RideService {
 
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId, pilotId: pilot.id },
-        select: { id: true, bookingCode: true, customerId: true },
+        select: {
+          id: true,
+          bookingCode: true,
+          customerId: true,
+          discountedFare: true,
+        },
       });
       if (!booking) {
         throw new BadRequestException('Invalid Booking.');
       }
 
       const result = await this.prisma.$transaction(async (tx) => {
+        const tripCount = pilot.totalTrips ? pilot.totalTrips + 1 : 1;
+
         await tx.pilot.update({
           where: { id: pilot.id },
-          data: { activeBookingId: null },
+          data: { activeBookingId: null, totalTrips: tripCount },
         });
 
         await tx.customer.update({
@@ -771,7 +833,11 @@ export class RideService {
 
         const updated = await tx.booking.update({
           where: { id: bookingId },
-          data: { status: BookingStatus.COMPLETED, tripEnd: new Date() },
+          data: {
+            status: BookingStatus.COMPLETED,
+            tripEnd: moment.utc().toDate(),
+            tripEndFare: booking.discountedFare,
+          },
           include: {
             customer: { include: { coupon: true } },
             pilot: {
@@ -782,6 +848,15 @@ export class RideService {
             },
           },
         });
+
+        // await tx.pilotTripEarning.create({
+        //   data: {
+        //     pilotId: pilot.id,
+        //     date: moment.utc().toDate(),
+        //     amount: Number(updated.discountedFare),
+        //     walletId: pilot.pilotWallets[0].id,
+        //   },
+        // })
 
         return { updated };
       });
@@ -1203,6 +1278,179 @@ export class RideService {
       }
 
       throw new BadRequestException('Invalid role specified.');
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getRideHistory(
+    userId: string,
+    startDate: string,
+    endDate: string,
+    page: number,
+    pageSize: number,
+  ) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const start = moment.utc(startDate);
+      const end = moment.utc(endDate);
+
+      if (!start.isValid() || !end.isValid()) {
+        throw new BadRequestException('Invalid start or end date.');
+      }
+      if (start.isAfter(end)) {
+        throw new BadRequestException('startDate must be before endDate');
+      }
+
+      let whereClause = {
+        pilotId: pilot.id,
+        createdAt: {
+          gte: start.toDate(),
+          lte: end.toDate(),
+        },
+      };
+
+      const skip = (page - 1) * pageSize;
+
+      const [bookings, total] = await Promise.all([
+        this.prisma.booking.findMany({
+          where: whereClause,
+          select: {
+            pickupLocation: true,
+            dropLocation: true,
+            tripStart: true,
+            tripEnd: true,
+            estimatedDistance: true,
+            discountedFare: true,
+            status: true,
+            cancellationReason: {
+              select: {
+                cancelledBy: true,
+              },
+            },
+          },
+          orderBy: {
+            tripStart: 'desc',
+          },
+          skip,
+          take: pageSize,
+        }),
+        this.prisma.booking.count({
+          where: whereClause,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(total / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Ride history fetched successfully',
+        data: {
+          bookings,
+          pagination: {
+            totalItems: total,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getMyTrips(
+    userId: string,
+    status: BookingStatus,
+    page: number,
+    pageSize: number,
+  ) {
+    try {
+      const customer: any = await this.prisma.customer.findUnique({
+        where: { userId },
+        select: { id: true, coupon: true },
+      });
+      if (!customer) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const skip = (page - 1) * pageSize;
+
+      const [bookings, total]: any = await Promise.all([
+        this.prisma.booking.findMany({
+          where: {
+            customerId: customer.id,
+            status,
+          },
+          select: {
+            id: true,
+            rideType: true,
+            pickupLocation: true,
+            dropLocation: true,
+            tripStart: true,
+            discountedFare: true,
+            status: true,
+            estimatedFare: true,
+          },
+          orderBy: {
+            tripStart: 'desc',
+          },
+          skip,
+          take: pageSize,
+        }),
+        this.prisma.booking.count({
+          where: {
+            customerId: customer.id,
+            status,
+          },
+        }),
+      ]);
+
+      if (customer.coupon) {
+        customer.coupon.discount = Number(customer.coupon.discount);
+      }
+
+      const totalPages = Math.ceil(total / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      for (const booking of bookings) {
+        const fairDetails = {
+          origialFare: booking.estimatedFare,
+          discount: booking.discountedFare,
+          coupon: customer.coupon,
+        };
+
+        booking.fairDetails = fairDetails;
+      }
+
+      const data = {
+        bookings,
+        pagination: {
+          totalItems: total,
+          currentPage: page,
+          pageSize,
+          hasNextPage,
+          hasPrevPage,
+        },
+      };
+
+      return {
+        message: 'My trips fetched successfully',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;

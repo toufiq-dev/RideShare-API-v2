@@ -2,10 +2,14 @@ import {
   Controller,
   UseGuards,
   Post,
+  Get,
   Body,
   HttpCode,
   Patch,
   Param,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -23,6 +27,7 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { RideService } from './ride.service';
+import { BookingStatus } from '@prisma/client';
 
 @ApiTags('Ride')
 @Controller('ride')
@@ -140,5 +145,38 @@ export class RideController {
     return await this.rideService.ratingRide(ratingRideDto, userId, role);
   }
 
-  // @Get('history')
+  @Roles(RoleEnum.PILOT)
+  @Get('history')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get ride history' })
+  async getRideHistory(
+    @CurrentUser('userId') userId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.rideService.getRideHistory(
+      userId,
+      startDate,
+      endDate,
+      page,
+      pageSize,
+    );
+  }
+
+  @Roles(RoleEnum.CUSTOMER)
+  @Get('trips')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my trips' })
+  async getMyTrips(
+    @CurrentUser('userId') userId: string,
+    @Query('status') status: BookingStatus,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.rideService.getMyTrips(userId, status, page, pageSize);
+  }
 }

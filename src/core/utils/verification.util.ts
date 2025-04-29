@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import formatDate from 'src/common/functions/formatDate';
 import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.interface';
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 import OpenAI from 'openai';
 import { PrismaService } from '../database/prisma.service';
 import { VehicleTypeName } from '@prisma/client';

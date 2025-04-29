@@ -222,7 +222,8 @@ model Subscription {
 
 model PilotTripEarning {
   id        String      @id @default(uuid())
-  pilotId   String      
+  pilotId   String
+  bookingId String
   date      DateTime    @db.Timestamptz
   amount    Decimal     @db.Decimal(10, 2)
   walletId  String      @unique

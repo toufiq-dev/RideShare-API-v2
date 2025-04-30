@@ -105,14 +105,15 @@ model Pilot {
   id                  String          @id @default(uuid())
   phone               String          @unique
   userId              String          @unique
+  selfieUrl           String?
+  languageId          String
   referralCode        String?
+  onlineStatus        PilotStatus     @default(OFFLINE)
   activeBookingId     String?         @unique
   isAlreadyRegistered Boolean         @default(false)
-  onlineStatus        PilotStatus     @default(OFFLINE)
   averageRating       Float           @default(5.0)
-  languageId          String
+  totalTrips          Int             @default(0)
   pilotProgramId      String?
-  selfieUrl           String?
   acceptedTerms       Boolean         @default(true)
   isDLVerified        Boolean         @default(false)
   isRCVerified        Boolean         @default(false)
@@ -223,7 +224,6 @@ model PilotTrips {
   id         String   @id @default(uuid())
   pilotId    String
   bookingId  String
-  totalTrips Int      @default(0)
   date       DateTime @db.Timestamptz
   amount     Decimal  @db.Decimal(10, 2)
   createdAt  DateTime @default(now()) @db.Timestamptz

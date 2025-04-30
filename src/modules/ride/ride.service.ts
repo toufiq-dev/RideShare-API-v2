@@ -1419,10 +1419,20 @@ export class RideService {
 
       let whereClause = {
         pilotId: pilot.id,
-        tripStart: {
-          gte: start.toDate(),
-          lte: end.toDate(),
-        },
+        OR: [
+          {
+            tripStart: {
+              gte: start.toDate(),
+              lte: end.toDate(),
+            },
+          },
+          {
+            createdAt: {
+              gte: start.toDate(),
+              lte: end.toDate(),
+            },
+          },
+        ],
       };
 
       const skip = (page - 1) * pageSize;

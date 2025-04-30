@@ -1405,11 +1405,16 @@ export class RideService {
         }),
       ]);
 
+      let totalEarning: number = 0;
       bookings.map((booking) => {
         booking.estimatedDistance = Math.ceil(
           Number(booking.estimatedDistance),
         );
         booking.discountedFare = Math.ceil(Number(booking.discountedFare));
+
+        if (booking.status === BookingStatus.COMPLETED) {
+          totalEarning += booking.discountedFare;
+        }
       });
 
       const totalPages = Math.ceil(total / pageSize);
@@ -1419,6 +1424,7 @@ export class RideService {
       return {
         message: 'Ride history fetched successfully',
         data: {
+          totalEarning,
           bookings,
           pagination: {
             totalItems: total,

@@ -572,7 +572,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          originalFare: Math.ceil(Number(result.updated.estimatedFare)),
           discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: couponForPayload,
         },
@@ -797,7 +797,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          originalFare: Math.ceil(Number(result.updated.estimatedFare)),
           discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: result.updated.customer.coupon,
         },
@@ -987,7 +987,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         fairDetails: {
-          origialFare: Math.ceil(Number(result.updated.estimatedFare)),
+          originalFare: Math.ceil(Number(result.updated.estimatedFare)),
           discountedFare: Math.ceil(Number(result.updated.discountedFare)),
           coupon: result.updated.customer.coupon,
         },
@@ -1283,7 +1283,7 @@ export class RideService {
         pickupLocation: updatedBooking.pickupLocation,
         dropLocation: updatedBooking.dropLocation,
         fairDetails: {
-          origialFare: Number(updatedBooking.estimatedFare),
+          originalFare: Number(updatedBooking.estimatedFare),
           discountedFare: Number(updatedBooking.discountedFare),
           coupon,
         },

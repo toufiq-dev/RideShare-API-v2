@@ -170,14 +170,36 @@ export class RideNotificationService {
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+    const fcmPayload = {
+      ...payload,
+      estimatedDuration: payload.estimatedDuration.toString(),
+      tripStart: payload.tripStart?.toISOString(),
+      pilot: {
+        ...payload.pilot,
+        rating: payload.pilot.rating.toString(),
+        pilotLocation: JSON.stringify(payload.pilot.pilotLocation),
+      },
+      pickupInMinutes: payload.pickupInMinutes?.toString(),
+      pickupLocation: JSON.stringify(payload.pickupLocation),
+      dropLocation: JSON.stringify(payload.dropLocation),
+      fairDetails: {
+        originalFare: payload.fairDetails.originalFare.toString(),
+        discountedFare: payload.fairDetails.discountedFare.toString(),
+        coupon: {
+          ...payload.fairDetails.coupon,
+          discount: payload.fairDetails.coupon.discount.toString(),
+        },
+      },
+    };
 
     await this.sendPushNotification(
       customerUserId,
       'Ride Status Update',
       'Your ride status has been updated',
-      payload,
+      fcmPayload,
     );
+
+    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
   }
 
   async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {

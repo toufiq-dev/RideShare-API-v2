@@ -70,10 +70,10 @@ export class PilotService {
           : 0;
         data.wallet.minusLimit = Number(data.wallet.minusLimit);
         data.wallet.todaysEarning = data.wallet.todaysEarning
-          ? Number(data.wallet.todaysEarning)
+          ? Math.ceil(Number(data.wallet.todaysEarning))
           : 0;
         data.wallet.lastTripEarning = data.wallet.lastTripEarning
-          ? Number(data.wallet.lastTripEarning)
+          ? Math.ceil(Number(data.wallet.lastTripEarning))
           : 0;
       }
 

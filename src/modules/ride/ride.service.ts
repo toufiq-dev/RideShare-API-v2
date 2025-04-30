@@ -54,9 +54,13 @@ export class RideService {
 
   async enqueueRideRequest(payload: RideRequestPayload) {
     try {
-      return await this.rideQueue.add('broadcast-to-pilots', payload, {
+      const job = await this.rideQueue.add('broadcast-to-pilots', payload, {
         jobId: `ride-${payload.bookingId}`,
       });
+
+      console.log(`Rideservie enqueueRideRequest with jobId, ${job.id}`);
+
+      return job;
     } catch (error) {
       console.error(error);
       throw error;
@@ -66,12 +70,14 @@ export class RideService {
   async handleUpdateLocation(client: Socket, lat: number, lng: number) {
     try {
       // Store location in Redis geospatial set
-      await this.redis.geoAdd(
+      const result = await this.redis.geoAdd(
         `pilotLocations`,
         lng,
         lat,
         client.data.user.userId,
       );
+
+      console.log(`Updating pilotLocation lat: ${lat}, lng: ${lng} `, result);
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
@@ -83,6 +89,8 @@ export class RideService {
     if (cachedRide) {
       return cachedRide;
     }
+
+    console.log(`getActiveRideForPilot from cache\n`, cachedRide);
 
     // Fallback to Prisma if not in Redis
     const pilot = await this.prisma.pilot.findUnique({
@@ -113,6 +121,8 @@ export class RideService {
         booking.customer.userId,
         3600,
       );
+
+      console.log('getActiveRideForPilot from fallback');
       return rideData;
     }
 
@@ -227,6 +237,8 @@ export class RideService {
             : null,
       };
 
+      console.log('CreatedRideRequest', data.bookingId);
+
       return {
         success: true,
         message:
@@ -257,6 +269,7 @@ export class RideService {
       const driverTimeout = 15 * 1000; // 15 seconds per driver
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
+        console.log(`searchAndNotifyNextDriver with radius ${radius}`);
         // Fetch all nearby pilots in the current radius
         const nearbyPilots: any = await this.redis.geoRadius(
           `pilotLocations`,
@@ -270,6 +283,8 @@ export class RideService {
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
+
+        console.log(`nearbyPilots length`, nearbyPilots.length);
 
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
@@ -287,6 +302,8 @@ export class RideService {
           });
 
           if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
+            console.log(`Eligible pilot found ${pilotUserId}`);
+
             await this.redis.set(
               `booking-vehicle:${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
@@ -310,6 +327,8 @@ export class RideService {
             await this.rideNotificationService.notifyRideRequest(
               notifyDriverPayload,
             );
+
+            console.log(`Notified driver ${pilotUserId}`);
 
             // Track driver acceptance
             const acceptanceKey = `ride-accept:${bookingId}`;
@@ -344,6 +363,8 @@ export class RideService {
           }
         }
 
+        console.log('No eligible drivers found in this radius: ', radius);
+
         return false; // No eligible drivers found in this radius
       };
 
@@ -360,11 +381,12 @@ export class RideService {
           if (updatedBooking?.status !== BookingStatus.PENDING) {
             break; // Exit if booking is no longer pending
           }
-          radius += 200; // Expand radius
+          radius += 500; // Expand radius
         }
       }
 
       if (!driverAccepted) {
+        console.log('No driver accepted');
         const booking = await this.prisma.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.NOT_FOUND },
@@ -385,6 +407,7 @@ export class RideService {
           booking.status,
           userId,
         );
+        console.log('booking cancelled');
       }
 
       return { success: true, message: 'Ride request processed' };
@@ -717,15 +740,17 @@ export class RideService {
         });
 
         // Cut farecoins from pilot wallet
-        await tx.pilotWallet.update({
+        const wallet = await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
-            balance: { decrement: Math.ceil(Number(updated.discountedFare)) },
+            balance: {
+              decrement: Math.ceil(Number(updated.discountedFare)),
+            },
+            date: moment.utc().toDate(),
+            todaysEarning: {
+              increment: Math.ceil(Number(updated.discountedFare)),
+            },
           },
-        });
-
-        const wallet = await tx.pilotWallet.findUnique({
-          where: { pilotId: pilot.id },
           select: { id: true, balance: true },
         });
 
@@ -837,9 +862,14 @@ export class RideService {
       const result = await this.prisma.$transaction(async (tx) => {
         const tripCount = pilot.totalTrips ? pilot.totalTrips + 1 : 1;
 
-        await tx.pilot.update({
+        const updatedPilot = await tx.pilot.update({
           where: { id: pilot.id },
           data: { activeBookingId: null, totalTrips: tripCount },
+          select: {
+            wallet: {
+              select: { id: true, todaysEarning: true, date: true },
+            },
+          },
         });
 
         await tx.customer.update({
@@ -863,6 +893,7 @@ export class RideService {
             estimatedDuration: true,
             estimatedFare: true,
             discountedFare: true,
+            tripEndFare: true,
             tripStart: true,
             pickupLocation: true,
             dropLocation: true,
@@ -903,15 +934,35 @@ export class RideService {
           },
         });
 
+        const tripAmount = Math.ceil(Number(updated.tripEndFare));
+
         await tx.pilotTrips.create({
           data: {
             pilotId: pilot.id,
             date: moment.utc().toDate(),
-            amount: Math.ceil(Number(updated.discountedFare)),
+            amount: tripAmount,
             bookingId,
           },
         });
 
+        const now = moment.utc();
+        let resetTodaysEarning = false;
+        if (
+          updatedPilot.wallet &&
+          !moment.utc(updatedPilot.wallet.date).isSame(now, 'day')
+        ) {
+          resetTodaysEarning = true;
+        }
+
+        await tx.pilotWallet.update({
+          where: { pilotId: pilot.id },
+          data: {
+            todaysEarning: resetTodaysEarning
+              ? tripAmount
+              : { increment: tripAmount },
+            lastTripEarning: tripAmount,
+          },
+        });
         return { updated };
       });
 

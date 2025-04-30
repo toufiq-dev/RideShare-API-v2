@@ -3,12 +3,10 @@ import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { PrismaService } from '../database/prisma.service';
-import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class SocketService {
   private _server: Server | null = null;
-  private activeConnections: Map<string, string> = new Map();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -36,48 +34,33 @@ export class SocketService {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId, status: UserStatus.ACTIVE },
-      });
-
-      if (!user || user.role !== payload.role)
-        throw new WsException('Invalid user/role');
-
-      client.data.user = { userId: payload.userId, role: payload.role };
-
-      const existingSocketId = this.activeConnections.get(payload.userId);
-      if (existingSocketId) {
-        this.server.sockets.sockets.get(existingSocketId)?.disconnect(true);
-        console.log(
-          `Disconnected existing socket for userId: ${payload.userId}`,
-        );
+      if (!payload.userId) {
+        console.error('Invalid token: no userId');
+        client.disconnect();
+        throw new WsException('Invalid token');
       }
 
-      client.data.user = { userId: payload.userId, role: payload.role };
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+      });
+      if (!user || user.role !== payload.role) {
+        console.error('User not found');
+        client.disconnect();
+        throw new WsException('User not found');
+      }
 
-      // Leave client.id room
-      await client.leave(client.id);
-      console.log(`Client ${client.id} left room: ${client.id}`);
-
-      // Join userId room
       await client.join(payload.userId);
       console.log(`${payload.role} joined room: ${payload.userId}`);
 
-      // Update active connections
-      this.activeConnections.set(payload.userId, client.id);
-
-      return client.data.user;
+      return { userId: payload.userId, role: payload.role };
     } catch (err) {
+      console.error('JWT verification failed:', err.message);
       client.disconnect();
       throw new WsException('Authentication failed');
     }
   }
 
   handleDisconnect(client: Socket) {
-    const userId = client.data.user?.userId;
-    if (userId && this.activeConnections.get(userId) === client.id) {
-      this.activeConnections.delete(userId);
-    }
     console.log('Client disconnected:', client.id);
   }
 }

@@ -52,7 +52,6 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { lat, lng } = JSON.parse(body);
-      console.log('Updating Pilot Location', lat, lng);
 
       await this.rideService.handleUpdateLocation(client, lat, lng);
 

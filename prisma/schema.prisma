@@ -221,28 +221,32 @@ model Subscription {
 }
 
 model PilotTrips {
-  id         String   @id @default(uuid())
-  pilotId    String
-  bookingId  String
-  date       DateTime @db.Timestamptz
-  amount     Decimal  @db.Decimal(10, 2)
-  createdAt  DateTime @default(now()) @db.Timestamptz
-  updatedAt  DateTime @updatedAt @db.Timestamptz
-  pilot      Pilot    @relation(fields: [pilotId], references: [id])
+  id        String   @id @default(uuid())
+  pilotId   String
+  bookingId String
+  date      DateTime @db.Timestamptz
+  amount    Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  pilot     Pilot    @relation(fields: [pilotId], references: [id])
 
   @@index([pilotId, date])
 }
 
 model PilotWallet {
-  id             String        @id @default(uuid())
-  pilotId        String        @unique
-  balance        Decimal       @db.Decimal(10, 2)
-  minusLimit     Decimal       @default(100.00) @db.Decimal(10, 2)
-  createdAt      DateTime      @default(now())
-  subscriptionId String
-  pilot          Pilot         @relation(fields: [pilotId], references: [id])
-  subscription   Subscription  @relation(fields: [subscriptionId], references: [id])
-  transactions   Transaction[]
+  id              String        @id @default(uuid())
+  pilotId         String        @unique
+  balance         Decimal       @db.Decimal(10, 2)
+  minusLimit      Decimal       @default(100.00) @db.Decimal(10, 2)
+  todaysEarning   Decimal?      @default(0.00) @db.Decimal(10, 2)
+  lastTripEarning Decimal?      @default(0.00) @db.Decimal(10, 2)
+  subscriptionId  String
+  date            DateTime?     @db.Timestamptz
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+  pilot           Pilot         @relation(fields: [pilotId], references: [id])
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
+  transactions    Transaction[]
 }
 
 model Transaction {

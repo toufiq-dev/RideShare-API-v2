@@ -36,8 +36,6 @@ export class SocketService {
     try {
       const payload = await this.jwtService.verifyAsync(token);
       if (!payload.userId) {
-        console.error('Invalid token: no userId');
-        client.disconnect();
         throw new WsException('Invalid token');
       }
 

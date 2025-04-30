@@ -6,11 +6,13 @@ import {
   IsString,
   ValidateNested,
   IsEnum,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { RideType } from '@prisma/client';
+import { BookingStatus } from '@prisma/client';
 
 export class UpdateLocationDto {
   @IsNumber({}, { message: 'Latitude must be a number' })
@@ -151,4 +153,18 @@ export class EditRideRequestDto {
   @ValidateNested()
   @Type(() => LocationDto)
   dropLocation?: LocationDto;
+}
+
+export class RatingRideDto {
+  @IsNotEmpty({ message: 'Booking id is required' })
+  @IsString()
+  bookingId: string;
+
+  @IsNotEmpty({ message: 'Rating is required' })
+  @IsNumber()
+  rating: number;
+
+  @IsOptional({ message: 'Review is required' })
+  @IsString()
+  feedback: string;
 }

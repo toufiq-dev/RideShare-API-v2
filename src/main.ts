@@ -9,6 +9,10 @@ import { TransformResponseInterceptor } from './common/interceptors/transform-re
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
+  process.env.TZ = 'UTC';
+  console.log('Node.js time zone:', process.env.TZ); // Should print "UTC"
+  console.log('Current UTC time:', new Date().toISOString());
+
   const app = await NestFactory.create(AppModule, { abortOnError: false });
 
   const logger = app.get(LoggerService);

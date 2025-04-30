@@ -903,12 +903,11 @@ export class RideService {
           },
         });
 
-        await tx.pilotTripEarning.create({
+        await tx.pilotTrips.create({
           data: {
             pilotId: pilot.id,
             date: moment.utc().toDate(),
             amount: Math.ceil(Number(updated.discountedFare)),
-            walletId: updated.pilot.wallet.id,
             bookingId,
           },
         });

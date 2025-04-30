@@ -1369,7 +1369,7 @@ export class RideService {
 
       let whereClause = {
         pilotId: pilot.id,
-        createdAt: {
+        tripStart: {
           gte: start.toDate(),
           lte: end.toDate(),
         },
@@ -1377,7 +1377,7 @@ export class RideService {
 
       const skip = (page - 1) * pageSize;
 
-      const [bookings, total] = await Promise.all([
+      const [bookings, total]: any = await Promise.all([
         this.prisma.booking.findMany({
           where: whereClause,
           select: {
@@ -1404,6 +1404,13 @@ export class RideService {
           where: whereClause,
         }),
       ]);
+
+      bookings.map((booking) => {
+        booking.estimatedDistance = Math.ceil(
+          Number(booking.estimatedDistance),
+        );
+        booking.discountedFare = Math.ceil(Number(booking.discountedFare));
+      });
 
       const totalPages = Math.ceil(total / pageSize);
       const hasNextPage = page < totalPages;

@@ -153,50 +153,28 @@ export class RideNotificationService {
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
-    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
-      bookingId,
-      reason: 'Time expired. You did not respond to the ride request.',
-    });
-
     await this.sendPushNotification(
       pilotUserId,
       'Ride Request Timeout',
       'Time expired. You did not respond to the ride request.',
       { bookingId },
     );
+
+    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
+      bookingId,
+      reason: 'Time expired. You did not respond to the ride request.',
+    });
   }
 
   async notifyRideStatusUpdate(
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    const fcmPayload = {
-      ...payload,
-      estimatedDuration: payload.estimatedDuration.toString(),
-      tripStart: payload.tripStart?.toISOString(),
-      pilot: {
-        ...payload.pilot,
-        rating: payload.pilot.rating.toString(),
-        pilotLocation: JSON.stringify(payload.pilot.pilotLocation),
-      },
-      pickupInMinutes: payload.pickupInMinutes?.toString(),
-      pickupLocation: JSON.stringify(payload.pickupLocation),
-      dropLocation: JSON.stringify(payload.dropLocation),
-      fairDetails: {
-        originalFare: payload.fairDetails.originalFare.toString(),
-        discountedFare: payload.fairDetails.discountedFare.toString(),
-        coupon: {
-          ...payload.fairDetails.coupon,
-          discount: payload.fairDetails.coupon.discount.toString(),
-        },
-      },
-    };
-
     await this.sendPushNotification(
       customerUserId,
       'Ride Status Update',
       'Your ride status has been updated',
-      fcmPayload,
+      { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
     );
 
     this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
@@ -237,7 +215,7 @@ export class RideNotificationService {
       pilotUserId,
       'Ride Edit Location',
       'You have a new edit location request',
-      payload,
+      { bookingId: payload.bookingId, fare: payload.fare.toString() },
     );
   }
 

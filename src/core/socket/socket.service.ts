@@ -28,6 +28,7 @@ export class SocketService {
     client: Socket,
   ): Promise<{ userId: string; role: string }> {
     const token = client.handshake.auth?.token;
+    console.log('Socket connection token:', token);
     if (!token) {
       throw new WsException('Missing authentication token');
     }

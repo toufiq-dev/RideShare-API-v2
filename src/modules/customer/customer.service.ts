@@ -124,7 +124,7 @@ export class CustomerService {
           pickupLocation: data.activeBooking.pickupLocation,
           dropLocation: data.activeBooking.dropLocation,
           fairDetails: {
-            origialFare: Math.ceil(Number(data.activeBooking.estimatedFare)),
+            originalFare: Math.ceil(Number(data.activeBooking.estimatedFare)),
             discountedFare: Math.ceil(
               Number(data.activeBooking.discountedFare),
             ),

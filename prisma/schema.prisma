@@ -102,44 +102,44 @@ model SavedPlace {
 }
 
 model Pilot {
-  id                  String             @id @default(uuid())
-  phone               String             @unique
-  userId              String             @unique
-  referralCode        String?
-  isAlreadyRegistered Boolean            @default(false)
-  onlineStatus        PilotStatus        @default(OFFLINE)
-  totalTrips          Int                @default(0)
-  averageRating       Float              @default(5.0)
-  languageId          String
-  pilotProgramId      String?
+  id                  String          @id @default(uuid())
+  phone               String          @unique
+  userId              String          @unique
   selfieUrl           String?
-  acceptedTerms       Boolean            @default(true)
-  isDLVerified        Boolean            @default(false)
-  isRCVerified        Boolean            @default(false)
-  isPanCardVerified   Boolean            @default(false)
-  isAadhaarVerified   Boolean            @default(false)
-  isFairCoinAvailed   Boolean            @default(false)
+  languageId          String
+  referralCode        String?
+  onlineStatus        PilotStatus     @default(OFFLINE)
+  activeBookingId     String?         @unique
+  isAlreadyRegistered Boolean         @default(false)
+  averageRating       Float           @default(5.0)
+  totalTrips          Int             @default(0)
+  pilotProgramId      String?
+  acceptedTerms       Boolean         @default(true)
+  isDLVerified        Boolean         @default(false)
+  isRCVerified        Boolean         @default(false)
+  isPanCardVerified   Boolean         @default(false)
+  isAadhaarVerified   Boolean         @default(false)
+  isFairCoinAvailed   Boolean         @default(false)
   currentLocation     Json?
   panCardName         String?
   aadhaarName         String?
-  panCardNumber       String?            @unique
-  aadhaarCardNumber   String?            @unique
+  panCardNumber       String?         @unique
+  aadhaarCardNumber   String?         @unique
   aadhaarCardAddress  String?
-  activeBookingId     String?            @unique
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
   drivingLicense      DrivingLicense?
   bookings            Booking[]
-  language            Languages          @relation(fields: [languageId], references: [id])
-  pilotProgram        PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
-  user                User               @relation(fields: [userId], references: [id])
-  activeBooking       Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
-  earnings            PilotTripEarning[]
+  language            Languages       @relation(fields: [languageId], references: [id])
+  pilotProgram        PilotProgram?   @relation(fields: [pilotProgramId], references: [id])
+  user                User            @relation(fields: [userId], references: [id])
+  activeBooking       Booking?        @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
+  pilotTrips          PilotTrips[]
   transaction         Transaction[]
   ranking             PilotRanking?
   ratings             PilotRating[]
   wallet              PilotWallet?
-  vehicle             Vehicle?           @relation("PilotVehicle")
+  vehicle             Vehicle?        @relation("PilotVehicle")
   videoProgress       VideoProgress?
 }
 
@@ -220,30 +220,33 @@ model Subscription {
   wallets             PilotWallet[]
 }
 
-model PilotTripEarning {
-  id        String      @id @default(uuid())
+model PilotTrips {
+  id        String   @id @default(uuid())
   pilotId   String
   bookingId String
-  date      DateTime    @db.Timestamptz
-  amount    Decimal     @db.Decimal(10, 2)
-  walletId  String      @unique
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  pilot     Pilot       @relation(fields: [pilotId], references: [id])
-  pWallet   PilotWallet @relation(fields: [walletId], references: [id])
+  date      DateTime @db.Timestamptz
+  amount    Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  pilot     Pilot    @relation(fields: [pilotId], references: [id])
+
+  @@index([pilotId, date])
 }
 
 model PilotWallet {
-  id               String             @id @default(uuid())
-  pilotId          String             @unique
-  balance          Decimal            @db.Decimal(10, 2)
-  minusLimit       Decimal            @default(100.00) @db.Decimal(10, 2)
-  createdAt        DateTime           @default(now())
-  subscriptionId   String
-  pilot            Pilot              @relation(fields: [pilotId], references: [id])
-  subscription     Subscription       @relation(fields: [subscriptionId], references: [id])
-  pilotTripEarning PilotTripEarning[]
-  transactions     Transaction[]
+  id              String        @id @default(uuid())
+  pilotId         String        @unique
+  balance         Decimal       @db.Decimal(10, 2)
+  minusLimit      Decimal       @default(100.00) @db.Decimal(10, 2)
+  todaysEarning   Decimal?      @default(0.00) @db.Decimal(10, 2)
+  lastTripEarning Decimal?      @default(0.00) @db.Decimal(10, 2)
+  subscriptionId  String
+  date            DateTime?     @db.Timestamptz
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+  pilot           Pilot         @relation(fields: [pilotId], references: [id])
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
+  transactions    Transaction[]
 }
 
 model Transaction {

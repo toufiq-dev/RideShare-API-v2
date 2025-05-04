@@ -75,7 +75,7 @@ export interface CustomerRidePayload {
   pickupLocation: JsonValue;
   dropLocation: JsonValue;
   fairDetails: {
-    origialFare: number;
+    originalFare: number;
     discountedFare: number;
     coupon: any;
   };

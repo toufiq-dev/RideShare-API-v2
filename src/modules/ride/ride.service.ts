@@ -1448,6 +1448,7 @@ export class RideService {
             estimatedDistance: true,
             discountedFare: true,
             status: true,
+            createdAt: true,
             cancellationReason: {
               select: {
                 cancelledBy: true,
@@ -1455,7 +1456,7 @@ export class RideService {
             },
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,
@@ -1540,9 +1541,10 @@ export class RideService {
             discountedFare: true,
             status: true,
             estimatedFare: true,
+            createdAt: true,
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,

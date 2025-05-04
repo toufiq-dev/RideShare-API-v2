@@ -31,26 +31,23 @@ export class RideNotificationService {
     body: string,
     data: any,
   ) {
-    const device = await this.prisma.deviceToken.findUnique({
-      where: { userId },
-    });
+    try {
+      const device = await this.prisma.deviceToken.findUnique({
+        where: { userId },
+      });
 
-    if (device?.fcmToken) {
-      try {
-        await this.firebaseService.sendNotification(
-          device.fcmToken,
-          title,
-          body,
-          data,
-        );
-      } catch (error) {
-        console.error(
-          `Failed to send push notification to user ${userId}:`,
-          error,
-        );
+      if (!device?.fcmToken) {
+        return;
       }
-    } else {
-      console.error(`No FCM token found for user ${userId}`);
+
+      await this.firebaseService.sendNotification(
+        device.fcmToken,
+        title,
+        body,
+        data,
+      );
+    } catch (error) {
+      console.error(error);
     }
   }
 
@@ -93,21 +90,22 @@ export class RideNotificationService {
       durationMin: durationMin.toString(),
     };
 
-    // Send push notification to the driver
-    await this.sendPushNotification(
-      pilotUserId,
-      'New Ride Request',
-      'You have a new ride request',
-      fcmPayload,
-    );
-
-    // Emit the ride request to the driver
-    const pilotSocket = this.server
-      .to(pilotUserId)
-      .emit(RideEvents.RIDE_REQUEST, notificationPayload);
+    await Promise.all([
+      // Send push notification to the driver
+      this.sendPushNotification(
+        pilotUserId,
+        'New Ride Request',
+        'You have a new ride request',
+        fcmPayload,
+      ),
+      // Emit the ride request to the driver
+      this.server
+        .to(pilotUserId)
+        .emit(RideEvents.RIDE_REQUEST, notificationPayload),
+    ]);
 
     console.log(
-      `Ride request emitted to pilot ${pilotId} (userId: ${pilotUserId}), and socket: ${pilotSocket}`,
+      `Ride request emitted to pilot ${pilotId} (userId: ${pilotUserId})}`,
     );
   }
 
@@ -116,21 +114,22 @@ export class RideNotificationService {
     recipientUserId: string,
     cancelledBy: CancelledBy,
   ) {
-    await this.sendPushNotification(
-      recipientUserId,
-      'Ride Cancelled',
-      `The ride has been cancelled by the ${
-        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-      }`,
-      { bookingId },
-    );
-
-    this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
-      bookingId,
-      message: `The ride has been cancelled by the ${
-        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-      }.`,
-    });
+    await Promise.all([
+      this.sendPushNotification(
+        recipientUserId,
+        'Ride Cancelled',
+        `The ride has been cancelled by the ${
+          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+        }`,
+        { bookingId },
+      ),
+      this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+        bookingId,
+        message: `The ride has been cancelled by the ${
+          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+        }.`,
+      }),
+    ]);
   }
 
   async notifyDriverNotFound(
@@ -138,59 +137,67 @@ export class RideNotificationService {
     bookingStatus: BookingStatus,
     userId: string,
   ) {
-    await this.sendPushNotification(
-      userId,
-      'Ride Cancelled',
-      'Unfortunately ride request has been cancelled.',
-      { bookingId, bookingStatus },
-    );
-
-    this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
-      bookingId,
-      bookingStatus,
-      message: 'Unfortunately ride request has been cancelled.',
-    });
+    await Promise.all([
+      this.sendPushNotification(
+        userId,
+        'Ride Cancelled',
+        'Unfortunately ride request has been cancelled.',
+        { bookingId, bookingStatus },
+      ),
+      this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+        bookingId,
+        bookingStatus,
+        message: 'Unfortunately ride request has been cancelled.',
+      }),
+    ]);
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
-    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
-      bookingId,
-      reason: 'Time expired. You did not respond to the ride request.',
-    });
+    await Promise.all([
+      this.sendPushNotification(
+        pilotUserId,
+        'Ride Request Timeout',
+        'Time expired. You did not respond to the ride request.',
+        { bookingId },
+      ),
 
-    await this.sendPushNotification(
-      pilotUserId,
-      'Ride Request Timeout',
-      'Time expired. You did not respond to the ride request.',
-      { bookingId },
-    );
+      this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
+        bookingId,
+        reason: 'Time expired. You did not respond to the ride request.',
+      }),
+    ]);
   }
 
   async notifyRideStatusUpdate(
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+    await Promise.all([
+      this.sendPushNotification(
+        customerUserId,
+        `Ride ${payload.bookingStatus.toLowerCase()}`,
+        `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
+        { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
+      ),
 
-    await this.sendPushNotification(
-      customerUserId,
-      'Ride Status Update',
-      'Your ride status has been updated',
-      payload,
-    );
+      this.server
+        .to(customerUserId)
+        .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
+    ]);
   }
 
   async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
-    this.server
-      .to(customerUserId)
-      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
-
-    await this.sendPushNotification(
-      customerUserId,
-      'Reached Pickup Point',
-      'You have reached the pickup point',
-      { bookingId },
-    );
+    await Promise.all([
+      this.sendPushNotification(
+        customerUserId,
+        'Reached Pickup Point',
+        'You have reached the pickup point',
+        { bookingId },
+      ),
+      this.server
+        .to(customerUserId)
+        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
+    ]);
   }
 
   async notifyDriverLiveLocation(
@@ -200,6 +207,7 @@ export class RideNotificationService {
     lng: number,
   ) {
     const payload = { bookingId, lat, lng };
+
     return this.server
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
@@ -209,14 +217,15 @@ export class RideNotificationService {
     pilotUserId: string,
     payload: PilotRideResponse,
   ) {
-    this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload);
-
-    await this.sendPushNotification(
-      pilotUserId,
-      'Ride Edit Location',
-      'You have a new edit location request',
-      payload,
-    );
+    await Promise.all([
+      this.sendPushNotification(
+        pilotUserId,
+        'Ride Edit Location',
+        'You have a new edit location request',
+        { bookingId: payload.bookingId, fare: payload.fare.toString() },
+      ),
+      this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload),
+    ]);
   }
 
   notifyError(userId: string, message: string, error?: string) {

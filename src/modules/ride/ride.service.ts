@@ -1488,6 +1488,8 @@ export class RideService {
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
+      console.log('totalEarning', totalEarning);
+
       return {
         message: 'Ride history fetched successfully',
         data: {

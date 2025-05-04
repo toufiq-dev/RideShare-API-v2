@@ -1466,6 +1466,7 @@ export class RideService {
       ]);
 
       let totalEarning: number = 0;
+      let tripDurationInMinutes: number;
       bookings.map((booking) => {
         booking.estimatedDistance = Math.ceil(
           Number(booking.estimatedDistance),
@@ -1475,6 +1476,11 @@ export class RideService {
         if (booking.status === BookingStatus.COMPLETED) {
           totalEarning += booking.discountedFare;
         }
+
+        const start = moment.utc(booking.tripStart);
+        const end = moment.utc(booking.tripEnd);
+        tripDurationInMinutes = end.diff(start, 'minutes');
+        booking.tripDurationInMinutes = tripDurationInMinutes;
       });
 
       const totalPages = Math.ceil(total / pageSize);

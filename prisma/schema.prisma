@@ -13,8 +13,8 @@ model User {
   status         UserStatus      @default(ACTIVE)
   metadata       Json?
   lastLogin      DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime        @default(now()) @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @db.Timestamptz
   admin          Admin?
   customer       Customer?
   deviceTokens   DeviceToken[]
@@ -26,8 +26,8 @@ model User {
 model DeviceToken {
   userId          String   @id @unique
   fcmToken        String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
   appVersion      String?
   dateTime        String?
   platform        String?
@@ -51,8 +51,8 @@ model Support {
   userId             String               @unique
   name               String
   referralCode       String               @unique
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime             @default(now()) @db.Timestamptz
+  updatedAt          DateTime             @updatedAt @db.Timestamptz
   user               User                 @relation(fields: [userId], references: [id])
   CancellationReason CancellationReason[]
 }
@@ -67,8 +67,8 @@ model Customer {
   name                String?
   avatar              String?
   averageRating       Float            @default(5.0)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdAt           DateTime         @default(now()) @db.Timestamptz
+  updatedAt           DateTime         @updatedAt @db.Timestamptz
   languageId          String
   couponId            String?
   activeBookingId     String?          @unique
@@ -85,7 +85,8 @@ model Coupon {
   id         String     @id @default(uuid())
   name       String     @unique
   discount   Decimal    @db.Decimal(10, 2)
-  validUntil DateTime?
+  validUntil DateTime?  @db.Timestamptz
+  createdAt  DateTime   @default(now()) @db.Timestamptz
   customers  Customer[]
 }
 
@@ -126,8 +127,8 @@ model Pilot {
   panCardNumber       String?         @unique
   aadhaarCardNumber   String?         @unique
   aadhaarCardAddress  String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  createdAt           DateTime        @default(now()) @db.Timestamptz
+  updatedAt           DateTime        @updatedAt @db.Timestamptz
   drivingLicense      DrivingLicense?
   bookings            Booking[]
   language            Languages       @relation(fields: [languageId], references: [id])
@@ -204,7 +205,7 @@ model VehicleClassificationCache {
   seatCapacity    String?
   permitType      String?
   isCommercial    Boolean
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @default(now()) @db.Timestamptz
 
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
 }
@@ -216,6 +217,7 @@ model Subscription {
   price               Decimal       @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?      @db.Decimal(10, 2)
   tag                 String?
+  createdAt           DateTime      @default(now()) @db.Timestamptz
   transactions        Transaction[]
   wallets             PilotWallet[]
 }
@@ -260,8 +262,8 @@ model Transaction {
   balanceBefore  Decimal?          @db.Decimal(10, 2)
   balanceAfter   Decimal?          @db.Decimal(10, 2)
   metadata       Json?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt      DateTime          @default(now()) @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @db.Timestamptz
   subscriptionId String?
   subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
   pilot          Pilot             @relation(fields: [pilotId], references: [id])
@@ -502,6 +504,7 @@ enum VehicleTypeName {
 enum RideType {
   SELF
   OTHERS
+  SCHEDULED
 }
 
 enum CancelledBy {

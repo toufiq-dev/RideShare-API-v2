@@ -318,7 +318,7 @@ export class RideService {
               pickupLocation,
               dropLocation,
               estimatedFare: Math.ceil(Number(discountedFare)),
-              nearestPilotDistance: Math.ceil(parseFloat(distance) / 1000),
+              nearestPilotDistance: parseFloat((Number(distance) / 1000).toFixed(2)),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
               server,
@@ -747,9 +747,6 @@ export class RideService {
               decrement: Math.ceil(Number(updated.discountedFare)),
             },
             date: moment.utc().toDate(),
-            todaysEarning: {
-              increment: Math.ceil(Number(updated.discountedFare)),
-            },
           },
           select: { id: true, balance: true },
         });
@@ -864,7 +861,11 @@ export class RideService {
 
         const updatedPilot = await tx.pilot.update({
           where: { id: pilot.id },
-          data: { activeBookingId: null, totalTrips: tripCount },
+          data: {
+            activeBookingId: null,
+            totalTrips: tripCount,
+            onlineStatus: PilotStatus.AVAILABLE,
+          },
           select: {
             wallet: {
               select: { id: true, todaysEarning: true, date: true },
@@ -946,21 +947,30 @@ export class RideService {
         });
 
         const now = moment.utc();
-        let resetTodaysEarning = false;
-        if (
-          updatedPilot.wallet &&
-          !moment.utc(updatedPilot.wallet.date).isSame(now, 'day')
-        ) {
-          resetTodaysEarning = true;
-        }
+        const startOfToday = now.clone().startOf('day').toDate();
+        const endOfToday = now.clone().endOf('day').toDate();
+
+        const todayEarnings = await tx.pilotTrips.aggregate({
+          _sum: {
+            amount: true,
+          },
+          where: {
+            pilotId: pilot.id,
+            date: {
+              gte: startOfToday,
+              lte: endOfToday,
+            },
+          },
+        });
+
+        const todaysEarningValue = todayEarnings._sum.amount || 0;
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
-            todaysEarning: resetTodaysEarning
-              ? tripAmount
-              : { increment: tripAmount },
+            todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
+            date: now.toDate(),
           },
         });
         return { updated };
@@ -1038,7 +1048,21 @@ export class RideService {
         where: {
           id: bookingId,
         },
-        include: { customer: true, pilot: true },
+
+        select: {
+          pilotId: true,
+          customerId: true,
+          customer: {
+            select: {
+              userId: true,
+            },
+          },
+          pilot: {
+            select: {
+              userId: true,
+            },
+          },
+        },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
@@ -1080,15 +1104,19 @@ export class RideService {
           },
         });
 
-        await tx.pilot.update({
-          where: { id: booking.pilotId },
-          data: { activeBookingId: null },
-        });
+        if (booking.pilotId) {
+          await tx.pilot.update({
+            where: { id: booking.pilotId },
+            data: { activeBookingId: null },
+          });
+        }
 
-        await tx.customer.update({
-          where: { id: booking.customerId },
-          data: { activeBookingId: null },
-        });
+        if (booking.customerId) {
+          await tx.customer.update({
+            where: { id: booking.customerId },
+            data: { activeBookingId: null },
+          });
+        }
       });
 
       // Cache booking status in Redis
@@ -1448,6 +1476,7 @@ export class RideService {
             estimatedDistance: true,
             discountedFare: true,
             status: true,
+            createdAt: true,
             cancellationReason: {
               select: {
                 cancelledBy: true,
@@ -1455,7 +1484,7 @@ export class RideService {
             },
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,
@@ -1486,6 +1515,8 @@ export class RideService {
       const totalPages = Math.ceil(total / pageSize);
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
+
+      console.log('totalEarning', totalEarning);
 
       return {
         message: 'Ride history fetched successfully',
@@ -1540,9 +1571,10 @@ export class RideService {
             discountedFare: true,
             status: true,
             estimatedFare: true,
+            createdAt: true,
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,

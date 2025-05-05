@@ -200,7 +200,7 @@ export class RideNotificationService {
     ]);
   }
 
-  async notifyDriverLiveLocation(
+  notifyDriverLiveLocation(
     bookingId: string,
     customerUserId: string,
     lat: number,
@@ -208,7 +208,7 @@ export class RideNotificationService {
   ) {
     const payload = { bookingId, lat, lng };
 
-    return this.server
+    this.server
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
   }

@@ -966,6 +966,7 @@ export class RideService {
           data: {
             todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
+            date: now.toDate(),
           },
         });
         return { updated };

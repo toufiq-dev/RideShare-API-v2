@@ -78,7 +78,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
 
         if (status && status === BookingStatus.ACCEPTED) {
-          const test = this.rideNotificationService.notifyDriverLiveLocation(
+          const test = await this.rideNotificationService.notifyDriverLiveLocation(
             activeRide.bookingId,
             activeRide.customerUserId,
             lat,

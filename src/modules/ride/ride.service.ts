@@ -861,7 +861,11 @@ export class RideService {
 
         const updatedPilot = await tx.pilot.update({
           where: { id: pilot.id },
-          data: { activeBookingId: null, totalTrips: tripCount },
+          data: {
+            activeBookingId: null,
+            totalTrips: tripCount,
+            onlineStatus: PilotStatus.AVAILABLE,
+          },
           select: {
             wallet: {
               select: { id: true, todaysEarning: true, date: true },

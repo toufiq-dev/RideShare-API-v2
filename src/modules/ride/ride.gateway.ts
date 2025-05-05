@@ -78,13 +78,12 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
 
         if (status && status === BookingStatus.ACCEPTED) {
-         this.rideNotificationService.notifyDriverLiveLocation(
+          this.rideNotificationService.notifyDriverLiveLocation(
             activeRide.bookingId,
             activeRide.customerUserId,
             lat,
             lng,
           );
-        
         } else {
           console.log(
             `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,

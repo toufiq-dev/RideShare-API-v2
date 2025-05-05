@@ -318,7 +318,7 @@ export class RideService {
               pickupLocation,
               dropLocation,
               estimatedFare: Math.ceil(Number(discountedFare)),
-              nearestPilotDistance: Number(distance.toFixed(2)) / 1000,
+              nearestPilotDistance: parseFloat((Number(distance) / 1000).toFixed(2)),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
               server,
@@ -1048,7 +1048,21 @@ export class RideService {
         where: {
           id: bookingId,
         },
-        include: { customer: true, pilot: true },
+
+        select: {
+          pilotId: true,
+          customerId: true,
+          customer: {
+            select: {
+              userId: true,
+            },
+          },
+          pilot: {
+            select: {
+              userId: true,
+            },
+          },
+        },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
@@ -1090,15 +1104,19 @@ export class RideService {
           },
         });
 
-        await tx.pilot.update({
-          where: { id: booking.pilotId },
-          data: { activeBookingId: null },
-        });
+        if (booking.pilotId) {
+          await tx.pilot.update({
+            where: { id: booking.pilotId },
+            data: { activeBookingId: null },
+          });
+        }
 
-        await tx.customer.update({
-          where: { id: booking.customerId },
-          data: { activeBookingId: null },
-        });
+        if (booking.customerId) {
+          await tx.customer.update({
+            where: { id: booking.customerId },
+            data: { activeBookingId: null },
+          });
+        }
       });
 
       // Cache booking status in Redis

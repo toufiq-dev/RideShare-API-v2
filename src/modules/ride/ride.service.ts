@@ -747,9 +747,6 @@ export class RideService {
               decrement: Math.ceil(Number(updated.discountedFare)),
             },
             date: moment.utc().toDate(),
-            todaysEarning: {
-              increment: Math.ceil(Number(updated.discountedFare)),
-            },
           },
           select: { id: true, balance: true },
         });
@@ -946,20 +943,28 @@ export class RideService {
         });
 
         const now = moment.utc();
-        let resetTodaysEarning = false;
-        if (
-          updatedPilot.wallet &&
-          !moment.utc(updatedPilot.wallet.date).isSame(now, 'day')
-        ) {
-          resetTodaysEarning = true;
-        }
+        const startOfToday = now.clone().startOf('day').toDate();
+        const endOfToday = now.clone().endOf('day').toDate();
+
+        const todayEarnings = await tx.pilotTrips.aggregate({
+          _sum: {
+            amount: true,
+          },
+          where: {
+            pilotId: pilot.id,
+            date: {
+              gte: startOfToday,
+              lte: endOfToday,
+            },
+          },
+        });
+
+        const todaysEarningValue = todayEarnings._sum.amount || 0;
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
-            todaysEarning: resetTodaysEarning
-              ? tripAmount
-              : { increment: tripAmount },
+            todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
           },
         });

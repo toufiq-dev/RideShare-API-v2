@@ -318,7 +318,7 @@ export class RideService {
               pickupLocation,
               dropLocation,
               estimatedFare: Math.ceil(Number(discountedFare)),
-              nearestPilotDistance: Math.ceil(parseFloat(distance) / 1000),
+              nearestPilotDistance: parseFloat(distance) / 1000,
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
               server,

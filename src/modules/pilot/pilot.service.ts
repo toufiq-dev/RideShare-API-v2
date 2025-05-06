@@ -32,6 +32,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { PilotRideResponse } from '../ride/dto/ride.interface';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class PilotService {
@@ -65,12 +66,29 @@ export class PilotService {
       }
 
       if (data.wallet) {
+        const nowDhaka = moment().tz('Asia/Dhaka');
+        const startOfToday = nowDhaka.clone().startOf('day').toDate();
+        const endOfToday = nowDhaka.clone().endOf('day').toDate();
+
+        const todayEarnings = await this.prisma.pilotTrips.aggregate({
+          _sum: {
+            amount: true,
+          },
+          where: {
+            pilotId: data.id,
+            date: {
+              gte: startOfToday,
+              lte: endOfToday,
+            },
+          },
+        });
+
         data.wallet.balance = data.wallet.balance
           ? Number(data.wallet.balance)
           : 0;
         data.wallet.minusLimit = Number(data.wallet.minusLimit);
-        data.wallet.todaysEarning = data.wallet.todaysEarning
-          ? Math.ceil(Number(data.wallet.todaysEarning))
+        data.wallet.todaysEarning = todayEarnings._sum.amount
+          ? Math.ceil(Number(todayEarnings._sum.amount))
           : 0;
         data.wallet.lastTripEarning = data.wallet.lastTripEarning
           ? Math.ceil(Number(data.wallet.lastTripEarning))
@@ -679,6 +697,8 @@ export class PilotService {
 
   async getTransactions(
     userId: string,
+    startDate: string,
+    endDate: string,
     page: number = 1,
     pageSize: number = 10,
   ) {
@@ -688,16 +708,35 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      const start = moment.utc(startDate);
+      const end = moment.utc(endDate);
+
+      if (!start.isValid() || !end.isValid()) {
+        throw new BadRequestException('Invalid start or end date.');
+      }
+      if (start.isAfter(end)) {
+        throw new BadRequestException('startDate must be before endDate');
+      }
+
+      const whereClause = {
+        pilotId: pilot.id,
+        type: TransactionType.SUBSCRIPTION_PURCHASE,
+        createdAt: {
+          gte: start.toDate(),
+          lte: end.toDate(),
+        },
+      };
+
       const skip = (page - 1) * pageSize;
 
       // Get the total count for pagination metadata
       const totalCount = await this.prisma.transaction.count({
-        where: { pilotId: pilot.id },
+        where: whereClause,
       });
 
       // Get the paginated data
       const data: any = await this.prisma.transaction.findMany({
-        where: { pilotId: pilot.id },
+        where: whereClause,
         include: {
           subscription: true,
         },

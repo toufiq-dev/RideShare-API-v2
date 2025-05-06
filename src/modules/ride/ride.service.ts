@@ -298,10 +298,27 @@ export class RideService {
           // Fetch pilot details
           const pilot = await this.prisma.pilot.findUnique({
             where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE },
-            include: { vehicle: true },
+            select: {
+              userId: true,
+              vehicle: {
+                select: {
+                  id: true,
+                  vehicleTypeId: true,
+                },
+              },
+              wallet: {
+                select: {
+                  balance: true,
+                },
+              },
+            },
           });
 
-          if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
+          if (
+            pilot &&
+            pilot.vehicle?.vehicleTypeId === vehicleTypeId &&
+            pilot.wallet.balance > discountedFare
+          ) {
             console.log(`Eligible pilot found ${pilotUserId}`);
 
             await this.redis.set(
@@ -318,7 +335,9 @@ export class RideService {
               pickupLocation,
               dropLocation,
               estimatedFare: Math.ceil(Number(discountedFare)),
-              nearestPilotDistance: parseFloat((Number(distance) / 1000).toFixed(2)),
+              nearestPilotDistance: parseFloat(
+                (Number(distance) / 1000).toFixed(2),
+              ),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
               server,
@@ -946,9 +965,10 @@ export class RideService {
           },
         });
 
-        const now = moment.utc();
-        const startOfToday = now.clone().startOf('day').toDate();
-        const endOfToday = now.clone().endOf('day').toDate();
+        // Currently for Dhaka
+        const nowDhaka = moment().tz('Asia/Dhaka'); // current time in Dhaka
+        const startOfToday = nowDhaka.clone().startOf('day').toDate();
+        const endOfToday = nowDhaka.clone().endOf('day').toDate();
 
         const todayEarnings = await tx.pilotTrips.aggregate({
           _sum: {
@@ -970,7 +990,7 @@ export class RideService {
           data: {
             todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
-            date: now.toDate(),
+            date: nowDhaka.toDate(),
           },
         });
         return { updated };
@@ -1445,7 +1465,7 @@ export class RideService {
         throw new BadRequestException('startDate must be before endDate');
       }
 
-      let whereClause = {
+      const whereClause = {
         pilotId: pilot.id,
         OR: [
           {

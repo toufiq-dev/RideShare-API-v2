@@ -208,10 +208,18 @@ export class PilotController {
   @ApiOperation({ summary: 'Get list of transactions' })
   async getTransactions(
     @CurrentUser('userId') userId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
   ) {
-    return await this.pilotService.getTransactions(userId, page, pageSize);
+    return await this.pilotService.getTransactions(
+      userId,
+      startDate,
+      endDate,
+      page,
+      pageSize,
+    );
   }
 
   @Post('online')

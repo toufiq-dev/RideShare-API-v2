@@ -1676,7 +1676,7 @@ export class RideService {
         } = booking;
 
         const fairDetails = {
-          origialFare: Math.ceil(Number(estimatedFare)),
+          originalFare: Math.ceil(Number(estimatedFare)),
           discountedFare: Math.ceil(Number(discountedFare)),
           coupon: customer.coupon,
         };

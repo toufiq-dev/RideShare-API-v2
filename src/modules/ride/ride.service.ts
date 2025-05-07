@@ -34,6 +34,7 @@ import {
   EditRideRequestDto,
   CreateRideRequestDto,
   RatingRideDto,
+  RideRequestAgainDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
@@ -41,6 +42,7 @@ import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import moment from 'moment-timezone';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class RideService {
@@ -71,7 +73,7 @@ export class RideService {
     try {
       // Store location in Redis geospatial set
       const result = await this.redis.geoAdd(
-        `pilotLocations`,
+        RedisKeys.PILOT_LOCATION,
         lng,
         lat,
         client.data.user.userId,
@@ -119,7 +121,6 @@ export class RideService {
         client.data.user.userId,
         booking.id,
         booking.customer.userId,
-        3600,
       );
 
       console.log('getActiveRideForPilot from fallback');
@@ -127,6 +128,21 @@ export class RideService {
     }
 
     return null;
+  }
+
+  async cacheBookingStatus(bookingId: string, status: string) {
+    return this.redis.setBookingStatus(bookingId, status);
+  }
+
+  async getBookingStatus(bookingId: string) {
+    return this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+  }
+
+  async getCachedBookingStatus(bookingId: string) {
+    return this.redis.getBookingStatus(bookingId);
   }
 
   async createRideRequest(
@@ -251,6 +267,48 @@ export class RideService {
     }
   }
 
+  async rideRequestAgain(
+    rideRequestAgainDto: RideRequestAgainDto,
+    userId: string,
+  ) {
+    const { bookingId } = rideRequestAgainDto;
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: booking.vehicleId },
+        select: {
+          vehicleType: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      await this.enqueueRideRequest({
+        userId,
+        bookingId,
+        estimatedFare: booking.estimatedFare,
+        discountedFare: booking.discountedFare,
+        vehicleTypeId: vehicle.vehicleType.id,
+        distanceKm: Number(booking.estimatedDistance),
+        durationMin: Number(booking.estimatedDuration),
+        pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
+        dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       userId,
@@ -272,7 +330,7 @@ export class RideService {
         console.log(`searchAndNotifyNextDriver with radius ${radius}`);
         // Fetch all nearby pilots in the current radius
         const nearbyPilots: any = await this.redis.geoRadius(
-          `pilotLocations`,
+          RedisKeys.PILOT_LOCATION,
           pickupLocation.lng,
           pickupLocation.lat,
           radius,
@@ -289,7 +347,7 @@ export class RideService {
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
           // Check if this pilot was already notified
-          const notifiedKey = `notified-${bookingId}:${pilotUserId}`;
+          const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
           const alreadyNotified = await this.redis.get(notifiedKey);
           if (alreadyNotified) {
             continue; // Skip already notified driver
@@ -322,10 +380,10 @@ export class RideService {
             console.log(`Eligible pilot found ${pilotUserId}`);
 
             await this.redis.set(
-              `booking-vehicle:${bookingId}:${pilotUserId}`,
+              `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
-              20,
-            ); // 20 seconds TTL
+              25,
+            ); // 20 seconds TTL (15 seconds + buffer)
 
             const notifyDriverPayload: NotifyDriverPayload = {
               pilotId: pilotUserId,
@@ -350,7 +408,7 @@ export class RideService {
             console.log(`Notified driver ${pilotUserId}`);
 
             // Track driver acceptance
-            const acceptanceKey = `ride-accept:${bookingId}`;
+            const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
             await this.redis.set(
               acceptanceKey,
               'pending',
@@ -440,21 +498,6 @@ export class RideService {
     }
   }
 
-  async getBookingStatus(bookingId: string) {
-    return this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { status: true },
-    });
-  }
-
-  async getCachedBookingStatus(bookingId: string) {
-    return this.redis.getBookingStatus(bookingId);
-  }
-
-  async cacheBookingStatus(bookingId: string, status: string) {
-    return this.redis.setBookingStatus(bookingId, status);
-  }
-
   async acceptRide(acceptRideDto: BookingIdDto, userId: string) {
     const { bookingId } = acceptRideDto;
 
@@ -520,7 +563,7 @@ export class RideService {
       });
 
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         pilot.userId,
       );
 
@@ -537,7 +580,7 @@ export class RideService {
       }
 
       const vehicleId = await this.redis.get(
-        `booking-vehicle:${bookingId}:${pilot.userId}`,
+        `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilot.userId}`,
       );
       const vehicle = vehicleId
         ? await this.prisma.vehicle.findUnique({
@@ -546,9 +589,8 @@ export class RideService {
           })
         : null;
 
-      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.userId}`);
-      // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
-      await this.redis.del(`ride-accept:${bookingId}`);
+      await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
+      await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
 
       // Cache active ride in Redis
       await this.redis.setActiveRide(
@@ -622,6 +664,8 @@ export class RideService {
             : null,
       };
 
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ACCEPTED);
+
       return {
         message: 'Ride accepted successfully.',
         data,
@@ -669,6 +713,8 @@ export class RideService {
         booking.customer.userId,
         bookingId,
       );
+
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ARRIVED);
 
       return {
         message: 'Reached pickup point successfully.',
@@ -784,8 +830,10 @@ export class RideService {
         return { updated };
       });
 
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ONGOING);
+
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         result.updated.pilot.userId,
       );
 
@@ -965,6 +1013,9 @@ export class RideService {
           },
         });
 
+        // Remove active ride
+        await this.redis.removeActiveRide(pilot.userId);
+
         // Currently for Dhaka
         const nowDhaka = moment().tz('Asia/Dhaka'); // current time in Dhaka
         const startOfToday = nowDhaka.clone().startOf('day').toDate();
@@ -995,6 +1046,8 @@ export class RideService {
         });
         return { updated };
       });
+
+      await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
 
       const payload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
@@ -1111,10 +1164,6 @@ export class RideService {
             status: BookingStatus.CANCELLED,
           },
         });
-
-        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
-        // Later, when you implement the start ride feature, add:
-        // await this.redis.setBookingStatus(bookingId, BookingStatus.STARTED);
 
         await this.prisma.cancellationReason.create({
           data: {
@@ -1299,7 +1348,7 @@ export class RideService {
       );
 
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         pilot.userId,
       );
 

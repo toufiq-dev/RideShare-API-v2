@@ -11,6 +11,7 @@ import {
 import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class RideNotificationService {
@@ -65,7 +66,7 @@ export class RideNotificationService {
       durationMin,
     } = payload;
 
-    const notifiedKey = `notified-${bookingId}:${pilotId}`;
+    const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
     await this.redis.set(notifiedKey, 'true', 300);
 
     const notificationPayload = {

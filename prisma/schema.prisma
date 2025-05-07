@@ -180,6 +180,7 @@ model Vehicle {
   updatedAt     DateTime    @updatedAt
   pilot         Pilot       @relation("PilotVehicle", fields: [pilotId], references: [id])
   vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  bookings      Booking[]
 }
 
 model VehicleType {
@@ -278,6 +279,7 @@ model Booking {
   name               String // name when rideType is for others
   status             BookingStatus
   rideType           RideType
+  vehicleId          String?
   estimatedFare      Decimal             @db.Decimal(10, 2)
   discountedFare     Decimal             @db.Decimal(10, 2)
   tripEndFare        Decimal?            @db.Decimal(10, 2)
@@ -298,6 +300,7 @@ model Booking {
   cancellationReason CancellationReason?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
+  vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])
   activePilot        Pilot?              @relation("PilotActiveBooking")
   activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?

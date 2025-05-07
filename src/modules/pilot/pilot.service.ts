@@ -33,6 +33,7 @@ import {
 } from '@prisma/client';
 import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class PilotService {
@@ -789,7 +790,7 @@ export class PilotService {
       }
 
       if (!onlineStatus) {
-        await this.redis.zRem('pilotLocations', pilot.userId);
+        await this.redis.zRem(RedisKeys.PILOT_LOCATION, pilot.userId);
       }
 
       await this.prisma.pilot.update({

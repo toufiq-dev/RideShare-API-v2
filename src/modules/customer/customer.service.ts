@@ -26,6 +26,7 @@ import {
 } from '@prisma/client';
 import { RideService } from '../ride/ride.service';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class CustomerService {
@@ -96,7 +97,7 @@ export class CustomerService {
         });
 
         const pilotLocation = await this.redis.geoPos(
-          'pilotLocations',
+          RedisKeys.PILOT_LOCATION,
           pilot.userId,
         );
 

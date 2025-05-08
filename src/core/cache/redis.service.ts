@@ -3,6 +3,7 @@ import Redis, { RedisOptions } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../../core/logging/logger.service';
 import { PrismaService } from '../database/prisma.service';
+import { RedisKeys } from './redis-keys';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -224,16 +225,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     customerUserId: string,
     ttl: number = 3600,
   ): Promise<void> {
-    const key = `active-ride:${userId}`;
+    const key = `${RedisKeys.ACTIVE_RIDE}${userId}`;
+
     const value = JSON.stringify({ bookingId, customerUserId });
+
     await this.client.set(key, value, 'EX', ttl); // TTL in seconds (e.g., 1 hour)
+
     this.logger.log(`Set active ride cache ${userId}: ${value}`, this.context);
   }
 
   async getActiveRide(
     userId: string,
   ): Promise<{ bookingId: string; customerUserId: string } | null> {
-    const key = `active-ride:${userId}`;
+    const key = `${RedisKeys.ACTIVE_RIDE}${userId}`;
+
     const value = await this.client.get(key);
 
     this.logger.log(
@@ -245,7 +250,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeActiveRide(userId: string): Promise<void> {
-    const key = `active-ride:${userId}`;
+    const key = `${RedisKeys.ACTIVE_RIDE}${userId}`;
     await this.client.del(key);
     this.logger.log(`Removed active ride for pilot ${userId}`, this.context);
   }
@@ -256,7 +261,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     status: string,
     ttl: number = 3600,
   ): Promise<void> {
-    const key = `booking-status:${bookingId}`;
+    const key = `${RedisKeys.BOOKING_STATUS}${bookingId}`;
     await this.client.set(key, status, 'EX', ttl);
     this.logger.log(
       `Cached booking status for ${bookingId}: ${status}`,
@@ -265,7 +270,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getBookingStatus(bookingId: string): Promise<string | null> {
-    const key = `booking-status:${bookingId}`;
+    const key = `${RedisKeys.BOOKING_STATUS}${bookingId}`;
     const status = await this.client.get(key);
     this.logger.log(
       `Fetched cached booking status for ${bookingId}: ${status}`,
@@ -275,7 +280,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeBookingStatus(bookingId: string): Promise<void> {
-    const key = `booking-status:${bookingId}`;
+    const key = `${RedisKeys.BOOKING_STATUS}${bookingId}`;
     await this.client.del(key);
     this.logger.log(
       `Removed cached booking status for ${bookingId}`,

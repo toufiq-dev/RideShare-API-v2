@@ -1176,7 +1176,10 @@ export class RideService {
         if (booking.pilotId) {
           await tx.pilot.update({
             where: { id: booking.pilotId },
-            data: { activeBookingId: null, onlineStatus: PilotStatus.AVAILABLE },
+            data: {
+              activeBookingId: null,
+              onlineStatus: PilotStatus.AVAILABLE,
+            },
           });
         }
 
@@ -1446,6 +1449,19 @@ export class RideService {
           },
         });
 
+        const ratings = await this.prisma.pilotRating.findMany({
+          where: { pilotId: pilot.id },
+          select: { rating: true },
+        });
+
+        const averageRating =
+          ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: { averageRating: parseFloat(averageRating.toFixed(2)) },
+        });
+
         return {
           message: 'Rating has been submitted',
           data: ratingRecord,
@@ -1473,6 +1489,19 @@ export class RideService {
             rating,
             feedback,
           },
+        });
+
+        const ratings = await this.prisma.customerRating.findMany({
+          where: { customerId: customer.id },
+          select: { rating: true },
+        });
+
+        const averageRating =
+          ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { averageRating: parseFloat(averageRating.toFixed(2)) },
         });
 
         return {

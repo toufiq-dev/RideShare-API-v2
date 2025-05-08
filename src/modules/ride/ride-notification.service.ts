@@ -155,12 +155,12 @@ export class RideNotificationService {
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
     await Promise.all([
-      this.sendPushNotification(
-        pilotUserId,
-        'Ride Request Timeout',
-        'Time expired. You did not respond to the ride request.',
-        { bookingId },
-      ),
+      // this.sendPushNotification(
+      //   pilotUserId,
+      //   'Ride Request Timeout',
+      //   'Time expired. You did not respond to the ride request.',
+      //   { bookingId },
+      // ),
 
       this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
         bookingId,

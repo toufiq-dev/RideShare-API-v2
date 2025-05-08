@@ -23,6 +23,7 @@ import {
   EditRideRequestDto,
   CreateRideRequestDto,
   RatingRideDto,
+  RideRequestAgainDto,
 } from './dto/ride.dto';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -49,6 +50,19 @@ export class RideController {
       createRideRequestDto,
       userId,
     );
+  }
+
+  @Roles(RoleEnum.CUSTOMER)
+  @Post('request-again')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create ride request again' })
+  @ApiBody({ type: RideRequestAgainDto })
+  async rideRequestAgain(
+    @Body() rideRequestAgainDto: RideRequestAgainDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.rideRequestAgain(rideRequestAgainDto, userId);
   }
 
   @Roles(RoleEnum.PILOT)

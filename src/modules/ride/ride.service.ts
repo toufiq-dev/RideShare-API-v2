@@ -34,6 +34,7 @@ import {
   EditRideRequestDto,
   CreateRideRequestDto,
   RatingRideDto,
+  RideRequestAgainDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
@@ -41,6 +42,7 @@ import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import moment from 'moment-timezone';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class RideService {
@@ -71,7 +73,7 @@ export class RideService {
     try {
       // Store location in Redis geospatial set
       const result = await this.redis.geoAdd(
-        `pilotLocations`,
+        RedisKeys.PILOT_LOCATION,
         lng,
         lat,
         client.data.user.userId,
@@ -119,7 +121,6 @@ export class RideService {
         client.data.user.userId,
         booking.id,
         booking.customer.userId,
-        3600,
       );
 
       console.log('getActiveRideForPilot from fallback');
@@ -127,6 +128,21 @@ export class RideService {
     }
 
     return null;
+  }
+
+  async cacheBookingStatus(bookingId: string, status: string) {
+    return this.redis.setBookingStatus(bookingId, status);
+  }
+
+  async getBookingStatus(bookingId: string) {
+    return this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+  }
+
+  async getCachedBookingStatus(bookingId: string) {
+    return this.redis.getBookingStatus(bookingId);
   }
 
   async createRideRequest(
@@ -251,6 +267,48 @@ export class RideService {
     }
   }
 
+  async rideRequestAgain(
+    rideRequestAgainDto: RideRequestAgainDto,
+    userId: string,
+  ) {
+    const { bookingId } = rideRequestAgainDto;
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: booking.vehicleId },
+        select: {
+          vehicleType: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      await this.enqueueRideRequest({
+        userId,
+        bookingId,
+        estimatedFare: booking.estimatedFare,
+        discountedFare: booking.discountedFare,
+        vehicleTypeId: vehicle.vehicleType.id,
+        distanceKm: Number(booking.estimatedDistance),
+        durationMin: Number(booking.estimatedDuration),
+        pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
+        dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async handleRideRequest(server: Server, payload: RideRequestPayload) {
     const {
       userId,
@@ -272,7 +330,7 @@ export class RideService {
         console.log(`searchAndNotifyNextDriver with radius ${radius}`);
         // Fetch all nearby pilots in the current radius
         const nearbyPilots: any = await this.redis.geoRadius(
-          `pilotLocations`,
+          RedisKeys.PILOT_LOCATION,
           pickupLocation.lng,
           pickupLocation.lat,
           radius,
@@ -289,7 +347,7 @@ export class RideService {
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
           // Check if this pilot was already notified
-          const notifiedKey = `notified-${bookingId}:${pilotUserId}`;
+          const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
           const alreadyNotified = await this.redis.get(notifiedKey);
           if (alreadyNotified) {
             continue; // Skip already notified driver
@@ -298,17 +356,34 @@ export class RideService {
           // Fetch pilot details
           const pilot = await this.prisma.pilot.findUnique({
             where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE },
-            include: { vehicle: true },
+            select: {
+              userId: true,
+              vehicle: {
+                select: {
+                  id: true,
+                  vehicleTypeId: true,
+                },
+              },
+              wallet: {
+                select: {
+                  balance: true,
+                },
+              },
+            },
           });
 
-          if (pilot && pilot.vehicle?.vehicleTypeId === vehicleTypeId) {
+          if (
+            pilot &&
+            pilot.vehicle?.vehicleTypeId === vehicleTypeId &&
+            pilot.wallet.balance > discountedFare
+          ) {
             console.log(`Eligible pilot found ${pilotUserId}`);
 
             await this.redis.set(
-              `booking-vehicle:${bookingId}:${pilotUserId}`,
+              `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
-              20,
-            ); // 20 seconds TTL
+              25,
+            ); // 20 seconds TTL (15 seconds + buffer)
 
             const notifyDriverPayload: NotifyDriverPayload = {
               pilotId: pilotUserId,
@@ -318,7 +393,9 @@ export class RideService {
               pickupLocation,
               dropLocation,
               estimatedFare: Math.ceil(Number(discountedFare)),
-              nearestPilotDistance: Math.ceil(parseFloat(distance) / 1000),
+              nearestPilotDistance: parseFloat(
+                (Number(distance) / 1000).toFixed(2),
+              ),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
               server,
@@ -331,7 +408,7 @@ export class RideService {
             console.log(`Notified driver ${pilotUserId}`);
 
             // Track driver acceptance
-            const acceptanceKey = `ride-accept:${bookingId}`;
+            const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
             await this.redis.set(
               acceptanceKey,
               'pending',
@@ -421,21 +498,6 @@ export class RideService {
     }
   }
 
-  async getBookingStatus(bookingId: string) {
-    return this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { status: true },
-    });
-  }
-
-  async getCachedBookingStatus(bookingId: string) {
-    return this.redis.getBookingStatus(bookingId);
-  }
-
-  async cacheBookingStatus(bookingId: string, status: string) {
-    return this.redis.setBookingStatus(bookingId, status);
-  }
-
   async acceptRide(acceptRideDto: BookingIdDto, userId: string) {
     const { bookingId } = acceptRideDto;
 
@@ -501,7 +563,7 @@ export class RideService {
       });
 
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         pilot.userId,
       );
 
@@ -518,7 +580,7 @@ export class RideService {
       }
 
       const vehicleId = await this.redis.get(
-        `booking-vehicle:${bookingId}:${pilot.userId}`,
+        `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilot.userId}`,
       );
       const vehicle = vehicleId
         ? await this.prisma.vehicle.findUnique({
@@ -527,9 +589,8 @@ export class RideService {
           })
         : null;
 
-      await this.redis.del(`booking-vehicle:${bookingId}:${pilot.userId}`);
-      // await this.redis.del(`notified-${bookingId}:${pilot.id}`);
-      await this.redis.del(`ride-accept:${bookingId}`);
+      await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
+      await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
 
       // Cache active ride in Redis
       await this.redis.setActiveRide(
@@ -603,6 +664,8 @@ export class RideService {
             : null,
       };
 
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ACCEPTED);
+
       return {
         message: 'Ride accepted successfully.',
         data,
@@ -650,6 +713,8 @@ export class RideService {
         booking.customer.userId,
         bookingId,
       );
+
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ARRIVED);
 
       return {
         message: 'Reached pickup point successfully.',
@@ -747,9 +812,6 @@ export class RideService {
               decrement: Math.ceil(Number(updated.discountedFare)),
             },
             date: moment.utc().toDate(),
-            todaysEarning: {
-              increment: Math.ceil(Number(updated.discountedFare)),
-            },
           },
           select: { id: true, balance: true },
         });
@@ -768,8 +830,10 @@ export class RideService {
         return { updated };
       });
 
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ONGOING);
+
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         result.updated.pilot.userId,
       );
 
@@ -864,7 +928,11 @@ export class RideService {
 
         const updatedPilot = await tx.pilot.update({
           where: { id: pilot.id },
-          data: { activeBookingId: null, totalTrips: tripCount },
+          data: {
+            activeBookingId: null,
+            totalTrips: tripCount,
+            onlineStatus: PilotStatus.AVAILABLE,
+          },
           select: {
             wallet: {
               select: { id: true, todaysEarning: true, date: true },
@@ -945,26 +1013,41 @@ export class RideService {
           },
         });
 
-        const now = moment.utc();
-        let resetTodaysEarning = false;
-        if (
-          updatedPilot.wallet &&
-          !moment.utc(updatedPilot.wallet.date).isSame(now, 'day')
-        ) {
-          resetTodaysEarning = true;
-        }
+        // Remove active ride
+        await this.redis.removeActiveRide(pilot.userId);
+
+        // Currently for Dhaka
+        const nowDhaka = moment().tz('Asia/Dhaka'); // current time in Dhaka
+        const startOfToday = nowDhaka.clone().startOf('day').toDate();
+        const endOfToday = nowDhaka.clone().endOf('day').toDate();
+
+        const todayEarnings = await tx.pilotTrips.aggregate({
+          _sum: {
+            amount: true,
+          },
+          where: {
+            pilotId: pilot.id,
+            date: {
+              gte: startOfToday,
+              lte: endOfToday,
+            },
+          },
+        });
+
+        const todaysEarningValue = todayEarnings._sum.amount || 0;
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
-            todaysEarning: resetTodaysEarning
-              ? tripAmount
-              : { increment: tripAmount },
+            todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
+            date: nowDhaka.toDate(),
           },
         });
         return { updated };
       });
+
+      await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
 
       const payload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
@@ -1038,7 +1121,21 @@ export class RideService {
         where: {
           id: bookingId,
         },
-        include: { customer: true, pilot: true },
+
+        select: {
+          pilotId: true,
+          customerId: true,
+          customer: {
+            select: {
+              userId: true,
+            },
+          },
+          pilot: {
+            select: {
+              userId: true,
+            },
+          },
+        },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
@@ -1068,10 +1165,6 @@ export class RideService {
           },
         });
 
-        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
-        // Later, when you implement the start ride feature, add:
-        // await this.redis.setBookingStatus(bookingId, BookingStatus.STARTED);
-
         await this.prisma.cancellationReason.create({
           data: {
             bookingId: bookingId,
@@ -1080,15 +1173,22 @@ export class RideService {
           },
         });
 
-        await tx.pilot.update({
-          where: { id: booking.pilotId },
-          data: { activeBookingId: null },
-        });
+        if (booking.pilotId) {
+          await tx.pilot.update({
+            where: { id: booking.pilotId },
+            data: {
+              activeBookingId: null,
+              onlineStatus: PilotStatus.AVAILABLE,
+            },
+          });
+        }
 
-        await tx.customer.update({
-          where: { id: booking.customerId },
-          data: { activeBookingId: null },
-        });
+        if (booking.customerId) {
+          await tx.customer.update({
+            where: { id: booking.customerId },
+            data: { activeBookingId: null },
+          });
+        }
       });
 
       // Cache booking status in Redis
@@ -1251,7 +1351,7 @@ export class RideService {
       );
 
       const pilotLocation = await this.redis.geoPos(
-        'pilotLocations',
+        RedisKeys.PILOT_LOCATION,
         pilot.userId,
       );
 
@@ -1349,6 +1449,19 @@ export class RideService {
           },
         });
 
+        const ratings = await this.prisma.pilotRating.findMany({
+          where: { pilotId: pilot.id },
+          select: { rating: true },
+        });
+
+        const averageRating =
+          ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: { averageRating: parseFloat(averageRating.toFixed(2)) },
+        });
+
         return {
           message: 'Rating has been submitted',
           data: ratingRecord,
@@ -1376,6 +1489,19 @@ export class RideService {
             rating,
             feedback,
           },
+        });
+
+        const ratings = await this.prisma.customerRating.findMany({
+          where: { customerId: customer.id },
+          select: { rating: true },
+        });
+
+        const averageRating =
+          ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { averageRating: parseFloat(averageRating.toFixed(2)) },
         });
 
         return {
@@ -1417,7 +1543,7 @@ export class RideService {
         throw new BadRequestException('startDate must be before endDate');
       }
 
-      let whereClause = {
+      const whereClause = {
         pilotId: pilot.id,
         OR: [
           {
@@ -1448,6 +1574,7 @@ export class RideService {
             estimatedDistance: true,
             discountedFare: true,
             status: true,
+            createdAt: true,
             cancellationReason: {
               select: {
                 cancelledBy: true,
@@ -1455,7 +1582,7 @@ export class RideService {
             },
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,
@@ -1486,6 +1613,8 @@ export class RideService {
       const totalPages = Math.ceil(total / pageSize);
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
+
+      console.log('totalEarning', totalEarning);
 
       return {
         message: 'Ride history fetched successfully',
@@ -1540,9 +1669,10 @@ export class RideService {
             discountedFare: true,
             status: true,
             estimatedFare: true,
+            createdAt: true,
           },
           orderBy: {
-            tripStart: 'desc',
+            createdAt: 'desc',
           },
           skip,
           take: pageSize,
@@ -1575,7 +1705,7 @@ export class RideService {
         } = booking;
 
         const fairDetails = {
-          origialFare: Math.ceil(Number(estimatedFare)),
+          originalFare: Math.ceil(Number(estimatedFare)),
           discountedFare: Math.ceil(Number(discountedFare)),
           coupon: customer.coupon,
         };

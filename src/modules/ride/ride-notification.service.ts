@@ -11,6 +11,7 @@ import {
 import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class RideNotificationService {
@@ -65,7 +66,7 @@ export class RideNotificationService {
       durationMin,
     } = payload;
 
-    const notifiedKey = `notified-${bookingId}:${pilotId}`;
+    const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
     await this.redis.set(notifiedKey, 'true', 300);
 
     const notificationPayload = {
@@ -154,12 +155,12 @@ export class RideNotificationService {
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
     await Promise.all([
-      this.sendPushNotification(
-        pilotUserId,
-        'Ride Request Timeout',
-        'Time expired. You did not respond to the ride request.',
-        { bookingId },
-      ),
+      // this.sendPushNotification(
+      //   pilotUserId,
+      //   'Ride Request Timeout',
+      //   'Time expired. You did not respond to the ride request.',
+      //   { bookingId },
+      // ),
 
       this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
         bookingId,
@@ -179,7 +180,7 @@ export class RideNotificationService {
         `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
         { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
       ),
-
+      console.log(`Ride accepted payload: \n${payload}`),
       this.server
         .to(customerUserId)
         .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
@@ -200,7 +201,7 @@ export class RideNotificationService {
     ]);
   }
 
-  async notifyDriverLiveLocation(
+  notifyDriverLiveLocation(
     bookingId: string,
     customerUserId: string,
     lat: number,
@@ -208,7 +209,7 @@ export class RideNotificationService {
   ) {
     const payload = { bookingId, lat, lng };
 
-    return this.server
+    this.server
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
   }

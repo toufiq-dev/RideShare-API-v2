@@ -1176,7 +1176,7 @@ export class RideService {
         if (booking.pilotId) {
           await tx.pilot.update({
             where: { id: booking.pilotId },
-            data: { activeBookingId: null },
+            data: { activeBookingId: null, onlineStatus: PilotStatus.AVAILABLE },
           });
         }
 

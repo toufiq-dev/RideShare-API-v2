@@ -1,5 +1,5 @@
 import { JwtModule } from '@nestjs/jwt';
-import configuration from './config/configuration';
+import configuration from './config/app.config';
 import { getJwtConfig } from './config/jwt.config';
 import { BullModule } from '@nestjs/bullmq';
 import { getBullConfig } from './core/queue/bull.config';

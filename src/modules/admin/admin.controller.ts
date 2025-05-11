@@ -5,12 +5,22 @@ import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
   CreateSupportStuffDto,
+  AppUpdateDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Post('app-version')
+  @ApiOperation({ summary: 'Update App Version' })
+  @ApiBody({
+    type: AppUpdateDto,
+  })
+  async updateAppVersion(@Body() appUpdateDto: AppUpdateDto) {
+    return await this.adminService.updateAppVersion(appUpdateDto);
+  }
 
   @Post('subscription')
   @ApiOperation({ summary: 'Create Subscription Type' })

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
+  AppUpdateDto,
   CreateSubscriptionTypeDto,
   CreateSupportStuffDto,
   UpdateSubscriptionTypeDto,
@@ -12,34 +13,72 @@ import { randomInt } from 'crypto';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async updateAppVersion(appUpdateDto: AppUpdateDto) {
+    const { appVersion, appDescription } = appUpdateDto;
+
+    try {
+      const data = await this.prisma.platform.upsert({
+        where: {
+          appDescription,
+        },
+        update: {
+          appVersion,
+          appDescription,
+        },
+        create: {
+          appVersion,
+          appDescription,
+        },
+      })
+
+      return {
+        message: 'App version updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async createSubscriptionType(
     createSubscriptionTypeDto: CreateSubscriptionTypeDto,
   ) {
     const { name, coins, price, priceBeforeDiscount } =
       createSubscriptionTypeDto;
 
-    const data = await this.prisma.subscription.create({
-      data: {
-        name,
-        coins,
-        price,
-        priceBeforeDiscount,
-      },
-    });
+    try {
+      const data = await this.prisma.subscription.create({
+        data: {
+          name,
+          coins,
+          price,
+          priceBeforeDiscount,
+        },
+      });
 
-    return {
-      message: 'Subscription type created successfully.',
-      data,
-    };
+      return {
+        message: 'Subscription type created successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async getSubscriptionTypes() {
-    const data = await this.prisma.subscription.findMany();
+    try {
+      const data = await this.prisma.subscription.findMany();
 
-    return {
-      message: 'Subscription types fetched successfully.',
-      data,
-    };
+      return {
+        message: 'Subscription types fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async updateSubscriptionType(
@@ -70,32 +109,42 @@ export class AdminService {
   async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
     const { name, phone } = createSupportStuffDto;
 
-    const user = await this.prisma.user.create({
-      data: {
-        role: RoleEnum.SUPPORT,
-      },
-    });
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          role: RoleEnum.SUPPORT,
+        },
+      });
 
-    const data = await this.prisma.support.create({
-      data: {
-        name,
-        referralCode: randomInt(10000, 1000000).toString(),
-        userId: user.id,
-      },
-    });
+      const data = await this.prisma.support.create({
+        data: {
+          name,
+          referralCode: randomInt(10000, 1000000).toString(),
+          userId: user.id,
+        },
+      });
 
-    return {
-      message: 'Support stuff created successfully.',
-      data,
-    };
+      return {
+        message: 'Support stuff created successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async getSupportStuffs() {
-    const data = await this.prisma.support.findMany();
+    try {
+      const data = await this.prisma.support.findMany();
 
-    return {
-      message: 'Support stuffs fetched successfully.',
-      data,
-    };
+      return {
+        message: 'Support stuffs fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 }

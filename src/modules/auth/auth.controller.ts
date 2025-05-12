@@ -5,11 +5,13 @@ import {
   VerifyOtpDto,
   RefreshTokenDto,
   FindPilotDto,
+  RoleEnum,
 } from './dto/auth.dto';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
+import { Roles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -31,11 +33,18 @@ export class AuthController {
     return await this.authService.verifyOtp(verifyOtpDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
   @Post('location')
-  @HttpCode(200)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Check location of user' })
-  async checkLocation(@Body() locationDto: LocationDto) {
-    return await this.authService.checkLocation(locationDto);
+  @HttpCode(200)
+  async checkLocation(
+    @Body() locationDto: LocationDto,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: RoleEnum,
+  ) {
+    return await this.authService.checkLocation(locationDto, userId, role);
   }
 
   @Post('resend-otp')

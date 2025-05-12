@@ -19,6 +19,7 @@ model User {
   id             String          @id @default(uuid())
   role           UserRole
   status         UserStatus      @default(ACTIVE)
+  country        Country?
   metadata       Json?
   lastLogin      DateTime?
   createdAt      DateTime        @default(now()) @db.Timestamptz
@@ -440,6 +441,11 @@ model VideoProgress {
   video     VideoTutorial @relation(fields: [videoId], references: [id])
 
   @@unique([pilotId, videoId])
+}
+
+enum Country {
+  BD
+  IN
 }
 
 enum AppPlatform {

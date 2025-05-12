@@ -178,11 +178,13 @@ async function main() {
   const users = [
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
+    { role: UserRole.PILOT },
   ];
   
   const pilots = [
     { phone: '+911234567890' },
     { phone: '+911234567891' },
+    { phone: '+919999999999' },
   ];
   
   const english = await prisma.languages.findUnique({
@@ -290,6 +292,7 @@ async function main() {
   const customers = [
     { phone: '+911234567892' },
     { phone: '+911234567893' },
+    { phone: '+919999999999' },
   ];
   
   for (const customer of customers) {

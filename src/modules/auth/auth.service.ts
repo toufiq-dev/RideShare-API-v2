@@ -87,6 +87,18 @@ export class AuthService {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
+      // For App review in ios and android store
+      if (phone == '+919999999999' && otp == '4242') {
+        return {
+          message: 'OTP verified successfully.',
+          data: {
+            accessToken: null,
+            refreshToken: null,
+            user: null,
+          },
+        };
+      }
+
       const { languageId, refferalCode } = await this.validateOtpRedis(
         phone,
         otp,
@@ -136,23 +148,52 @@ export class AuthService {
     }
   }
 
-  async checkLocation(locationDto: LocationDto) {
+  async checkLocation(
+    locationDto: LocationDto,
+    userId: string,
+    role: RoleEnum,
+  ) {
     const { lat, lng } = locationDto;
 
-    const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
-      lat,
-      lng,
-    );
+    try {
+      // For App review in ios and android store
+      if (role === RoleEnum.PILOT) {
+        const pilot = await this.prisma.pilot.findUnique({
+          where: { userId },
+        });
+        if (!pilot) {
+          throw new NotFoundException('Pilot not found.');
+        }
 
-    return {
-      data: {
-        isInServiceArea,
-        city,
-      },
-      message: isInServiceArea
-        ? 'Within the service area.'
-        : 'Outside the service area.',
-    };
+        if (pilot.phone === '+919999999999') {
+          return {
+            data: {
+              isInServiceArea: true,
+              city: null,
+            },
+            message: 'Within the service area.',
+          };
+        }
+      }
+
+      const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
+        lat,
+        lng,
+      );
+
+      return {
+        data: {
+          isInServiceArea,
+          city,
+        },
+        message: isInServiceArea
+          ? 'Within the service area.'
+          : 'Outside the service area.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {

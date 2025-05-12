@@ -1428,7 +1428,6 @@ export class RideService {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
         });
-
         if (!pilot) {
           throw new NotFoundException('Pilot not found.');
         }

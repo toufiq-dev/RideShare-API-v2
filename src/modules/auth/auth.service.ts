@@ -99,23 +99,15 @@ export class AuthService {
       // For App review in ios and android store
       if (phone == '+919999999999' && otp == '4242') {
         let user = null;
-        let customer = null;
-        let pilot = null;
+
         if (role === RoleEnum.PILOT) {
           user = await this.prisma.pilot.findUnique({
             where: { phone },
-          });
-          pilot = await this.prisma.pilot.findUnique({
-            where: { userId: user.id },
           });
         }
         if (role === RoleEnum.CUSTOMER) {
           user = await this.prisma.customer.findUnique({
             where: { phone },
-          });
-
-          customer = await this.prisma.customer.findUnique({
-            where: { userId: user.id },
           });
         }
         if (!user) {
@@ -128,7 +120,7 @@ export class AuthService {
           message: 'OTP verified successfully.',
           data: {
             ...tokens,
-            user: role === RoleEnum.CUSTOMER ? customer : pilot,
+            user,
           },
         };
       }

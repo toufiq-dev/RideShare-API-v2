@@ -8,13 +8,19 @@ import {
 } from './dto/admin.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import { randomInt } from 'crypto';
+import { AppPlatform } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async updateAppVersion(appUpdateDto: AppUpdateDto) {
-    const { appVersion, appDescription } = appUpdateDto;
+    const {
+      adCustomerVersion,
+      adDriverVersion,
+      iosCustomerVersion,
+      appDescription,
+    } = appUpdateDto;
 
     try {
       const data = await this.prisma.platform.upsert({
@@ -22,17 +28,39 @@ export class AdminService {
           appDescription,
         },
         update: {
-          appVersion,
+          adDriverVersion,
+          adCustomerVersion,
+          iosCustomerVersion,
           appDescription,
         },
         create: {
-          appVersion,
+          adDriverVersion,
+          adCustomerVersion,
+          iosCustomerVersion,
           appDescription,
         },
       });
 
       return {
         message: 'App version updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getAppVersion(platform: AppPlatform) {
+    try {
+      const data = await this.prisma.platform.findUnique({
+        where: {
+          appDescription: platform,
+        },
+      });
+
+      return {
+        message: 'App version fetched successfully.',
         data,
       };
     } catch (error) {

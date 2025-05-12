@@ -55,6 +55,15 @@ export class AuthService {
     const { language, phone, referralCode } = sendOtpDto;
 
     try {
+      if (phone === '+919999999999') {
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: '4242',
+          },
+        };
+      }
+
       const Language = await this.prisma.languages.findUnique({
         where: { name: language },
       });
@@ -87,18 +96,6 @@ export class AuthService {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
-      // For App review in ios and android store
-      if (phone == '+919999999999' && otp == '4242') {
-        return {
-          message: 'OTP verified successfully.',
-          data: {
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-          },
-        };
-      }
-
       const { languageId, refferalCode } = await this.validateOtpRedis(
         phone,
         otp,
@@ -134,6 +131,17 @@ export class AuthService {
       }
 
       const tokens = await this.generateTokens(user.id, user.role);
+
+      // For App review in ios and android store
+      if (phone == '+919999999999' && otp == '4242') {
+        return {
+          message: 'OTP verified successfully.',
+          data: {
+            ...tokens,
+            user: role === RoleEnum.CUSTOMER ? customer : pilot,
+          },
+        };
+      }
 
       return {
         message: 'OTP verified successfully.',

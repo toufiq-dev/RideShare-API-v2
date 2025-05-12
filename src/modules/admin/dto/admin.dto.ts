@@ -4,9 +4,19 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class AppUpdateDto {
   @ApiProperty({ description: 'App version' })
+  @IsNumber()
+  @IsOptional()
+  adDriverVersion: number;
+
+  @ApiProperty({ description: 'App version' })
+  @IsNumber()
+  @IsOptional()
+  adCustomerVersion: number;
+
+  @ApiProperty({ description: 'App version' })
   @IsString()
-  @IsNotEmpty()
-  appVersion: string;
+  @IsOptional()
+  iosCustomerVersion: string;
 
   @ApiProperty({ description: 'App description' })
   @IsString()

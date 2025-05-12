@@ -29,7 +29,7 @@ export class AdminService {
           appVersion,
           appDescription,
         },
-      })
+      });
 
       return {
         message: 'App version updated successfully.',

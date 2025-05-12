@@ -96,18 +96,28 @@ export class AuthService {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
-      // For App review in ios and android store
+      // For App review in ios and android store START
       if (phone == '+919999999999' && otp == '4242') {
         let user = null;
+        let pilot = null;
+        let customer = null;
 
         if (role === RoleEnum.PILOT) {
-          user = await this.prisma.pilot.findUnique({
+          pilot = await this.prisma.pilot.findUnique({
             where: { phone },
+          });
+
+          user = await this.prisma.user.findUnique({
+            where: { id: pilot.userId },
           });
         }
         if (role === RoleEnum.CUSTOMER) {
-          user = await this.prisma.customer.findUnique({
+          customer = await this.prisma.customer.findUnique({
             where: { phone },
+          });
+
+          user = await this.prisma.user.findUnique({
+            where: { id: customer.userId },
           });
         }
         if (!user) {
@@ -120,10 +130,10 @@ export class AuthService {
           message: 'OTP verified successfully.',
           data: {
             ...tokens,
-            user,
+            user: role === RoleEnum.CUSTOMER ? customer : pilot,
           },
         };
-      }
+      } // For App review in ios and android store END
 
       const { languageId, refferalCode } = await this.validateOtpRedis(
         phone,

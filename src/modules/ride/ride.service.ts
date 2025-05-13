@@ -527,6 +527,7 @@ export class RideService {
             pilotId: pilot.id,
             status: BookingStatus.ACCEPTED,
             acceptedAt: moment.utc().toDate(),
+            vehicleId: pilot.vehicle.id
           },
           select: {
             id: true,

@@ -274,8 +274,20 @@ export class RideService {
     const { bookingId } = rideRequestAgainDto;
 
     try {
-      const booking = await this.prisma.booking.findUnique({
+      const booking: any = await this.prisma.booking.findUnique({
         where: { id: bookingId },
+        select: {
+          rideType: true,
+          estimatedFare: true,
+          discountedFare: true,
+          estimatedDistance: true,
+          estimatedDuration: true,
+          pickupLocation: true,
+          dropLocation: true,
+          name: true,
+          vehicleId: true,
+          customer: { select: { coupon: { select: { id: true } } } },
+        },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
@@ -303,6 +315,29 @@ export class RideService {
         pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
         dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
       });
+
+      const coupon = await this.prisma.coupon.findUnique({
+        where: {
+          id: booking.customer.coupon.id,
+        },
+      });
+
+      const data: CustomerCreateRideResponse = {
+        bookingId: booking.id,
+        location: [booking.pickupLocation, booking.dropLocation],
+        originalPrice: Math.ceil(Number(booking.estimatedFare)),
+        discountedPrice: Math.ceil(Number(booking.discountedFare)),
+        coupon: coupon || null,
+        otherPassengerInfo:
+          booking.rideType === RideType.OTHERS ? { name: booking.name } : null,
+      };
+
+      return {
+        success: true,
+        message:
+          'Your ride request is being processed. Searching for a driver...',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -527,7 +562,7 @@ export class RideService {
             pilotId: pilot.id,
             status: BookingStatus.ACCEPTED,
             acceptedAt: moment.utc().toDate(),
-            vehicleId: pilot.vehicle.id
+            vehicleId: pilot.vehicle.id,
           },
           select: {
             id: true,

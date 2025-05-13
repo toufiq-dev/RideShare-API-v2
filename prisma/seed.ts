@@ -307,11 +307,16 @@ async function main() {
         },
       })
 
+      const coupon = await prisma.coupon.findUnique({
+        where: { name: 'Chota' },
+      })
+
       await prisma.customer.create({
         data: {
           phone: customer.phone,
           languageId: english.id,
-          userId: user.id
+          userId: user.id,
+          couponId: coupon.id
         },
       });
       console.log(`Created customer with phone ${customer.phone}`);

@@ -316,11 +316,15 @@ export class RideService {
         dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
       });
 
-      const coupon = await this.prisma.coupon.findUnique({
+      const coupon: any = await this.prisma.coupon.findUnique({
         where: {
           id: booking.customer.coupon.id,
         },
       });
+
+      if (coupon.discount) {
+        coupon.discount = Number(coupon.discount);
+      }
 
       const pickupLocation = {
         lat: booking.pickupLocation.lat,

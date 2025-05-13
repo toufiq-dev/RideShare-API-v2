@@ -322,9 +322,23 @@ export class RideService {
         },
       });
 
-      const data: CustomerCreateRideResponse = {
+      const pickupLocation = {
+        lat: booking.pickupLocation.lat,
+        lng: booking.pickupLocation.lng,
+        name: booking.pickupLocation.name,
+        address: booking.pickupLocation.address,
+      };
+      const dropLocation = {
+        lat: booking.dropLocation.lat,
+        lng: booking.dropLocation.lng,
+        name: booking.dropLocation.name,
+        address: booking.dropLocation.address,
+      };
+
+      const data = {
         bookingId: booking.id,
-        location: [booking.pickupLocation, booking.dropLocation],
+        pickupLocation,
+        dropLocation,
         originalPrice: Math.ceil(Number(booking.estimatedFare)),
         discountedPrice: Math.ceil(Number(booking.discountedFare)),
         coupon: coupon || null,

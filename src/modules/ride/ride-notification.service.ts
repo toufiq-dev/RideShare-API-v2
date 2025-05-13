@@ -12,6 +12,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { resolve } from 'path';
 
 @Injectable()
 export class RideNotificationService {
@@ -138,19 +139,26 @@ export class RideNotificationService {
     bookingStatus: BookingStatus,
     userId: string,
   ) {
-    await Promise.all([
-      this.sendPushNotification(
-        userId,
-        'Ride Cancelled',
-        'Unfortunately ride request has been cancelled.',
-        { bookingId, bookingStatus },
-      ),
-      this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
-        bookingId,
-        bookingStatus,
-        message: 'Unfortunately ride request has been cancelled.',
-      }),
-    ]);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      await Promise.all([
+        this.sendPushNotification(
+          userId,
+          'Ride Cancelled',
+          'Unfortunately ride request has been cancelled.',
+          { bookingId, bookingStatus },
+        ),
+        this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+          bookingId,
+          bookingStatus,
+          message: 'Unfortunately ride request has been cancelled.',
+        }),
+      ]);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {

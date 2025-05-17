@@ -5,9 +5,9 @@ export const RideEvents = {
   RIDE_EDIT_LOCATION: 'rideEditLocation', // for pilot
   RIDE_STATUS_UPDATE: 'rideStatusUpdate', // for customer
   REACHED_PICKUP_POINT: 'reachedPickupPoint', // for customer
-  RIDE_REQUEST_TIMEOUT: 'rideRequestTimeout',
-  RIDE_CANCELLED: 'rideCancelled',
-  DRIVER_NOT_FOUND: 'driverNotFound',
+  RIDE_REQUEST_TIMEOUT: 'rideRequestTimeout', // for pilot
+  RIDE_CANCELLED: 'rideCancelled', // for both
+  DRIVER_NOT_FOUND: 'driverNotFound', // for customer
   ERROR: 'error',
 } as const;
 

@@ -178,11 +178,13 @@ async function main() {
   const users = [
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
+    { role: UserRole.PILOT },
   ];
   
   const pilots = [
     { phone: '+911234567890' },
     { phone: '+911234567891' },
+    { phone: '+919999999999' },
   ];
   
   const english = await prisma.languages.findUnique({
@@ -287,8 +289,41 @@ async function main() {
     console.log(`Created pilot with phone ${pilot.phone}`);
   }
 
+  const customers = [
+    { phone: '+911234567892' },
+    { phone: '+911234567893' },
+    { phone: '+919999999999' },
+  ];
+  
+  for (const customer of customers) {
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { phone: customer.phone },
+    });
+  
+    if (!existingCustomer) {
+      const user = await prisma.user.create({
+        data: {
+          role: UserRole.CUSTOMER,
+        },
+      })
 
- 
+      const coupon = await prisma.coupon.findUnique({
+        where: { name: 'Chota' },
+      })
+
+      await prisma.customer.create({
+        data: {
+          phone: customer.phone,
+          languageId: english.id,
+          userId: user.id,
+          couponId: coupon.id
+        },
+      });
+      console.log(`Created customer with phone ${customer.phone}`);
+    } else {
+      console.log(`Customer with phone ${customer.phone} already exists`);
+    }
+  }
 
   console.log('Seeding vehicle types finished.');
   console.log('Seeding languages and vehicle types finished.');

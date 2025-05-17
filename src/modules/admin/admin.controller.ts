@@ -1,16 +1,41 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
   CreateSupportStuffDto,
+  AppUpdateDto,
 } from './dto/admin.dto';
+import { AppPlatform } from '@prisma/client';
 
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Post('app-version')
+  @ApiOperation({ summary: 'Update App Version' })
+  @ApiBody({
+    type: AppUpdateDto,
+  })
+  async updateAppVersion(@Body() appUpdateDto: AppUpdateDto) {
+    return await this.adminService.updateAppVersion(appUpdateDto);
+  }
+
+  @Get('app-version')
+  @ApiOperation({ summary: 'Get App Version' })
+  async getAppVersion(@Query('platform') platform: AppPlatform) {
+    return await this.adminService.getAppVersion(platform);
+  }
 
   @Post('subscription')
   @ApiOperation({ summary: 'Create Subscription Type' })

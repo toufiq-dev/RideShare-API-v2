@@ -55,6 +55,15 @@ export class AuthService {
     const { language, phone, referralCode } = sendOtpDto;
 
     try {
+      if (phone === '+919999999999') {
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: '4242',
+          },
+        };
+      }
+
       const Language = await this.prisma.languages.findUnique({
         where: { name: language },
       });
@@ -87,6 +96,45 @@ export class AuthService {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
+      // For App review in ios and android store START
+      if (phone == '+919999999999' && otp == '4242') {
+        let user = null;
+        let pilot = null;
+        let customer = null;
+
+        if (role === RoleEnum.PILOT) {
+          pilot = await this.prisma.pilot.findUnique({
+            where: { phone },
+          });
+
+          user = await this.prisma.user.findUnique({
+            where: { id: pilot.userId },
+          });
+        }
+        if (role === RoleEnum.CUSTOMER) {
+          customer = await this.prisma.customer.findUnique({
+            where: { phone },
+          });
+
+          user = await this.prisma.user.findUnique({
+            where: { id: customer.userId },
+          });
+        }
+        if (!user) {
+          throw new NotFoundException('User not found.');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.role);
+
+        return {
+          message: 'OTP verified successfully.',
+          data: {
+            ...tokens,
+            user: role === RoleEnum.CUSTOMER ? customer : pilot,
+          },
+        };
+      } // For App review in ios and android store END
+
       const { languageId, refferalCode } = await this.validateOtpRedis(
         phone,
         otp,
@@ -136,23 +184,52 @@ export class AuthService {
     }
   }
 
-  async checkLocation(locationDto: LocationDto) {
+  async checkLocation(
+    locationDto: LocationDto,
+    userId: string,
+    role: RoleEnum,
+  ) {
     const { lat, lng } = locationDto;
 
-    const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
-      lat,
-      lng,
-    );
+    try {
+      // For App review in ios and android store
+      if (role === RoleEnum.PILOT) {
+        const pilot = await this.prisma.pilot.findUnique({
+          where: { userId },
+        });
+        if (!pilot) {
+          throw new NotFoundException('Pilot not found.');
+        }
 
-    return {
-      data: {
-        isInServiceArea,
-        city,
-      },
-      message: isInServiceArea
-        ? 'Within the service area.'
-        : 'Outside the service area.',
-    };
+        if (pilot.phone === '+919999999999') {
+          return {
+            data: {
+              isInServiceArea: true,
+              city: null,
+            },
+            message: 'Within the service area.',
+          };
+        }
+      }
+
+      const { isInServiceArea, city } = this.geofencingService.isWithinBoundary(
+        lat,
+        lng,
+      );
+
+      return {
+        data: {
+          isInServiceArea,
+          city,
+        },
+        message: isInServiceArea
+          ? 'Within the service area.'
+          : 'Outside the service area.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {

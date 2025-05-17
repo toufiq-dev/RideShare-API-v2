@@ -7,10 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Platform {
+  id                 String      @id @default(uuid())
+  adDriverVersion    Int?
+  adCustomerVersion  Int?
+  iosCustomerVersion String?
+  appDescription     AppPlatform @unique
+}
+
 model User {
   id             String          @id @default(uuid())
   role           UserRole
   status         UserStatus      @default(ACTIVE)
+  country        Country?
   metadata       Json?
   lastLogin      DateTime?
   createdAt      DateTime        @default(now()) @db.Timestamptz
@@ -28,7 +37,6 @@ model DeviceToken {
   fcmToken        String
   createdAt       DateTime @default(now()) @db.Timestamptz
   updatedAt       DateTime @updatedAt @db.Timestamptz
-  appVersion      String?
   dateTime        String?
   platform        String?
   platformVersion String?
@@ -433,6 +441,17 @@ model VideoProgress {
   video     VideoTutorial @relation(fields: [videoId], references: [id])
 
   @@unique([pilotId, videoId])
+}
+
+enum Country {
+  BD
+  IN
+}
+
+enum AppPlatform {
+  ANDROID_DRIVER
+  ANDROID_CUSTOMER
+  IOS_CUSTOMER
 }
 
 enum UserRole {

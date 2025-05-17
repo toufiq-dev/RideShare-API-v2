@@ -3,17 +3,19 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  IsPhoneNumber,
   Length,
   IsOptional,
   Min,
   Max,
 } from 'class-validator';
+import { IsMultiCountryPhoneNumber } from 'src/modules/auth/validator/IsMultiCountryPhoneNumber';
 
 export class VerifyPhoneDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
-  @IsPhoneNumber('IN')
+  @IsMultiCountryPhoneNumber(['IN', 'BD'], {
+    message: 'Invalid phone number for India or Bangladesh',
+  })
   phone: string;
 
   @ApiPropertyOptional({ description: 'OTP' })

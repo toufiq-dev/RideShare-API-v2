@@ -1,5 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AppPlatform } from '@prisma/client';
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+
+export class AppUpdateDto {
+  @ApiProperty({ description: 'App version' })
+  @IsNumber()
+  @IsOptional()
+  adDriverVersion: number;
+
+  @ApiProperty({ description: 'App version' })
+  @IsNumber()
+  @IsOptional()
+  adCustomerVersion: number;
+
+  @ApiProperty({ description: 'App version' })
+  @IsString()
+  @IsOptional()
+  iosCustomerVersion: string;
+
+  @ApiProperty({ description: 'App description' })
+  @IsString()
+  @IsNotEmpty()
+  appDescription: AppPlatform;
+}
 
 export class CreateSubscriptionTypeDto {
   @ApiProperty({ description: 'Name of the subscription type' })

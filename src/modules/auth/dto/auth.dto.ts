@@ -1,12 +1,12 @@
 import {
   IsString,
   IsNotEmpty,
-  IsPhoneNumber,
   Length,
   IsEnum,
   IsOptional,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMultiCountryPhoneNumber } from '../validator/IsMultiCountryPhoneNumber';
 
 export enum RoleEnum {
   CUSTOMER = 'CUSTOMER',
@@ -23,7 +23,9 @@ export class SendOtpDto {
 
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
-  @IsPhoneNumber('IN')
+  @IsMultiCountryPhoneNumber(['IN', 'BD'], {
+    message: 'Invalid phone number for India or Bangladesh',
+  })
   phone: string;
 
   @ApiPropertyOptional({ description: 'Referral Code' })
@@ -34,7 +36,9 @@ export class SendOtpDto {
 
 export class VerifyOtpDto {
   @ApiProperty({ description: 'Phone number' })
-  @IsPhoneNumber('IN')
+  @IsMultiCountryPhoneNumber(['IN', 'BD'], {
+    message: 'Invalid phone number for India or Bangladesh',
+  })
   @IsNotEmpty()
   phone: string;
 
@@ -67,6 +71,8 @@ export class RefreshTokenDto {
 export class FindPilotDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty()
-  @IsPhoneNumber('IN')
+  @IsMultiCountryPhoneNumber(['IN', 'BD'], {
+    message: 'Invalid phone number for India or Bangladesh',
+  })
   phone: string;
 }

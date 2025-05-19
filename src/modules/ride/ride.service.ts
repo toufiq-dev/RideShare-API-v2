@@ -78,8 +78,11 @@ export class RideService {
         lat,
         client.data.user.userId,
       );
-
-      console.log(`Updating pilotLocation lat: ${lat}, lng: ${lng} `, result);
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId: client.data.user.userId },
+        select: { phone: true },
+      });
+      console.log(`Updating pilot ${pilot.phone} location lat: ${lat}, lng: ${lng} `, result);
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });

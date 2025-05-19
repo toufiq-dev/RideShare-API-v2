@@ -72,13 +72,13 @@ export class AuthService {
       }
 
       const otp = randomInt(1000, 10000).toString();
-      await this.redis.set(`otp:${phone}`, otp, 300);
+      // await this.redis.set(`otp:${phone}`, otp, 300);
       await this.redis.set(`languageId:${phone}`, Language.id, 300);
       await this.redis.set(`referralCode:${phone}`, referralCode, 300);
 
-      // const requestId = await this.otpService.sendOTP(phone);
+      const requestId = await this.otpService.sendOTP(phone);
 
-      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+      await this.redis.set(`requestId:${phone}`, requestId, 300);
 
       return {
         message: 'OTP sent to your phone successfully.',
@@ -135,12 +135,12 @@ export class AuthService {
         };
       } // For App review in ios and android store END
 
-      const { languageId, refferalCode } = await this.validateOtpRedis(
-        phone,
-        otp,
-      );
+      // const { languageId, refferalCode } = await this.validateOtpRedis(
+      //   phone,
+      //   otp,
+      // );
 
-      // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
+      const { languageId, refferalCode } = await this.validateOtp(phone, otp);
 
       const { user, customer, pilot } = await this.findOrCreateUser(
         phone,

@@ -96,7 +96,7 @@ export class AuthService {
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
-    
+
     try {
       // For App review in ios and android store START
       if (phone == '+919999999999' && otp == '4242') {

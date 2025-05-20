@@ -82,7 +82,10 @@ export class RideService {
         where: { userId: client.data.user.userId },
         select: { phone: true },
       });
-      console.log(`Updating pilot ${pilot.phone} location lat: ${lat}, lng: ${lng} `, result);
+      console.log(
+        `Updating pilot ${pilot.phone} location lat: ${lat}, lng: ${lng} `,
+        result,
+      );
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });

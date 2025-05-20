@@ -22,7 +22,6 @@ async function bootstrap() {
   app.useLogger(logger);
 
   app.enableCors();
-  app.setGlobalPrefix('api');
 
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new TransformResponseInterceptor());

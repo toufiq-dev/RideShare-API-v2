@@ -1005,7 +1005,7 @@ export class RideService {
           data: { activeBookingId: null },
         });
 
-        const updated = await tx.booking.update({
+        const updated: any = await tx.booking.update({
           where: { id: bookingId },
           data: {
             status: BookingStatus.COMPLETED,
@@ -1108,6 +1108,12 @@ export class RideService {
       });
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
+
+      if (result.updated.customer.coupon) {
+        result.updated.customer.coupon.discount = Number(
+          result.updated.customer.coupon.discount,
+        );
+      }
 
       const payload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,

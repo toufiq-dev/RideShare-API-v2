@@ -14,7 +14,16 @@ import { SocketService } from 'src/core/socket/socket.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ChatEvents } from 'src/core/socket/socket-events';
 
-@WebSocketGateway({ namespace: '/socket' })
+@WebSocketGateway({
+  cors: {
+    origin: '*',
+    credentials: true,
+  },
+  namespace: '/socket',
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000,
+})
 @UseGuards(WsJwtAuthGuard)
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(

@@ -292,7 +292,13 @@ export class RideService {
           dropLocation: true,
           name: true,
           vehicleId: true,
-          customer: { select: { coupon: { select: { id: true } } } },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              coupon: true,
+            },
+          },
         },
       });
       if (!booking) {
@@ -305,8 +311,75 @@ export class RideService {
           vehicleType: {
             select: {
               id: true,
+              baseFare: true,
+              perKmRate: true,
+              perMinRate: true,
             },
           },
+        },
+      });
+
+      // Check active booking
+      const activeBooking = await this.prisma.booking.findFirst({
+        where: {
+          customerId: booking.customer.id,
+          status: BookingStatus.PENDING,
+        },
+      });
+      if (activeBooking)
+        throw new BadRequestException(
+          'You already have an active ride request',
+        );
+
+      const origin = {
+        lat: booking.pickupLocation.lat,
+        lng: booking.pickupLocation.lng,
+      };
+      const destination = {
+        lat: booking.dropLocation.lat,
+        lng: booking.dropLocation.lng,
+      };
+
+      const { distanceKm, durationMin } =
+        await this.fareService.calculateDistanceAndDuration(
+          origin,
+          destination,
+        );
+
+      const originalPrice = this.fareService.estimateFare(
+        distanceKm,
+        durationMin,
+        Number(vehicle.vehicleType.baseFare),
+        Number(vehicle.vehicleType.perKmRate),
+        Number(vehicle.vehicleType.perMinRate),
+      );
+
+      const coupon = booking.customer.coupon;
+      if (coupon && isNaN(Number(coupon.discount))) {
+        throw new BadRequestException('Invalid coupon discount');
+      }
+
+      const price =
+        coupon && originalPrice > Number(coupon.discount)
+          ? originalPrice - Number(coupon.discount)
+          : originalPrice;
+
+      const newBooking = await this.prisma.booking.create({
+        data: {
+          bookingCode: randomInt(1000, 10000).toString(),
+          customerId: booking.customer.id,
+          name:
+            booking.rideType === RideType.SELF
+              ? booking.customer.name
+              : booking.name,
+          status: BookingStatus.PENDING,
+          rideType: booking.rideType,
+          estimatedFare: Math.ceil(originalPrice),
+          discountedFare: Math.ceil(price),
+          pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
+          dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
+          estimatedDistance: Math.ceil(distanceKm).toString(),
+          estimatedDuration: Math.ceil(durationMin),
         },
       });
 
@@ -320,12 +393,6 @@ export class RideService {
         durationMin: Number(booking.estimatedDuration),
         pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
         dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
-      });
-
-      const coupon: any = await this.prisma.coupon.findUnique({
-        where: {
-          id: booking.customer.coupon.id,
-        },
       });
 
       if (coupon.discount) {

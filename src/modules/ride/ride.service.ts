@@ -1139,7 +1139,7 @@ export class RideService {
             ? { name: result.updated.name }
             : null,
       };
-
+      console.log('end ride payload for customer', payload);
       // rideEnded event triggered for customer
       await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,

@@ -480,8 +480,8 @@ export class RideService {
           }
 
           // Fetch pilot details
-          const pilot = await this.prisma.pilot.findUnique({
-            where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE },
+          const pilot = await this.prisma.pilot.findFirst({
+            where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE, activeBookingId: null },
             select: {
               userId: true,
               vehicle: {

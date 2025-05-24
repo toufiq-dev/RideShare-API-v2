@@ -481,7 +481,11 @@ export class RideService {
 
           // Fetch pilot details
           const pilot = await this.prisma.pilot.findFirst({
-            where: { userId: pilotUserId, onlineStatus: PilotStatus.AVAILABLE, activeBookingId: null },
+            where: {
+              userId: pilotUserId,
+              onlineStatus: PilotStatus.AVAILABLE,
+              activeBookingId: null,
+            },
             select: {
               userId: true,
               vehicle: {
@@ -721,7 +725,7 @@ export class RideService {
 
       // Cache active ride in Redis
       await this.redis.setActiveRide(
-        pilot.id,
+        pilot.userId,
         result.updated.id,
         result.updated.customer.userId,
       );

@@ -66,7 +66,6 @@ export class RideNotificationService {
       distanceKm,
       durationMin,
     } = payload;
-
     const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
     await this.redis.set(notifiedKey, 'true', 300);
 
@@ -92,7 +91,7 @@ export class RideNotificationService {
       durationMin: durationMin.toString(),
     };
 
-    await Promise.all([
+    const [_, rideRequest] = await Promise.all([
       // Send push notification to the driver
       this.sendPushNotification(
         pilotUserId,
@@ -106,9 +105,7 @@ export class RideNotificationService {
         .emit(RideEvents.RIDE_REQUEST, notificationPayload),
     ]);
 
-    console.log(
-      `Ride request emitted to pilot ${pilotId} (userId: ${pilotUserId})}`,
-    );
+    console.log(`Ride request emitted to pilot ${pilotId} `, rideRequest);
   }
 
   async notifyRideCancelled(

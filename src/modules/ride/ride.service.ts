@@ -468,8 +468,6 @@ export class RideService {
           return false; // No drivers in this radius
         }
 
-        console.log(`nearbyPilots length`, nearbyPilots.length);
-
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
           // Check if this pilot was already notified
@@ -487,6 +485,7 @@ export class RideService {
               activeBookingId: null,
             },
             select: {
+              id: true,
               userId: true,
               vehicle: {
                 select: {
@@ -516,7 +515,7 @@ export class RideService {
             ); // 20 seconds TTL (15 seconds + buffer)
 
             const notifyDriverPayload: NotifyDriverPayload = {
-              pilotId: pilotUserId,
+              pilotId: pilot.id,
               pilotUserId: pilot.userId,
               bookingId,
               vehicleTypeId,

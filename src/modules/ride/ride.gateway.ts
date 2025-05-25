@@ -42,7 +42,14 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    await this.socketService.handleConnection(client);
+    try {
+      await this.socketService.handleConnection(client);
+    } catch (error) {
+      console.error(error);
+      client.emit(RideEvents.ERROR, {
+        message: 'Failed to connect Ride Gateway',
+      });
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -73,6 +80,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
             activeRide.bookingId,
           );
           status = booking?.status;
+          console.log('Status from Prisma:', status);
           if (status) {
             await this.rideService.cacheBookingStatus(
               activeRide.bookingId,

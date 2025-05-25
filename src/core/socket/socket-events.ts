@@ -15,4 +15,5 @@ export const ChatEvents = {
   SEND_MESSAGE: 'rideSendMessage',
   RECEIVE_MESSAGE: 'rideReceiveMessage',
   TYPING: 'typing',
+  ERROR: 'error',
 } as const;

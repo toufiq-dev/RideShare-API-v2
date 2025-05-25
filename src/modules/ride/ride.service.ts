@@ -277,7 +277,11 @@ export class RideService {
     rideRequestAgainDto: RideRequestAgainDto,
     userId: string,
   ) {
-    const { bookingId } = rideRequestAgainDto;
+    const {
+      bookingId,
+      pickupLocation: newPickupLocation,
+      dropLocation: newDropLocation,
+    } = rideRequestAgainDto;
 
     try {
       const booking: any = await this.prisma.booking.findUnique({
@@ -386,13 +390,13 @@ export class RideService {
       await this.enqueueRideRequest({
         userId,
         bookingId,
-        estimatedFare: booking.estimatedFare,
-        discountedFare: booking.discountedFare,
+        estimatedFare: newBooking.estimatedFare,
+        discountedFare: newBooking.discountedFare,
         vehicleTypeId: vehicle.vehicleType.id,
-        distanceKm: Number(booking.estimatedDistance),
-        durationMin: Number(booking.estimatedDuration),
-        pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
-        dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
+        distanceKm: Number(newBooking.estimatedDistance),
+        durationMin: Number(newBooking.estimatedDuration),
+        pickupLocation: newPickupLocation,
+        dropLocation: newDropLocation,
       });
 
       if (coupon.discount) {

@@ -36,7 +36,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    await this.socketService.handleConnection(client);
+    try {
+      await this.socketService.handleConnection(client);
+    } catch (error) {
+      console.error(error);
+      client.emit(ChatEvents.ERROR, {
+        message: 'Failed to connect Chat Gateway',
+      });
+    }
   }
 
   handleDisconnect(client: Socket) {

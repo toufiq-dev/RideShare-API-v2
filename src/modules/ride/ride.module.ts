@@ -17,6 +17,9 @@ import { FirebaseModule } from 'src/core/firebase/firebase.module';
     BullModule.registerQueueAsync({
       name: 'ride-request',
     }),
+    BullModule.registerQueueAsync({
+      name: 'ride-notification',
+    }),
   ],
   providers: [
     RideGateway,

@@ -15,6 +15,7 @@ import { SocketService } from 'src/core/socket/socket.service';
 import { BookingStatus } from '@prisma/client';
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
+import { PrismaService } from 'src/core/database/prisma.service';
 
 @WebSocketGateway({
   cors: {
@@ -23,8 +24,6 @@ import { RideEvents } from 'src/core/socket/socket-events';
   },
   namespace: '/socket',
   transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000,
 })
 @UseGuards(WsJwtAuthGuard)
 export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -35,6 +34,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly socketService: SocketService,
     private readonly rideService: RideService,
     private readonly rideNotificationService: RideNotificationService,
+    private readonly prisma: PrismaService,
   ) {}
 
   onModuleInit() {
@@ -59,49 +59,74 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: any,
+    @MessageBody() body: { lat: number; lng: number },
   ) {
     try {
-      const { lat, lng } = JSON.parse(body);
+      const { lat, lng } = body;
 
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
-      const activeRide = await this.rideService.getActiveRideForPilot(client);
+      // Emit driver live location to customer
+      const booking = await this.prisma.booking.findFirst({
+        where: {
+          pilotId: client.data.user.userId,
+          status: BookingStatus.ACCEPTED,
+        },
+        select: {
+          id: true,
+          customer: {
+            select: {
+              userId: true,
+            },
+          },
+        },
+      });
 
-      if (activeRide) {
-        // Check status from Redis first
-        let status = await this.rideService.getCachedBookingStatus(
-          activeRide.bookingId,
+      if (booking) {
+        this.rideNotificationService.notifyDriverLiveLocation(
+          booking.id,
+          booking.customer.userId,
+          lat,
+          lng,
         );
-
-        // If not found in Redis, fallback to Prisma and cache it
-        if (!status) {
-          const booking = await this.rideService.getBookingStatus(
-            activeRide.bookingId,
-          );
-          status = booking?.status;
-          console.log('Status from Prisma:', status);
-          if (status) {
-            await this.rideService.cacheBookingStatus(
-              activeRide.bookingId,
-              status,
-            );
-          }
-        }
-
-        if (status && status === BookingStatus.ACCEPTED) {
-          this.rideNotificationService.notifyDriverLiveLocation(
-            activeRide.bookingId,
-            activeRide.customerUserId,
-            lat,
-            lng,
-          );
-        } else {
-          console.log(
-            `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
-          );
-        }
       }
+
+      // const activeRide = await this.rideService.getActiveRideForPilot(client);
+
+      // if (activeRide) {
+      //   // Check status from Redis first
+      //   let status = await this.rideService.getCachedBookingStatus(
+      //     activeRide.bookingId,
+      //   );
+
+      //   // If not found in Redis, fallback to Prisma and cache it
+      //   if (!status) {
+      //     const booking = await this.rideService.getBookingStatus(
+      //       activeRide.bookingId,
+      //     );
+      //     status = booking?.status;
+      //     console.log('Status from Prisma:', status);
+      //     if (status) {
+      //       await this.rideService.cacheBookingStatus(
+      //         activeRide.bookingId,
+      //         status,
+      //       );
+      //     }
+      //   }
+
+      //   if (status && status === BookingStatus.ACCEPTED) {
+      //     this.rideNotificationService.notifyDriverLiveLocation(
+      //       activeRide.bookingId,
+      //       activeRide.customerUserId,
+      //       lat,
+      //       lng,
+      //     );
+      //   } else {
+      //     console.log(
+      //       `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
+      //     );
+      //   }
+      // }
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });

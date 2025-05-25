@@ -3,6 +3,7 @@ import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { PrismaService } from '../database/prisma.service';
+import { Rooms } from './socket-events';
 
 @Injectable()
 export class SocketService {
@@ -48,8 +49,9 @@ export class SocketService {
         throw new WsException('User not found');
       }
 
-      await client.join(payload.userId);
-      console.log(`${payload.role} joined room: ${payload.userId}`);
+      const room = Rooms.forUser(payload.userId);
+      await client.join(room);
+      console.log(`${payload.role} joined room: ${room}`);
 
       return { userId: payload.userId, role: payload.role };
     } catch (err) {

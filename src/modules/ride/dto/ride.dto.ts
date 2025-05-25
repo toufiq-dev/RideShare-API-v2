@@ -77,7 +77,7 @@ export class CreateRideRequestDto extends RideLocationDto {
   otherPassengerInfo: OtherInfo;
 }
 
-export class RideRequestAgainDto extends RideLocationDto {
+export class RideRequestAgainDto {
   @ApiProperty({ description: 'Booking id' })
   @IsNotEmpty({ message: 'Booking id is required' })
   @IsString()

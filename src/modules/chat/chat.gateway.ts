@@ -21,8 +21,6 @@ import { ChatEvents } from 'src/core/socket/socket-events';
   },
   namespace: '/socket',
   transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000,
 })
 @UseGuards(WsJwtAuthGuard)
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {

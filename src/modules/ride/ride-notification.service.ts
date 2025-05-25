@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { SocketService } from 'src/core/socket/socket.service';
 import { BookingStatus, CancelledBy } from '@prisma/client';
-import { RideEvents } from 'src/core/socket/socket-events';
+import { RideEvents, Rooms } from 'src/core/socket/socket-events';
 import {
   NotifyDriverPayload,
   CustomerRidePayload,
@@ -12,7 +12,8 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
-import { resolve } from 'path';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class RideNotificationService {
@@ -21,6 +22,7 @@ export class RideNotificationService {
     private readonly redis: RedisService,
     private readonly firebaseService: FirebaseService,
     private readonly prisma: PrismaService,
+    @InjectQueue('ride-notification') private readonly notificationQueue: Queue,
   ) {}
 
   private get server(): Server {
@@ -50,6 +52,31 @@ export class RideNotificationService {
       );
     } catch (error) {
       console.error(error);
+    }
+  }
+
+  // Method to enqueue notifications
+  async enqueueNotification(type: string, payload: any, userId?: string) {
+    try {
+      const job = await this.notificationQueue.add(
+        'send-notification',
+        { type, payload, userId },
+        {
+          jobId: `ride-notification-${payload.bookingId}`,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: true,
+          removeOnFail: 1000,
+        },
+      );
+
+      return job;
+    } catch (error) {
+      console.error('Failed to enqueue notification:', error);
+      throw error;
     }
   }
 
@@ -101,7 +128,7 @@ export class RideNotificationService {
       ),
       // Emit the ride request to the driver
       this.server
-        .to(pilotUserId)
+        .to(Rooms.forUser(pilotUserId))
         .emit(RideEvents.RIDE_REQUEST, notificationPayload),
     ]);
 
@@ -122,12 +149,14 @@ export class RideNotificationService {
         }`,
         { bookingId },
       ),
-      this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
-        bookingId,
-        message: `The ride has been cancelled by the ${
-          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-        }.`,
-      }),
+      this.server
+        .to(Rooms.forUser(recipientUserId))
+        .emit(RideEvents.RIDE_CANCELLED, {
+          bookingId,
+          message: `The ride has been cancelled by the ${
+            cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+          }.`,
+        }),
     ]);
   }
 
@@ -146,11 +175,13 @@ export class RideNotificationService {
           'Unfortunately ride request has been cancelled.',
           { bookingId, bookingStatus },
         ),
-        this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
-          bookingId,
-          bookingStatus,
-          message: 'Unfortunately ride request has been cancelled.',
-        }),
+        this.server
+          .to(Rooms.forUser(userId))
+          .emit(RideEvents.DRIVER_NOT_FOUND, {
+            bookingId,
+            bookingStatus,
+            message: 'Unfortunately ride request has been cancelled.',
+          }),
       ]);
     } catch (error) {
       console.error(error);
@@ -167,10 +198,12 @@ export class RideNotificationService {
       //   { bookingId },
       // ),
 
-      this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
-        bookingId,
-        reason: 'Time expired. You did not respond to the ride request.',
-      }),
+      this.server
+        .to(Rooms.forUser(pilotUserId))
+        .emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
+          bookingId,
+          reason: 'Time expired. You did not respond to the ride request.',
+        }),
     ]);
   }
 
@@ -187,7 +220,7 @@ export class RideNotificationService {
       ),
       console.log(`Ride accepted payload: \n${payload}`),
       this.server
-        .to(customerUserId)
+        .to(Rooms.forUser(customerUserId))
         .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
     ]);
   }
@@ -201,7 +234,7 @@ export class RideNotificationService {
         { bookingId },
       ),
       this.server
-        .to(customerUserId)
+        .to(Rooms.forUser(customerUserId))
         .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
     ]);
   }
@@ -214,9 +247,14 @@ export class RideNotificationService {
   ) {
     const payload = { bookingId, lat, lng };
 
-    this.server
-      .to(customerUserId)
+    const result = this.server
+      .to(Rooms.forUser(customerUserId))
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
+
+    console.log(
+      `Driver live location emitted to customer ${customerUserId} `,
+      result,
+    );
   }
 
   async notifyDriverForEditLocation(
@@ -230,11 +268,15 @@ export class RideNotificationService {
         'You have a new edit location request',
         { bookingId: payload.bookingId, fare: payload.fare.toString() },
       ),
-      this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload),
+      this.server
+        .to(Rooms.forUser(pilotUserId))
+        .emit(RideEvents.RIDE_EDIT_LOCATION, payload),
     ]);
   }
 
   notifyError(userId: string, message: string, error?: string) {
-    this.server.to(userId).emit(RideEvents.ERROR, { message, error });
+    this.server
+      .to(Rooms.forUser(userId))
+      .emit(RideEvents.ERROR, { message, error });
   }
 }

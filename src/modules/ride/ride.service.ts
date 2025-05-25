@@ -37,7 +37,7 @@ import {
   RideRequestAgainDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
-import { RideEvents } from 'src/core/socket/socket-events';
+import { RideEvents, Rooms } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
@@ -58,6 +58,13 @@ export class RideService {
     try {
       const job = await this.rideQueue.add('broadcast-to-pilots', payload, {
         jobId: `ride-${payload.bookingId}`,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000,
+        },
+        removeOnComplete: true,
+        removeOnFail: 1000,
       });
 
       console.log(`Rideservie enqueueRideRequest with jobId, ${job.id}`);
@@ -277,11 +284,7 @@ export class RideService {
     rideRequestAgainDto: RideRequestAgainDto,
     userId: string,
   ) {
-    const {
-      bookingId,
-      pickupLocation: newPickupLocation,
-      dropLocation: newDropLocation,
-    } = rideRequestAgainDto;
+    const { bookingId } = rideRequestAgainDto;
 
     try {
       const booking: any = await this.prisma.booking.findUnique({
@@ -395,8 +398,8 @@ export class RideService {
         vehicleTypeId: vehicle.vehicleType.id,
         distanceKm: Number(newBooking.estimatedDistance),
         durationMin: Number(newBooking.estimatedDuration),
-        pickupLocation: newPickupLocation,
-        dropLocation: newDropLocation,
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
       });
 
       if (coupon.discount) {
@@ -535,8 +538,13 @@ export class RideService {
               server,
             };
 
-            await this.rideNotificationService.notifyRideRequest(
+            // await this.rideNotificationService.notifyRideRequest(
+            //   notifyDriverPayload,
+            // );
+            await this.rideNotificationService.enqueueNotification(
+              RideEvents.RIDE_REQUEST,
               notifyDriverPayload,
+              pilotUserId,
             );
 
             // Track driver acceptance
@@ -565,9 +573,15 @@ export class RideService {
 
             await this.redis.del(acceptanceKey);
 
-            await this.rideNotificationService.notifyRideRequestTimeout(
-              bookingId,
-              pilot.userId,
+            // await this.rideNotificationService.notifyRideRequestTimeout(
+            //   bookingId,
+            //   pilot.userId,
+            // );
+
+            await this.rideNotificationService.enqueueNotification(
+              RideEvents.RIDE_REQUEST_TIMEOUT,
+              { bookingId, pilotUserId },
+              pilotUserId,
             );
 
             // Booking is still pending, continue to the next driver
@@ -619,9 +633,14 @@ export class RideService {
 
         await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
 
-        await this.rideNotificationService.notifyDriverNotFound(
-          bookingId,
-          BookingStatus.NOT_FOUND,
+        // await this.rideNotificationService.notifyDriverNotFound(
+        //   bookingId,
+        //   BookingStatus.NOT_FOUND,
+        //   userId,
+        // );
+        await this.rideNotificationService.enqueueNotification(
+          RideEvents.DRIVER_NOT_FOUND,
+          { bookingId, bookingStatus: BookingStatus.NOT_FOUND, userId },
           userId,
         );
         console.log('booking cancelled');
@@ -630,7 +649,7 @@ export class RideService {
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.to(userId).emit(RideEvents.ERROR, {
+      server.to(Rooms.forUser(userId)).emit(RideEvents.ERROR, {
         message: 'Failed to process ride request',
         error: error.message,
       });
@@ -785,9 +804,14 @@ export class RideService {
       };
 
       // rideAccepted event triggered for customer
-      await this.rideNotificationService.notifyRideStatusUpdate(
-        result.updated.customer.userId,
+      // await this.rideNotificationService.notifyRideStatusUpdate(
+      //   result.updated.customer.userId,
+      //   rideAcceptedPayload,
+      // );
+      await this.rideNotificationService.enqueueNotification(
+        RideEvents.RIDE_STATUS_UPDATE,
         rideAcceptedPayload,
+        result.updated.customer.userId,
       );
 
       const data: PilotRideResponse = {
@@ -850,9 +874,14 @@ export class RideService {
       });
 
       // Emit reachedPickupPoint event to customer
-      await this.rideNotificationService.notifyReachedPickupPoint(
+      // await this.rideNotificationService.notifyReachedPickupPoint(
+      //   booking.customer.userId,
+      //   bookingId,
+      // );
+      await this.rideNotificationService.enqueueNotification(
+        RideEvents.REACHED_PICKUP_POINT,
+        { customerUserId: booking.customer.userId, bookingId },
         booking.customer.userId,
-        bookingId,
       );
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.ARRIVED);
@@ -1012,9 +1041,14 @@ export class RideService {
             : null,
       };
 
-      await this.rideNotificationService.notifyRideStatusUpdate(
-        result.updated.customer.userId,
+      // await this.rideNotificationService.notifyRideStatusUpdate(
+      //   result.updated.customer.userId,
+      //   payload,
+      // );
+      await this.rideNotificationService.enqueueNotification(
+        RideEvents.RIDE_STATUS_UPDATE,
         payload,
+        result.updated.customer.userId,
       );
 
       const data: PilotRideResponse = {
@@ -1228,9 +1262,14 @@ export class RideService {
       };
       console.log('end ride payload for customer', payload);
       // rideEnded event triggered for customer
-      await this.rideNotificationService.notifyRideStatusUpdate(
-        result.updated.customer.userId,
+      // await this.rideNotificationService.notifyRideStatusUpdate(
+      //   result.updated.customer.userId,
+      //   payload,
+      // );
+      await this.rideNotificationService.enqueueNotification(
+        RideEvents.RIDE_STATUS_UPDATE,
         payload,
+        result.updated.customer.userId,
       );
 
       const data: PilotRideResponse = {
@@ -1349,10 +1388,15 @@ export class RideService {
           cancelledBy === CancelledBy.CUSTOMER
             ? booking.pilot.userId
             : booking.customer.userId;
-        await this.rideNotificationService.notifyRideCancelled(
-          bookingId,
+        // await this.rideNotificationService.notifyRideCancelled(
+        //   bookingId,
+        //   recipientUserId,
+        //   cancelledBy,
+        // );
+        await this.rideNotificationService.enqueueNotification(
+          RideEvents.RIDE_CANCELLED,
+          { bookingId, recipientUserId, cancelledBy },
           recipientUserId,
-          cancelledBy,
         );
       }
 
@@ -1492,9 +1536,14 @@ export class RideService {
             : null,
       };
 
-      await this.rideNotificationService.notifyDriverForEditLocation(
+      // await this.rideNotificationService.notifyDriverForEditLocation(
+      //   pilot.userId,
+      //   payload,
+      // );
+      await this.rideNotificationService.enqueueNotification(
+        RideEvents.RIDE_EDIT_LOCATION,
+        { pilotUserId: pilot.userId, payload },
         pilot.userId,
-        payload,
       );
 
       const pilotLocation = await this.redis.geoPos(

@@ -17,3 +17,7 @@ export const ChatEvents = {
   TYPING: 'typing',
   ERROR: 'error',
 } as const;
+
+export const Rooms = {
+  forUser: (userId: string) => `user:${userId}`,
+};

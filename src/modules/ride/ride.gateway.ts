@@ -59,10 +59,10 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { lat: number; lng: number },
+    @MessageBody() body: any,
   ) {
     try {
-      const { lat, lng } = body;
+      const { lat, lng } = JSON.parse(body);
 
       await this.rideService.handleUpdateLocation(client, lat, lng);
 

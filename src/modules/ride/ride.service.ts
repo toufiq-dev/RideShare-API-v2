@@ -463,7 +463,7 @@ export class RideService {
           'm',
           { withDist: true, sort: 'ASC' },
         );
-
+        console.log(`nearbyPilots length`, nearbyPilots.length);
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
@@ -486,6 +486,7 @@ export class RideService {
             },
             select: {
               id: true,
+              phone: true,
               userId: true,
               vehicle: {
                 select: {
@@ -506,13 +507,13 @@ export class RideService {
             pilot.vehicle?.vehicleTypeId === vehicleTypeId &&
             pilot.wallet.balance > discountedFare
           ) {
-            console.log(`Eligible pilot found ${pilotUserId}`);
+            console.log(`Eligible pilot found ${pilot.phone}`);
 
             await this.redis.set(
               `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
-              25,
-            ); // 20 seconds TTL (15 seconds + buffer)
+              30,
+            ); // 30 seconds TTL (15 seconds + buffer)
 
             const notifyDriverPayload: NotifyDriverPayload = {
               pilotId: pilot.id,
@@ -534,8 +535,6 @@ export class RideService {
               notifyDriverPayload,
             );
 
-            console.log(`Notified driver ${pilotUserId}`);
-
             // Track driver acceptance
             const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
             await this.redis.set(
@@ -548,9 +547,12 @@ export class RideService {
             while (Date.now() - startTime < driverTimeout) {
               const bookingStatus = await this.prisma.booking.findUnique({
                 where: { id: bookingId },
+                select: {
+                  status: true,
+                },
               });
 
-              if (bookingStatus?.status !== BookingStatus.PENDING) {
+              if (bookingStatus.status !== BookingStatus.PENDING) {
                 return true; // Booking was accepted or cancelled
               }
 
@@ -583,8 +585,11 @@ export class RideService {
         if (!driverAccepted) {
           const updatedBooking = await this.prisma.booking.findUnique({
             where: { id: bookingId },
+            select: {
+              status: true,
+            },
           });
-          if (updatedBooking?.status !== BookingStatus.PENDING) {
+          if (updatedBooking.status !== BookingStatus.PENDING) {
             break; // Exit if booking is no longer pending
           }
           radius += 500; // Expand radius
@@ -592,25 +597,27 @@ export class RideService {
       }
 
       if (!driverAccepted) {
-        console.log('No driver accepted');
-        const booking = await this.prisma.booking.update({
-          where: { id: bookingId },
-          data: { status: BookingStatus.NOT_FOUND },
-        });
+        console.log('No driver accepted, ', driverAccepted);
+        this.prisma.$transaction(async (tx) => {
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: BookingStatus.NOT_FOUND },
+          });
 
-        await this.prisma.cancellationReason.create({
-          data: {
-            bookingId,
-            reason: 'Driver not found',
-            cancelledBy: CancelledBy.SYSTEM,
-          },
+          await tx.cancellationReason.create({
+            data: {
+              bookingId,
+              reason: 'Driver not found',
+              cancelledBy: CancelledBy.SYSTEM,
+            },
+          });
         });
 
         await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
 
         await this.rideNotificationService.notifyDriverNotFound(
           bookingId,
-          booking.status,
+          BookingStatus.NOT_FOUND,
           userId,
         );
         console.log('booking cancelled');

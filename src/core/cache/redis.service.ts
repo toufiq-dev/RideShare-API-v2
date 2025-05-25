@@ -13,6 +13,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
+    private readonly prisma: PrismaService,
   ) {
     const redisUrl = this.configService.get<string>('redis.url');
 
@@ -125,12 +126,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     key: string,
     longitude: number,
     latitude: number,
-    userId: string,
+    pilotUserId: string,
   ): Promise<number> {
     try {
-      const result = await this.client.geoadd(key, longitude, latitude, userId);
+      const result = await this.client.geoadd(key, longitude, latitude, pilotUserId);
+
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId: pilotUserId },
+        select: { phone: true },
+      });
+
       this.logger.log(
-        `Added ${userId} to geospatial set ${key} at (${latitude}, ${longitude})`,
+        `Added ${pilot.phone} to geospatial set ${key} at (${latitude}, ${longitude})`,
         this.context,
       );
 

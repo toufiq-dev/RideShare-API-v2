@@ -47,7 +47,7 @@ export interface NotifyDriverPayload {
   nearestPilotDistance: number;
   distanceKm: number;
   durationMin: number;
-  server: any;
+  // server: any;
 }
 
 export interface OtherPassengerInfo {

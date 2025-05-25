@@ -535,7 +535,7 @@ export class RideService {
               ),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
-              server,
+              // server,
             };
 
             // await this.rideNotificationService.notifyRideRequest(

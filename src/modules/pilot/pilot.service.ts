@@ -784,9 +784,21 @@ export class PilotService {
     const { onlineStatus, currentLocation } = beOnlineDto;
 
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: { userId: true },
+      });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
+      }
+
+      if (onlineStatus) {
+        await this.redis.geoAdd(
+          RedisKeys.PILOT_LOCATION,
+          Number(currentLocation.lat),
+          Number(currentLocation.lng),
+          pilot.userId,
+        );
       }
 
       if (!onlineStatus) {

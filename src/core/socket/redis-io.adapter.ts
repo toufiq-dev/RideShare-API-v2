@@ -8,12 +8,10 @@ export class RedisIoAdapter extends IoAdapter {
   private pubClient;
   private subClient;
 
-  constructor(
-    app: INestApplicationContext,
-  ) {
+  constructor(app: INestApplicationContext) {
     super(app);
 
-    const redisUrl = process.env.REDIS_URL
+    const redisUrl = process.env.REDIS_URL;
 
     this.pubClient = createClient({ url: redisUrl });
     this.subClient = this.pubClient.duplicate();

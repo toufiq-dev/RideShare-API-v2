@@ -128,6 +128,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     latitude: number,
     pilotUserId: string,
   ): Promise<number> {
+    console.log(latitude, longitude)
+
     try {
       const result = await this.client.geoadd(
         key,

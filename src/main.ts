@@ -6,7 +6,6 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-import { RedisIoAdapter } from './core/socket/redis-io.adapter';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
@@ -36,7 +35,7 @@ async function bootstrap() {
   );
 
   // Use IoAdapter for Socket.IO
-  app.useWebSocketAdapter(new RedisIoAdapter(app));
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('FairDrive API')

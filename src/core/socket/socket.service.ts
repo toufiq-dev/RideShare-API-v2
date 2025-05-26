@@ -3,15 +3,18 @@ import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { PrismaService } from '../database/prisma.service';
-import { Rooms } from './socket-events';
+import { RedisService } from '../cache/redis.service';
+import { RedisKeys } from '../cache/redis-keys';
 
 @Injectable()
 export class SocketService {
   private _server: Server | null = null;
+  private activeConnections = null;
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   setServer(server: Server) {
@@ -36,24 +39,36 @@ export class SocketService {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      if (!payload.userId) {
+      const userId = payload.userId;
+      const role = payload.role;
+
+      if (!userId) {
         throw new WsException('Invalid token');
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
-      });
-      if (!user || user.role !== payload.role) {
-        console.error('User not found');
-        client.disconnect();
-        throw new WsException('User not found');
+      // Check for existing connection
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+      const existingClientId = await this.redis.get(connectionKey);
+
+      if (existingClientId && existingClientId !== client.id) {
+        console.log(
+          `Disconnecting previous socket ${existingClientId} for user ${userId}`,
+        );
+        const sockets = await this.server.fetchSockets();
+        const oldSocket = sockets.find((s) => s.id === existingClientId);
+        if (oldSocket) {
+          oldSocket.disconnect(true);
+        }
       }
 
-      const room = Rooms.forUser(payload.userId);
-      await client.join(room);
-      console.log(`${payload.role} joined room: ${room}`);
+      // Join room = userId
+      await client.join(userId);
+      await this.redis.set(connectionKey, client.id);
 
-      return { userId: payload.userId, role: payload.role };
+      console.log(`${role} joined room: ${userId}`);
+      client.data.user = { userId, role }; // store user in socket data
+
+      return { userId, role };
     } catch (err) {
       console.error('JWT verification failed:', err.message);
       client.disconnect();

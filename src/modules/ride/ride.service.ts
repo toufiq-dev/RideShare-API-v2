@@ -37,7 +37,7 @@ import {
   RideRequestAgainDto,
 } from './dto/ride.dto';
 import { RideNotificationService } from './ride-notification.service';
-import { RideEvents, Rooms } from 'src/core/socket/socket-events';
+import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
@@ -258,8 +258,6 @@ export class RideService {
             : null,
       };
 
-      console.log('CreatedRideRequest', data.bookingId);
-
       return {
         success: true,
         message:
@@ -452,7 +450,6 @@ export class RideService {
       const driverTimeout = 15 * 1000; // 15 seconds per driver
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
-        console.log(`searchAndNotifyNextDriver with radius ${radius}`);
         // Fetch all nearby pilots in the current radius
         const nearbyPilots: any = await this.redis.geoRadius(
           RedisKeys.PILOT_LOCATION,
@@ -462,7 +459,13 @@ export class RideService {
           'm',
           { withDist: true, sort: 'ASC' },
         );
-        console.log(`nearbyPilots length`, nearbyPilots.length);
+
+        // nearbyPilots.map(() => {
+
+        // })
+
+        console.log('nearbyPilots', nearbyPilots);
+
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
@@ -530,14 +533,14 @@ export class RideService {
               // server,
             };
 
-            // await this.rideNotificationService.notifyRideRequest(
-            //   notifyDriverPayload,
-            // );
-            await this.rideNotificationService.enqueueNotification(
-              RideEvents.RIDE_REQUEST,
+            await this.rideNotificationService.notifyRideRequest(
               notifyDriverPayload,
-              pilotUserId,
             );
+            // await this.rideNotificationService.enqueueNotification(
+            //   RideEvents.RIDE_REQUEST,
+            //   notifyDriverPayload,
+            //   pilotUserId,
+            // );
 
             // Track driver acceptance
             const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
@@ -641,7 +644,7 @@ export class RideService {
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
-      server.to(Rooms.forUser(userId)).emit(RideEvents.ERROR, {
+      server.to(userId).emit(RideEvents.ERROR, {
         message: 'Failed to process ride request',
         error: error.message,
       });

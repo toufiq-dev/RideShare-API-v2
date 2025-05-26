@@ -1,4 +1,5 @@
 export const RedisKeys = {
+  SOCKET_CONNECTION: 'socketConnection',
   PILOT_LOCATION: 'pilotLocation',
   ACTIVE_RIDE: 'activeRide:',
   BOOKING_STATUS: 'bookingStatus:',

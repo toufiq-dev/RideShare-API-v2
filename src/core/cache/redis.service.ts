@@ -124,12 +124,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async geoAdd(
     key: string,
-    longitude: number,
     latitude: number,
+    longitude: number,
     pilotUserId: string,
   ): Promise<number> {
-    console.log(latitude, longitude)
-
     try {
       const result = await this.client.geoadd(
         key,
@@ -144,7 +142,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.logger.log(
-        `Added ${pilot.phone} to geospatial set ${key} at (${latitude}, ${longitude})`,
+        `Added ${pilot.phone} to geospatial set ${key} at (${latitude}, ${longitude}) and result, ${result}`,
         this.context,
       );
 

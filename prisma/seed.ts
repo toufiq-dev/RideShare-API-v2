@@ -179,11 +179,13 @@ async function main() {
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
+    { role: UserRole.PILOT}
   ];
   
   const pilots = [
     { phone: '+911234567890' },
     { phone: '+911234567891' },
+    { phone: '+911234567892' },
     { phone: '+919999999999' },
   ];
   

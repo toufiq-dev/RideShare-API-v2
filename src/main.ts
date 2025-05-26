@@ -36,7 +36,7 @@ async function bootstrap() {
   );
 
   // Use IoAdapter for Socket.IO
-  app.useWebSocketAdapter(new IoAdapter(app));
+  app.useWebSocketAdapter(new RedisIoAdapter(app));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('FairDrive API')

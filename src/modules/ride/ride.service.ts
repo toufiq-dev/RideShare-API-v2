@@ -79,19 +79,11 @@ export class RideService {
   async handleUpdateLocation(client: Socket, lat: number, lng: number) {
     try {
       // Store location in Redis geospatial set
-      const result = await this.redis.geoAdd(
+      await this.redis.geoAdd(
         RedisKeys.PILOT_LOCATION,
-        lng,
         lat,
+        lng,
         client.data.user.userId,
-      );
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: client.data.user.userId },
-        select: { phone: true },
-      });
-      console.log(
-        `Updating pilot ${pilot.phone} location lat: ${lat}, lng: ${lng} `,
-        result,
       );
     } catch (error) {
       console.error(error);

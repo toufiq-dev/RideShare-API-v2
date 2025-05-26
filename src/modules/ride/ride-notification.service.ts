@@ -82,7 +82,6 @@ export class RideNotificationService {
 
   async notifyRideRequest(payload: NotifyDriverPayload) {
     const {
-      pilotId,
       pilotUserId,
       bookingId,
       vehicleTypeId,
@@ -118,34 +117,32 @@ export class RideNotificationService {
       durationMin: durationMin.toString(),
     };
 
-    this.sendPushNotification(
-      pilotUserId,
-      'New Ride Request',
-      'You have a new ride request',
-      fcmPayload,
-    );
+    // this.sendPushNotification(
+    //   pilotUserId,
+    //   'New Ride Request',
+    //   'You have a new ride request',
+    //   fcmPayload,
+    // );
 
-    this.server
-      .to(pilotUserId)
-      .emit(RideEvents.RIDE_REQUEST, notificationPayload, (ack) => {
-        console.log('ack for ride request', ack);
-      });
+    // this.server
+    //   .to(pilotUserId)
+    //   .emit(RideEvents.RIDE_REQUEST, notificationPayload, (ack) => {
+    //     console.log('ack for ride request', ack);
+    //   });
 
-    // const result = await Promise.all([
-    //   this.server
-    //     .to(Rooms.forUser(pilotUserId))
-    //     .emit(RideEvents.RIDE_REQUEST, notificationPayload),
+    const result = await Promise.all([
+      this.server
+        .to(pilotUserId)
+        .emit(RideEvents.RIDE_REQUEST, notificationPayload),
 
-    //   // Send push notification to the driver
-    //   this.sendPushNotification(
-    //     pilotUserId,
-    //     'New Ride Request',
-    //     'You have a new ride request',
-    //     fcmPayload,
-    //   ),
-    //   // Emit the ride request to the driver
-
-    // ]);
+      // Send push notification to the driver
+      this.sendPushNotification(
+        pilotUserId,
+        'New Ride Request',
+        'You have a new ride request',
+        fcmPayload,
+      ),
+    ]);
   }
 
   async notifyRideCancelled(
@@ -153,40 +150,38 @@ export class RideNotificationService {
     recipientUserId: string,
     cancelledBy: CancelledBy,
   ) {
-    this.sendPushNotification(
-      recipientUserId,
-      'Ride Cancelled',
-      `The ride has been cancelled by the ${
-        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-      }`,
-      { bookingId },
-    );
+    // this.sendPushNotification(
+    //   recipientUserId,
+    //   'Ride Cancelled',
+    //   `The ride has been cancelled by the ${
+    //     cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+    //   }`,
+    //   { bookingId },
+    // );
 
-    this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
-      bookingId,
-      message: `The ride has been cancelled by the ${
-        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-      }.`,
-    });
+    // this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+    //   bookingId,
+    //   message: `The ride has been cancelled by the ${
+    //     cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+    //   }.`,
+    // });
 
-    // await Promise.all([
-    //   this.sendPushNotification(
-    //     recipientUserId,
-    //     'Ride Cancelled',
-    //     `The ride has been cancelled by the ${
-    //       cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-    //     }`,
-    //     { bookingId },
-    //   ),
-    //   this.server
-    //     .to(Rooms.forUser(recipientUserId))
-    //     .emit(RideEvents.RIDE_CANCELLED, {
-    //       bookingId,
-    //       message: `The ride has been cancelled by the ${
-    //         cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-    //       }.`,
-    //     }),
-    // ]);
+    await Promise.all([
+      this.sendPushNotification(
+        recipientUserId,
+        'Ride Cancelled',
+        `The ride has been cancelled by the ${
+          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+        }`,
+        { bookingId },
+      ),
+      this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+        bookingId,
+        message: `The ride has been cancelled by the ${
+          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+        }.`,
+      }),
+    ]);
   }
 
   async notifyDriverNotFound(
@@ -197,34 +192,32 @@ export class RideNotificationService {
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      this.sendPushNotification(
-        userId,
-        'Ride Cancelled',
-        'Unfortunately ride request has been cancelled.',
-        { bookingId, bookingStatus },
-      );
+      // this.sendPushNotification(
+      //   userId,
+      //   'Ride Cancelled',
+      //   'Unfortunately ride request has been cancelled.',
+      //   { bookingId, bookingStatus },
+      // );
 
-      this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
-        bookingId,
-        bookingStatus,
-        message: 'Unfortunately ride request has been cancelled.',
-      });
+      // this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+      //   bookingId,
+      //   bookingStatus,
+      //   message: 'Unfortunately ride request has been cancelled.',
+      // });
 
-      // await Promise.all([
-      //   this.sendPushNotification(
-      //     userId,
-      //     'Ride Cancelled',
-      //     'Unfortunately ride request has been cancelled.',
-      //     { bookingId, bookingStatus },
-      //   ),
-      //   this.server
-      //     .to(Rooms.forUser(userId))
-      //     .emit(RideEvents.DRIVER_NOT_FOUND, {
-      //       bookingId,
-      //       bookingStatus,
-      //       message: 'Unfortunately ride request has been cancelled.',
-      //     }),
-      // ]);
+      await Promise.all([
+        this.sendPushNotification(
+          userId,
+          'Ride Cancelled',
+          'Unfortunately ride request has been cancelled.',
+          { bookingId, bookingStatus },
+        ),
+        this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+          bookingId,
+          bookingStatus,
+          message: 'Unfortunately ride request has been cancelled.',
+        }),
+      ]);
     } catch (error) {
       console.error(error);
       throw error;
@@ -258,53 +251,53 @@ export class RideNotificationService {
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    this.sendPushNotification(
-      customerUserId,
-      `Ride ${payload.bookingStatus.toLowerCase()}`,
-      `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
-      { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
-    );
+    // this.sendPushNotification(
+    //   customerUserId,
+    //   `Ride ${payload.bookingStatus.toLowerCase()}`,
+    //   `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
+    //   { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
+    // );
 
-    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
+    // this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
 
     console.log(`Ride status update: \n${payload}`);
-    // await Promise.all([
-    //   this.sendPushNotification(
-    //     customerUserId,
-    //     `Ride ${payload.bookingStatus.toLowerCase()}`,
-    //     `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
-    //     { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
-    //   ),
-    //   console.log(`Ride accepted payload: \n${payload}`),
-    //   this.server
-    //     .to(Rooms.forUser(customerUserId))
-    //     .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
-    // ]);
+    await Promise.all([
+      this.sendPushNotification(
+        customerUserId,
+        `Ride ${payload.bookingStatus.toLowerCase()}`,
+        `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
+        { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
+      ),
+      console.log(`Ride accepted payload: \n${payload}`),
+      this.server
+        .to(customerUserId)
+        .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
+    ]);
   }
 
   async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
-    this.sendPushNotification(
-      customerUserId,
-      'Reached Pickup Point',
-      'You have reached the pickup point',
-      { bookingId },
-    );
+    // this.sendPushNotification(
+    //   customerUserId,
+    //   'Reached Pickup Point',
+    //   'You have reached the pickup point',
+    //   { bookingId },
+    // );
 
-    this.server
-      .to(customerUserId)
-      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
+    // this.server
+    //   .to(customerUserId)
+    //   .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
 
-    // await Promise.all([
-    //   this.sendPushNotification(
-    //     customerUserId,
-    //     'Reached Pickup Point',
-    //     'You have reached the pickup point',
-    //     { bookingId },
-    //   ),
-    //   this.server
-    //     .to(Rooms.forUser(customerUserId))
-    //     .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
-    // ]);
+    await Promise.all([
+      this.sendPushNotification(
+        customerUserId,
+        'Reached Pickup Point',
+        'You have reached the pickup point',
+        { bookingId },
+      ),
+      this.server
+        .to(customerUserId)
+        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
+    ]);
   }
 
   notifyDriverLiveLocation(
@@ -329,26 +322,24 @@ export class RideNotificationService {
     pilotUserId: string,
     payload: PilotRideResponse,
   ) {
-    this.sendPushNotification(
-      pilotUserId,
-      'Ride Edit Location',
-      'You have a new edit location request',
-      { bookingId: payload.bookingId, fare: payload.fare.toString() },
-    );
+    // this.sendPushNotification(
+    //   pilotUserId,
+    //   'Ride Edit Location',
+    //   'You have a new edit location request',
+    //   { bookingId: payload.bookingId, fare: payload.fare.toString() },
+    // );
 
-    this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload);
+    // this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload);
 
-    // await Promise.all([
-    //   this.sendPushNotification(
-    //     pilotUserId,
-    //     'Ride Edit Location',
-    //     'You have a new edit location request',
-    //     { bookingId: payload.bookingId, fare: payload.fare.toString() },
-    //   ),
-    //   this.server
-    //     .to(Rooms.forUser(pilotUserId))
-    //     .emit(RideEvents.RIDE_EDIT_LOCATION, payload),
-    // ]);
+    await Promise.all([
+      this.sendPushNotification(
+        pilotUserId,
+        'Ride Edit Location',
+        'You have a new edit location request',
+        { bookingId: payload.bookingId, fare: payload.fare.toString() },
+      ),
+      this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload),
+    ]);
   }
 
   notifyError(userId: string, message: string, error?: string) {

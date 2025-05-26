@@ -460,11 +460,23 @@ export class RideService {
           { withDist: true, sort: 'ASC' },
         );
 
-        // nearbyPilots.map(() => {
+        // nearbyPilots.map(async (pilots) => {
+        //   for (let i = 0; i < pilots.length; i++) {
+        //     const pilot = await this.prisma.pilot.findUnique({
+        //       where: {
+        //         userId: pilots[0],
+        //       },
+        //     });
 
-        // })
+        //     if (pilot) {
+        //       console.log('found pilot ', pilot.phone);
+        //     } else {
+        //       console.log('not found pilot for this id ', pilots[i][0]);
+        //     }
+        //   }
+        // });
 
-        console.log('nearbyPilots', nearbyPilots);
+        // console.log('nearbyPilots', nearbyPilots);
 
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
@@ -480,11 +492,10 @@ export class RideService {
           }
 
           // Fetch pilot details
-          const pilot = await this.prisma.pilot.findFirst({
+          const pilot = await this.prisma.pilot.findUnique({
             where: {
               userId: pilotUserId,
               onlineStatus: PilotStatus.AVAILABLE,
-              activeBookingId: null,
             },
             select: {
               id: true,
@@ -504,21 +515,23 @@ export class RideService {
             },
           });
 
+          const walletBalance = pilot && Number(pilot.wallet.balance);
+          const fare = Number(discountedFare);
+
           if (
             pilot &&
             pilot.vehicle?.vehicleTypeId === vehicleTypeId &&
-            pilot.wallet.balance > discountedFare
+            walletBalance > fare
           ) {
             console.log(`Eligible pilot found ${pilot.phone}`);
 
             await this.redis.set(
               `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
-              30,
-            ); // 30 seconds TTL (15 seconds + buffer)
+              25,
+            ); // 25 seconds TTL (15 seconds + buffer)
 
             const notifyDriverPayload: NotifyDriverPayload = {
-              pilotId: pilot.id,
               pilotUserId: pilot.userId,
               bookingId,
               vehicleTypeId,
@@ -530,7 +543,6 @@ export class RideService {
               ),
               distanceKm: Math.ceil(distanceKm),
               durationMin: Math.ceil(durationMin),
-              // server,
             };
 
             await this.rideNotificationService.notifyRideRequest(
@@ -568,16 +580,16 @@ export class RideService {
 
             await this.redis.del(acceptanceKey);
 
-            // await this.rideNotificationService.notifyRideRequestTimeout(
-            //   bookingId,
-            //   pilot.userId,
-            // );
-
-            await this.rideNotificationService.enqueueNotification(
-              RideEvents.RIDE_REQUEST_TIMEOUT,
-              { bookingId, pilotUserId },
-              pilotUserId,
+            await this.rideNotificationService.notifyRideRequestTimeout(
+              bookingId,
+              pilot.userId,
             );
+
+            // await this.rideNotificationService.enqueueNotification(
+            //   RideEvents.RIDE_REQUEST_TIMEOUT,
+            //   { bookingId, pilotUserId },
+            //   pilotUserId,
+            // );
 
             // Booking is still pending, continue to the next driver
             continue;
@@ -628,16 +640,16 @@ export class RideService {
 
         await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
 
-        // await this.rideNotificationService.notifyDriverNotFound(
-        //   bookingId,
-        //   BookingStatus.NOT_FOUND,
-        //   userId,
-        // );
-        await this.rideNotificationService.enqueueNotification(
-          RideEvents.DRIVER_NOT_FOUND,
-          { bookingId, bookingStatus: BookingStatus.NOT_FOUND, userId },
+        await this.rideNotificationService.notifyDriverNotFound(
+          bookingId,
+          BookingStatus.NOT_FOUND,
           userId,
         );
+        // await this.rideNotificationService.enqueueNotification(
+        //   RideEvents.DRIVER_NOT_FOUND,
+        //   { bookingId, bookingStatus: BookingStatus.NOT_FOUND, userId },
+        //   userId,
+        // );
         console.log('booking cancelled');
       }
 
@@ -799,15 +811,15 @@ export class RideService {
       };
 
       // rideAccepted event triggered for customer
-      // await this.rideNotificationService.notifyRideStatusUpdate(
-      //   result.updated.customer.userId,
-      //   rideAcceptedPayload,
-      // );
-      await this.rideNotificationService.enqueueNotification(
-        RideEvents.RIDE_STATUS_UPDATE,
-        rideAcceptedPayload,
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
+        rideAcceptedPayload,
       );
+      // await this.rideNotificationService.enqueueNotification(
+      //   RideEvents.RIDE_STATUS_UPDATE,
+      //   rideAcceptedPayload,
+      //   result.updated.customer.userId,
+      // );
 
       const data: PilotRideResponse = {
         bookingId: result.updated.id,
@@ -869,15 +881,15 @@ export class RideService {
       });
 
       // Emit reachedPickupPoint event to customer
-      // await this.rideNotificationService.notifyReachedPickupPoint(
-      //   booking.customer.userId,
-      //   bookingId,
-      // );
-      await this.rideNotificationService.enqueueNotification(
-        RideEvents.REACHED_PICKUP_POINT,
-        { customerUserId: booking.customer.userId, bookingId },
+      await this.rideNotificationService.notifyReachedPickupPoint(
         booking.customer.userId,
+        bookingId,
       );
+      // await this.rideNotificationService.enqueueNotification(
+      //   RideEvents.REACHED_PICKUP_POINT,
+      //   { customerUserId: booking.customer.userId, bookingId },
+      //   booking.customer.userId,
+      // );
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.ARRIVED);
 
@@ -1036,15 +1048,15 @@ export class RideService {
             : null,
       };
 
-      // await this.rideNotificationService.notifyRideStatusUpdate(
-      //   result.updated.customer.userId,
-      //   payload,
-      // );
-      await this.rideNotificationService.enqueueNotification(
-        RideEvents.RIDE_STATUS_UPDATE,
-        payload,
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
+        payload,
       );
+      // await this.rideNotificationService.enqueueNotification(
+      //   RideEvents.RIDE_STATUS_UPDATE,
+      //   payload,
+      //   result.updated.customer.userId,
+      // );
 
       const data: PilotRideResponse = {
         bookingId: booking.id,
@@ -1255,17 +1267,17 @@ export class RideService {
             ? { name: result.updated.name }
             : null,
       };
-      console.log('end ride payload for customer', payload);
+
       // rideEnded event triggered for customer
-      // await this.rideNotificationService.notifyRideStatusUpdate(
-      //   result.updated.customer.userId,
-      //   payload,
-      // );
-      await this.rideNotificationService.enqueueNotification(
-        RideEvents.RIDE_STATUS_UPDATE,
-        payload,
+      await this.rideNotificationService.notifyRideStatusUpdate(
         result.updated.customer.userId,
+        payload,
       );
+      // await this.rideNotificationService.enqueueNotification(
+      //   RideEvents.RIDE_STATUS_UPDATE,
+      //   payload,
+      //   result.updated.customer.userId,
+      // );
 
       const data: PilotRideResponse = {
         bookingId: booking.id,
@@ -1383,16 +1395,17 @@ export class RideService {
           cancelledBy === CancelledBy.CUSTOMER
             ? booking.pilot.userId
             : booking.customer.userId;
-        // await this.rideNotificationService.notifyRideCancelled(
-        //   bookingId,
-        //   recipientUserId,
-        //   cancelledBy,
-        // );
-        await this.rideNotificationService.enqueueNotification(
-          RideEvents.RIDE_CANCELLED,
-          { bookingId, recipientUserId, cancelledBy },
+
+        await this.rideNotificationService.notifyRideCancelled(
+          bookingId,
           recipientUserId,
+          cancelledBy,
         );
+        // await this.rideNotificationService.enqueueNotification(
+        //   RideEvents.RIDE_CANCELLED,
+        //   { bookingId, recipientUserId, cancelledBy },
+        //   recipientUserId,
+        // );
       }
 
       return {
@@ -1531,15 +1544,15 @@ export class RideService {
             : null,
       };
 
-      // await this.rideNotificationService.notifyDriverForEditLocation(
-      //   pilot.userId,
-      //   payload,
-      // );
-      await this.rideNotificationService.enqueueNotification(
-        RideEvents.RIDE_EDIT_LOCATION,
-        { pilotUserId: pilot.userId, payload },
+      await this.rideNotificationService.notifyDriverForEditLocation(
         pilot.userId,
+        payload,
       );
+      // await this.rideNotificationService.enqueueNotification(
+      //   RideEvents.RIDE_EDIT_LOCATION,
+      //   { pilotUserId: pilot.userId, payload },
+      //   pilot.userId,
+      // );
 
       const pilotLocation = await this.redis.geoPos(
         RedisKeys.PILOT_LOCATION,

@@ -100,7 +100,7 @@ export class AuthService {
       return {
         message: 'OTP sent to your phone successfully.',
         data: {
-          otp: '',
+          otp,
         },
       };
     } catch (error) {

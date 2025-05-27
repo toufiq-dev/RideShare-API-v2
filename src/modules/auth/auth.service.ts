@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -18,7 +19,7 @@ import {
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
-import { UserStatus } from '@prisma/client';
+import { Country, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -71,21 +72,35 @@ export class AuthService {
         throw new NotFoundException('Language not found.');
       }
 
+      let countryCode: Country | null = null;
+      if (phone.startsWith('+880')) {
+        countryCode = Country.BD;
+      } else if (phone.startsWith('+91')) {
+        countryCode = Country.IN;
+      }
+
       const otp = randomInt(1000, 10000).toString();
       // Disable this one when we are using OTP service
       await this.redis.set(`otp:${phone}`, otp, 300);
-
+      await this.redis.set(`countryCode:${phone}`, countryCode, 300);
       await this.redis.set(`languageId:${phone}`, Language.id, 300);
       await this.redis.set(`referralCode:${phone}`, referralCode, 300);
 
-      // const requestId = await this.otpService.sendOTP(phone);
-
-      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+      // Khudebarta OTP
+      if (countryCode === Country.BD) {
+        const isSent = await this.otpService.sendOTPBD(phone, otp);
+        if (!isSent) {
+          throw new BadRequestException('Failed to send OTP.');
+        }
+      } else if (countryCode === Country.IN) {
+        const requestId = await this.otpService.sendOTP(phone);
+        await this.redis.set(`requestId:${phone}`, requestId, 300);
+      }
 
       return {
         message: 'OTP sent to your phone successfully.',
         data: {
-          otp,
+          otp: '',
         },
       };
     } catch (error) {
@@ -143,12 +158,13 @@ export class AuthService {
       );
 
       // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
-
+      const countryCode = await this.redis.get(`countryCode:${phone}`);
       const { user, customer, pilot } = await this.findOrCreateUser(
         phone,
         role,
         languageId,
         refferalCode,
+        countryCode as Country,
       );
 
       const device = await this.prisma.deviceToken.findUnique({
@@ -348,6 +364,7 @@ export class AuthService {
     role: RoleEnum,
     languageId: string,
     referralCode: string,
+    countryCode: Country,
   ) {
     let customer = null;
     let pilot = null;
@@ -383,6 +400,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           role,
+          country: countryCode,
         },
       });
 

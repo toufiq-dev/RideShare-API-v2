@@ -1,6 +1,6 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class OTPService {
@@ -8,12 +8,57 @@ export class OTPService {
   private readonly authKey: string;
   private readonly templateId: string;
   private readonly senderId: string;
+  private readonly khudebartaBaseUrl: string;
+  private readonly khudebartaAPIKey: string;
+  private readonly khudebartaSecretKey: string;
 
   constructor(private configService: ConfigService) {
     this.baseUrl = this.configService.get<string>('msg91.baseUrl');
     this.authKey = this.configService.get<string>('msg91.authKey');
     this.templateId = this.configService.get<string>('msg91.templateId');
     this.senderId = this.configService.get<string>('msg91.senderId');
+
+    this.khudebartaBaseUrl =
+      this.configService.get<string>('khudebarta.baseUrl');
+    this.khudebartaAPIKey = this.configService.get<string>('khudebarta.apiKey');
+    this.khudebartaSecretKey = this.configService.get<string>(
+      'khudebarta.secretKey',
+    );
+  }
+
+  async sendOTPBD(mobile: string, otp: string) {
+    mobile = mobile.replace('+', '');
+
+    const message = `OTP for FairDrive is ${otp} and valid till 2 minutes. Do not share this OTP to anyone for security reasons.`;
+
+    const requestBody = [
+      {
+        callerID: 'fairdrive',
+        toUser: mobile,
+        messageContent: message,
+      },
+    ];
+
+    try {
+      const response = await axios.get(`${this.khudebartaBaseUrl}`, {
+        params: {
+          apikey: this.khudebartaAPIKey,
+          secretkey: this.khudebartaSecretKey,
+          content: JSON.stringify(requestBody),
+        },
+      });
+      console.log('sendOTPBD', response.data);
+      const responseData = response.data;
+
+      if (responseData.Status === '0') {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async sendOTP(mobile: string) {

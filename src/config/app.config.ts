@@ -19,6 +19,11 @@ export default () => ({
     templateId: process.env.MSG91_TEMPLATE_ID,
     senderId: process.env.MSG91_SENDER_ID,
   },
+  khudebarta: {
+    baseUrl: process.env.KHUDEBARTA_BASE_URL,
+    apiKey: process.env.KHUDEBARTA_API_KEY,
+    secretKey: process.env.KHUDEBARTA_SECRET_KEY,
+  },
   jwt: {
     secret: process.env.JWT_SECRET,
     accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN,

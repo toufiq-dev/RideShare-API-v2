@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMultiCountryPhoneNumber } from '../validator/IsMultiCountryPhoneNumber';
+import { Country } from '@prisma/client';
 
 export enum RoleEnum {
   CUSTOMER = 'CUSTOMER',
@@ -32,6 +33,11 @@ export class SendOtpDto {
   @IsString()
   @IsOptional({ message: 'Referral Code is optional' })
   referralCode?: string;
+
+  @ApiPropertyOptional({ description: 'Country code' })
+  @IsEnum(Country, { message: 'Country code must be either IN or BD' })
+  @IsOptional({ message: 'Country code is optional' })
+  countryCode?: Country;
 }
 
 export class VerifyOtpDto {

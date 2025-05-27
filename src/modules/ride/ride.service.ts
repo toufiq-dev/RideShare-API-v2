@@ -492,10 +492,11 @@ export class RideService {
           }
 
           // Fetch pilot details
-          const pilot = await this.prisma.pilot.findUnique({
+          const pilot = await this.prisma.pilot.findFirst({
             where: {
               userId: pilotUserId,
               onlineStatus: PilotStatus.AVAILABLE,
+              activeBookingId: null,
             },
             select: {
               id: true,
@@ -656,6 +657,37 @@ export class RideService {
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
       console.error(error);
+
+      // Handle error case by updating booking status
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: BookingStatus.CANCELLED },
+          });
+
+          await tx.cancellationReason.create({
+            data: {
+              bookingId,
+              reason: 'System error occurred while processing ride request',
+              cancelledBy: CancelledBy.SYSTEM,
+            },
+          });
+        });
+
+        // Update Redis cache
+        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+
+        // Notify user about the error
+        await this.rideNotificationService.notifyDriverNotFound(
+          bookingId,
+          BookingStatus.CANCELLED,
+          userId,
+        );
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
+
       server.to(userId).emit(RideEvents.ERROR, {
         message: 'Failed to process ride request',
         error: error.message,

@@ -60,18 +60,18 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async updateLocation(@ConnectedSocket() client: Socket, @MessageBody() body) {
     try {
       const { lat, lng } = JSON.parse(body);
-      console.log('hello 1')
+      console.log('hello 1');
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
       const pilot = await this.prisma.pilot.findUnique({
         where: {
-          userId: client.data.user.userId
+          userId: client.data.user.userId,
         },
         select: {
-          id: true
-        }
-      })
-      console.log('pilot ', pilot)
+          id: true,
+        },
+      });
+      console.log('pilot ', pilot);
       // Emit driver live location to customer
       const booking = await this.prisma.booking.findFirst({
         where: {
@@ -88,7 +88,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           },
         },
       });
-      console.log('booking', booking)
+      console.log('booking', booking);
       if (booking) {
         this.rideNotificationService.notifyDriverLiveLocation(
           booking.id,

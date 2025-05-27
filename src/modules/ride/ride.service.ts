@@ -275,7 +275,7 @@ export class RideService {
     userId: string,
   ) {
     const { bookingId } = rideRequestAgainDto;
-    console.log('booking again');
+
     try {
       const booking: any = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -292,6 +292,7 @@ export class RideService {
           customer: {
             select: {
               id: true,
+              userId: true,
               name: true,
               coupon: true,
             },
@@ -381,8 +382,8 @@ export class RideService {
       });
 
       await this.enqueueRideRequest({
-        userId,
-        bookingId,
+        userId: booking.customer.userId,
+        bookingId: newBooking.id,
         estimatedFare: newBooking.estimatedFare,
         discountedFare: newBooking.discountedFare,
         vehicleTypeId: vehicle.vehicleType.id,
@@ -410,7 +411,7 @@ export class RideService {
       };
 
       const data = {
-        bookingId: booking.id,
+        bookingId: newBooking.id,
         pickupLocation,
         dropLocation,
         originalPrice: Math.ceil(Number(booking.estimatedFare)),

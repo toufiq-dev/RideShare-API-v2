@@ -59,81 +59,82 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(@ConnectedSocket() client: Socket, @MessageBody() body) {
     try {
-      const { lat, lng } = JSON.parse(body);
+      const locationData = Array.isArray(body) ? body[0] : body;
+      const { lat, lng } = locationData;
 
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
-      const pilot = await this.prisma.pilot.findUnique({
-        where: {
-          userId: client.data.user.userId,
-        },
-        select: {
-          id: true,
-        },
-      });
-      console.log('pilot ', pilot);
-      // Emit driver live location to customer
-      const booking = await this.prisma.booking.findFirst({
-        where: {
-          pilotId: pilot.id,
-          status: BookingStatus.ACCEPTED,
-        },
-        select: {
-          id: true,
-          pilotId: true,
-          customer: {
-            select: {
-              userId: true,
-            },
-          },
-        },
-      });
-      console.log('booking', booking);
-      if (booking) {
-        this.rideNotificationService.notifyDriverLiveLocation(
-          booking.id,
-          booking.customer.userId,
-          Number(lat),
-          Number(lng),
-        );
-      }
-
-      // const activeRide = await this.rideService.getActiveRideForPilot(client);
-
-      // if (activeRide) {
-      //   // Check status from Redis first
-      //   let status = await this.rideService.getCachedBookingStatus(
-      //     activeRide.bookingId,
+      // const pilot = await this.prisma.pilot.findUnique({
+      //   where: {
+      //     userId: client.data.user.userId,
+      //   },
+      //   select: {
+      //     id: true,
+      //   },
+      // });
+      // console.log('pilot ', pilot);
+      // // Emit driver live location to customer
+      // const booking = await this.prisma.booking.findFirst({
+      //   where: {
+      //     pilotId: pilot.id,
+      //     status: BookingStatus.ACCEPTED,
+      //   },
+      //   select: {
+      //     id: true,
+      //     pilotId: true,
+      //     customer: {
+      //       select: {
+      //         userId: true,
+      //       },
+      //     },
+      //   },
+      // });
+      // console.log('booking', booking);
+      // if (booking) {
+      //   this.rideNotificationService.notifyDriverLiveLocation(
+      //     booking.id,
+      //     booking.customer.userId,
+      //     Number(lat),
+      //     Number(lng),
       //   );
-
-      //   // If not found in Redis, fallback to Prisma and cache it
-      //   if (!status) {
-      //     const booking = await this.rideService.getBookingStatus(
-      //       activeRide.bookingId,
-      //     );
-      //     status = booking?.status;
-      //     console.log('Status from Prisma:', status);
-      //     if (status) {
-      //       await this.rideService.cacheBookingStatus(
-      //         activeRide.bookingId,
-      //         status,
-      //       );
-      //     }
-      //   }
-
-      //   if (status && status === BookingStatus.ACCEPTED) {
-      //     this.rideNotificationService.notifyDriverLiveLocation(
-      //       activeRide.bookingId,
-      //       activeRide.customerUserId,
-      //       lat,
-      //       lng,
-      //     );
-      //   } else {
-      //     console.log(
-      //       `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
-      //     );
-      //   }
       // }
+
+      const activeRide = await this.rideService.getActiveRideForPilot(client);
+
+      if (activeRide) {
+        // Check status from Redis first
+        let status = await this.rideService.getCachedBookingStatus(
+          activeRide.bookingId,
+        );
+
+        // If not found in Redis, fallback to Prisma and cache it
+        if (!status) {
+          const booking = await this.rideService.getBookingStatus(
+            activeRide.bookingId,
+          );
+          status = booking?.status;
+          console.log('Status from Prisma:', status);
+          if (status) {
+            await this.rideService.cacheBookingStatus(
+              activeRide.bookingId,
+              status,
+            );
+          }
+        }
+
+        if (status && status === BookingStatus.ACCEPTED) {
+          this.rideNotificationService.notifyDriverLiveLocation(
+            activeRide.bookingId,
+            activeRide.customerUserId,
+            lat,
+            lng,
+          );
+        } else {
+          console.log(
+            `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
+          );
+        }
+      }
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });

@@ -6,6 +6,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   ConnectedSocket,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
@@ -135,7 +136,14 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
             `Skipping location emit for booking ${activeRide.bookingId} due to status: ${status}`,
           );
         }
+      } else {
+        console.log('No active ride found for pilot');
       }
+
+      return {
+        status: 'success',
+        message: 'Location updated successfully',
+      };
     } catch (error) {
       console.error(error);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });

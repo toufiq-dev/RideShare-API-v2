@@ -9,11 +9,9 @@ import { RedisKeys } from '../cache/redis-keys';
 @Injectable()
 export class SocketService {
   private _server: Server | null = null;
-  private activeConnections = null;
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
     private readonly redis: RedisService,
   ) {}
 

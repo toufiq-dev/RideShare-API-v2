@@ -1532,6 +1532,17 @@ export class RideService {
         coupon.discount = Number(coupon.discount);
       }
 
+      let pickupInMinutes: number = 0;
+      if (pickupLocation) {
+        const { lat, lng } = pickupLocation;
+        const { durationMin } =
+          await this.fareService.calculateDistanceAndDuration(
+            { lat, lng },
+            booking,
+          );
+        pickupInMinutes = Math.ceil(durationMin);
+      }
+
       const data: CustomerRidePayload = {
         bookingCode: updatedBooking.bookingCode,
         bookingId: updatedBooking.id,
@@ -1552,7 +1563,7 @@ export class RideService {
           colour: pilot.vehicle.colour,
           vehicleType: pilot.vehicle.vehicleType.name,
         },
-        pickupInMinutes: null,
+        pickupInMinutes: pickupInMinutes,
         pickupLocation: updatedBooking.pickupLocation,
         dropLocation: updatedBooking.dropLocation,
         fairDetails: {

@@ -1450,20 +1450,23 @@ export class RideService {
 
       let distanceKm: number;
       let durationMin: number;
+      let pickupInMinutes: number = 0;
       if (pickupLocation) {
         ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          true,
           pickupLocation,
-          booking,
+          booking.dropLocation,
         ));
+        pickupInMinutes = Math.ceil(durationMin);
       } else if (dropLocation) {
         ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          false,
+          booking.pickupLocation,
           dropLocation,
-          booking,
         ));
-      } else {
-        throw new BadRequestException('No location provided for update');
+      } else if (pickupLocation && dropLocation) {
+        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
+          pickupLocation,
+          dropLocation,
+        ));
       }
 
       const originalPrice = this.fareService.estimateFare(
@@ -1530,17 +1533,6 @@ export class RideService {
 
       if (coupon) {
         coupon.discount = Number(coupon.discount);
-      }
-
-      let pickupInMinutes: number = 0;
-      if (pickupLocation) {
-        const { lat, lng } = pickupLocation;
-        const { durationMin } =
-          await this.fareService.calculateDistanceAndDuration(
-            { lat, lng },
-            booking,
-          );
-        pickupInMinutes = Math.ceil(durationMin);
       }
 
       const data: CustomerRidePayload = {
@@ -1924,17 +1916,9 @@ export class RideService {
   }
 
   private async newDistanceAndDuration(
-    isPickup: boolean,
-    location: LocationDto,
-    booking: any,
+    origin: LocationDto,
+    destination: LocationDto,
   ): Promise<{ distanceKm: number; durationMin: number }> {
-    const origin = isPickup
-      ? { lat: location.lat, lng: location.lng }
-      : { lat: booking.pickupLocation.lat, lng: booking.pickupLocation.lng };
-    const destination = isPickup
-      ? { lat: booking.dropLocation.lat, lng: booking.dropLocation.lng }
-      : { lat: location.lat, lng: location.lng };
-
     const { distanceKm, durationMin } =
       await this.fareService.calculateDistanceAndDuration(origin, destination);
 

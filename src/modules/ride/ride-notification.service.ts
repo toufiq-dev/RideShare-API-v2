@@ -102,13 +102,7 @@ export class RideNotificationService {
       ),
       this.server
         .to(pilotUserId)
-        .emit(
-          RideEvents.RIDE_REQUEST,
-          notificationPayload,
-          async (ack: any) => {
-            console.log('ack in ride request\n', ack);
-          },
-        ),
+        .emit(RideEvents.RIDE_REQUEST, notificationPayload),
     ]);
   }
 
@@ -126,18 +120,12 @@ export class RideNotificationService {
         }`,
         { bookingId },
       ),
-      this.server.to(recipientUserId).emit(
-        RideEvents.RIDE_CANCELLED,
-        {
-          bookingId,
-          message: `The ride has been cancelled by the ${
-            cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-          }.`,
-        },
-        async (ack: any) => {
-          console.log('ack in ride cancelled\n', ack);
-        },
-      ),
+      this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+        bookingId,
+        message: `The ride has been cancelled by the ${
+          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+        }.`,
+      }),
     ]);
   }
 
@@ -156,17 +144,11 @@ export class RideNotificationService {
           'Unfortunately ride request has been cancelled.',
           { bookingId, bookingStatus },
         ),
-        this.server.to(userId).emit(
-          RideEvents.DRIVER_NOT_FOUND,
-          {
-            bookingId,
-            bookingStatus,
-            message: 'Unfortunately ride request has been cancelled.',
-          },
-          async (ack: any) => {
-            console.log('ack in driver not found\n', ack);
-          },
-        ),
+        this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+          bookingId,
+          bookingStatus,
+          message: 'Unfortunately ride request has been cancelled.',
+        }),
       ]);
     } catch (error) {
       console.error(error);
@@ -175,16 +157,10 @@ export class RideNotificationService {
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
-    this.server.to(pilotUserId).emit(
-      RideEvents.RIDE_REQUEST_TIMEOUT,
-      {
-        bookingId,
-        reason: 'Time expired. You did not respond to the ride request.',
-      },
-      async (ack: any) => {
-        console.log('ack in ride request timeout\n', ack);
-      },
-    );
+    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
+      bookingId,
+      reason: 'Time expired. You did not respond to the ride request.',
+    });
   }
 
   async notifyRideStatusUpdate(
@@ -202,9 +178,7 @@ export class RideNotificationService {
       console.log(`Ride accepted payload: \n${payload}`),
       this.server
         .to(customerUserId)
-        .emit(RideEvents.RIDE_STATUS_UPDATE, payload, async (ack: any) => {
-          console.log('ack in ride status update\n', ack);
-        }),
+        .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
     ]);
   }
 
@@ -218,13 +192,7 @@ export class RideNotificationService {
       ),
       this.server
         .to(customerUserId)
-        .emit(
-          RideEvents.REACHED_PICKUP_POINT,
-          { bookingId },
-          async (ack: any) => {
-            console.log('ack in reached pickup point\n', ack);
-          },
-        ),
+        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
     ]);
   }
 
@@ -238,14 +206,7 @@ export class RideNotificationService {
 
     const result = this.server
       .to(customerUserId)
-      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload, async (ack: any) => {
-        console.log('ack in driver live location\n', ack);
-      });
-
-    console.log(
-      'Rooms for user:',
-      this.server.sockets.adapter.rooms.get(customerUserId),
-    );
+      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
 
     console.log(
       `Driver live location emitted to customer ${customerUserId} `,
@@ -264,19 +225,11 @@ export class RideNotificationService {
         'You have a new edit location request',
         { bookingId: payload.bookingId, fare: payload.fare.toString() },
       ),
-      this.server
-        .to(pilotUserId)
-        .emit(RideEvents.RIDE_EDIT_LOCATION, payload, async (ack: any) => {
-          console.log('ack in ride edit location\n', ack);
-        }),
+      this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload),
     ]);
   }
 
   notifyError(userId: string, message: string, error?: string) {
-    this.server
-      .to(userId)
-      .emit(RideEvents.ERROR, { message, error }, async (ack: any) => {
-        console.log('ack in error\n', ack);
-      });
+    this.server.to(userId).emit(RideEvents.ERROR, { message, error });
   }
 }

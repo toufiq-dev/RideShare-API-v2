@@ -459,7 +459,7 @@ export class CustomerService {
       }
 
       const [vehicleTypesWithOther, distanceData] = await Promise.all([
-        this.prisma.vehicleType.findMany(),
+        this.prisma.vehicleTypeBD.findMany(),
         this.fareService.calculateDistanceAndDuration(
           pickupLocation,
           dropLocation,
@@ -511,7 +511,7 @@ export class CustomerService {
           timeAway: `${minsAway} min away`,
         });
       }
-
+      console.log('customer.coupon', customer.coupon);
       if (customer.coupon) {
         customer.coupon.discount = customer.coupon.discount
           ? Number(customer.coupon.discount)

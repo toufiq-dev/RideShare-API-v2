@@ -1,4 +1,4 @@
-import { PrismaClient, VehicleTypeName, UserRole } from '@prisma/client';
+import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -76,6 +76,54 @@ async function main() {
     },
   ];
 
+  const vehicleTypesBD = [
+    {
+      name: VehicleTypeNameBD.FAIR_BIKE,
+      isFaster: true,
+      airCondition: [],
+      passengerCapacity: 1,
+      baseFare: 30.0,
+      perKmRate: 10.0,
+      perMinRate: 1.5,
+    },
+    {
+      name: VehicleTypeNameBD.FAIR_PRIME,
+      isFaster: false,
+      airCondition: [],
+      passengerCapacity: 4,
+      baseFare: 55.0,
+      perKmRate: 15.0,
+      perMinRate: 2.0,
+    },
+    {
+      name: VehicleTypeNameBD.FAIR_PLUS,
+      isFaster: false,
+      airCondition: [],
+      passengerCapacity: 4,
+      baseFare: 60.0,
+      perKmRate: 15.0,
+      perMinRate: 2.0,
+    },
+    {
+      name: VehicleTypeNameBD.FAIR_MAX,
+      isFaster: false,
+      airCondition: [],
+      passengerCapacity: 6,
+      baseFare: 60.0,
+      perKmRate: 15.0,
+      perMinRate: 2.0,
+    },
+    {
+      name: VehicleTypeNameBD.FAIR_CNG,
+      isFaster: false,
+      airCondition: [],
+      passengerCapacity: 3,
+      baseFare: 40.0,
+      perKmRate: 15.0,
+      perMinRate: 2.0,
+    },
+  ];
+
   const subscriptionTypes = [
     {
       name: 'Starter Pack',
@@ -108,7 +156,7 @@ async function main() {
   ];
 
   const coupons = [
-    { name: 'Chota', discount: 49, validUntil: new Date('2025-12-12') },
+    { name: 'Mini', discount: 49, validUntil: new Date('2025-12-12') },
   ];
 
   
@@ -129,13 +177,13 @@ async function main() {
   }
 
 
-  for (const vehicleType of vehicleTypes) {
-    const existingVehicleType = await prisma.vehicleType.findUnique({
+  for (const vehicleType of vehicleTypesBD) {
+    const existingVehicleType = await prisma.vehicleTypeBD.findUnique({
       where: { name: vehicleType.name },
     });
 
     if (!existingVehicleType) {
-      await prisma.vehicleType.create({
+      await prisma.vehicleTypeBD.create({
         data: vehicleType,
       });
       console.log(`Created vehicle type: ${vehicleType.name}`);
@@ -244,8 +292,8 @@ async function main() {
     });
   
     // Fetch VehicleType
-    const vehicleType = await prisma.vehicleType.findUnique({
-      where: { name: 'HATCHBACK' },
+    const vehicleType = await prisma.vehicleTypeBD.findUnique({
+      where: { name: VehicleTypeNameBD.FAIR_BIKE },
     });
   
     // Create Vehicle
@@ -263,7 +311,7 @@ async function main() {
         seatCapacity: '4',
         state: 'Maharashtra',
         pilotId: newPilot.id,
-        vehicleTypeId: vehicleType.id,
+        vehicleTypeIdBD: vehicleType.id,
       },
     });
   
@@ -310,7 +358,7 @@ async function main() {
       })
 
       const coupon = await prisma.coupon.findUnique({
-        where: { name: 'Chota' },
+        where: { name: 'Mini' },
       })
 
       await prisma.customer.create({

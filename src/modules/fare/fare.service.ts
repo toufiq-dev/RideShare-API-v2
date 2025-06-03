@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UpdateFareDto } from './dto/fare.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
+import { VehicleTypeNameBD } from '@prisma/client';
 @Injectable()
 export class FareService {
   private gmaps: Client;
@@ -24,8 +25,8 @@ export class FareService {
     const { vehicleType, baseFare, perKmRate, perMinRate } = updateFareDto;
 
     try {
-      const data = await this.prisma.vehicleType.update({
-        where: { name: vehicleType },
+      const data = await this.prisma.vehicleTypeBD.update({
+        where: { name: vehicleType as VehicleTypeNameBD },
         data: {
           baseFare,
           perKmRate,

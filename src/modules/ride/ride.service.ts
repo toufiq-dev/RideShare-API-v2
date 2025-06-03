@@ -170,7 +170,9 @@ export class RideService {
           where: { userId },
           include: { coupon: true },
         }),
-        this.prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } }),
+        this.prisma.vehicleTypeBD.findUnique({
+          where: { id: vehicleTypeId },
+        }),
       ]);
       if (!customer) {
         throw new NotFoundException('Customer not found');
@@ -464,6 +466,7 @@ export class RideService {
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
+        console.log('nearbyPilots', nearbyPilots);
 
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
@@ -488,7 +491,11 @@ export class RideService {
               vehicle: {
                 select: {
                   id: true,
-                  vehicleTypeId: true,
+                  vehicleTypeBD: {
+                    select: {
+                      id: true,
+                    },
+                  },
                 },
               },
               wallet: {
@@ -498,13 +505,12 @@ export class RideService {
               },
             },
           });
-
           const walletBalance = pilot && Number(pilot.wallet.balance);
           const fare = Number(discountedFare);
 
           if (
             pilot &&
-            pilot.vehicle?.vehicleTypeId === vehicleTypeId &&
+            pilot.vehicle?.vehicleTypeBD.id === vehicleTypeId &&
             walletBalance > fare
           ) {
             console.log(`Eligible pilot found ${pilot.phone}`);

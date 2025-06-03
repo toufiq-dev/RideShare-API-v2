@@ -30,6 +30,7 @@ import {
   TransactionStatus,
   TransactionType,
   UserStatus,
+  VehicleTypeNameBD,
 } from '@prisma/client';
 import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
@@ -989,9 +990,9 @@ export class PilotService {
       state,
     } = verificationResponse;
 
-    const vehicleCategory = await this.prisma.vehicleType.findFirst({
+    const vehicleCategory = await this.prisma.vehicleTypeBD.findFirst({
       where: {
-        name: category,
+        name: category as VehicleTypeNameBD,
       },
     });
 

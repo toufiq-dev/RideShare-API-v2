@@ -459,7 +459,11 @@ export class CustomerService {
       }
 
       const [vehicleTypesWithOther, distanceData] = await Promise.all([
-        this.prisma.vehicleTypeBD.findMany(),
+        this.prisma.vehicleTypeBD.findMany({
+          orderBy: {
+            serialNumber: 'asc',
+          },
+        }),
         this.fareService.calculateDistanceAndDuration(
           pickupLocation,
           dropLocation,

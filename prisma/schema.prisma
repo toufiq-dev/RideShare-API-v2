@@ -208,6 +208,7 @@ model VehicleType {
 model VehicleTypeBD {
   id                String            @id @default(uuid())
   name              VehicleTypeNameBD @unique
+  serialNumber      Int?
   airCondition      String[]
   isFaster          Boolean
   passengerCapacity Int

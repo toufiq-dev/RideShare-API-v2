@@ -74,6 +74,45 @@ export class VerificationService {
     this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
   }
 
+  async verifyBDLicense(buffer: Buffer) {
+    const openai = new OpenAI({
+      apiKey: this.openAiApiKey,
+    });
+
+    const prompt = `
+      You are an expert in extracting data from driving license.
+      Based on the following driving license details, extract the data.
+
+      Driving License Details:
+      ${buffer}
+
+      Extract the following data:
+      - Date of Birth
+      - License Number
+      - License Expiry Date
+    `;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert in driving license verification.',
+          },
+          { role: 'user', content: prompt },
+        ],
+      });
+
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Failed to verify driving license with OpenAI.');
+    }
+
+
+  }
+
   async verifyDrivingLicense(dlNumber: string, dob: string) {
     const data = {
       number: dlNumber,

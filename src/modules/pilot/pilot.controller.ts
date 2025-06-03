@@ -10,6 +10,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   Query,
+  UploadedFiles,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -230,5 +231,16 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.beOnline(userId, beOnlineDto);
+  }
+
+  @Post('bd/license')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload driving license photo' })
+  @UseInterceptors(FileInterceptor('files'))
+  async uploadBDLicense(
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.uploadBDLicense(files, userId);
   }
 }

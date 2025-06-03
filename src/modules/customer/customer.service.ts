@@ -86,7 +86,7 @@ export class CustomerService {
                 regNo: true,
                 model: true,
                 colour: true,
-                vehicleType: {
+                vehicleTypeBD: {
                   select: {
                     name: true,
                   },
@@ -119,7 +119,7 @@ export class CustomerService {
             vehicleNumber: pilot.vehicle.regNo,
             model: pilot.vehicle.model,
             colour: pilot.vehicle.colour,
-            vehicleType: pilot.vehicle.vehicleType.name,
+            vehicleType: pilot.vehicle.vehicleTypeBD.name,
           },
           pickupInMinutes: null,
           pickupLocation: data.activeBooking.pickupLocation,

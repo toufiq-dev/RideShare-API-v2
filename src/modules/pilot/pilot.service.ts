@@ -683,7 +683,7 @@ export class PilotService {
       const data = await this.prisma.vehicle.findMany({
         where: { pilotId: pilot.id },
         include: {
-          vehicleType: true,
+          vehicleTypeBD: true,
         },
       });
 
@@ -815,6 +815,30 @@ export class PilotService {
           currentLocation: JSON.parse(JSON.stringify(currentLocation)),
         },
       });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async uploadBDLicense(files: Express.Multer.File[], userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const buffer = files[0].buffer;
+
+      const verificationResponse =
+        await this.verificationService.verifyBDLicense(buffer);
+
+      console.log(verificationResponse);
+
+      return {
+        message: 'Driving license data extracted successfully.',
+        data: verificationResponse,
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -1013,7 +1037,7 @@ export class PilotService {
         pilot: {
           connect: { id: pilotId },
         },
-        vehicleType: {
+        vehicleTypeBD: {
           connect: { id: vehicleCategory.id },
         },
       },

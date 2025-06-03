@@ -308,7 +308,7 @@ export class RideService {
       const vehicle = await this.prisma.vehicle.findUnique({
         where: { id: booking.vehicleId },
         select: {
-          vehicleType: {
+          vehicleTypeBD: {
             select: {
               id: true,
               baseFare: true,
@@ -349,9 +349,9 @@ export class RideService {
       const originalPrice = this.fareService.estimateFare(
         distanceKm,
         durationMin,
-        Number(vehicle.vehicleType.baseFare),
-        Number(vehicle.vehicleType.perKmRate),
-        Number(vehicle.vehicleType.perMinRate),
+        Number(vehicle.vehicleTypeBD.baseFare),
+        Number(vehicle.vehicleTypeBD.perKmRate),
+        Number(vehicle.vehicleTypeBD.perMinRate),
       );
 
       const coupon = booking.customer.coupon;
@@ -388,7 +388,7 @@ export class RideService {
         bookingId: newBooking.id,
         estimatedFare: newBooking.estimatedFare,
         discountedFare: newBooking.discountedFare,
-        vehicleTypeId: vehicle.vehicleType.id,
+        vehicleTypeId: vehicle.vehicleTypeBD.id,
         distanceKm: Number(newBooking.estimatedDistance),
         durationMin: Number(newBooking.estimatedDuration),
         pickupLocation: booking.pickupLocation,
@@ -757,7 +757,7 @@ export class RideService {
       const vehicle = vehicleId
         ? await this.prisma.vehicle.findUnique({
             where: { id: vehicleId },
-            include: { vehicleType: true },
+            include: { vehicleTypeBD: true },
           })
         : null;
 
@@ -799,7 +799,7 @@ export class RideService {
           vehicleNumber: vehicle.regNo,
           model: vehicle.model,
           colour: vehicle.colour,
-          vehicleType: vehicle.vehicleType.name,
+          vehicleType: vehicle.vehicleTypeBD.name,
         },
         pickupInMinutes,
         pickupLocation: result.updated.pickupLocation,
@@ -968,7 +968,7 @@ export class RideService {
                     regNo: true,
                     model: true,
                     colour: true,
-                    vehicleType: { select: { name: true } },
+                    vehicleTypeBD: { select: { name: true } },
                   },
                 },
               },
@@ -1027,7 +1027,7 @@ export class RideService {
           vehicleNumber: result.updated.pilot.vehicle.regNo,
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
-          vehicleType: result.updated.pilot.vehicle.vehicleType.name,
+          vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
         },
         pickupInMinutes: null,
         pickupLocation: result.updated.pickupLocation,
@@ -1157,7 +1157,7 @@ export class RideService {
                     regNo: true,
                     model: true,
                     colour: true,
-                    vehicleType: {
+                    vehicleTypeBD: {
                       select: {
                         name: true,
                       },
@@ -1242,7 +1242,7 @@ export class RideService {
           vehicleNumber: result.updated.pilot.vehicle.regNo,
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
-          vehicleType: result.updated.pilot.vehicle.vehicleType.name,
+          vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
         },
         pickupInMinutes: null,
         pickupLocation: result.updated.pickupLocation,
@@ -1441,7 +1441,7 @@ export class RideService {
               regNo: true,
               model: true,
               colour: true,
-              vehicleType: {
+              vehicleTypeBD: {
                 select: {
                   name: true,
                   baseFare: true,
@@ -1478,9 +1478,9 @@ export class RideService {
       const originalPrice = this.fareService.estimateFare(
         distanceKm,
         durationMin,
-        Number(pilot?.vehicle?.vehicleType.baseFare),
-        Number(pilot?.vehicle?.vehicleType.perKmRate),
-        Number(pilot?.vehicle?.vehicleType.perMinRate),
+        Number(pilot?.vehicle?.vehicleTypeBD.baseFare),
+        Number(pilot?.vehicle?.vehicleTypeBD.perKmRate),
+        Number(pilot?.vehicle?.vehicleTypeBD.perMinRate),
       );
 
       const coupon = customer?.coupon;
@@ -1559,7 +1559,7 @@ export class RideService {
           vehicleNumber: pilot.vehicle.regNo,
           model: pilot.vehicle.model,
           colour: pilot.vehicle.colour,
-          vehicleType: pilot.vehicle.vehicleType.name,
+          vehicleType: pilot.vehicle.vehicleTypeBD.name,
         },
         pickupInMinutes: pickupInMinutes,
         pickupLocation: updatedBooking.pickupLocation,

@@ -859,20 +859,20 @@ export class PilotService {
         },
       });
 
-      const verificationResponse =
+      let verificationResponse =
         await this.verificationService.verifyBDLicense(frontSideBuffer);
 
       const { name, dateOfBirth, licenseNumber, licenseExpiryDate } =
         verificationResponse;
 
+      let formattedDateOfBirth = null;
+      let formattedLicenseExpiryDate = null;
+
       if (name && dateOfBirth && licenseNumber && licenseExpiryDate) {
-        const formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
+        formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
           .startOf('day')
           .toISOString();
-        const formattedLicenseExpiryDate = moment(
-          licenseExpiryDate,
-          'DD MMM YYYY',
-        )
+        formattedLicenseExpiryDate = moment(licenseExpiryDate, 'DD MMM YYYY')
           .startOf('day')
           .toISOString();
 
@@ -886,6 +886,12 @@ export class PilotService {
           },
         });
       }
+
+      verificationResponse = {
+        ...verificationResponse,
+        dateOfBirth: formattedDateOfBirth,
+        licenseExpiryDate: formattedLicenseExpiryDate,
+      };
 
       return {
         message: 'Driving license data extracted successfully.',

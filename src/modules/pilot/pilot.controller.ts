@@ -17,7 +17,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   AadhaarNumberDto,
   VerifyAadhaarDto,
@@ -233,14 +233,15 @@ export class PilotController {
     return await this.pilotService.beOnline(userId, beOnlineDto);
   }
 
-  @Post('bd/license')
+  @Post('bd-license')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license photo' })
-  @UseInterceptors(FileInterceptor('files'))
+  @UseInterceptors(FilesInterceptor('files', 2))
   async uploadBDLicense(
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser('userId') userId: string,
   ) {
+    console.log('controller called bd license');
     return await this.pilotService.uploadBDLicense(files, userId);
   }
 }

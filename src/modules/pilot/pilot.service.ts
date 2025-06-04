@@ -828,12 +828,64 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
-      const buffer = files[0].buffer;
+      let frontSideBuffer = null;
+      let backSideBuffer = null;
+      let frontSideUrl = null;
+      let backSideUrl = null;
+
+      frontSideBuffer = files[0].buffer;
+      frontSideUrl = await this.azureServicce.uploadFile(
+        frontSideBuffer,
+        files[0].originalname,
+        userId,
+        files[0].mimetype,
+      );
+
+      if (files.length > 1) {
+        backSideBuffer = files[1].buffer;
+        backSideUrl = await this.azureServicce.uploadFile(
+          backSideBuffer,
+          files[1].originalname,
+          userId,
+          files[1].mimetype,
+        );
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          dlFrontSideUrl: frontSideUrl,
+          dlBackSideUrl: backSideUrl,
+        },
+      });
 
       const verificationResponse =
-        await this.verificationService.verifyBDLicense(buffer);
+        await this.verificationService.verifyBDLicense(frontSideBuffer);
 
-      console.log(verificationResponse);
+      const { name, dateOfBirth, licenseNumber, licenseExpiryDate } =
+        verificationResponse;
+
+      if (name && dateOfBirth && licenseNumber && licenseExpiryDate) {
+        const formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
+          .startOf('day')
+          .toISOString();
+        const formattedLicenseExpiryDate = moment(
+          licenseExpiryDate,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        await this.prisma.drivingLicense.create({
+          data: {
+            nameOnLicense: name,
+            dateOfBirth: formattedDateOfBirth,
+            licenseNumber,
+            validUntill: formattedLicenseExpiryDate,
+            pilotId: pilot.id,
+          },
+        });
+      }
 
       return {
         message: 'Driving license data extracted successfully.',

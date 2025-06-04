@@ -79,32 +79,46 @@ export class VerificationService {
       apiKey: this.openAiApiKey,
     });
 
-    const prompt = `
-      You are an expert in extracting data from driving license.
-      Based on the following driving license details, extract the data.
-
-      Driving License Details:
-      ${buffer}
-
-      Extract the following data:
-      - Date of Birth
-      - License Number
-      - License Expiry Date
-    `;
-
     try {
+      const base64Image = buffer.toString('base64');
+
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert in driving license verification.',
+            content:
+              'You are an expert in driving license verification. Extract relevant information from the driving license image.',
           },
-          { role: 'user', content: prompt },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract the following information from this driving license and return it as a valid JSON object: Name, Date of Birth, License Number, License Expiry Date. Do not include any markdown formatting or backticks in your response. The keys should be in name, dateOfBirth, licenseNumber, licenseExpiryDate.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`,
+                },
+              },
+            ],
+          },
         ],
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
       });
 
-      return response.choices[0].message.content;
+      const content = response.choices[0].message.content;
+
+      try {
+        const parsedResponse = JSON.parse(content);
+        return parsedResponse;
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        throw new BadRequestException('Failed to parse driving license data.');
+      }
     } catch (error) {
       console.error(error);
       throw new BadRequestException(

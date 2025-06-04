@@ -25,7 +25,7 @@ export class SendOtpDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
   @IsMultiCountryPhoneNumber(['IN', 'BD'], {
-    message: 'Invalid phone number for India or Bangladesh',
+    message: 'Please provide a valid phone number',
   })
   phone: string;
 
@@ -43,7 +43,7 @@ export class SendOtpDto {
 export class VerifyOtpDto {
   @ApiProperty({ description: 'Phone number' })
   @IsMultiCountryPhoneNumber(['IN', 'BD'], {
-    message: 'Invalid phone number for India or Bangladesh',
+    message: 'Please provide a valid phone number',
   })
   @IsNotEmpty()
   phone: string;

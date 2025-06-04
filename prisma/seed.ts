@@ -1,4 +1,5 @@
 import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD } from '@prisma/client';
+import { CouponsNames } from 'src/modules/admin/admin.constants';
 
 const prisma = new PrismaClient();
 
@@ -156,7 +157,7 @@ async function main() {
   ];
 
   const coupons = [
-    { name: 'Mini', discount: 49, validUntil: new Date('2025-12-12') },
+    { name: CouponsNames.MINI, discount: 49, validUntil: new Date('2025-12-12') },
   ];
 
   

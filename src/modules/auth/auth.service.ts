@@ -20,6 +20,7 @@ import {
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
 import { Country, UserStatus } from '@prisma/client';
+import { CouponsNames } from '../admin/admin.constants';
 
 @Injectable()
 export class AuthService {
@@ -372,7 +373,7 @@ export class AuthService {
 
     const coupon = await this.prisma.coupon.findUnique({
       where: {
-        name: 'Chota',
+        name: CouponsNames.MINI,
       },
     });
 

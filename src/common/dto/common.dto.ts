@@ -14,7 +14,7 @@ export class VerifyPhoneDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty({ message: 'Phone number is required' })
   @IsMultiCountryPhoneNumber(['IN', 'BD'], {
-    message: 'Invalid phone number for India or Bangladesh',
+    message: 'Please provide a valid phone number',
   })
   phone: string;
 

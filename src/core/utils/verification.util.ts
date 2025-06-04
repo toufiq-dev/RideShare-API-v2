@@ -107,10 +107,10 @@ export class VerificationService {
       return response.choices[0].message.content;
     } catch (error) {
       console.error(error);
-      throw new BadRequestException('Failed to verify driving license with OpenAI.');
+      throw new BadRequestException(
+        'Failed to verify driving license with OpenAI.',
+      );
     }
-
-
   }
 
   async verifyDrivingLicense(dlNumber: string, dob: string) {

@@ -28,7 +28,7 @@ export class CompleteCustomerOnboardingDto {
   name: string;
 
   @ApiProperty({ description: 'Email' })
-  @IsEmail()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsOptional()
   email: string;
 }

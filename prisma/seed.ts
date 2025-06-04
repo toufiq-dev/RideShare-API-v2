@@ -1,5 +1,5 @@
 import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD } from '@prisma/client';
-import { CouponsNames } from 'src/modules/admin/admin.constants';
+import { CouponsNames } from '../src/modules/admin/admin.constants';
 
 const prisma = new PrismaClient();
 

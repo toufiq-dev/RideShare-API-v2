@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { Prisma } from '@prisma/client';
@@ -42,6 +43,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     else if (exception instanceof HttpException) {
       status = exception.getStatus();
       errorMessage = exception.getResponse();
+    } else if (exception instanceof BadRequestException) {
+      status = HttpStatus.BAD_REQUEST;
+      errorMessage = exception.getResponse();
     }
     // Fallback for unhandled errors
     else {
@@ -50,14 +54,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // Normalize error message
-    const finalMessage =
-      typeof errorMessage === 'string'
-        ? errorMessage
-        : (errorMessage as any).message || 'Unexpected error occurred';
+    let finalMessage: string;
+    if (typeof errorMessage === 'string') {
+      finalMessage = errorMessage;
+    } else if (Array.isArray((errorMessage as any).message)) {
+      finalMessage = (errorMessage as any).message[0];
+    } else {
+      finalMessage =
+        (errorMessage as any).message || 'Unexpected error occurred';
+    }
 
     response.status(status).json({
       success: false,
-      message: 'Request failed', // Keeping this consistent; adjust if needed
+      message: 'Request failed',
       error: {
         code: status,
         message: finalMessage,

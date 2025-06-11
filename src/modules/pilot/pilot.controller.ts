@@ -241,7 +241,28 @@ export class PilotController {
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser('userId') userId: string,
   ) {
-    console.log('controller called bd license');
     return await this.pilotService.uploadBDLicense(files, userId);
+  }
+
+  @Post('bd-nid')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload NID card photo' })
+  @UseInterceptors(FilesInterceptor('files', 2))
+  async uploadBDNid(
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.uploadBDNid(files, userId);
+  }
+
+  @Post('bd-rc  ')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload RC card photo' })
+  @UseInterceptors(FilesInterceptor('files', 2))
+  async uploadBDRC(
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.uploadBDRC(files, userId);
   }
 }

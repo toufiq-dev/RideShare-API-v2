@@ -858,7 +858,7 @@ export class PilotService {
       if (backSideUrl) {
         updateData.dlBackSideUrl = backSideUrl;
       }
-      
+
       // Update pilot with URLs
       await this.prisma.pilot.update({
         where: { userId },
@@ -902,6 +902,132 @@ export class PilotService {
 
       return {
         message: 'Driving license data extracted successfully.',
+        data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async uploadBDNid(files: Express.Multer.File[], userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const frontSideBuffer = files[0].buffer;
+      const backSideBuffer = files[1].buffer;
+
+      const frontSideUrl = await this.azureServicce.uploadFile(
+        frontSideBuffer,
+        files[0].originalname,
+        userId,
+        files[0].mimetype,
+      );
+
+      const backSideUrl = await this.azureServicce.uploadFile(
+        backSideBuffer,
+        files[1].originalname,
+        userId,
+        files[1].mimetype,
+      );
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          nidFrontSideUrl: frontSideUrl,
+          nidBackSideUrl: backSideUrl,
+        },
+      });
+
+      const verificationResponse =
+        await this.verificationService.extractNidData(frontSideBuffer);
+
+      const { nidNumber, name, dateOfBirth } = verificationResponse;
+
+      let formattedDateOfBirth = null;
+
+      if (dateOfBirth) {
+        formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
+          .startOf('day')
+          .toISOString();
+      }
+
+      return {
+        message: 'NID data extracted successfully.',
+        data: {
+          dateOfBirth: formattedDateOfBirth,
+          nidNumber,
+          name,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async uploadBDRC(files: Express.Multer.File[], userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const frontSideBuffer = files[0].buffer;
+      const backSideBuffer = files[1].buffer;
+
+      const frontSideUrl = await this.azureServicce.uploadFile(
+        frontSideBuffer,
+        files[0].originalname,
+        userId,
+        files[0].mimetype,
+      );
+
+      const backSideUrl = await this.azureServicce.uploadFile(
+        backSideBuffer,
+        files[1].originalname,
+        userId,
+        files[1].mimetype,
+      );
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          rcFrontSideUrl: frontSideUrl,
+          rcBackSideUrl: backSideUrl,
+        },
+      });
+
+      const verificationResponse =
+        await this.verificationService.extractRCData(frontSideBuffer);
+
+      const {
+        vehicleNumber,
+        vehicleType,
+        vehicleClass,
+        registrationDate,
+        expiryDate,
+        vehicleColour,
+        ownerName,
+      } = verificationResponse;
+
+      const vehicle = await this.prisma.vehicle.create({
+        data: {
+          regNo: vehicleNumber,
+          regUpto: expiryDate,
+          permitUpto: expiryDate,
+          status: 'active',
+          insuranceUpto: expiryDate,
+          colour: vehicleColour,
+          pilotId: pilot.id,
+        },
+      });
+
+      return {
+        message: 'RC data extracted successfully.',
         data: verificationResponse,
       };
     } catch (error) {

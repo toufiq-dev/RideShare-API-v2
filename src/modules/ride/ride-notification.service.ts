@@ -208,6 +208,7 @@ export class RideNotificationService {
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
 
+    console.log('emitted location', lat, lng);
     console.log(
       `Driver live location emitted to customer ${customerUserId} `,
       result,

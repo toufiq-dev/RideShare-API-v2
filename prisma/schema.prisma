@@ -116,7 +116,11 @@ model Pilot {
   userId              String          @unique
   selfieUrl           String?
   dlFrontSideUrl      String? 
-  dlBackSideUrl       String? 
+  dlBackSideUrl       String?
+  nidFrontSideUrl     String?
+  nidBackSideUrl      String?
+  rcFrontSideUrl      String?
+  rcBackSideUrl       String?
   languageId          String
   referralCode        String?
   onlineStatus        PilotStatus     @default(OFFLINE)
@@ -179,12 +183,12 @@ model Vehicle {
   puccUpto        DateTime?
   regUpto         DateTime?
   permitUpto      DateTime?
-  manufacturer    String
+  manufacturer    String?
   status          String
   colour          String
-  model           String
-  state           String
-  seatCapacity    String
+  model           String?
+  state           String?
+  seatCapacity    String?
   vehicleTypeId   String?
   vehicleTypeIdBD String?
   createdAt       DateTime       @default(now())

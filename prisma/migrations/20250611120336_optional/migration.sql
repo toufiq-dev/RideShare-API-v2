@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Vehicle" ALTER COLUMN "model" DROP NOT NULL,
+ALTER COLUMN "state" DROP NOT NULL,
+ALTER COLUMN "seatCapacity" DROP NOT NULL;

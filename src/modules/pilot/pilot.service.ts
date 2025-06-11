@@ -851,12 +851,18 @@ export class PilotService {
         );
       }
 
+      const updateData: any = {
+        dlFrontSideUrl: frontSideUrl,
+      };
+
+      if (backSideUrl) {
+        updateData.dlBackSideUrl = backSideUrl;
+      }
+      
+      // Update pilot with URLs
       await this.prisma.pilot.update({
         where: { userId },
-        data: {
-          dlFrontSideUrl: frontSideUrl,
-          dlBackSideUrl: backSideUrl,
-        },
+        data: updateData,
       });
 
       let verificationResponse =
@@ -867,6 +873,7 @@ export class PilotService {
 
       let formattedDateOfBirth = null;
       let formattedLicenseExpiryDate = null;
+      let drivingLicense = null;
 
       if (name && dateOfBirth && licenseNumber && licenseExpiryDate) {
         formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
@@ -876,7 +883,7 @@ export class PilotService {
           .startOf('day')
           .toISOString();
 
-        await this.prisma.drivingLicense.create({
+        drivingLicense = await this.prisma.drivingLicense.create({
           data: {
             nameOnLicense: name,
             dateOfBirth: formattedDateOfBirth,
@@ -889,8 +896,8 @@ export class PilotService {
 
       verificationResponse = {
         ...verificationResponse,
-        dateOfBirth: formattedDateOfBirth,
-        licenseExpiryDate: formattedLicenseExpiryDate,
+        dateOfBirth: drivingLicense?.dateOfBirth,
+        licenseExpiryDate: drivingLicense?.validUntill,
       };
 
       return {
@@ -1032,7 +1039,6 @@ export class PilotService {
   }
 
   private parseAadhaarData(lines: any[]): string | null {
-    console.log(lines);
     for (const line of lines) {
       const text = line.text.trim();
 

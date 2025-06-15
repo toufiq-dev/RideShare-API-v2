@@ -877,31 +877,17 @@ export class PilotService {
 
       let formattedDateOfBirth = null;
       let formattedLicenseExpiryDate = null;
-      let drivingLicense = null;
-
-      if (name && dateOfBirth && licenseNumber && licenseExpiryDate) {
-        formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
-          .startOf('day')
-          .toISOString();
-        formattedLicenseExpiryDate = moment(licenseExpiryDate, 'DD MMM YYYY')
-          .startOf('day')
-          .toISOString();
-
-        drivingLicense = await this.prisma.drivingLicense.create({
-          data: {
-            nameOnLicense: name,
-            dateOfBirth: formattedDateOfBirth,
-            licenseNumber,
-            validUntill: formattedLicenseExpiryDate,
-            pilotId: pilot.id,
-          },
-        });
-      }
+      formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
+        .startOf('day')
+        .toISOString();
+      formattedLicenseExpiryDate = moment(licenseExpiryDate, 'DD MMM YYYY')
+        .startOf('day')
+        .toISOString();
 
       verificationResponse = {
         ...verificationResponse,
-        dateOfBirth: drivingLicense?.dateOfBirth,
-        licenseExpiryDate: drivingLicense?.validUntill,
+        dateOfBirth: formattedDateOfBirth,
+        licenseExpiryDate: formattedLicenseExpiryDate,
       };
 
       return {
@@ -918,7 +904,10 @@ export class PilotService {
     const { dlNumber, name, dob, expiryDate } = bDLicenseDto;
 
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        include: { drivingLicense: true },
+      });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }

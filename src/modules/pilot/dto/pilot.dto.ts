@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDate,
   IsNotEmpty,
   IsString,
   ValidateNested,
@@ -18,6 +19,28 @@ export class DrivingLicenseDto {
   @IsNotEmpty({ message: 'Date of birth is required' })
   @IsString()
   dob: string;
+}
+
+export class BDLicenseDto {
+  @ApiProperty({ description: 'Driving license number' })
+  @IsNotEmpty({ message: 'Driving license number is required' })
+  @IsString()
+  dlNumber: string;
+
+  @ApiProperty({ description: 'Date of birth' })
+  @IsNotEmpty({ message: 'Date of birth is required' })
+  @IsDate()
+  dob: Date;
+
+  @ApiProperty({ description: 'Date of expiry' })
+  @IsNotEmpty({ message: 'Date of expiry is required' })
+  @IsDate()
+  expiryDate: Date;
+
+  @ApiProperty({ description: 'Name on license' })
+  @IsNotEmpty({ message: 'Name on license is required' })
+  @IsString()
+  name: string;
 }
 
 export class VehicleRcDto {

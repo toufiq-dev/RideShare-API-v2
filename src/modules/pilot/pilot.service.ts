@@ -15,6 +15,7 @@ import {
   PancardDto,
   AadhaarNumberDto,
   BeOnlineDto,
+  BDLicenseDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -901,6 +902,46 @@ export class PilotService {
       return {
         message: 'Driving license data extracted successfully.',
         data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processManualBDLicense(bDLicenseDto: BDLicenseDto, userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isDLVerified) {
+        throw new BadRequestException('Pilot already verified Driving License.');
+      }
+
+      const { dlNumber, name, dob, expiryDate } = bDLicenseDto;
+      
+      const formattedDateOfBirth = moment(dob, 'DD MMM YYYY')
+        .startOf('day')
+        .toISOString();
+
+      const formattedExpiryDate = moment(expiryDate, 'DD MMM YYYY')
+        .startOf('day')
+        .toISOString();
+
+      const drivingLicense = await this.prisma.drivingLicense.create({
+        data: {
+          licenseNumber: dlNumber,
+          dateOfBirth: formattedDateOfBirth,
+          validUntill: formattedExpiryDate,
+          pilotId: pilot.id,
+          nameOnLicense: name,
+        },
+      });
+
+      return {
+        message: 'Driving license data added successfully.',
+        data: drivingLicense,
       };
     } catch (error) {
       console.error(error);

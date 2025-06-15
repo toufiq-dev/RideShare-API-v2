@@ -25,6 +25,7 @@ import {
   PancardDto,
   VehicleRcDto,
   BeOnlineDto,
+  BDLicenseDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -245,6 +246,20 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDLicense(files, userId);
+  }
+
+  @Post('bd-license/manual')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
+  @ApiBody({ type: BDLicenseDto })
+  async verifyBDLicense(
+    @Body() bDLicenseDto: BDLicenseDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processManualBDLicense(
+      bDLicenseDto,
+      userId,
+    );
   }
 
   @Post('bd-nid')

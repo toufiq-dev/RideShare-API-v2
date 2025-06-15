@@ -817,14 +817,19 @@ export class PilotService {
     }
   }
 
-  async uploadBDLicense(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
+  async uploadBDLicense(
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    userId: string,
+  ) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
       if (pilot.isDLVerified) {
-        throw new BadRequestException('Pilot already verified Driving License.');
+        throw new BadRequestException(
+          'Pilot already verified Driving License.',
+        );
       }
 
       let frontSideBuffer = null;
@@ -909,33 +914,31 @@ export class PilotService {
     }
   }
 
-  async processManualBDLicense(bDLicenseDto: BDLicenseDto, userId: string) {
+  async processBDLicense(bDLicenseDto: BDLicenseDto, userId: string) {
+    const { dlNumber, name, dob, expiryDate } = bDLicenseDto;
+
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
       if (pilot.isDLVerified) {
-        throw new BadRequestException('Pilot already verified Driving License.');
+        throw new BadRequestException(
+          'Pilot already verified Driving License.',
+        );
       }
-
-      const { dlNumber, name, dob, expiryDate } = bDLicenseDto;
-      
-      const formattedDateOfBirth = moment(dob, 'DD MMM YYYY')
-        .startOf('day')
-        .toISOString();
-
-      const formattedExpiryDate = moment(expiryDate, 'DD MMM YYYY')
-        .startOf('day')
-        .toISOString();
 
       const drivingLicense = await this.prisma.drivingLicense.create({
         data: {
           licenseNumber: dlNumber,
-          dateOfBirth: formattedDateOfBirth,
-          validUntill: formattedExpiryDate,
-          pilotId: pilot.id,
+          dateOfBirth: dob,
+          validUntill: expiryDate,
           nameOnLicense: name,
+          pilot: {
+            connect: {
+              id: pilot.id,
+            },
+          },
         },
       });
 
@@ -949,7 +952,10 @@ export class PilotService {
     }
   }
 
-  async uploadBDNid(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
+  async uploadBDNid(
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    userId: string,
+  ) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
@@ -1029,7 +1035,10 @@ export class PilotService {
     }
   }
 
-  async uploadBDRC(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
+  async uploadBDRC(
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    userId: string,
+  ) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
@@ -1038,7 +1047,7 @@ export class PilotService {
       if (pilot.isRCVerified) {
         throw new BadRequestException('Pilot already verified RC.');
       }
-      
+
       const frontSideBuffer = files.front[0].buffer;
       const backSideBuffer = files.back[0].buffer;
 

@@ -17,7 +17,11 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
-import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import {
   AadhaarNumberDto,
   VerifyAadhaarDto,
@@ -237,18 +241,21 @@ export class PilotController {
   @Post('bd-license')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license photo' })
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ]),
+  )
   async uploadBDLicense(
-    @UploadedFiles() files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDLicense(files, userId);
   }
 
-  @Post('bd-license/manual')
+  @Post('bd-license/confirmation')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
   @ApiBody({ type: BDLicenseDto })
@@ -256,21 +263,21 @@ export class PilotController {
     @Body() bDLicenseDto: BDLicenseDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.pilotService.processManualBDLicense(
-      bDLicenseDto,
-      userId,
-    );
+    return await this.pilotService.processBDLicense(bDLicenseDto, userId);
   }
 
   @Post('bd-nid')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload NID card photo' })
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ]),
+  )
   async uploadBDNid(
-    @UploadedFiles() files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDNid(files, userId);
@@ -279,12 +286,15 @@ export class PilotController {
   @Post('bd-rc  ')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ]),
+  )
   async uploadBDRC(
-    @UploadedFiles() files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDRC(files, userId);

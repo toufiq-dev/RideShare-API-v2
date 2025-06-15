@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
+  IsISO8601,
   IsNotEmpty,
   IsString,
   ValidateNested,
@@ -29,13 +30,13 @@ export class BDLicenseDto {
 
   @ApiProperty({ description: 'Date of birth' })
   @IsNotEmpty({ message: 'Date of birth is required' })
-  @IsDate()
-  dob: Date;
+  @IsISO8601()
+  dob: string;
 
   @ApiProperty({ description: 'Date of expiry' })
   @IsNotEmpty({ message: 'Date of expiry is required' })
-  @IsDate()
-  expiryDate: Date;
+  @IsISO8601()
+  expiryDate: string;
 
   @ApiProperty({ description: 'Name on license' })
   @IsNotEmpty({ message: 'Name on license is required' })

@@ -317,11 +317,6 @@ export class PilotService {
       if (pilot.selfieUrl) {
         throw new ForbiddenException('Live selfie can be uploaded only once.');
       }
-      if (!pilot.isDLVerified) {
-        throw new ForbiddenException(
-          'Driving License must be verified before uploading Live selfie.',
-        );
-      }
 
       const fileUrl = file.azureFileUrl;
 
@@ -821,11 +816,14 @@ export class PilotService {
     }
   }
 
-  async uploadBDLicense(files: Express.Multer.File[], userId: string) {
+  async uploadBDLicense(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isDLVerified) {
+        throw new BadRequestException('Pilot already verified Driving License.');
       }
 
       let frontSideBuffer = null;
@@ -833,21 +831,21 @@ export class PilotService {
       let frontSideUrl = null;
       let backSideUrl = null;
 
-      frontSideBuffer = files[0].buffer;
+      frontSideBuffer = files.front[0].buffer;
       frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
-        files[0].originalname,
+        files.front[0].originalname,
         userId,
-        files[0].mimetype,
+        files.front[0].mimetype,
       );
 
-      if (files.length > 1) {
-        backSideBuffer = files[1].buffer;
+      if (files.back) {
+        backSideBuffer = files.back[0].buffer;
         backSideUrl = await this.azureServicce.uploadFile(
           backSideBuffer,
-          files[1].originalname,
+          files.back[0].originalname,
           userId,
-          files[1].mimetype,
+          files.back[0].mimetype,
         );
       }
 

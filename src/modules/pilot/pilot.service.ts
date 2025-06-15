@@ -912,9 +912,15 @@ export class PilotService {
 
   async uploadBDNid(files: Express.Multer.File[], userId: string) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        include: { nid: true },
+      });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.nid) {
+        throw new BadRequestException('Pilot already uploaded NID.');
       }
 
       const frontSideBuffer = files[0].buffer;
@@ -953,6 +959,21 @@ export class PilotService {
         formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
           .startOf('day')
           .toISOString();
+      }
+
+      if (nidNumber && name && formattedDateOfBirth) {
+        console.log('nidNumber', nidNumber);
+        console.log('name', name);
+        console.log('formattedDateOfBirth', formattedDateOfBirth);
+        console.log('pilotId', pilot.id);
+        await this.prisma.nid.create({
+          data: {
+            nidNumber,
+            name,
+            dateOfBirth: formattedDateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
       }
 
       return {

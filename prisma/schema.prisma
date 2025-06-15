@@ -115,7 +115,7 @@ model Pilot {
   phone               String          @unique
   userId              String          @unique
   selfieUrl           String?
-  dlFrontSideUrl      String? 
+  dlFrontSideUrl      String?
   dlBackSideUrl       String?
   nidFrontSideUrl     String?
   nidBackSideUrl      String?
@@ -155,7 +155,16 @@ model Pilot {
   ratings             PilotRating[]
   wallet              PilotWallet?
   vehicle             Vehicle?        @relation("PilotVehicle")
+  nid                 Nid?            @relation("PilotNid")
   videoProgress       VideoProgress?
+}
+
+model Nid {
+  pilotId     String   @id @unique
+  nidNumber   String   @unique
+  name        String
+  dateOfBirth DateTime
+  pilot       Pilot    @relation("PilotNid", fields: [pilotId], references: [id])
 }
 
 model DrivingLicense {

@@ -250,9 +250,12 @@ export class PilotController {
   @Post('bd-nid')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload NID card photo' })
-  @UseInterceptors(FilesInterceptor('files', 2))
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'front', maxCount: 1 },
+    { name: 'back', maxCount: 1 },
+  ]))
   async uploadBDNid(
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDNid(files, userId);
@@ -261,9 +264,12 @@ export class PilotController {
   @Post('bd-rc  ')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
-  @UseInterceptors(FilesInterceptor('files', 2))
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'front', maxCount: 1 },
+    { name: 'back', maxCount: 1 },
+  ]))
   async uploadBDRC(
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDRC(files, userId);

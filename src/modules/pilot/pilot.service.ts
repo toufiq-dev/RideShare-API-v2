@@ -908,7 +908,7 @@ export class PilotService {
     }
   }
 
-  async uploadBDNid(files: Express.Multer.File[], userId: string) {
+  async uploadBDNid(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
@@ -917,25 +917,25 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.nid) {
-        throw new BadRequestException('Pilot already uploaded NID.');
+      if (pilot.isNidVerified) {
+        throw new BadRequestException('Pilot already verified NID.');
       }
 
-      const frontSideBuffer = files[0].buffer;
-      const backSideBuffer = files[1].buffer;
+      const frontSideBuffer = files.front[0].buffer;
+      const backSideBuffer = files.back[0].buffer;
 
       const frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
-        files[0].originalname,
+        files.front[0].originalname,
         userId,
-        files[0].mimetype,
+        files.front[0].mimetype,
       );
 
       const backSideUrl = await this.azureServicce.uploadFile(
         backSideBuffer,
-        files[1].originalname,
+        files.back[0].originalname,
         userId,
-        files[1].mimetype,
+        files.back[0].mimetype,
       );
 
       await this.prisma.pilot.update({
@@ -988,28 +988,31 @@ export class PilotService {
     }
   }
 
-  async uploadBDRC(files: Express.Multer.File[], userId: string) {
+  async uploadBDRC(files: { front: Express.Multer.File[]; back?: Express.Multer.File[] }, userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-
-      const frontSideBuffer = files[0].buffer;
-      const backSideBuffer = files[1].buffer;
+      if (pilot.isRCVerified) {
+        throw new BadRequestException('Pilot already verified RC.');
+      }
+      
+      const frontSideBuffer = files.front[0].buffer;
+      const backSideBuffer = files.back[0].buffer;
 
       const frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
-        files[0].originalname,
+        files.front[0].originalname,
         userId,
-        files[0].mimetype,
+        files.front[0].mimetype,
       );
 
       const backSideUrl = await this.azureServicce.uploadFile(
         backSideBuffer,
-        files[1].originalname,
+        files.back[0].originalname,
         userId,
-        files[1].mimetype,
+        files.back[0].mimetype,
       );
 
       await this.prisma.pilot.update({

@@ -200,7 +200,8 @@ export class VerificationService {
               {
                 type: 'text',
                 text: `Extract the following information from this Bangladeshi RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Expiry Date, Vehicle Colour, Owner Name.
-                Do not include any markdown formatting or backticks in your response. The keys should be: vehicleNumber, vehicleType, vehicleClass, registrationDate, expiryDate, vehicleColour, ownerName.
+                Do not include any markdown formatting or backticks in your response. Classify the vehicle in one of these types FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
+                The keys should be: ownerName, vehicleNumber, vehicleType, registrationDate, expiryDate, vehicleColour.
                 If the RC card is not valid or not readable, return null.`,
               },
               {

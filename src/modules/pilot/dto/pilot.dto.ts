@@ -9,6 +9,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
+import { VehicleTypeNameBD } from '@prisma/client';
 
 export class DrivingLicenseDto {
   @ApiProperty({ description: 'Driving license number' })
@@ -59,6 +60,33 @@ export class BDNidDto {
   @IsNotEmpty({ message: 'Name is required' })
   @IsString()
   name: string;
+}
+
+export class BDRCDto {
+  @ApiProperty({ description: 'Vehicle registration number' })
+  @IsNotEmpty({ message: 'Vehicle registration number is required' })
+  @IsString()
+  vehicleNumber: string;
+
+  @ApiProperty({ description: 'Vehicle type' })
+  @IsNotEmpty({ message: 'Vehicle type is required' })
+  @IsString()
+  vehicleType: VehicleTypeNameBD;
+
+  @ApiProperty({ description: 'Registration date' })
+  @IsNotEmpty({ message: 'Registration date is required' })
+  @IsISO8601()
+  registrationDate: string;
+
+  @ApiProperty({ description: 'Expiry date' })
+  @IsNotEmpty({ message: 'Expiry date is required' })
+  @IsISO8601()
+  expiryDate: string;
+
+  @ApiProperty({ description: 'Vehicle colour' })
+  @IsNotEmpty({ message: 'Vehicle colour is required' })
+  @IsString()
+  vehicleColour: string;
 }
 
 export class VehicleRcDto {

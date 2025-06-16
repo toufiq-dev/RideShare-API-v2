@@ -30,6 +30,7 @@ import {
   BeOnlineDto,
   BDLicenseDto,
   BDNidDto,
+  BDRCDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -309,5 +310,16 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDRC(files, userId);
+  }
+
+  @Post('bd-rc/confirmation')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give RC card and dob of pilot' })
+  @ApiBody({ type: BDRCDto })
+  async verifyBDRC(
+    @Body() bDRCDto: BDRCDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processBDRC(bDRCDto, userId);
   }
 }

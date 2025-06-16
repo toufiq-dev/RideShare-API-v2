@@ -17,6 +17,7 @@ import {
   BeOnlineDto,
   BDLicenseDto,
   BDNidDto,
+  BDRCDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -322,7 +323,10 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
-      if (pilot.selfieUrl && pilot.isSelfieVerified === VerificationStatus.APPROVED) {
+      if (
+        pilot.selfieUrl &&
+        pilot.isSelfieVerified === VerificationStatus.APPROVED
+      ) {
         throw new ForbiddenException('Live selfie can be uploaded only once.');
       }
 
@@ -1124,7 +1128,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isRCVerified) {
+      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified RC.');
       }
 
@@ -1145,42 +1149,124 @@ export class PilotService {
         files.back[0].mimetype,
       );
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          rcFrontSideUrl: frontSideUrl,
-          rcBackSideUrl: backSideUrl,
-        },
-      });
+      if (frontSideUrl && backSideUrl) {
+        await this.prisma.pilot.update({
+          where: { userId },
+          data: {
+            rcFrontSideUrl: frontSideUrl,
+            rcBackSideUrl: backSideUrl,
+          },
+        });
+      }
 
-      const verificationResponse =
+      let verificationResponse =
         await this.verificationService.extractRCData(frontSideBuffer);
 
-      const {
-        vehicleNumber,
-        vehicleType,
-        vehicleClass,
-        registrationDate,
-        expiryDate,
-        vehicleColour,
-        ownerName,
-      } = verificationResponse;
+      if (!verificationResponse) {
+        throw new BadRequestException('Failed to extract RC data.');
+      }
 
-      const vehicle = await this.prisma.vehicle.create({
-        data: {
-          regNo: vehicleNumber,
-          regUpto: expiryDate,
-          permitUpto: expiryDate,
-          status: 'active',
-          insuranceUpto: expiryDate,
-          colour: vehicleColour,
-          pilotId: pilot.id,
-        },
-      });
+      if (
+        !verificationResponse.ownerName &&
+        !verificationResponse.vehicleNumber &&
+        !verificationResponse.vehicleType &&
+        !verificationResponse.registrationDate &&
+        !verificationResponse.expiryDate &&
+        !verificationResponse.vehicleColour
+      ) {
+        throw new BadRequestException(
+          'This RC card is either non-existing or invalid.',
+        );
+      }
+
+      const formattedRegistrationDate = moment(
+        verificationResponse?.registrationDate,
+        'DD MMM YYYY',
+      )
+        .startOf('day')
+        .toISOString();
+
+      const formattedExpiryDate = moment(
+        verificationResponse?.expiryDate,
+        'DD MMM YYYY',
+      )
+        .startOf('day')
+        .toISOString();
+
+      verificationResponse = {
+        ...verificationResponse,
+        registrationDate: formattedRegistrationDate,
+        expiryDate: formattedExpiryDate,
+      };
 
       return {
         message: 'RC data extracted successfully.',
         data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processBDRC(bDRCDto: BDRCDto, userId: string) {
+    const {
+      vehicleNumber,
+      vehicleType,
+      registrationDate,
+      expiryDate,
+      vehicleColour,
+    } = bDRCDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified RC.');
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isRCVerified: VerificationStatus.IN_PROGRESS,
+        },
+      });
+
+      const data = await this.prisma.vehicle.upsert({
+        where: { pilotId: pilot.id },
+        create: {
+          regNo: vehicleNumber,
+          registrationDate,
+          expiryDate,
+          colour: vehicleColour,
+          model: vehicleType,
+          pilotId: pilot.id,
+          vehicleTypeIdBD: vehicleType as VehicleTypeNameBD,
+        },
+        update: {
+          regNo: vehicleNumber,
+          registrationDate,
+          expiryDate,
+          colour: vehicleColour,
+          model: vehicleType,
+          pilotId: pilot.id,
+          vehicleTypeIdBD: vehicleType as VehicleTypeNameBD,
+        },
+      });
+
+      const transformedData = {
+        vehicleNumber: data.regNo,
+        vehicleType: data.model,
+        registrationDate: data.registrationDate,
+        expiryDate: data.expiryDate,
+        vehicleColour: data.colour,
+      };
+
+      return {
+        message: 'RC data added successfully.',
+        data: transformedData,
       };
     } catch (error) {
       console.error(error);

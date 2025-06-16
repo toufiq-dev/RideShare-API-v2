@@ -1,4 +1,4 @@
-import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD } from '@prisma/client';
+import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD, VerificationStatus } from '@prisma/client';
 import { CouponsNames } from '../src/modules/admin/admin.constants';
 
 const prisma = new PrismaClient();
@@ -274,8 +274,8 @@ async function main() {
         phone: pilot.phone,
         userId: newUser.id, // Unique userId for this pilot
         languageId: english.id,
-        isDLVerified: true,
-        isRCVerified: true,
+        isDLVerified: VerificationStatus.APPROVED,
+        isRCVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true
       },
     });

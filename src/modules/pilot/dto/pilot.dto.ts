@@ -44,6 +44,23 @@ export class BDLicenseDto {
   name: string;
 }
 
+export class BDNidDto {
+  @ApiProperty({ description: 'NID number' })
+  @IsNotEmpty({ message: 'NID number is required' })
+  @IsString()
+  nidNumber: string;
+
+  @ApiProperty({ description: 'Date of birth' })
+  @IsNotEmpty({ message: 'Date of birth is required' })
+  @IsISO8601()
+  dateOfBirth: string;
+
+  @ApiProperty({ description: 'Name' })
+  @IsNotEmpty({ message: 'Name is required' })
+  @IsString()
+  name: string;
+}
+
 export class VehicleRcDto {
   @ApiProperty({ description: 'Vehicle registration number' })
   @IsNotEmpty({ message: 'Vehicle registration number is required' })

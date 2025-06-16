@@ -20,7 +20,6 @@ import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor'
 import {
   FileFieldsInterceptor,
   FileInterceptor,
-  FilesInterceptor,
 } from '@nestjs/platform-express';
 import {
   AadhaarNumberDto,
@@ -30,6 +29,7 @@ import {
   VehicleRcDto,
   BeOnlineDto,
   BDLicenseDto,
+  BDNidDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -283,7 +283,18 @@ export class PilotController {
     return await this.pilotService.uploadBDNid(files, userId);
   }
 
-  @Post('bd-rc  ')
+  @Post('bd-nid/confirmation')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give NID card and dob of pilot' })
+  @ApiBody({ type: BDNidDto })
+  async verifyBDNid(
+    @Body() bDNidDto: BDNidDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processBDNid(bDNidDto, userId);
+  }
+
+  @Post('bd-rc')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
   @UseInterceptors(

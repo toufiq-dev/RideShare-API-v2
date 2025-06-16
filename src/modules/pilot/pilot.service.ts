@@ -16,6 +16,7 @@ import {
   AadhaarNumberDto,
   BeOnlineDto,
   BDLicenseDto,
+  BDNidDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -32,6 +33,7 @@ import {
   TransactionType,
   UserStatus,
   VehicleTypeNameBD,
+  VerificationStatus,
 } from '@prisma/client';
 import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
@@ -62,6 +64,11 @@ export class PilotService {
           drivingLicense: true,
           wallet: true,
           activeBooking: true,
+          vehicle: {
+            include: {
+              vehicleTypeBD: true,
+            },
+          },
         },
       });
       if (!data) {
@@ -423,7 +430,7 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.isRCVerified) {
+      if (pilot.isRCVerified !== VerificationStatus.APPROVED) {
         throw new BadRequestException('Driver does not have rc verfied.');
       }
 
@@ -458,7 +465,7 @@ export class PilotService {
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
-          isPanCardVerified: true,
+          isPanCardVerified: VerificationStatus.APPROVED,
           panCardNumber: verificationResponse.number,
           panCardName: verificationResponse.name,
         },
@@ -480,7 +487,7 @@ export class PilotService {
       if (!pilot) {
         throw new BadRequestException('Pilot not found.');
       }
-      if (!pilot.isRCVerified) {
+      if (pilot.isRCVerified !== VerificationStatus.APPROVED) {
         throw new BadRequestException('Driver does not have rc verfied.');
       }
 
@@ -500,7 +507,7 @@ export class PilotService {
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
-          isPanCardVerified: true,
+          isPanCardVerified: VerificationStatus.APPROVED,
           panCardNumber: verificationResponse.number,
           panCardName: verificationResponse.name,
         },
@@ -522,7 +529,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (!pilot.isPanCardVerified) {
+      if (pilot.isPanCardVerified !== VerificationStatus.APPROVED) {
         throw new BadRequestException('Driver does not have pancard verfied.');
       }
 
@@ -567,7 +574,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (!pilot.isPanCardVerified) {
+      if (pilot.isPanCardVerified !== VerificationStatus.APPROVED) {
         throw new BadRequestException('Driver does not have pancard verfied.');
       }
 
@@ -607,7 +614,7 @@ export class PilotService {
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
-          isAadhaarVerified: true,
+          isAadhaarVerified: VerificationStatus.APPROVED,
           aadhaarCardNumber,
           aadhaarName,
           aadhaarCardAddress,
@@ -627,7 +634,10 @@ export class PilotService {
   async onboardingOffer(userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-      if (!pilot.isDLVerified || !pilot.isRCVerified) {
+      if (
+        pilot.isDLVerified !== VerificationStatus.APPROVED ||
+        pilot.isRCVerified !== VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Driving License or RC is not verfied.');
       }
 
@@ -832,21 +842,17 @@ export class PilotService {
         );
       }
 
-      let frontSideBuffer = null;
-      let backSideBuffer = null;
-      let frontSideUrl = null;
-      let backSideUrl = null;
-
-      frontSideBuffer = files.front[0].buffer;
-      frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideBuffer = files.front[0].buffer;
+      const frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
         files.front[0].mimetype,
       );
 
+      let backSideUrl = null;
       if (files.back) {
-        backSideBuffer = files.back[0].buffer;
+        const backSideBuffer = files.back[0].buffer;
         backSideUrl = await this.azureServicce.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
@@ -870,17 +876,32 @@ export class PilotService {
       });
 
       let verificationResponse =
-        await this.verificationService.verifyBDLicense(frontSideBuffer);
+        await this.verificationService.extractDLData(frontSideBuffer);
 
-      const { name, dateOfBirth, licenseNumber, licenseExpiryDate } =
-        verificationResponse;
+      if (!verificationResponse) {
+        throw new BadRequestException('Failed to extract driving license data.');
+      }
 
-      let formattedDateOfBirth = null;
-      let formattedLicenseExpiryDate = null;
-      formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
+      if (
+        !verificationResponse.licenseNumber &&
+        !verificationResponse.dateOfBirth &&
+        !verificationResponse.licenseExpiryDate
+      ) {
+        throw new BadRequestException(
+          'This driving license is either non-existing or invalid.',
+        );
+      }
+
+      const formattedDateOfBirth = moment(
+        verificationResponse?.dateOfBirth,
+        'DD MMM YYYY',
+      )
         .startOf('day')
         .toISOString();
-      formattedLicenseExpiryDate = moment(licenseExpiryDate, 'DD MMM YYYY')
+      const formattedLicenseExpiryDate = moment(
+        verificationResponse?.licenseExpiryDate,
+        'DD MMM YYYY',
+      )
         .startOf('day')
         .toISOString();
 
@@ -917,23 +938,33 @@ export class PilotService {
         );
       }
 
-      const drivingLicense = await this.prisma.drivingLicense.create({
-        data: {
+      const data = await this.prisma.drivingLicense.upsert({
+        where: { pilotId: pilot.id },
+        update: {
           licenseNumber: dlNumber,
           dateOfBirth: dob,
           validUntill: expiryDate,
           nameOnLicense: name,
-          pilot: {
-            connect: {
-              id: pilot.id,
-            },
-          },
+        },
+        create: {
+          licenseNumber: dlNumber,
+          dateOfBirth: dob,
+          validUntill: expiryDate,
+          nameOnLicense: name,
+          pilotId: pilot.id,
         },
       });
 
+      const transformedData = {
+        name: data.nameOnLicense,
+        dateOfBirth: data.dateOfBirth,
+        licenseNumber: data.licenseNumber,
+        licenseExpiryDate: data.validUntill,
+      };
+
       return {
         message: 'Driving license data added successfully.',
-        data: drivingLicense,
+        data: transformedData,
       };
     } catch (error) {
       console.error(error);
@@ -974,49 +1005,91 @@ export class PilotService {
         files.back[0].mimetype,
       );
 
+      if (frontSideUrl && backSideUrl ) {
       await this.prisma.pilot.update({
         where: { userId },
         data: {
           nidFrontSideUrl: frontSideUrl,
-          nidBackSideUrl: backSideUrl,
-        },
-      });
+            nidBackSideUrl: backSideUrl,
+          },
+        });
+      }
 
       const verificationResponse =
         await this.verificationService.extractNidData(frontSideBuffer);
 
-      const { nidNumber, name, dateOfBirth } = verificationResponse;
-
-      let formattedDateOfBirth = null;
-
-      if (dateOfBirth) {
-        formattedDateOfBirth = moment(dateOfBirth, 'DD MMM YYYY')
-          .startOf('day')
-          .toISOString();
+      if (!verificationResponse) {
+        throw new BadRequestException('Failed to extract NID data.');
       }
 
-      if (nidNumber && name && formattedDateOfBirth) {
-        console.log('nidNumber', nidNumber);
-        console.log('name', name);
-        console.log('formattedDateOfBirth', formattedDateOfBirth);
-        console.log('pilotId', pilot.id);
-        await this.prisma.nid.create({
-          data: {
-            nidNumber,
-            name,
-            dateOfBirth: formattedDateOfBirth,
-            pilotId: pilot.id,
-          },
-        });
+      if (
+        !verificationResponse.nidNumber &&
+        !verificationResponse.name &&
+        !verificationResponse.dateOfBirth
+      ) {
+        throw new BadRequestException(
+          'This NID card is either non-existing or invalid.',
+        );
       }
+
+      const formattedDateOfBirth = moment(
+        verificationResponse?.dateOfBirth,
+        'DD MMM YYYY',
+      )
+        .startOf('day')
+        .toISOString();
+
 
       return {
         message: 'NID data extracted successfully.',
         data: {
           dateOfBirth: formattedDateOfBirth,
+          nidNumber: verificationResponse.nidNumber,
+          name: verificationResponse.name,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processBDNid(bDNidDto: BDNidDto, userId: string) {
+    const { nidNumber, name, dateOfBirth } = bDNidDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isNidVerified) {
+        throw new BadRequestException('Pilot already verified NID.');
+      }
+
+      const data = await this.prisma.nid.upsert({
+        where: { pilotId: pilot.id },
+        update: {
           nidNumber,
           name,
+          dateOfBirth,
         },
+        create: {
+          nidNumber,
+          name,
+          dateOfBirth,
+          pilotId: pilot.id,
+        },
+      });
+
+      const transformedData = {
+        dateOfBirth: data.dateOfBirth,
+        nidNumber: data.nidNumber,
+        name: data.name,
+      };
+
+      return {
+        message: 'NID data added successfully.',
+        data: transformedData,
       };
     } catch (error) {
       console.error(error);
@@ -1171,7 +1244,7 @@ export class PilotService {
     await this.prisma.pilot.update({
       where: { id: pilotId },
       data: {
-        isDLVerified: true,
+        isDLVerified: VerificationStatus.APPROVED,
       },
     });
 
@@ -1298,7 +1371,7 @@ export class PilotService {
     await this.prisma.pilot.update({
       where: { id: pilotId },
       data: {
-        isRCVerified: true,
+        isRCVerified: VerificationStatus.APPROVED,
       },
     });
 

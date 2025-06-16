@@ -74,7 +74,7 @@ export class VerificationService {
     this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
   }
 
-  async verifyBDLicense(buffer: Buffer) {
+  async extractDLData(buffer: Buffer) {
     const openai = new OpenAI({
       apiKey: this.openAiApiKey,
     });
@@ -95,7 +95,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: 'Extract the following information from this driving license and return it as a valid JSON object: Name, Date of Birth, License Number, License Expiry Date. Do not include any markdown formatting or backticks in your response. The keys should be in name, dateOfBirth, licenseNumber, licenseExpiryDate. If the driving license is not valid or not readable, return null.',
+                text: `Extract the following information from this Bangladeshi driving license and return it as a valid JSON object: Name, Date of Birth, License Number, License Expiry Date.
+                Do not include any markdown formatting or backticks in your response. The keys should be: name, dateOfBirth, licenseNumber, licenseExpiryDate.
+                If the driving license is not valid or not readable, return null.`,
               },
               {
                 type: 'image_url',
@@ -112,24 +114,16 @@ export class VerificationService {
 
       const content = response.choices[0].message.content;
 
-      try {
-        if (!content) {
-          throw new BadRequestException(
-            'Driving license is not valid or not readable.',
-          );
-        }
-
-        const parsedResponse = JSON.parse(content);
-        return parsedResponse;
-      } catch (parseError) {
-        console.error('Error parsing JSON response:', parseError);
-        throw new BadRequestException('Failed to parse driving license data.');
+      if (!content) {
+        throw new BadRequestException(
+          'Driving license is not valid or not readable.',
+        );
       }
+
+      return JSON.parse(content);
     } catch (error) {
       console.error(error);
-      throw new BadRequestException(
-        'Failed to verify driving license with OpenAI.',
-      );
+      throw new BadRequestException('Failed to verify driving license.');
     }
   }
 
@@ -154,7 +148,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: 'Extract the following information from this NID card and return it as a valid JSON object: NID Number, Name and Date of Birth. Do not include any markdown formatting or backticks in your response. The keys should be in nidNumber, name, dateOfBirth. If the NID card is not valid or not readable, return null.',
+                text: `Extract the following information from this Bangladeshi NID card and return it as a valid JSON object: NID Number, Name and Date of Birth.
+                Do not include any markdown formatting or backticks in your response. The keys should be: nidNumber, name, dateOfBirth.
+                If the NID card is not valid or not readable, return null.`,
               },
               {
                 type: 'image_url',
@@ -171,23 +167,14 @@ export class VerificationService {
 
       const content = response.choices[0].message.content;
 
-      try {
-        if (!content) {
-          throw new BadRequestException(
-            'NID card is not valid or not readable.',
-          );
-        }
-        const parsedResponse = JSON.parse(content);
-        return parsedResponse;
-      } catch (parseError) {
-        console.error('Error parsing JSON response:', parseError);
-        throw new BadRequestException('Failed to parse NID card data.');
+      if (!content) {
+        throw new BadRequestException('NID card is not valid or not readable.');
       }
+
+      return JSON.parse(content);
     } catch (error) {
       console.error(error);
-      throw new BadRequestException(
-        'Failed to verify driving license with OpenAI.',
-      );
+      throw new BadRequestException('Failed to verify NID card.');
     }
   }
 
@@ -212,7 +199,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: 'Extract the following information from this RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Expiry Date, Vehicle Colour, Owner Name. Do not include any markdown formatting or backticks in your response. The keys should be in vehicleNumber, vehicleType, vehicleClass, registrationDate, expiryDate, vehicleColour, ownerName. If the RC card is not valid or not readable, return null.',
+                text: `Extract the following information from this Bangladeshi RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Expiry Date, Vehicle Colour, Owner Name.
+                Do not include any markdown formatting or backticks in your response. The keys should be: vehicleNumber, vehicleType, vehicleClass, registrationDate, expiryDate, vehicleColour, ownerName.
+                If the RC card is not valid or not readable, return null.`,
               },
               {
                 type: 'image_url',
@@ -229,18 +218,11 @@ export class VerificationService {
 
       const content = response.choices[0].message.content;
 
-      try {
-        if (!content) {
-          throw new BadRequestException(
-            'RC card is not valid or not readable.',
-          );
-        }
-        const parsedResponse = JSON.parse(content);
-        return parsedResponse;
-      } catch (parseError) {
-        console.error('Error parsing JSON response:', parseError);
-        throw new BadRequestException('Failed to parse RC card data.');
+      if (!content) {
+        throw new BadRequestException('RC card is not valid or not readable.');
       }
+
+      return JSON.parse(content);
     } catch (error) {
       console.error(error);
       throw new BadRequestException(

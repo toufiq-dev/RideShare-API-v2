@@ -201,14 +201,15 @@ export class RideNotificationService {
     customerUserId: string,
     lat: number,
     lng: number,
+    angle: number,
   ) {
-    const payload = { bookingId, lat, lng };
+    const payload = { bookingId, lat, lng, angle };
 
     const result = this.server
       .to(customerUserId)
       .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
 
-    console.log('emitted location', lat, lng);
+    console.log('emitted location', lat, lng, angle);
     console.log(
       `Driver live location emitted to customer ${customerUserId} `,
       result,

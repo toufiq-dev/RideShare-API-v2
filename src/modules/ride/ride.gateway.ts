@@ -60,11 +60,11 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { lat: number; lng: number },
+    @MessageBody() body: { lat: number; lng: number; angle: number },
   ) {
     try {
-      const { lat, lng } = body;
-      console.log('received location', lat, lng);
+      const { lat, lng, angle } = body;
+      
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
       // const pilot = await this.prisma.pilot.findUnique({
@@ -131,6 +131,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
             activeRide.customerUserId,
             lat,
             lng,
+            angle,
           );
         } else {
           console.log(

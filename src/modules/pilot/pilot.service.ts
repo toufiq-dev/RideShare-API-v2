@@ -836,7 +836,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isDLVerified) {
+      if (pilot.isDLVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException(
           'Pilot already verified Driving License.',
         );
@@ -879,7 +879,9 @@ export class PilotService {
         await this.verificationService.extractDLData(frontSideBuffer);
 
       if (!verificationResponse) {
-        throw new BadRequestException('Failed to extract driving license data.');
+        throw new BadRequestException(
+          'Failed to extract driving license data.',
+        );
       }
 
       if (
@@ -932,7 +934,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isDLVerified) {
+      if (pilot.isDLVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException(
           'Pilot already verified Driving License.',
         );
@@ -984,7 +986,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isNidVerified) {
+      if (pilot.isNidVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified NID.');
       }
 
@@ -1005,11 +1007,11 @@ export class PilotService {
         files.back[0].mimetype,
       );
 
-      if (frontSideUrl && backSideUrl ) {
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          nidFrontSideUrl: frontSideUrl,
+      if (frontSideUrl && backSideUrl) {
+        await this.prisma.pilot.update({
+          where: { userId },
+          data: {
+            nidFrontSideUrl: frontSideUrl,
             nidBackSideUrl: backSideUrl,
           },
         });
@@ -1039,7 +1041,6 @@ export class PilotService {
         .startOf('day')
         .toISOString();
 
-
       return {
         message: 'NID data extracted successfully.',
         data: {
@@ -1062,7 +1063,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isNidVerified) {
+      if (pilot.isNidVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified NID.');
       }
 

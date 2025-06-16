@@ -64,7 +64,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { lat, lng, angle } = body;
-      
+
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
       // const pilot = await this.prisma.pilot.findUnique({

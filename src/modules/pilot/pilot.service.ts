@@ -322,7 +322,7 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
-      if (pilot.selfieUrl) {
+      if (pilot.selfieUrl && pilot.isSelfieVerified === VerificationStatus.APPROVED) {
         throw new ForbiddenException('Live selfie can be uploaded only once.');
       }
 
@@ -331,7 +331,10 @@ export class PilotService {
       if (fileUrl) {
         await this.prisma.pilot.update({
           where: { userId },
-          data: { selfieUrl: fileUrl },
+          data: {
+            selfieUrl: fileUrl,
+            isSelfieVerified: VerificationStatus.IN_PROGRESS,
+          },
         });
       }
 

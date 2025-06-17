@@ -85,6 +85,13 @@ export class BDRCDto {
   vehicleColour: string;
 }
 
+export class NumberPlateDto {
+  @ApiProperty({ description: 'Number plate' })
+  @IsNotEmpty({ message: 'Number plate is required' })
+  @IsString()
+  numberPlate: string;
+}
+
 export class VehicleRcDto {
   @ApiProperty({ description: 'Vehicle registration number' })
   @IsNotEmpty({ message: 'Vehicle registration number is required' })

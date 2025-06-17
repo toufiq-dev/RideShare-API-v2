@@ -18,6 +18,7 @@ import {
   BDLicenseDto,
   BDNidDto,
   BDRCDto,
+  NumberPlateDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -800,10 +801,23 @@ export class PilotService {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
-        select: { userId: true },
+        select: {
+          userId: true,
+          isRCVerified: true,
+          isDLVerified: true,
+          isNidVerified: true,
+        },
       });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
+      }
+
+      if (
+        pilot.isRCVerified !== VerificationStatus.APPROVED ||
+        pilot.isDLVerified !== VerificationStatus.APPROVED ||
+        pilot.isNidVerified !== VerificationStatus.APPROVED
+      ) {
+        throw new BadRequestException('RC, DL or NID is not verfied.');
       }
 
       if (onlineStatus) {
@@ -1260,6 +1274,89 @@ export class PilotService {
       return {
         message: 'RC data added successfully.',
         data: transformedData,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async uploadNumberPlate(file: Express.Multer.File, userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const numberPlateBuffer = file.buffer;
+
+      const numberPlateUrl = await this.azureServicce.uploadFile(
+        numberPlateBuffer,
+        file.originalname,
+        userId,
+        file.mimetype,
+      );
+
+      const verificationResponse =
+        await this.verificationService.extractNumberPlateData(
+          numberPlateBuffer,
+        );
+
+      if (!verificationResponse) {
+        throw new BadRequestException('Failed to extract number plate data.');
+      }
+
+      if (!verificationResponse.numberPlate) {
+        throw new BadRequestException(
+          'Number plate is not valid or not readable.',
+        );
+      }
+
+      return {
+        message: 'Number plate uploaded successfully.',
+        data: {
+          numberPlate: verificationResponse.numberPlate,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async processNumberPlate(numberPlateDto: NumberPlateDto, userId: string) {
+    const { numberPlate } = numberPlateDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified RC.');
+      }
+
+      const vehicle = await this.prisma.vehicle.findFirst({
+        where: { pilotId: pilot.id },
+        select: {
+          regNo: true,
+        },
+      });
+      if (!vehicle) {
+        throw new BadRequestException('Vehicle not found.');
+      }
+
+      if (!vehicle.regNo.includes(numberPlate)) {
+        throw new BadRequestException(
+          'Number plate does not match with vehicle registration number.',
+        );
+      }
+
+      return {
+        message: 'Number plate added successfully.',
+        data: {
+          numberPlate,
+        },
       };
     } catch (error) {
       console.error(error);

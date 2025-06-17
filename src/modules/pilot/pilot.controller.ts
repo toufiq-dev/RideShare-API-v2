@@ -31,6 +31,7 @@ import {
   BDLicenseDto,
   BDNidDto,
   BDRCDto,
+  NumberPlateDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -321,5 +322,28 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.processBDRC(bDRCDto, userId);
+  }
+
+  @Post('number-plate')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload Number plate photo' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadNumberPlate(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.uploadNumberPlate(file, userId);
+  }
+
+  @Post('number-plate/confirmation')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually give Number plate of pilot' })
+  @ApiBody({ type: NumberPlateDto })
+  async verifyNumberPlate(
+    @Body() numberPlateDto: NumberPlateDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.processNumberPlate(numberPlateDto, userId);
   }
 }

@@ -232,6 +232,62 @@ export class VerificationService {
     }
   }
 
+  async extractNumberPlateData(buffer: Buffer) {
+    const openai = new OpenAI({
+      apiKey: this.openAiApiKey,
+    });
+
+    try {
+      const base64Image = buffer.toString('base64');
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in extracting number plate data. Extract relevant information from the number plate image.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract the Number Plate from this Bangladeshi number plate and return it as a valid JSON object.
+                The number plate is a vehicle registration number and it can contain Bengali Language, translate relevant data to English.
+                Do not include any markdown formatting or backticks in your response. The keys should be: numberPlate.
+                If the number plate is not valid or not readable, return null.`,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0].message.content;
+
+      if (!content) {
+        throw new BadRequestException(
+          'Number plate is not valid or not readable.',
+        );
+      }
+
+      return JSON.parse(content);
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException(
+        'Failed to verify number plate with OpenAI.',
+      );
+    }
+  }
+
   async verifyDrivingLicense(dlNumber: string, dob: string) {
     const data = {
       number: dlNumber,

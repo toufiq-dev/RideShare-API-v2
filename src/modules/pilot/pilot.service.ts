@@ -1220,6 +1220,16 @@ export class PilotService {
         },
       });
 
+      const vehicleTypeBD = await this.prisma.vehicleTypeBD.findFirst({
+        where: {
+          name: vehicleType as VehicleTypeNameBD,
+        },
+      });
+
+      if (!vehicleTypeBD) {
+        throw new BadRequestException('Invalid vehicle type');
+      }
+
       const data = await this.prisma.vehicle.upsert({
         where: { pilotId: pilot.id },
         create: {
@@ -1228,7 +1238,7 @@ export class PilotService {
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
-          vehicleTypeIdBD: vehicleType as VehicleTypeNameBD,
+          vehicleTypeIdBD: vehicleTypeBD.id,
         },
         update: {
           regNo: vehicleNumber,
@@ -1236,7 +1246,7 @@ export class PilotService {
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
-          vehicleTypeIdBD: vehicleType as VehicleTypeNameBD,
+          vehicleTypeIdBD: vehicleTypeBD.id,
         },
       });
 

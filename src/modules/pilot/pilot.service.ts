@@ -989,7 +989,7 @@ export class PilotService {
   }
 
   async uploadBDNid(
-    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     userId: string,
   ) {
     try {
@@ -1120,7 +1120,7 @@ export class PilotService {
   }
 
   async uploadBDRC(
-    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     userId: string,
   ) {
     try {
@@ -1167,11 +1167,9 @@ export class PilotService {
       }
 
       if (
-        !verificationResponse.ownerName &&
         !verificationResponse.vehicleNumber &&
         !verificationResponse.vehicleType &&
         !verificationResponse.registrationDate &&
-        !verificationResponse.expiryDate &&
         !verificationResponse.vehicleColour
       ) {
         throw new BadRequestException(
@@ -1186,17 +1184,9 @@ export class PilotService {
         .startOf('day')
         .toISOString();
 
-      const formattedExpiryDate = moment(
-        verificationResponse?.expiryDate,
-        'DD MMM YYYY',
-      )
-        .startOf('day')
-        .toISOString();
-
       verificationResponse = {
         ...verificationResponse,
         registrationDate: formattedRegistrationDate,
-        expiryDate: formattedExpiryDate,
       };
 
       return {
@@ -1210,19 +1200,15 @@ export class PilotService {
   }
 
   async processBDRC(bDRCDto: BDRCDto, userId: string) {
-    const {
-      vehicleNumber,
-      vehicleType,
-      registrationDate,
-      expiryDate,
-      vehicleColour,
-    } = bDRCDto;
+    const { vehicleNumber, vehicleType, registrationDate, vehicleColour } =
+      bDRCDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
+      console.log('pilot.isRCVerified', pilot.isRCVerified);
       if (pilot.isRCVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified RC.');
       }
@@ -1239,7 +1225,6 @@ export class PilotService {
         create: {
           regNo: vehicleNumber,
           registrationDate,
-          expiryDate,
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
@@ -1248,7 +1233,6 @@ export class PilotService {
         update: {
           regNo: vehicleNumber,
           registrationDate,
-          expiryDate,
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
@@ -1260,7 +1244,6 @@ export class PilotService {
         vehicleNumber: data.regNo,
         vehicleType: data.model,
         registrationDate: data.registrationDate,
-        expiryDate: data.expiryDate,
         vehicleColour: data.colour,
       };
 

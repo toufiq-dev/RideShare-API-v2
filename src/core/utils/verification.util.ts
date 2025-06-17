@@ -199,9 +199,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: `Extract the following information from this Bangladeshi RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Expiry Date, Vehicle Colour, Owner Name.
-                Do not include any markdown formatting or backticks in your response. Classify the vehicle in one of these types FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
-                The keys should be: ownerName, vehicleNumber, vehicleType, registrationDate, expiryDate, vehicleColour.
+                text: `Extract the following information from this Bangladeshi RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Vehicle Colour.
+                Do not include any markdown formatting or backticks in your response. The RC card is a vehicle registration card and it can contain Bengali Language, translate relevant data to English. Also classify the vehicle in one of these types FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
+                The keys should be: vehicleNumber, vehicleType, registrationDate, vehicleColour.
                 If the RC card is not valid or not readable, return null.`,
               },
               {

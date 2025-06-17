@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
+  IsEnum,
   IsISO8601,
   IsNotEmpty,
   IsString,
@@ -70,18 +71,13 @@ export class BDRCDto {
 
   @ApiProperty({ description: 'Vehicle type' })
   @IsNotEmpty({ message: 'Vehicle type is required' })
-  @IsString()
+  @IsEnum(VehicleTypeNameBD)
   vehicleType: VehicleTypeNameBD;
 
   @ApiProperty({ description: 'Registration date' })
   @IsNotEmpty({ message: 'Registration date is required' })
   @IsISO8601()
   registrationDate: string;
-
-  @ApiProperty({ description: 'Expiry date' })
-  @IsNotEmpty({ message: 'Expiry date is required' })
-  @IsISO8601()
-  expiryDate: string;
 
   @ApiProperty({ description: 'Vehicle colour' })
   @IsNotEmpty({ message: 'Vehicle colour is required' })

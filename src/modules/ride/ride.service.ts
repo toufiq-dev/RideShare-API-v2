@@ -150,6 +150,31 @@ export class RideService {
     return this.redis.getBookingStatus(bookingId);
   }
 
+  async getRideDetails(bookingId: string, userId: string) {
+    try {
+      
+
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          status: true,
+          customerId: true,
+        },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+      if (booking.customerId !== userId) {
+        throw new ForbiddenException('You are not authorized to access this ride.');
+      }
+      
+      return booking;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async createRideRequest(
     createRideRequestDto: CreateRideRequestDto,
     userId: string,

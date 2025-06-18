@@ -146,6 +146,15 @@ export class RideController {
     );
   }
 
+  @Roles(RoleEnum.CUSTOMER)
+  @Get(':bookingId')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get ride details' })
+  async getRideDetails(@Param('bookingId') bookingId: string, @CurrentUser('userId') userId: string) {
+    return await this.rideService.getRideDetails(bookingId, userId);
+  }
+
   @Roles(RoleEnum.PILOT, RoleEnum.CUSTOMER)
   @Post('rating')
   @HttpCode(200)

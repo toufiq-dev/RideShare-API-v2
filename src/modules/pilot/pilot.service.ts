@@ -1287,11 +1287,10 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
-        throw new BadRequestException('Pilot already verified RC.');
+      if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified number plate.');
       }
 
-      console.log('pilot.isRCVerified', pilot.isRCVerified);
       const numberPlateBuffer = file.buffer;
 
       const numberPlateUrl = await this.azureServicce.uploadFile(
@@ -1343,10 +1342,10 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
-        throw new BadRequestException('Pilot already verified RC.');
+      if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified number plate.');
       }
-      console.log('pilot.isRCVerified', pilot.isRCVerified);
+      
       const vehicle = await this.prisma.vehicle.findFirst({
         where: { pilotId: pilot.id },
         select: {

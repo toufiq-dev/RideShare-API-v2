@@ -1287,7 +1287,11 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
+      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified RC.');
+      }
 
+      console.log('pilot.isRCVerified', pilot.isRCVerified);
       const numberPlateBuffer = file.buffer;
 
       const numberPlateUrl = await this.azureServicce.uploadFile(
@@ -1296,6 +1300,13 @@ export class PilotService {
         userId,
         file.mimetype,
       );
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          numberPlateUrl,
+        },
+      });
 
       const verificationResponse =
         await this.verificationService.extractNumberPlateData(
@@ -1335,7 +1346,7 @@ export class PilotService {
       if (pilot.isRCVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified RC.');
       }
-
+      console.log('pilot.isRCVerified', pilot.isRCVerified);
       const vehicle = await this.prisma.vehicle.findFirst({
         where: { pilotId: pilot.id },
         select: {
@@ -1346,11 +1357,11 @@ export class PilotService {
         throw new BadRequestException('Vehicle not found.');
       }
 
-      if (!vehicle.regNo.includes(numberPlate)) {
-        throw new BadRequestException(
-          'Number plate does not match with vehicle registration number.',
-        );
-      }
+      // if (!vehicle.regNo.includes(numberPlate)) {
+      //   throw new BadRequestException(
+      //     'Number plate does not match with vehicle registration number.',
+      //   );
+      // }
 
       return {
         message: 'Number plate added successfully.',

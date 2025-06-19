@@ -19,8 +19,10 @@ import {
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
-import { Country, UserStatus } from '@prisma/client';
+import { Country, PilotStatus, UserStatus } from '@prisma/client';
 import { CouponsNames } from '../admin/admin.constants';
+import { SocketService } from 'src/core/socket/socket.service';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +39,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly otpService: OTPService,
     private readonly geofencingService: GeofencingService,
+    private readonly socketService: SocketService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -326,6 +329,56 @@ export class AuthService {
     }
   }
 
+  async logout(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true }
+      });
+  
+
+      await this.redis.del(`accessToken:${userId}`);
+      await this.redis.del(`refreshToken:${userId}`);
+
+      await this.prisma.deviceToken.deleteMany({
+        where: { userId },
+      });
+
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+    const clientId = await this.redis.get(connectionKey);
+    if (clientId) {
+      // Disconnect socket if connected
+      const sockets = await this.socketService.server.fetchSockets();
+      const socket = sockets.find(s => s.id === clientId);
+      if (socket) {
+        socket.disconnect(true);
+      }
+      await this.redis.del(connectionKey);
+    }
+
+    if (user.role === RoleEnum.PILOT) {
+      // Remove from geospatial set
+      await this.redis.zRem(RedisKeys.PILOT_LOCATION, userId);
+      
+      // Clean up active ride if any
+      await this.redis.removeActiveRide(userId);
+      
+      // Update pilot status to offline
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { onlineStatus: PilotStatus.OFFLINE }
+      });
+    }
+
+      return {
+        message: 'Logged out successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
     console.log(storedOtp);
@@ -436,6 +489,18 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string, role: any) {
+    // 1. Check if user has existing tokens
+  const existingAccessToken = await this.redis.get(`accessToken:${userId}`);
+  const existingRefreshToken = await this.redis.get(`refreshToken:${userId}`);
+
+    if (existingAccessToken || existingRefreshToken) {
+      await this.forceDisconnectUser(userId);
+
+      if (role === RoleEnum.PILOT) {
+        await this.cleanupPilotData(userId);
+      }
+    }
+
     await this.redis.del(`accessToken:${userId}`);
     await this.redis.del(`refreshToken:${userId}`);
 
@@ -479,5 +544,55 @@ export class AuthService {
     }
 
     await this.redis.del(`refreshToken:${userId}`);
+  }
+
+  private async forceDisconnectUser(userId: string): Promise<void> {
+    try {
+      
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+      const existingClientId = await this.redis.get(connectionKey);
+      
+      if (existingClientId) {
+        const sockets = await this.socketService.server.fetchSockets();
+        const oldSocket = sockets.find((s) => s.id === existingClientId);
+        
+        if (oldSocket) {
+          console.log(`Force disconnecting socket ${existingClientId} for user ${userId}`);
+          oldSocket.disconnect(true);
+          
+          oldSocket.emit('force_logout', {
+            message: 'You have been logged out due to login on another device',
+            reason: 'MULTIPLE_DEVICE_LOGIN'
+          });
+        }
+        
+        await this.redis.del(connectionKey);
+      }
+    } catch (error) {
+      console.error('Error force disconnecting user:', error);
+    }
+  }
+
+  private async cleanupPilotData(userId: string): Promise<void> {
+    try {
+      // 1. Remove from geospatial set
+      await this.redis.zRem(RedisKeys.PILOT_LOCATION, userId);
+      
+      // 2. Clean up active ride if any
+      await this.redis.removeActiveRide(userId);
+      
+      // 3. Update pilot status to offline
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { 
+          onlineStatus: PilotStatus.OFFLINE,
+          activeBookingId: null 
+        }
+      });
+      
+      console.log(`Cleaned up pilot data for user ${userId}`);
+    } catch (error) {
+      console.error('Error cleaning up pilot data:', error);
+    }
   }
 }

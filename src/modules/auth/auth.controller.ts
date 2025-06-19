@@ -76,4 +76,16 @@ export class AuthController {
   async deleteAccount(@CurrentUser('userId') userId: string) {
     return await this.authService.deleteAccount(userId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
+  @Post('logout')
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Logout' })
+  async logout(
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.authService.logout(userId);
+  }
 }

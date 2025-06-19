@@ -4,9 +4,10 @@ import { AuthService } from './auth.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { RideModule } from '../ride/ride.module';
 import { GeofencingModule } from 'src/core/geofencing/geofencing.module';
+import { SocketModule } from 'src/core/socket/socket.module';
 
 @Module({
-  imports: [RideModule, GeofencingModule],
+  imports: [RideModule, GeofencingModule, SocketModule],
   providers: [AuthService, OTPService],
   controllers: [AuthController],
 })

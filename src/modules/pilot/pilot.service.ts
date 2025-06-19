@@ -1345,7 +1345,7 @@ export class PilotService {
       if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified number plate.');
       }
-      
+
       const vehicle = await this.prisma.vehicle.findFirst({
         where: { pilotId: pilot.id },
         select: {

@@ -152,23 +152,113 @@ export class RideService {
 
   async getRideDetails(bookingId: string, userId: string) {
     try {
-      
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
 
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
+          id: true,
+          bookingCode: true,
           status: true,
+          estimatedDuration: true,
+          tripStart: true,
           customerId: true,
+          estimatedFare: true,
+          discountedFare: true,
+          pickupLocation: true,
+          dropLocation: true,
+          customer: {
+            select: {
+              coupon: {
+                select: {
+                  id: true,
+                  name: true,
+                  discount: true,
+                  validUntil: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
+          pilot: {
+            select: {
+              selfieUrl: true,
+              phone: true,
+              userId: true,
+              vehicle: {
+                select: {
+                  regNo: true,
+                  model: true,
+                  colour: true,
+                  vehicleTypeBD: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+              averageRating: true,
+              drivingLicense: {
+                select: {
+                  nameOnLicense: true,
+                },
+              },
+            },
+          },
         },
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
       }
-      if (booking.customerId !== userId) {
-        throw new ForbiddenException('You are not authorized to access this ride.');
+      if (booking.customerId !== customer.id) {
+        throw new ForbiddenException(
+          'You are not authorized to access this ride.',
+        );
       }
-      
-      return booking;
+
+      const pilotLocation = await this.redis.geoPos(
+        RedisKeys.PILOT_LOCATION,
+        booking.pilot.userId,
+      );
+
+      const data: CustomerRidePayload = {
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        bookingStatus: booking.status,
+        estimatedDuration: booking.estimatedDuration,
+        tripStart: booking.tripStart,
+        pilot: {
+          pilotName: booking.pilot.drivingLicense.nameOnLicense,
+          profilePicture: booking.pilot.selfieUrl,
+          pilotPhone: booking.pilot.phone,
+          rating: booking.pilot.averageRating,
+          pilotLocation: {
+            lat: pilotLocation[0],
+            lng: pilotLocation[1],
+          },
+          vehicleNumber: booking.pilot.vehicle.regNo,
+          model: booking.pilot.vehicle.model,
+          colour: booking.pilot.vehicle.colour,
+          vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
+        },
+        pickupInMinutes: null,
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
+        fairDetails: {
+          originalFare: Math.ceil(Number(booking.estimatedFare)),
+          discountedFare: Math.ceil(Number(booking.discountedFare)),
+          coupon: booking.customer.coupon,
+        },
+        otherPassengerInfo: null,
+      };
+
+      return {
+        message: 'Ride details fetched successfully',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;

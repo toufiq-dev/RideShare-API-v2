@@ -151,7 +151,10 @@ export class RideController {
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get ride details' })
-  async getRideDetails(@Param('bookingId') bookingId: string, @CurrentUser('userId') userId: string) {
+  async getRideDetails(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
     return await this.rideService.getRideDetails(bookingId, userId);
   }
 

@@ -45,12 +45,12 @@ export class SocketService {
       }
 
       // 1. Verify token is still valid in Redis
-    const storedAccessToken = await this.redis.get(`accessToken:${userId}`);
-    if (!storedAccessToken || storedAccessToken !== token) {
-      console.log(`Token mismatch for user ${userId} - disconnecting`);
-      client.disconnect(true);
-      throw new WsException('Token has been invalidated');
-    }
+      const storedAccessToken = await this.redis.get(`accessToken:${userId}`);
+      if (!storedAccessToken || storedAccessToken !== token) {
+        console.log(`Token mismatch for user ${userId} - disconnecting`);
+        client.disconnect(true);
+        throw new WsException('Token has been invalidated');
+      }
 
       // Check for existing connection
       const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;

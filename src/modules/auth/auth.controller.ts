@@ -83,9 +83,7 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(200)
   @ApiOperation({ summary: 'Logout' })
-  async logout(
-    @CurrentUser('userId') userId: string,
-  ) {
+  async logout(@CurrentUser('userId') userId: string) {
     return await this.authService.logout(userId);
   }
 }

@@ -961,13 +961,6 @@ export class PilotService {
         );
       }
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isDLVerified: VerificationStatus.IN_PROGRESS,
-        },
-      });
-
       const data = await this.prisma.drivingLicense.upsert({
         where: { pilotId: pilot.id },
         update: {
@@ -982,6 +975,13 @@ export class PilotService {
           validUntill: expiryDate,
           nameOnLicense: name,
           pilotId: pilot.id,
+        },
+      });
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isDLVerified: VerificationStatus.IN_PROGRESS,
         },
       });
 
@@ -1095,13 +1095,6 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified NID.');
       }
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isNidVerified: VerificationStatus.IN_PROGRESS,
-        },
-      });
-
       const data = await this.prisma.nid.upsert({
         where: { pilotId: pilot.id },
         update: {
@@ -1114,6 +1107,13 @@ export class PilotService {
           name,
           dateOfBirth,
           pilotId: pilot.id,
+        },
+      });
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isNidVerified: VerificationStatus.IN_PROGRESS,
         },
       });
 

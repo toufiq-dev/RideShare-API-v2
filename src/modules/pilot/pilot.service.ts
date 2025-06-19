@@ -1362,6 +1362,13 @@ export class PilotService {
       //   );
       // }
 
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
+        },
+      });
+
       return {
         message: 'Number plate added successfully.',
         data: {

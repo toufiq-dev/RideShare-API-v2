@@ -171,6 +171,25 @@ export class AuthService {
         countryCode as Country,
       );
 
+      let isAlreadyRegistered = true;
+      if (role === RoleEnum.CUSTOMER) {
+        isAlreadyRegistered = customer.isAlreadyRegistered;
+        if (!customer.isAlreadyRegistered) {
+          await this.prisma.customer.update({
+            where: { id: customer.id },
+            data: { isAlreadyRegistered: true },
+          });
+        }
+      } else if (role === RoleEnum.PILOT) {
+        isAlreadyRegistered = pilot.isAlreadyRegistered;
+        if (!pilot.isAlreadyRegistered) {
+          await this.prisma.pilot.update({
+            where: { id: pilot.id },
+            data: { isAlreadyRegistered: true },
+          });
+        }
+      }
+
       const device = await this.prisma.deviceToken.findUnique({
         where: { userId: user.id },
       });
@@ -473,7 +492,6 @@ export class AuthService {
             userId: user.id,
             languageId,
             referralCode,
-            isAlreadyRegistered: true,
           },
         });
       }

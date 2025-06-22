@@ -165,7 +165,7 @@ export class CustomerService {
       const customer = await this.prisma.customer.findUnique({
         where: { userId: user.id },
       });
-      if (customer.isAlreadyRegistered) {
+      if (customer.isOnboardingCompleted) {
         throw new BadRequestException('Customer already Onboarded.');
       }
 
@@ -174,7 +174,7 @@ export class CustomerService {
         data: {
           name,
           email,
-          isAlreadyRegistered: true,
+          isOnboardingCompleted: true,
         },
       });
 

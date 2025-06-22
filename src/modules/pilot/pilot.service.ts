@@ -1362,7 +1362,9 @@ export class PilotService {
         },
       });
       if (!vehicle) {
-        throw new BadRequestException('Vehicle not found.');
+        throw new BadRequestException(
+          'You did not upload any vehicle registration number.',
+        );
       }
 
       // if (!vehicle.regNo.includes(numberPlate)) {

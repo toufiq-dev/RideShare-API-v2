@@ -75,27 +75,28 @@ model Support {
 }
 
 model Customer {
-  id                  String           @id @default(uuid())
-  phone               String           @unique
-  email               String?          @unique
-  userId              String           @unique
-  isAlreadyRegistered Boolean          @default(false)
-  isEmailVerified     Boolean          @default(false)
-  name                String?
-  avatar              String?
-  averageRating       Float            @default(5.0)
-  createdAt           DateTime         @default(now()) @db.Timestamptz
-  updatedAt           DateTime         @updatedAt @db.Timestamptz
-  languageId          String
-  couponId            String?
-  activeBookingId     String?          @unique
-  activeBooking       Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
-  bookings            Booking[]
-  language            Languages        @relation(fields: [languageId], references: [id])
-  coupon              Coupon?          @relation(fields: [couponId], references: [id])
-  user                User             @relation(fields: [userId], references: [id])
-  ratings             CustomerRating[]
-  savedPlaces         SavedPlace[]
+  id                    String           @id @default(uuid())
+  phone                 String           @unique
+  email                 String?          @unique
+  userId                String           @unique
+  isAlreadyRegistered   Boolean          @default(false)
+  isOnboardingCompleted Boolean          @default(false)
+  isEmailVerified       Boolean          @default(false)
+  name                  String?
+  avatar                String?
+  averageRating         Float            @default(5.0)
+  createdAt             DateTime         @default(now()) @db.Timestamptz
+  updatedAt             DateTime         @updatedAt @db.Timestamptz
+  languageId            String
+  couponId              String?
+  activeBookingId       String?          @unique
+  activeBooking         Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
+  bookings              Booking[]
+  language              Languages        @relation(fields: [languageId], references: [id])
+  coupon                Coupon?          @relation(fields: [couponId], references: [id])
+  user                  User             @relation(fields: [userId], references: [id])
+  ratings               CustomerRating[]
+  savedPlaces           SavedPlace[]
 }
 
 model Coupon {

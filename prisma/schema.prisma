@@ -15,6 +15,15 @@ model Platform {
   appDescription     AppPlatform @unique
 }
 
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+}
+
 model User {
   id             String          @id @default(uuid())
   role           UserRole

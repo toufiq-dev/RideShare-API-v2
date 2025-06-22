@@ -1944,7 +1944,7 @@ export class RideService {
         select: { id: true, coupon: true },
       });
       if (!customer) {
-        throw new NotFoundException('Pilot not found.');
+        throw new NotFoundException('Customer not found.');
       }
 
       const skip = (page - 1) * pageSize;
@@ -1980,6 +1980,8 @@ export class RideService {
           },
         }),
       ]);
+
+      console.log('bookings', bookings);
 
       if (customer.coupon) {
         customer.coupon.discount = Number(customer.coupon.discount);

@@ -146,18 +146,6 @@ export class RideController {
     );
   }
 
-  @Roles(RoleEnum.CUSTOMER)
-  @Get(':bookingId')
-  @HttpCode(200)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get ride details' })
-  async getRideDetails(
-    @Param('bookingId') bookingId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.rideService.getRideDetails(bookingId, userId);
-  }
-
   @Roles(RoleEnum.PILOT, RoleEnum.CUSTOMER)
   @Post('rating')
   @HttpCode(200)
@@ -203,6 +191,19 @@ export class RideController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
   ) {
+    console.log('customer trips', status);
     return await this.rideService.getMyTrips(userId, status, page, pageSize);
+  }
+
+  @Roles(RoleEnum.CUSTOMER)
+  @Get(':bookingId')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get ride details' })
+  async getRideDetails(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.getRideDetails(bookingId, userId);
   }
 }

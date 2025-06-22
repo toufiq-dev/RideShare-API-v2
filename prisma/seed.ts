@@ -1,5 +1,6 @@
 import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD, VerificationStatus } from '@prisma/client';
 import { CouponsNames } from '../src/modules/admin/admin.constants';
+import { randomInt } from 'node:crypto';
 
 const prisma = new PrismaClient();
 
@@ -178,19 +179,22 @@ async function main() {
   }
 
 
+  const vehicleTypeIds = [];
   for (const vehicleType of vehicleTypesBD) {
-    const existingVehicleType = await prisma.vehicleTypeBD.findUnique({
+    let vehicleTypeBD = await prisma.vehicleTypeBD.findUnique({
       where: { name: vehicleType.name },
     });
 
-    if (!existingVehicleType) {
-      await prisma.vehicleTypeBD.create({
+    if (!vehicleTypeBD) {
+      vehicleTypeBD = await prisma.vehicleTypeBD.create({
         data: vehicleType,
       });
       console.log(`Created vehicle type: ${vehicleType.name}`);
     } else {
       console.log(`Vehicle type ${vehicleType.name} already exists`);
     }
+
+    vehicleTypeIds.push(vehicleTypeBD.id);
   }
 
   for (const subscription of subscriptionTypes) {
@@ -246,6 +250,9 @@ async function main() {
   if (users.length !== pilots.length) {
     throw new Error('The number of users and pilots must match for seeding.');
   }
+
+  const randromNumber = randomInt(0, vehicleTypeIds.length - 1);
+  console.log('randromNumber', randromNumber);
   
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -276,6 +283,9 @@ async function main() {
         languageId: english.id,
         isDLVerified: VerificationStatus.APPROVED,
         isRCVerified: VerificationStatus.APPROVED,
+        isNidVerified: VerificationStatus.APPROVED,
+        isSelfieVerified: VerificationStatus.APPROVED,
+        isNumberPlateVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true
       },
     });
@@ -312,7 +322,7 @@ async function main() {
         seatCapacity: '4',
         state: 'Maharashtra',
         pilotId: newPilot.id,
-        vehicleTypeIdBD: vehicleType.id,
+        vehicleTypeIdBD: vehicleTypeIds[randromNumber],
       },
     });
   

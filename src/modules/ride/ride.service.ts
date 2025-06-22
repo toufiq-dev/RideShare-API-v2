@@ -394,6 +394,14 @@ export class RideService {
     const { bookingId } = rideRequestAgainDto;
 
     try {
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
       const booking: any = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
@@ -1966,6 +1974,11 @@ export class RideService {
             status: true,
             estimatedFare: true,
             createdAt: true,
+            vehicle: {
+              select: {
+                vehicleTypeBD: { select: { name: true } },
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -2006,12 +2019,17 @@ export class RideService {
           coupon: customer.coupon,
         };
 
+        const pilot = {
+          vehicleType: booking.vehicle?.vehicleTypeBD?.name,
+        };
+
         return {
           ...rest,
           bookingId: id,
           bookingStatus: status,
           fairDetails,
           otherPassengerInfo: rideType === RideType.OTHERS ? { name } : null,
+          pilot,
         };
       });
 

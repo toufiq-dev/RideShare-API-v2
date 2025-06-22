@@ -191,7 +191,6 @@ export class RideController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
   ) {
-    console.log('customer trips', status);
     return await this.rideService.getMyTrips(userId, status, page, pageSize);
   }
 

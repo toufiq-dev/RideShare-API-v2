@@ -6,7 +6,8 @@ import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.
 import moment from 'moment-timezone';
 import OpenAI from 'openai';
 import { PrismaService } from '../database/prisma.service';
-import { VehicleTypeName } from '@prisma/client';
+import { VehicleTypeName, VehicleTypeNameBD } from '@prisma/client';
+import { buffer } from 'node:stream/consumers';
 
 @Injectable()
 export class VerificationService {
@@ -27,6 +28,7 @@ export class VerificationService {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly openAiApiKey: string;
+  private readonly openai: OpenAI;
 
   constructor(
     private readonly configService: ConfigService,
@@ -72,17 +74,16 @@ export class VerificationService {
       'cashfreeAadhaar.clientSecret',
     );
     this.openAiApiKey = this.configService.get<string>('OPENAI_API_KEY');
+    this.openai = new OpenAI({
+      apiKey: this.openAiApiKey,
+    });
   }
 
   async extractDLData(buffer: Buffer) {
-    const openai = new OpenAI({
-      apiKey: this.openAiApiKey,
-    });
-
     try {
       const base64Image = buffer.toString('base64');
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {
@@ -95,8 +96,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: `Extract the following information from this Bangladeshi driving license and return it as a valid JSON object: Name, Date of Birth, License Number, License Expiry Date.
-                Do not include any markdown formatting or backticks in your response. The keys should be: name, dateOfBirth, licenseNumber, licenseExpiryDate.
+                text: `Extract the Name, Date of Birth, License Number, License Expiry Date from this Bangladeshi driving license and return it as a valid JSON object.
+                Do not include any markdown formatting or backticks in your response.
+                The keys should be: name, dateOfBirth, licenseNumber, licenseExpiryDate.
                 If the driving license is not valid or not readable, return null.`,
               },
               {
@@ -128,14 +130,10 @@ export class VerificationService {
   }
 
   async extractNidData(buffer: Buffer) {
-    const openai = new OpenAI({
-      apiKey: this.openAiApiKey,
-    });
-
     try {
       const base64Image = buffer.toString('base64');
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {
@@ -148,8 +146,9 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: `Extract the following information from this Bangladeshi NID card and return it as a valid JSON object: NID Number, Name and Date of Birth.
-                Do not include any markdown formatting or backticks in your response. The keys should be: nidNumber, name, dateOfBirth.
+                text: `Extract the NID Number, Name and Date of Birth from this Bangladeshi NID card and return it as a valid JSON object.
+                Do not include any markdown formatting or backticks in your response.
+                The keys should be: nidNumber, name, dateOfBirth.
                 If the NID card is not valid or not readable, return null.`,
               },
               {
@@ -179,14 +178,10 @@ export class VerificationService {
   }
 
   async extractRCData(buffer: Buffer) {
-    const openai = new OpenAI({
-      apiKey: this.openAiApiKey,
-    });
-
     try {
       const base64Image = buffer.toString('base64');
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {
@@ -199,11 +194,10 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: `Extract the following information from this Bangladeshi RC card and return it as a valid JSON object: Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Vehicle Colour.
-                Do not include any markdown formatting or backticks in your response. The RC card is a vehicle registration card and it can contain Bengali Language, translate relevant data to English. 
-                Also classify the vehicle in one of these types FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
-                The keys should be: vehicleNumber, vehicleType, registrationDate, vehicleColour.
-                If the RC card is not valid or not readable, return null.`,
+                text: `Extract the Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Vehicle Colour from this Bangladeshi RC card and return it as a valid JSON object.
+                Do not include any markdown formatting or backticks in your response.
+                The RC card is a vehicle registration card and it can contain Bengali Language, translate relevant data to English.
+                The keys should be: vehicleNumber, vehicleType, registrationDate, vehicleColour. If the RC card is not valid or not readable, return null.`,
               },
               {
                 type: 'image_url',
@@ -230,15 +224,51 @@ export class VerificationService {
     }
   }
 
-  async extractNumberPlateData(buffer: Buffer) {
-    const openai = new OpenAI({
-      apiKey: this.openAiApiKey,
-    });
+  async mapVehicleType(vehicleType: string): Promise<VehicleTypeNameBD> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert in mapping vehicle types.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Map the vehicle type ${vehicleType} to a valid vehicle type of our system i.e. FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
+                The vehicle types FAIR_PRIME, FAIR_PLUS, FAIR_MAX are for cars and FAIR_BIKE for motorcycles, FAIR_CNG are for CNG vehicles.
+                Do not include any markdown formatting or backticks in your response.
+                If the vehicle type is not valid or not readable, return null.`,
+              },
+            ],
+          },
+        ],
+        max_tokens: 1000,
+      });
 
+      const content = response.choices[0].message.content;
+
+      console.log('content of vehicle type', content);
+
+      if (!content) {
+        throw new BadRequestException('Failed to map vehicle type.');
+      }
+
+      return content as VehicleTypeNameBD;
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Failed to map vehicle type.');
+    }
+  }
+
+  async extractNumberPlateData(buffer: Buffer) {
     try {
       const base64Image = buffer.toString('base64');
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {

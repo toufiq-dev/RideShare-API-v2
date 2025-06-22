@@ -1981,8 +1981,6 @@ export class RideService {
         }),
       ]);
 
-      console.log('bookings', bookings);
-
       if (customer.coupon) {
         customer.coupon.discount = Number(customer.coupon.discount);
       }

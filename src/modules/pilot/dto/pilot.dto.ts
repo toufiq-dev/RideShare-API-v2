@@ -71,8 +71,8 @@ export class BDRCDto {
 
   @ApiProperty({ description: 'Vehicle type' })
   @IsNotEmpty({ message: 'Vehicle type is required' })
-  @IsEnum(VehicleTypeNameBD)
-  vehicleType: VehicleTypeNameBD;
+  @IsString()
+  vehicleType: string;
 
   @ApiProperty({ description: 'Registration date' })
   @IsNotEmpty({ message: 'Registration date is required' })

@@ -1222,7 +1222,7 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      console.log('pilot.isRCVerified', pilot.isRCVerified);
+
       if (pilot.isRCVerified === VerificationStatus.APPROVED) {
         throw new BadRequestException('Pilot already verified RC.');
       }
@@ -1234,15 +1234,24 @@ export class PilotService {
         },
       });
 
-      const vehicleTypeBD = await this.prisma.vehicleTypeBD.findFirst({
-        where: {
-          name: vehicleType as VehicleTypeNameBD,
-        },
-      });
+      const vehicleTypeBD =
+        await this.verificationService.mapVehicleType(vehicleType);
 
-      if (!vehicleTypeBD) {
+      if (
+        !vehicleTypeBD ||
+        !Object.values(VehicleTypeNameBD).includes(vehicleTypeBD)
+      ) {
         throw new BadRequestException('Invalid vehicle type');
       }
+
+      const vehicleTypeBDId = await this.prisma.vehicleTypeBD.findUnique({
+        where: {
+          name: vehicleTypeBD,
+        },
+        select: {
+          id: true,
+        },
+      });
 
       const data = await this.prisma.vehicle.upsert({
         where: { pilotId: pilot.id },
@@ -1252,7 +1261,7 @@ export class PilotService {
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
-          vehicleTypeIdBD: vehicleTypeBD.id,
+          vehicleTypeIdBD: vehicleTypeBDId.id,
         },
         update: {
           regNo: vehicleNumber,
@@ -1260,7 +1269,7 @@ export class PilotService {
           colour: vehicleColour,
           model: vehicleType,
           pilotId: pilot.id,
-          vehicleTypeIdBD: vehicleTypeBD.id,
+          vehicleTypeIdBD: vehicleTypeBDId.id,
         },
       });
 

@@ -18,7 +18,7 @@ model Platform {
 model SystemConfig {
   id          String   @id @default(uuid())
   key         String   @unique
-  value       String
+  value       Json
   description String?
   createdAt   DateTime @default(now()) @db.Timestamptz
   updatedAt   DateTime @updatedAt @db.Timestamptz
@@ -291,19 +291,23 @@ model PilotTrips {
 }
 
 model PilotWallet {
-  id              String        @id @default(uuid())
-  pilotId         String        @unique
-  balance         Decimal       @db.Decimal(10, 2)
-  minusLimit      Decimal       @default(100.00) @db.Decimal(10, 2)
-  todaysEarning   Decimal?      @default(0.00) @db.Decimal(10, 2)
-  lastTripEarning Decimal?      @default(0.00) @db.Decimal(10, 2)
-  subscriptionId  String
-  date            DateTime?     @db.Timestamptz
-  createdAt       DateTime      @default(now()) @db.Timestamptz
-  updatedAt       DateTime      @updatedAt @db.Timestamptz
-  pilot           Pilot         @relation(fields: [pilotId], references: [id])
-  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
-  transactions    Transaction[]
+  id                       String        @id @default(uuid())
+  pilotId                  String        @unique
+  balance                  Decimal       @db.Decimal(10, 2)
+  minusLimit               Decimal       @default(100.00) @db.Decimal(10, 2)
+  todaysEarning            Decimal?      @default(0.00) @db.Decimal(10, 2)
+  lastTripEarning          Decimal?      @default(0.00) @db.Decimal(10, 2)
+  subscriptionId           String
+  autoRechargeEnabled      Boolean?      @default(false)
+  autoRechargeEnabledUntil DateTime?     @db.Timestamptz
+  autoRechargeAmount       Decimal?      @default(0.00) @db.Decimal(10, 2)
+  autoRechargeDate         DateTime?     @db.Timestamptz
+  date                     DateTime?     @db.Timestamptz
+  createdAt                DateTime      @default(now()) @db.Timestamptz
+  updatedAt                DateTime      @updatedAt @db.Timestamptz
+  pilot                    Pilot         @relation(fields: [pilotId], references: [id])
+  subscription             Subscription  @relation(fields: [subscriptionId], references: [id])
+  transactions             Transaction[]
 }
 
 model Transaction {
@@ -547,6 +551,7 @@ enum TransactionType {
   SUBSCRIPTION_PURCHASE
   TRIP_DEDUCTION
   ONBOARDING_OFFER
+  AUTO_RECHARGE
 }
 
 enum SupportType {

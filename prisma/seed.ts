@@ -386,6 +386,26 @@ async function main() {
     }
   }
 
+  await prisma.systemConfig.upsert({
+    where: { key: 'bonusRechargeThreshold' },
+    update: {},
+    create: {
+      key: 'bonusRechargeThreshold',
+      value: { amount: 300 },
+      description: 'Low balance threshold to trigger bonus recharge eligibility.',
+    },
+  });
+
+  await prisma.systemConfig.upsert({
+    where: { key: 'bonusRechargeAmount' },
+    update: {},
+    create: {
+      key: 'bonusRechargeAmount',
+      value: { amount: 2000 },
+      description: 'The amount to be given as a bonus recharge.',
+    },
+  });
+
   console.log('Seeding vehicle types finished.');
   console.log('Seeding languages and vehicle types finished.');
   console.log('Seeding subscription types finished.');

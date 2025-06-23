@@ -1099,29 +1099,6 @@ export class RideService {
           },
         });
 
-        // Cut farecoins from pilot wallet
-        const wallet = await tx.pilotWallet.update({
-          where: { pilotId: pilot.id },
-          data: {
-            balance: {
-              decrement: Math.ceil(Number(updated.discountedFare)),
-            },
-            date: moment.utc().toDate(),
-          },
-          select: { id: true, balance: true },
-        });
-
-        await tx.transaction.create({
-          data: {
-            pilotId: pilot.id,
-            amount: Math.ceil(Number(updated.discountedFare)),
-            walletId: wallet.id,
-            type: TransactionType.TRIP_DEDUCTION,
-            balanceBefore: Math.ceil(Number(wallet.balance)),
-            status: TransactionStatus.SUCCESSFUL,
-          },
-        });
-
         return { updated };
       });
 
@@ -1331,18 +1308,70 @@ export class RideService {
 
         const todaysEarningValue = todayEarnings._sum.amount || 0;
 
+        const wallet = await tx.pilotWallet.findUnique({
+          where: { pilotId: pilot.id },
+          select: { id: true, balance: true },
+        });
+
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
+            balance: {
+              decrement: tripAmount,
+            },
             todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
             date: nowDhaka.toDate(),
           },
         });
+
+        await tx.transaction.create({
+          data: {
+            pilotId: pilot.id,
+            amount: tripAmount,
+            walletId: wallet.id,
+            type: TransactionType.TRIP_DEDUCTION,
+            balanceBefore: Math.ceil(Number(wallet.balance)),
+            status: TransactionStatus.SUCCESSFUL,
+          },
+        });
+
         return { updated };
       });
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
+
+      // Check balance for auto recharge
+      const updatedWallet = await this.prisma.pilotWallet.findUnique({
+        where: { pilotId: pilot.id },
+        select: { id: true, balance: true },
+      });
+      const newBalance = Number(updatedWallet.balance);
+
+      // Get bonus threshold from config
+      const bonusConfig = await this.prisma.systemConfig.findUnique({
+        where: { key: 'bonusRechargeThreshold' },
+      });
+      const threshold = bonusConfig?.value['amount'] ?? 300;
+
+      // Check if balance is below threshold
+      if (newBalance < threshold) {
+        await this.prisma.pilotWallet.update({
+          where: { pilotId: pilot.id },
+          data: {
+            autoRechargeEnabled: true,
+          },
+        });
+
+        await this.rideNotificationService.notifyLowBalance(pilot.userId);
+
+        setTimeout(
+          async () => {
+            await this.rideNotificationService.notifyAutoRecharge(pilot.userId);
+          },
+          1000 * 60 * 3,
+        ); // 3 minutes
+      }
 
       if (result.updated.customer.coupon) {
         result.updated.customer.coupon.discount = Number(

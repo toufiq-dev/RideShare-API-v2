@@ -231,6 +231,24 @@ export class RideNotificationService {
     ]);
   }
 
+  async notifyLowBalance(pilotUserId: string) {
+    await this.sendPushNotification(
+      pilotUserId,
+      'Low Balance',
+      `Your balance is low. Please recharge your balance.`,
+      { pilotUserId },
+    );
+  }
+
+  async notifyAutoRecharge(pilotUserId: string) {
+    await this.sendPushNotification(
+      pilotUserId,
+      'Bonus Recharge',
+      `You are eligible for a bonus recharge.`,
+      { pilotUserId },
+    );
+  }
+
   notifyError(userId: string, message: string, error?: string) {
     this.server.to(userId).emit(RideEvents.ERROR, { message, error });
   }

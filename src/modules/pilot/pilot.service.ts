@@ -646,40 +646,118 @@ export class PilotService {
         pilot.isDLVerified !== VerificationStatus.APPROVED ||
         pilot.isRCVerified !== VerificationStatus.APPROVED
       ) {
-        throw new BadRequestException('Driving License or RC is not verfied.');
+        throw new BadRequestException(
+          'Your Driving License or RC is not verfied.',
+        );
       }
 
       const subscription = await this.prisma.subscription.findUnique({
         where: { name: 'Flexi Pack' },
       });
 
-      const wallet = await this.prisma.pilotWallet.create({
-        data: {
-          pilotId: pilot.id,
-          balance: subscription.coins,
-          subscriptionId: subscription.id,
-        },
-      });
+      await this.prisma.$transaction(async (tx) => {
+        const wallet = await tx.pilotWallet.create({
+          data: {
+            pilotId: pilot.id,
+            balance: subscription.coins,
+            subscriptionId: subscription.id,
+          },
+        });
 
-      await this.prisma.transaction.create({
-        data: {
-          pilotId: pilot.id,
-          amount: 0,
-          walletId: wallet.id,
-          type: TransactionType.ONBOARDING_OFFER,
-          status: TransactionStatus.SUCCESSFUL,
-        },
-      });
+        await tx.transaction.create({
+          data: {
+            pilotId: pilot.id,
+            amount: 0,
+            walletId: wallet.id,
+            type: TransactionType.ONBOARDING_OFFER,
+            status: TransactionStatus.SUCCESSFUL,
+          },
+        });
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isFairCoinAvailed: true,
-        },
+        await tx.pilot.update({
+          where: { userId },
+          data: {
+            isFairCoinAvailed: true,
+          },
+        });
       });
 
       return {
         message: 'Pilot onboarding coins availed successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async availBonusRecharge(userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      const wallet = await this.prisma.pilotWallet.findUnique({
+        where: { pilotId: pilot.id },
+      });
+      if (!wallet) {
+        throw new NotFoundException('Pilot wallet not found.');
+      }
+
+      if (!wallet.autoRechargeEnabled) {
+        throw new BadRequestException(
+          'No bonus recharge available for you at the moment.',
+        );
+      }
+
+      const bonusConfig = await this.prisma.systemConfig.findUnique({
+        where: { key: 'bonusRechargeAmount' },
+      });
+      const bonusAmount = bonusConfig?.value['amount'] ?? 2000; // Default to 2000
+
+      const balanceBefore = Number(wallet.balance);
+      const balanceAfter = balanceBefore + bonusAmount;
+
+      await this.prisma.$transaction(async (tx) => {
+        // Update wallet with bonus
+        await tx.pilotWallet.update({
+          where: { pilotId: pilot.id },
+          data: {
+            balance: balanceAfter,
+          },
+        });
+
+        // Create the transaction record
+        await tx.transaction.create({
+          data: {
+            pilotId: pilot.id,
+            amount: bonusAmount,
+            walletId: wallet.id,
+            type: TransactionType.AUTO_RECHARGE,
+            status: TransactionStatus.SUCCESSFUL,
+            balanceBefore,
+            balanceAfter,
+          },
+        });
+
+        // Reset the bonus eligibility flag
+        await tx.pilotWallet.update({
+          where: { pilotId: pilot.id },
+          data: {
+            autoRechargeEnabled: false,
+            autoRechargeAmount: bonusAmount,
+            autoRechargeDate: moment.utc().toDate(),
+            autoRechargeEnabledUntil: moment.utc().add(1, 'day').toDate(),
+          },
+        });
+      });
+
+      return {
+        message: 'Bonus recharge availed successfully!',
+        data: {
+          bonusAmount,
+          newBalance: balanceAfter,
+        },
       };
     } catch (error) {
       console.error(error);

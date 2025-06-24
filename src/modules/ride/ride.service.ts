@@ -43,16 +43,24 @@ import { LocationDto } from 'src/common/dto/common.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RideService {
+  private readonly bonusRechargeThreshold: string;
+
   constructor(
     private prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly rideNotificationService: RideNotificationService,
     private readonly fareService: FareService,
     @InjectQueue('ride-request') private readonly rideQueue: Queue,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.bonusRechargeThreshold = this.configService.get<string>(
+      'systemConfig.bonusRechargeThreshold',
+    );
+  }
 
   async enqueueRideRequest(payload: RideRequestPayload) {
     try {
@@ -1341,6 +1349,7 @@ export class RideService {
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
 
+      /// *** Auto recharge logic ***
       // Check balance for auto recharge
       const updatedWallet = await this.prisma.pilotWallet.findUnique({
         where: { pilotId: pilot.id },
@@ -1350,7 +1359,7 @@ export class RideService {
 
       // Get bonus threshold from config
       const bonusConfig = await this.prisma.systemConfig.findUnique({
-        where: { key: 'bonusRechargeThreshold' },
+        where: { key: this.bonusRechargeThreshold },
       });
       const threshold = bonusConfig?.value['amount'] ?? 300;
 
@@ -1364,14 +1373,8 @@ export class RideService {
         });
 
         await this.rideNotificationService.notifyLowBalance(pilot.userId);
-
-        setTimeout(
-          async () => {
-            await this.rideNotificationService.notifyAutoRecharge(pilot.userId);
-          },
-          1000 * 60 * 3,
-        ); // 3 minutes
       }
+      /// *** End of auto recharge logic ***
 
       if (result.updated.customer.coupon) {
         result.updated.customer.coupon.discount = Number(

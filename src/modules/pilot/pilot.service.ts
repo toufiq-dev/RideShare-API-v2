@@ -40,15 +40,21 @@ import {
 import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PilotService {
+  private readonly flexiPack: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly azureServicce: AzureService,
     private readonly verificationService: VerificationService,
     private readonly redis: RedisService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.flexiPack = this.configService.get<string>('subscription.flexiPack');
+  }
 
   async getPilot(userId: string) {
     try {
@@ -652,7 +658,7 @@ export class PilotService {
       }
 
       const subscription = await this.prisma.subscription.findUnique({
-        where: { name: 'Flexi Pack' },
+        where: { name: this.flexiPack },
       });
 
       await this.prisma.$transaction(async (tx) => {
@@ -710,13 +716,12 @@ export class PilotService {
         );
       }
 
-      const bonusConfig = await this.prisma.systemConfig.findUnique({
-        where: { key: 'bonusRechargeAmount' },
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { name: this.flexiPack },
       });
-      const bonusAmount = bonusConfig?.value['amount'] ?? 2000; // Default to 2000
 
       const balanceBefore = Number(wallet.balance);
-      const balanceAfter = balanceBefore + bonusAmount;
+      const balanceAfter = balanceBefore + Number(subscription.coins);
 
       await this.prisma.$transaction(async (tx) => {
         // Update wallet with bonus
@@ -731,7 +736,7 @@ export class PilotService {
         await tx.transaction.create({
           data: {
             pilotId: pilot.id,
-            amount: bonusAmount,
+            amount: Number(subscription.coins),
             walletId: wallet.id,
             type: TransactionType.AUTO_RECHARGE,
             status: TransactionStatus.SUCCESSFUL,
@@ -745,7 +750,7 @@ export class PilotService {
           where: { pilotId: pilot.id },
           data: {
             autoRechargeEnabled: false,
-            autoRechargeAmount: bonusAmount,
+            autoRechargeAmount: Number(subscription.coins),
             autoRechargeDate: moment.utc().toDate(),
             autoRechargeEnabledUntil: moment.utc().add(1, 'day').toDate(),
           },
@@ -755,7 +760,7 @@ export class PilotService {
       return {
         message: 'Bonus recharge availed successfully!',
         data: {
-          bonusAmount,
+          bonusAmount: Number(subscription.coins),
           newBalance: balanceAfter,
         },
       };

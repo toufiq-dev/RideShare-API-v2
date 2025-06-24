@@ -155,6 +155,7 @@ model Pilot {
   panCardNumber         String?            @unique
   aadhaarCardNumber     String?            @unique
   aadhaarCardAddress    String?
+  pilotCouponId         String?
   createdAt             DateTime           @default(now()) @db.Timestamptz
   updatedAt             DateTime           @updatedAt @db.Timestamptz
   drivingLicense        DrivingLicense?
@@ -171,6 +172,16 @@ model Pilot {
   vehicle               Vehicle?           @relation("PilotVehicle")
   nid                   Nid?               @relation("PilotNid")
   videoProgress         VideoProgress?
+  pilotCoupon           PilotCoupon?       @relation(fields: [pilotCouponId], references: [id])
+}
+
+model PilotCoupon {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  discount   Decimal   @db.Decimal(10, 2)
+  validUntil DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  pilots     Pilot[]
 }
 
 model Nid {

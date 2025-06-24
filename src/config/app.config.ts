@@ -69,7 +69,11 @@ export default () => ({
     testClientSecret: process.env.PAYMENT_TEST_CLIENT_SECRET,
   },
   subscription: {
-    onboardingOffer: process.env.ONBOARDING_OFFER,
+    onboardingOffer: 'Onboarding Offer',
+    starterPack: 'Starter Pack',
+    proPack: 'Pro Pack',
+    megaPack: 'Mega Pack',
+    flexiPack: 'Flexi Pack',
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
@@ -81,5 +85,8 @@ export default () => ({
     projectId: process.env.FIREBASE_PROJECT_ID,
     privateKey: process.env.FIREBASE_PRIVATE_KEY,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  },
+  systemConfig: {
+    bonusRechargeThreshold: 'bonusRechargeThreshold',
   },
 });

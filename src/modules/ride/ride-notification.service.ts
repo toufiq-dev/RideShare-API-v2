@@ -235,16 +235,7 @@ export class RideNotificationService {
     await this.sendPushNotification(
       pilotUserId,
       'Low Balance',
-      `Your balance is low. Please recharge your balance.`,
-      { pilotUserId },
-    );
-  }
-
-  async notifyAutoRecharge(pilotUserId: string) {
-    await this.sendPushNotification(
-      pilotUserId,
-      'Bonus Recharge',
-      `You are eligible for a bonus recharge.`,
+      `Your balance is low. You are eligible for a bonus recharge.`,
       { pilotUserId },
     );
   }

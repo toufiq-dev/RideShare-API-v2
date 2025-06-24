@@ -171,7 +171,9 @@ async function main() {
     { name: CouponsNames.MINI, discount: 49, validUntil: new Date('2025-12-12') },
   ];
 
-  
+  const pilotCoupons = [
+    { name: 'BonusAutoRecharge', discount: 4500, validUntil: new Date('2025-12-12') },
+  ];
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({
@@ -234,6 +236,23 @@ async function main() {
       console.log(`Created coupon: ${coupon.name}`);
     } else {
       console.log(`Coupon ${coupon.name} already exists`);
+    }
+  }
+
+
+  // Pilot Coupons
+  for (const pilotCoupon of pilotCoupons) {
+    const existingPilotCoupon = await prisma.pilotCoupon.findUnique({
+      where: { name: pilotCoupon.name },
+    });
+
+    if (!existingPilotCoupon) {
+      await prisma.pilotCoupon.create({
+        data: pilotCoupon,
+      });
+      console.log(`Created pilot coupon: ${pilotCoupon.name}`);
+    } else {
+      console.log(`Pilot coupon ${pilotCoupon.name} already exists`);
     }
   }
 
@@ -396,6 +415,7 @@ async function main() {
     }
   }
 
+  // System Config
   await prisma.systemConfig.upsert({
     where: { key: 'bonusRechargeThreshold' },
     update: {},
@@ -403,16 +423,6 @@ async function main() {
       key: 'bonusRechargeThreshold',
       value: { amount: 300 },
       description: 'Low balance threshold to trigger bonus recharge eligibility.',
-    },
-  });
-
-  await prisma.systemConfig.upsert({
-    where: { key: 'bonusRechargeAmount' },
-    update: {},
-    create: {
-      key: 'bonusRechargeAmount',
-      value: { amount: 2000 },
-      description: 'The amount to be given as a bonus recharge.',
     },
   });
 

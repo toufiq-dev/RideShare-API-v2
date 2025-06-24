@@ -204,7 +204,7 @@ export class PilotController {
     return await this.pilotService.onboardingOffer(userId);
   }
 
-  @Post('bonus-recharge')
+  @Get('bonus-recharge')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Avail a bonus recharge when eligible.' })
   async availBonusRecharge(@CurrentUser('userId') userId: string) {

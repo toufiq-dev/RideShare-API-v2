@@ -246,6 +246,8 @@ model VehicleTypeBD {
   baseFare          Decimal?          @db.Decimal(10, 2)
   perKmRate         Decimal?          @db.Decimal(10, 2)
   perMinRate        Decimal?          @db.Decimal(10, 2)
+  minFare           Decimal?          @db.Decimal(10, 2)
+  insuranceFee      Decimal?          @db.Decimal(10, 2)
   vehicle           Vehicle[]
 }
 

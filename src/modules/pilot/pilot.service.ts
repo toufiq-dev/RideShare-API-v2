@@ -1264,7 +1264,11 @@ export class PilotService {
       }
 
       if (
-        !verificationResponse.vehicleNumber &&
+        !verificationResponse.registrationPoint &&
+        !verificationResponse.series &&
+        !verificationResponse.seriesEnglish &&
+        !verificationResponse.number &&
+        !verificationResponse.fullNumber &&
         !verificationResponse.vehicleType &&
         !verificationResponse.registrationDate &&
         !verificationResponse.vehicleColour

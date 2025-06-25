@@ -186,18 +186,127 @@ export class VerificationService {
         messages: [
           {
             role: 'system',
-            content:
-              'You are an expert in extracting RC card data. Extract relevant information from the RC image.',
+            content: `You are an expert in extracting Bangladeshi RC (Registration Certificate) data.
+
+              IMPORTANT: Bangladeshi RC numbers follow this format: [Registration Point] [Bengali Series] [Numbers],
+
+              Examples:
+              - Dhaka Metro ক 1234 → registrationPoint: "DHK METRO", series: "ক", number: "1234"
+              - Chittagong Metro খ 5678 → registrationPoint: "CTG METRO", series: "খ", number: "5678"
+              - Sylhet গ 9012 → registrationPoint: "SYL METRO", series: "গ", number: "9012"
+              - Khulna ঘ 3456 → registrationPoint: "KHL Metro", series: "ঘ", number: "3456"
+              - Rajshahi চ 7890 → registrationPoint: "RAJ METRO", series: "চ", number: "7890"
+
+              REGISTRATION POINT MAPPING (use these exact codes):
+              - Dhaka Metro → "DHK METRO"
+              - Chittagong Metro → "CTG METRO" 
+              - Sylhet Metro → "SYL METRO"
+              - Khulna Metro → "KHL Metro"
+              - Rajshahi Metro → "RAJ METRO"
+              - Bagerhat → "BH"
+              - Barguna → "BN"
+              - Barisal → "BR"
+              - Bhola → "BA"
+              - Bogra → "BO"
+              - Bandarban → "BB"
+              - Chandpur → "CH"
+              - Chapainawabganj → "CN"
+              - Chuadanga → "CD"
+              - Comilla → "CM"
+              - Cox's Bazar → "CB"
+              - Dhaka → "DH"
+              - Dinajpur → "DP"
+              - Feni → "FP"
+              - Faridpur → "FN"
+              - Gaibandha → "GB"
+              - Gazipur → "GP"
+              - Gopalganj → "GO"
+              - Habiganj → "HB"
+              - Jamalpur → "JM"
+              - Jessore → "JS"
+              - Jhenaidah → "JK"
+              - Joypurhat → "JD"
+              - Jhalokati → "JP"
+              - Kishoreganj → "KG"
+              - Khulna → "KH"
+              - Kushtia → "KS"
+              - Kurigram → "KT"
+              - Lakshmipur → "LP"
+              - Lalmonirhat → "LH"
+              - Madaripur → "MP"
+              - Magura → "MG"
+              - Manikganj → "MN"
+              - Mymensingh → "MH"
+              - Munshiganj → "MB"
+              - Meherpur → "MS"
+              - Moulvibazar → "MY"
+              - Narayanganj → "NG"
+              - Narsingdi → "NR"
+              - Narail → "NA"
+              - Netrokona → "ND"
+              - Natore → "NT"
+              - Naogaon → "NK"
+              - Nilphamari → "NL"
+              - Noakhali → "NO"
+              - Pabna → "PB"
+              - Patuakhali → "PA"
+              - Pirojpur → "PT"
+              - Panchagarh → "PJ"
+              - Rajbari → "RB"
+              - Rajshahi → "RM"
+              - Rangpur → "RP"
+              - Satkhira → "SK"
+              - Sirajganj → "SP"
+              - Sunamganj → "SH"
+              - Shariatpur → "SG"
+              - Sylhet → "SU"
+              - Tangail → "TG"
+              - Thakurgaon → "Tk"
+
+              BENGALI SERIES CODES:
+              - ক (KA) - Private cars 800cc
+              - খ (KHA) - Private cars 1000-1300cc
+              - গ (GA) - Private cars 1500-1800cc
+              - ঘ (GHA) - Jeep
+              - চ (CHA) - Microbus
+              - ছ (CHHA) - Rented microbuses
+              - প (PA) - Taxi cabs
+              - ভ (BHA) - Private cars 2000+cc
+              - ম (MA) - Commercial pick-up
+              - ধ (DHA) - Private CNG 
+              - থ (THA) - Rented CNG
+              - হ (HA) - Motorcycle 80-125cc
+              - ল (LA) - Motorcycle 135-200cc`,
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Extract the Vehicle Number, Vehicle Type, Vehicle Class, Registration Date, Vehicle Colour from this Bangladeshi RC card and return it as a valid JSON object.
-                Do not include any markdown formatting or backticks in your response.
-                The RC card is a vehicle registration card and it can contain Bengali Language, translate relevant data to English.
-                The keys should be: vehicleNumber, vehicleType, registrationDate, vehicleColour. If the RC card is not valid or not readable, return null.`,
+                text: `Extract the RC number from this Bangladeshi RC card image and parse it into the following JSON format:
+                
+                {
+                  "registrationPoint": "The exact registration point code from the mapping above (e.g., 'DHK METRO', 'CTG METRO', 'BH', 'BR')",
+                  "series": "The Bengali series code (e.g., 'ক', 'খ', 'গ')",
+                  "seriesEnglish": "The English equivalent of the series (e.g., 'KA', 'KHA', 'GA')",
+                  "number": "The numeric part (e.g., '1234', '5678')",
+                  "vehicleType": "The vehicle type based on the series",
+                  "vehicleColour": "Vehicle color if visible",
+                  "registrationDate": "Registration date if visible",
+                }
+                
+                CRITICAL RULES:
+                1. Look for the RC number in the format: [Registration Point] [Bengali Series] [Numbers]
+                2. The registration point MUST be mapped to the exact codes provided above
+                3. The Bengali series is usually 1-2 characters in Bengali script
+                4. The number part is typically 3-6 digits
+                5. If you see Bengali text, translate it to English for the seriesEnglish field
+                6. If the image is unclear or the RC number is not readable, return null
+                7. Do not include any markdown formatting or backticks in your response
+                8. Ensure the JSON is valid and properly formatted
+                9. For registration points, use the exact codes like "DHK METRO", "CTG METRO", "BH", etc.
+                
+                Focus primarily on extracting the RC number components accurately with the correct registration point mapping.`,
               },
               {
                 type: 'image_url',
@@ -208,7 +317,9 @@ export class VerificationService {
             ],
           },
         ],
+        max_tokens: 1000,
         response_format: { type: 'json_object' },
+        temperature: 0.1,
       });
 
       const content = response.choices[0].message.content;
@@ -273,18 +384,128 @@ export class VerificationService {
         messages: [
           {
             role: 'system',
-            content:
-              'You are an expert in extracting number plate data. Extract relevant information from the number plate image.',
+            content: `You are an expert in extracting Bangladeshi number plate data.
+            
+            IMPORTANT: Bangladeshi number plates follow this format: [Registration Point] [Bengali Series] [Numbers]
+            
+            Examples:
+            - Dhaka Metro ক 1234 → registrationPoint: "DHK METRO", series: "ক", number: "1234"
+            - Chittagong Metro খ 5678 → registrationPoint: "CTG METRO", series: "খ", number: "5678"
+            - Sylhet গ 9012 → registrationPoint: "SYL METRO", series: "গ", number: "9012"
+            - Khulna ঘ 3456 → registrationPoint: "KHL Metro", series: "ঘ", number: "3456"
+            - Rajshahi চ 7890 → registrationPoint: "RAJ METRO", series: "চ", number: "7890"
+            
+            REGISTRATION POINT MAPPING (use these exact codes):
+            - Dhaka Metro → "DHK METRO"
+            - Chittagong Metro → "CTG METRO" 
+            - Sylhet Metro → "SYL METRO"
+            - Khulna Metro → "KHL Metro"
+            - Rajshahi Metro → "RAJ METRO"
+            - Bagerhat → "BH"
+            - Barguna → "BN"
+            - Barisal → "BR"
+            - Bhola → "BA"
+            - Bogra → "BO"
+            - Bandarban → "BB"
+            - Chandpur → "CH"
+            - Chapainawabganj → "CN"
+            - Chuadanga → "CD"
+            - Comilla → "CM"
+            - Cox's Bazar → "CB"
+            - Dhaka → "DH"
+            - Dinajpur → "DP"
+            - Feni → "FP"
+            - Faridpur → "FN"
+            - Gaibandha → "GB"
+            - Gazipur → "GP"
+            - Gopalganj → "GO"
+            - Habiganj → "HB"
+            - Jamalpur → "JM"
+            - Jessore → "JS"
+            - Jhenaidah → "JK"
+            - Joypurhat → "JD"
+            - Jhalokati → "JP"
+            - Kishoreganj → "KG"
+            - Khulna → "KH"
+            - Kushtia → "KS"
+            - Kurigram → "KT"
+            - Lakshmipur → "LP"
+            - Lalmonirhat → "LH"
+            - Madaripur → "MP"
+            - Magura → "MG"
+            - Manikganj → "MN"
+            - Mymensingh → "MH"
+            - Munshiganj → "MB"
+            - Meherpur → "MS"
+            - Moulvibazar → "MY"
+            - Narayanganj → "NG"
+            - Narsingdi → "NR"
+            - Narail → "NA"
+            - Netrokona → "ND"
+            - Natore → "NT"
+            - Naogaon → "NK"
+            - Nilphamari → "NL"
+            - Noakhali → "NO"
+            - Pabna → "PB"
+            - Patuakhali → "PA"
+            - Pirojpur → "PT"
+            - Panchagarh → "PJ"
+            - Rajbari → "RB"
+            - Rajshahi → "RM"
+            - Rangpur → "RP"
+            - Satkhira → "SK"
+            - Sirajganj → "SP"
+            - Sunamganj → "SH"
+            - Shariatpur → "SG"
+            - Sylhet → "SU"
+            - Tangail → "TG"
+            - Thakurgaon → "Tk"
+            
+            BENGALI SERIES CODES:
+            - ক (KA) - Private cars 800cc
+            - খ (KHA) - Private cars 1000-1300cc
+            - গ (GA) - Private cars 1500-1800cc
+            - ঘ (GHA) - Jeep
+            - চ (CHA) - Microbus
+            - ছ (CHHA) - Rented microbuses
+            - প (PA) - Taxi cabs
+            - ভ (BHA) - Private cars 2000+cc
+            - ম (MA) - Commercial pick-up
+            - ধ (DHA) - Private CNG 
+            - থ (THA) - Rented CNG
+            - হ (HA) - Motorcycle 80-125cc
+            - ল (LA) - Motorcycle 135-200cc
+            
+            Your task is to extract and parse the number plate into its three components using the exact registration point codes above.`,
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Extract the Number Plate from this Bangladeshi number plate and return it as a valid JSON object.
-                The number plate is a vehicle registration number and it can contain Bengali Language, translate relevant data to English.
-                Do not include any markdown formatting or backticks in your response. The keys should be: numberPlate.
-                If the number plate is not valid or not readable, return null.`,
+                text: `Extract the number plate from this Bangladeshi number plate image and parse it into the following JSON format:
+                
+                {
+                  "registrationPoint": "The exact registration point code from the mapping above (e.g., 'DHK METRO', 'CTG METRO', 'BH', 'BR')",
+                  "series": "The Bengali series code (e.g., 'ক', 'খ', 'গ')",
+                  "seriesEnglish": "The English equivalent of the series (e.g., 'KA', 'KHA', 'GA')",
+                  "number": "The numeric part (e.g., '1234', '5678')",
+                  "numberPlate": "The complete number plate in the format [Registration Point] [Bengali Series] [Numbers]"
+                }
+                
+                CRITICAL RULES:
+                1. Look for the number plate in the format: [Registration Point] [Bengali Series] [Numbers]
+                2. The registration point MUST be mapped to the exact codes provided above
+                3. The Bengali series is usually 1-2 characters in Bengali script
+                4. The number part is typically 3-6 digits
+                5. If you see Bengali text, translate it to English for the seriesEnglish field
+                6. If the image is unclear or the number plate is not readable, return null
+                7. Do not include any markdown formatting or backticks in your response
+                8. Ensure the JSON is valid and properly formatted
+                9. For registration points, use the exact codes like "DHK METRO", "CTG METRO", "BH", etc.
+                10. The numberPlate field should contain the complete number plate as it appears on the vehicle
+                
+                Focus primarily on extracting the number plate components accurately with the correct registration point mapping.`,
               },
               {
                 type: 'image_url',

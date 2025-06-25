@@ -261,7 +261,10 @@ async function main() {
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
-    { role: UserRole.PILOT}
+    { role: UserRole.PILOT },
+    { role: UserRole.PILOT },
+    { role: UserRole.PILOT },
+    { role: UserRole.PILOT },
   ];
   
   const pilots = [
@@ -269,6 +272,9 @@ async function main() {
     { phone: '+911234567891' },
     { phone: '+911234567892' },
     { phone: '+919999999999' },
+    { phone: '+8801412345670' },
+    { phone: '+8801412345671' },
+    { phone: '+8801412345672' },
   ];
   
   const english = await prisma.languages.findUnique({
@@ -383,6 +389,9 @@ async function main() {
     { phone: '+911234567892' },
     { phone: '+911234567893' },
     { phone: '+919999999999' },
+    { phone: '+8801412345670' },
+    { phone: '+8801412345671' },
+    { phone: '+8801412345672' },
   ];
   
   for (const customer of customers) {
@@ -426,6 +435,439 @@ async function main() {
     },
   });
 
+  const vehicleRegistrationPoints = [
+    {
+      code: 'BH',
+      name: 'Bagerhat',
+      category: 'District'
+    },
+    {
+      code: 'DHK METRO',
+      name: 'Dhaka Metropolitan',
+      category: 'Metropolitan'
+    },
+    {
+      code: 'CTG METRO',
+      name: 'Chittagong Metropolitan',
+      category: 'Metropolitan'
+    },
+    {
+      code: 'SYL METRO',
+      name: 'Sylhet Metropolitan',
+      category: 'Metropolitan'
+    },
+    {
+      code: 'KHL Metro',
+      name: 'Khulna Metropolitan',
+      category: 'Metropolitan'
+    },
+    {
+      code: 'BN',
+      name: 'Barguna',
+      category: 'District'
+    },
+    {
+      code: 'BR',
+      name: 'Barisal',
+      category: 'District'
+    },
+    {
+      code: 'BA',
+      name: 'Bhola',
+      category: 'District'
+    },
+    {
+      code: 'BO',
+      name: 'Bogra',
+      category: 'District'
+    },
+    {
+      code: 'BB',
+      name: 'Bandarban',
+      category: 'District'
+    },
+    {
+      code: 'CH',
+      name: 'Chandpur',
+      category: 'District'
+    },
+    {
+      code: 'CN',
+      name: 'Chapainawabganj',
+      category: 'District'
+    },
+    {
+      code: 'CD',
+      name: 'Chuadanga',
+      category: 'District'
+    },
+    {
+      code: 'CM',
+      name: 'Comilla',
+      category: 'District'
+    },
+    {
+      code: 'CB',
+      name: 'Cox\'s Bazar',
+      category: 'District'
+    },
+    {
+      code: 'DH',
+      name: 'Dhaka',
+      category: 'District'
+    },
+    {
+      code: 'DP',
+      name: 'Dinajpur',
+      category: 'District'
+    },
+    {
+      code: 'FP',
+      name: 'Feni',
+      category: 'District'
+    },
+    {
+      code: 'FN',
+      name: 'Faridpur',
+      category: 'District'
+    },
+    {
+      code: 'GB',
+      name: 'Gaibandha',
+      category: 'District'
+    },
+    {
+      code: 'GP',
+      name: 'Gazipur',
+      category: 'District'
+    },
+    {
+      code: 'GO',
+      name: 'Gopalganj',
+      category: 'District'
+    },
+    {
+      code: 'HB',
+      name: 'Habiganj',
+      category: 'District'
+    },
+    {
+      code: 'JM',
+      name: 'Jamalpur',
+      category: 'District'
+    },
+    {
+      code: 'JS',
+      name: 'Jessore',
+      category: 'District'
+    },
+    {
+      code: 'JK',
+      name: 'Jhenaidah',
+      category: 'District'
+    },
+    {
+      code: 'JD',
+      name: 'Joypurhat',
+      category: 'District'
+    },
+    {
+      code: 'JP',
+      name: 'Jhalokati',
+      category: 'District'
+    },
+    {
+      code: 'KG',
+      name: 'Kishoreganj',
+      category: 'District'
+    },
+    {
+      code: 'KH',
+      name: 'Khulna',
+      category: 'District'
+    },
+    {
+      code: 'KS',
+      name: 'Kushtia',
+      category: 'District'
+    },
+    {
+      code: 'KT',
+      name: 'Kurigram',
+      category: 'District'
+    },
+    {
+      code: 'LP',
+      name: 'Lakshmipur',
+      category: 'District'
+    },
+    {
+      code: 'LH',
+      name: 'Lalmonirhat',
+      category: 'District'
+    },
+    {
+      code: 'MP',
+      name: 'Madaripur',
+      category: 'District'
+    },
+    {
+      code: 'MG',
+      name: 'Magura',
+      category: 'District'
+    },
+    {
+      code: 'MN',
+      name: 'Manikganj',
+      category: 'District'
+    },
+    {
+      code: 'MH',
+      name: 'Mymensingh',
+      category: 'District'
+    },
+    {
+      code: 'MB',
+      name: 'Munshiganj',
+      category: 'District'
+    },
+    {
+      code: 'MS',
+      name: 'Meherpur',
+      category: 'District'
+    },
+    {
+      code: 'MY',
+      name: 'Moulvibazar',
+      category: 'District'
+    },
+    {
+      code: 'NG',
+      name: 'Narayanganj',
+      category: 'District'
+    },
+    {
+      code: 'NR',
+      name: 'Narsingdi',
+      category: 'District'
+    },
+    {
+      code: 'NA',
+      name: 'Narail',
+      category: 'District'
+    },
+    {
+      code: 'ND',
+      name: 'Netrokona',
+      category: 'District'
+    },
+    {
+      code: 'NT',
+      name: 'Natore',
+      category: 'District'
+    },
+    {
+      code: 'NK',
+      name: 'Naogaon',
+      category: 'District'
+    },
+    {
+      code: 'NL',
+      name: 'Nilphamari',
+      category: 'District'
+    },
+    {
+      code: 'NO',
+      name: 'Noakhali',
+      category: 'District'
+    },
+    {
+      code: 'PB',
+      name: 'Pabna',
+      category: 'District'
+    },
+    {
+      code: 'PA',
+      name: 'Patuakhali',
+      category: 'District'
+    },
+    {
+      code: 'PT',
+      name: 'Pirojpur',
+      category: 'District'
+    },
+    {
+      code: 'PJ',
+      name: 'Panchagarh',
+      category: 'District'
+    },
+    {
+      code: 'RB',
+      name: 'Rajbari',
+      category: 'District'
+    },
+    {
+      code: 'RAJ METRO',
+      name: 'Rajshahi Metropolitan',
+      category: 'Metropolitan'
+    },
+    {
+      code: 'RM',
+      name: 'Rajshahi',
+      category: 'District'
+    },
+    {
+      code: 'RP',
+      name: 'Rangpur',
+      category: 'District'
+    },
+    {
+      code: 'SK',
+      name: 'Satkhira',
+      category: 'District'
+    },
+    {
+      code: 'SP',
+      name: 'Sirajganj',
+      category: 'District'
+    },
+    {
+      code: 'SH',
+      name: 'Sunamganj',
+      category: 'District'
+    },
+    {
+      code: 'SG',
+      name: 'Shariatpur',
+      category: 'District'
+    },
+    {
+      code: 'SU',
+      name: 'Sylhet',
+      category: 'District'
+    },
+    {
+      code: 'TG',
+      name: 'Tangail',
+      category: 'District'
+    },
+    {
+      code: 'Tk',
+      name: 'Thakurgaon',
+      category: 'District'
+    }
+  ];
+
+  const vehicleSeries = {
+    bike: [
+      {
+        code: 'হ',
+        english: 'HA',
+        type: 'Motorcycle (80-125cc)',
+        category: 'Motorcycle'
+      },
+      {
+        code: 'ল',
+        english: 'LA',
+        type: 'Motorcycle (135-200cc)',
+        category: 'Motorcycle'
+      }
+    ],
+    car: [
+      {
+        code: 'ক',
+        english: 'KA',
+        type: 'Private Car (800cc)',
+        category: 'Private Car'
+      },
+      {
+        code: 'খ',
+        english: 'KHA',
+        type: 'Private Car (1000-1300cc)',
+        category: 'Private Car'
+      },
+      {
+        code: 'গ',
+        english: 'GA',
+        type: 'Private Car (1500-1800cc)',
+        category: 'Private Car'
+      },
+      {
+        code: 'ভ',
+        english: 'BHA',
+        type: 'Private Car (2000+cc)',
+        category: 'Private Car'
+      },
+      {
+        code: 'চ',
+        english: 'CHA',
+        type: 'Microbus',
+        category: 'Commercial'
+      },
+      {
+        code: 'ছ',
+        english: 'CHHA',
+        type: 'Rented Microbus',
+        category: 'Commercial'
+      },
+      {
+        code: 'প',
+        english: 'PA',
+        type: 'Taxi',
+        category: 'Commercial'
+      },
+      {
+        code: 'ম',
+        english: 'MA',
+        type: 'Commercial Pick-up',
+        category: 'Commercial'
+      },
+      {
+        code: 'ঘ',
+        english: 'GHA',
+        type: 'Jeep',
+        category: 'Jeep'
+      }
+    ],
+    cng: [
+      {
+        code: 'ধ',
+        english: 'DHA',
+        type: 'Private CNG',
+        category: 'CNG'
+      },
+      {
+        code: 'থ',
+        english: 'THA',
+        type: 'Rented CNG',
+        category: 'CNG'
+      }
+    ],
+  };
+
+  // Vehicle Registration Point
+  await prisma.systemConfig.upsert({
+    where: { key: 'vehicleRegistrationPoint' },
+    update: {},
+    create: {
+      key: 'vehicleRegistrationPoints',
+      value: vehicleRegistrationPoints,
+      description: 'Vehicle registration point',
+    },
+  });
+
+  // Vehicle series
+  await prisma.systemConfig.upsert({
+    where: { key: 'vehicleSeries' },
+    update: {},
+    create: {
+      key: 'vehicleSeries',
+      value: vehicleSeries, 
+      description: 'Vehicle series',
+    },
+  });
+
+  console.log('Seeding Bangladeshi vehicle registration data finished.');
   console.log('Seeding vehicle types finished.');
   console.log('Seeding languages and vehicle types finished.');
   console.log('Seeding subscription types finished.');

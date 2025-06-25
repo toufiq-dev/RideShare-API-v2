@@ -1,4 +1,11 @@
-import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  UseGuards,
+  Get,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SendOtpDto,
@@ -85,5 +92,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout' })
   async logout(@CurrentUser('userId') userId: string) {
     return await this.authService.logout(userId);
+  }
+
+  @Get('vehicle-data')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Get vehicle registration points' })
+  async getVehicleRegistrationPoints() {
+    return await this.authService.getVehicleRegistrationPoints();
   }
 }

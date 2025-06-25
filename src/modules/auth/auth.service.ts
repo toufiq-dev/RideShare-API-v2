@@ -60,7 +60,7 @@ export class AuthService {
     const { language, phone, referralCode } = sendOtpDto;
 
     try {
-      if (phone === '+919999999999') {
+      if (phone === '+8801412345670' || phone === '+919999999999') {
         return {
           message: 'OTP sent to your phone successfully.',
           data: {
@@ -118,7 +118,10 @@ export class AuthService {
 
     try {
       // For App review in ios and android store START
-      if (phone == '+919999999999' && otp == '4242') {
+      if (
+        (phone == '+8801412345670' && otp == '4242') ||
+        (phone == '+919999999999' && otp == '4242')
+      ) {
         let user = null;
         let pilot = null;
         let customer = null;
@@ -131,6 +134,13 @@ export class AuthService {
           user = await this.prisma.user.findUnique({
             where: { id: pilot.userId },
           });
+
+          await this.prisma.pilot.update({
+            where: { id: pilot.id },
+            data: {
+              isAlreadyRegistered: true,
+            },
+          });
         }
         if (role === RoleEnum.CUSTOMER) {
           customer = await this.prisma.customer.findUnique({
@@ -139,6 +149,13 @@ export class AuthService {
 
           user = await this.prisma.user.findUnique({
             where: { id: customer.userId },
+          });
+
+          await this.prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+              isAlreadyRegistered: true,
+            },
           });
         }
         if (!user) {
@@ -395,6 +412,28 @@ export class AuthService {
       console.error(error);
       throw error;
     }
+  }
+
+  async getVehicleRegistrationPoints() {
+    const vehicleRegistrationPoints = await this.prisma.systemConfig.findUnique(
+      {
+        where: { key: 'vehicleRegistrationPoints' },
+      },
+    );
+
+    const vehicleSeries = await this.prisma.systemConfig.findUnique({
+      where: { key: 'vehicleSeries' },
+    });
+
+    const data = {
+      vehicleRegistrationPoints: vehicleRegistrationPoints.value,
+      vehicleSeries: vehicleSeries.value,
+    };
+
+    return {
+      message: 'Vehicle data fetched successfully.',
+      data,
+    };
   }
 
   private async validateOtpRedis(phone: string, otp: string) {

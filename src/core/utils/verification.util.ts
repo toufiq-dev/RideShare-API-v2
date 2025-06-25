@@ -296,11 +296,11 @@ export class VerificationService {
                 }
                 
                 CRITICAL RULES:
-                1. Look for the RC number in the format: [Registration Point] [Bengali Series] [Numbers]
-                2. The registration point MUST be mapped to the exact codes provided above
-                3. The Bengali series is usually 1-2 characters in Bengali script
-                4. The number part is typically 3-6 digits
-                5. If you see Bengali text, translate it to English for the seriesEnglish field
+                1. The RC number can be in Bengali, you must translate it to English and return the English version in the seriesEnglish field.
+                2. Look for the RC number in the format: [Registration Point] [Bengali Series] [Numbers]
+                3. The registration point MUST be mapped to the exact codes provided above
+                4. The Bengali series is usually 1-2 characters in Bengali script
+                5. The number part is typically 3-6 digits
                 6. If the image is unclear or the RC number is not readable, return null
                 7. Do not include any markdown formatting or backticks in your response
                 8. Ensure the JSON is valid and properly formatted

@@ -264,19 +264,19 @@ export class VerificationService {
               - Thakurgaon → "Tk"
 
               BENGALI SERIES CODES:
-              - ক (KA) - Private cars 800cc
-              - খ (KHA) - Private cars 1000-1300cc
-              - গ (GA) - Private cars 1500-1800cc
+              - ক (KA) - Private cars
+              - খ (KHA) - Private cars
+              - গ (GA) - Private cars
               - ঘ (GHA) - Jeep
               - চ (CHA) - Microbus
               - ছ (CHHA) - Rented microbuses
               - প (PA) - Taxi cabs
-              - ভ (BHA) - Private cars 2000+cc
+              - ভ (BHA) - Private cars
               - ম (MA) - Commercial pick-up
               - ধ (DHA) - Private CNG 
               - থ (THA) - Rented CNG
-              - হ (HA) - Motorcycle 80-125cc
-              - ল (LA) - Motorcycle 135-200cc`,
+              - হ (HA) - Motorcycle
+              - ল (LA) - Motorcycle`,
           },
           {
             role: 'user',

@@ -238,6 +238,7 @@ export class PilotController {
   }
 
   @Post('online')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Make Pilot available for trips' })
   async beOnline(
@@ -248,6 +249,7 @@ export class PilotController {
   }
 
   @Post('bd-license')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license photo' })
   @UseInterceptors(
@@ -265,6 +267,7 @@ export class PilotController {
   }
 
   @Post('bd-license/confirmation')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
   @ApiBody({ type: BDLicenseDto })
@@ -276,6 +279,7 @@ export class PilotController {
   }
 
   @Post('bd-nid')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload NID card photo' })
   @UseInterceptors(
@@ -293,6 +297,7 @@ export class PilotController {
   }
 
   @Post('bd-nid/confirmation')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give NID card and dob of pilot' })
   @ApiBody({ type: BDNidDto })
@@ -304,6 +309,7 @@ export class PilotController {
   }
 
   @Post('bd-rc')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
   @UseInterceptors(
@@ -321,6 +327,7 @@ export class PilotController {
   }
 
   @Post('bd-rc/confirmation')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give RC card and dob of pilot' })
   @ApiBody({ type: BDRCDto })
@@ -344,6 +351,7 @@ export class PilotController {
   }
 
   @Post('number-plate/confirmation')
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Number plate of pilot' })
   @ApiBody({ type: NumberPlateDto })

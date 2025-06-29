@@ -22,7 +22,6 @@ export class RideNotificationService {
     private readonly redis: RedisService,
     private readonly firebaseService: FirebaseService,
     private readonly prisma: PrismaService,
-    @InjectQueue('ride-notification') private readonly notificationQueue: Queue,
   ) {}
 
   private get server(): Server {
@@ -34,6 +33,7 @@ export class RideNotificationService {
     title: string,
     body: string,
     data: any,
+    path?: string,
   ) {
     try {
       const device = await this.prisma.deviceToken.findUnique({
@@ -49,6 +49,7 @@ export class RideNotificationService {
         title,
         body,
         data,
+        path,
       );
     } catch (error) {
       console.error(error);
@@ -92,18 +93,20 @@ export class RideNotificationService {
       durationMin: durationMin.toString(),
     };
 
-    await Promise.all([
-      // Send push notification to the driver
-      this.sendPushNotification(
-        pilotUserId,
-        'New Ride Request',
-        'You have a new ride request',
-        fcmPayload,
-      ),
-      this.server
-        .to(pilotUserId)
-        .emit(RideEvents.RIDE_REQUEST, notificationPayload),
-    ]);
+    // Send push notification to the driver
+    await this.sendPushNotification(
+      pilotUserId,
+      'New Ride Request',
+      'You have a new ride request',
+      fcmPayload,
+    );
+
+    // Socket for ride request
+    this.server
+      .to(pilotUserId)
+      .emit(RideEvents.RIDE_REQUEST, notificationPayload, (ack: boolean) => {
+        console.log('ack in ride request', ack);
+      });
   }
 
   async notifyRideCancelled(
@@ -111,22 +114,29 @@ export class RideNotificationService {
     recipientUserId: string,
     cancelledBy: CancelledBy,
   ) {
-    await Promise.all([
-      this.sendPushNotification(
-        recipientUserId,
-        'Ride Cancelled',
-        `The ride has been cancelled by the ${
-          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-        }`,
-        { bookingId },
-      ),
-      this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+    // Send push notification for ride cancelled
+    await this.sendPushNotification(
+      recipientUserId,
+      'Ride Cancelled',
+      `The ride has been cancelled by the ${
+        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+      }`,
+      { bookingId },
+    );
+
+    // Socket for ride cancelled
+    this.server.to(recipientUserId).emit(
+      RideEvents.RIDE_CANCELLED,
+      {
         bookingId,
         message: `The ride has been cancelled by the ${
           cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
         }.`,
-      }),
-    ]);
+      },
+      (ack: boolean) => {
+        console.log('ack in ride cancelled', ack);
+      },
+    );
   }
 
   async notifyDriverNotFound(
@@ -137,19 +147,26 @@ export class RideNotificationService {
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await Promise.all([
-        this.sendPushNotification(
-          userId,
-          'Ride Cancelled',
-          'Unfortunately ride request has been cancelled.',
-          { bookingId, bookingStatus },
-        ),
-        this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+      // Send push notification for driver not found
+      await this.sendPushNotification(
+        userId,
+        'Ride Cancelled',
+        'Unfortunately ride request has been cancelled.',
+        { bookingId, bookingStatus },
+      );
+
+      // Socket for driver not found
+      this.server.to(userId).emit(
+        RideEvents.DRIVER_NOT_FOUND,
+        {
           bookingId,
           bookingStatus,
           message: 'Unfortunately ride request has been cancelled.',
-        }),
-      ]);
+        },
+        (ack: boolean) => {
+          console.log('ack in driver not found', ack);
+        },
+      );
     } catch (error) {
       console.error(error);
       throw error;
@@ -167,33 +184,35 @@ export class RideNotificationService {
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    console.log(`Ride status update: \n${payload}`);
-    await Promise.all([
-      this.sendPushNotification(
-        customerUserId,
-        `Ride ${payload.bookingStatus.toLowerCase()}`,
-        `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
-        { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
-      ),
-      console.log(`Ride accepted payload: \n${payload}`),
-      this.server
-        .to(customerUserId)
-        .emit(RideEvents.RIDE_STATUS_UPDATE, payload),
-    ]);
+    // Send push notification for ride status update
+    await this.sendPushNotification(
+      customerUserId,
+      `Ride ${payload.bookingStatus.toLowerCase()}`,
+      `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
+      { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
+    );
+
+    // Socket for ride status update
+    this.server
+      .to(customerUserId)
+      .emit(RideEvents.RIDE_STATUS_UPDATE, payload, (ack: boolean) => {
+        console.log('ack in ride status update', ack);
+      });
   }
 
   async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
-    await Promise.all([
-      this.sendPushNotification(
-        customerUserId,
-        'Reached Pickup Point',
-        'You have reached the pickup point',
-        { bookingId },
-      ),
-      this.server
-        .to(customerUserId)
-        .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId }),
-    ]);
+    // Send push notification for reached pickup point
+    await this.sendPushNotification(
+      customerUserId,
+      'Reached Pickup Point',
+      'You have reached the pickup point',
+      { bookingId },
+    );
+
+    // Socket for reached pickup point
+    this.server
+      .to(customerUserId)
+      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
   }
 
   notifyDriverLiveLocation(
@@ -205,30 +224,31 @@ export class RideNotificationService {
   ) {
     const payload = { bookingId, lat, lng, angle };
 
-    const result = this.server
+    this.server
       .to(customerUserId)
-      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
-
-    console.log('emitted location', lat, lng, angle);
-    console.log(
-      `Driver live location emitted to customer ${customerUserId} `,
-      result,
-    );
+      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload, (ack: boolean) => {
+        console.log('ack in driver live location', ack);
+      });
   }
 
   async notifyDriverForEditLocation(
     pilotUserId: string,
     payload: PilotRideResponse,
   ) {
-    await Promise.all([
-      this.sendPushNotification(
-        pilotUserId,
-        'Ride Edit Location',
-        'You have a new edit location request',
-        { bookingId: payload.bookingId, fare: payload.fare.toString() },
-      ),
-      this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload),
-    ]);
+    // Send push notification for ride edit location
+    this.sendPushNotification(
+      pilotUserId,
+      'Ride Edit Location',
+      'You have a new edit location request',
+      { bookingId: payload.bookingId, fare: payload.fare.toString() },
+    );
+
+    // Socket for ride edit location
+    this.server
+      .to(pilotUserId)
+      .emit(RideEvents.RIDE_EDIT_LOCATION, payload, (ack: boolean) => {
+        console.log('ack in ride edit location', ack);
+      });
   }
 
   async notifyLowBalance(pilotUserId: string) {

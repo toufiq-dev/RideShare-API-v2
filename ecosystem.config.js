@@ -17,5 +17,12 @@ module.exports = {
     kill_timeout: 3000,
     wait_ready: true,
     listen_timeout: 10000,
+    log_file: './logs/combined.log',
+    out_file: './logs/out.log',
+    error_file: './logs/error.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    log_type: 'json',
+    log_level: 'info',
+    log_max_size: '100M',
   }]
 }; 

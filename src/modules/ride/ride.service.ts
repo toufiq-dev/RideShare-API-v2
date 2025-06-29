@@ -44,18 +44,21 @@ import { RoleEnum } from '../auth/dto/auth.dto';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class RideService {
   private readonly bonusRechargeThreshold: string;
+  private readonly context = 'RideService';
 
   constructor(
     private prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly rideNotificationService: RideNotificationService,
     private readonly fareService: FareService,
-    @InjectQueue('ride-request') private readonly rideQueue: Queue,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+    @InjectQueue('ride-request') private readonly rideQueue: Queue,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(
       'systemConfig.bonusRechargeThreshold',
@@ -75,11 +78,14 @@ export class RideService {
         removeOnFail: 1000,
       });
 
-      console.log(`Rideservie enqueueRideRequest with jobId, ${job.id}`);
+      this.logger.log(
+        `Rideservie enqueueRideRequest with jobId, ${job.id}`,
+        this.context,
+      );
 
       return job;
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -94,7 +100,7 @@ export class RideService {
         client.data.user.userId,
       );
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
     }
   }
@@ -105,7 +111,7 @@ export class RideService {
       return cachedRide;
     }
 
-    console.log(`getActiveRideForPilot from cache\n`, cachedRide);
+    this.logger.log(`getActiveRideForPilot from cache\n`, this.context);
 
     // Fallback to Prisma if not in Redis
     const pilot = await this.prisma.pilot.findUnique({
@@ -136,7 +142,6 @@ export class RideService {
         booking.customer.userId,
       );
 
-      console.log('getActiveRideForPilot from fallback');
       return rideData;
     }
 
@@ -268,7 +273,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -390,7 +395,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -561,7 +566,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -597,7 +602,7 @@ export class RideService {
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
-        console.log('nearbyPilots', nearbyPilots);
+        this.logger.log(`nearbyPilots ${nearbyPilots.length}`, this.context);
 
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots) {
@@ -644,7 +649,10 @@ export class RideService {
             pilot.vehicle?.vehicleTypeBD.id === vehicleTypeId &&
             walletBalance > fare
           ) {
-            console.log(`Eligible pilot found ${pilot.phone}`);
+            this.logger.log(
+              `Eligible pilot found ${pilot.phone}`,
+              this.context,
+            );
 
             await this.redis.set(
               `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
@@ -707,7 +715,10 @@ export class RideService {
           }
         }
 
-        console.log('No eligible drivers found in this radius: ', radius);
+        this.logger.log(
+          `No eligible drivers found in this radius: ${radius}`,
+          this.context,
+        );
 
         return false; // No eligible drivers found in this radius
       };
@@ -716,7 +727,7 @@ export class RideService {
       while (!driverAccepted && radius <= maxRadius) {
         driverAccepted = await searchAndNotifyNextDriver();
 
-        console.log('driverAccepted: ', driverAccepted);
+        this.logger.log(`driverAccepted: ${driverAccepted}`, this.context);
 
         if (!driverAccepted) {
           const updatedBooking = await this.prisma.booking.findUnique({
@@ -733,7 +744,7 @@ export class RideService {
       }
 
       if (!driverAccepted) {
-        console.log('No driver accepted, ', driverAccepted);
+        this.logger.log(`No driver accepted, ${driverAccepted}`, this.context);
         this.prisma.$transaction(async (tx) => {
           await tx.booking.update({
             where: { id: bookingId },
@@ -760,7 +771,7 @@ export class RideService {
 
       return { success: true, message: 'Ride request processed' };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
 
       // Handle error case by updating booking status
       try {
@@ -789,7 +800,10 @@ export class RideService {
           userId,
         );
       } catch (cleanupError) {
-        console.error('Error during cleanup:', cleanupError);
+        this.logger.error(
+          `Error during cleanup: ${cleanupError}`,
+          this.context,
+        );
       }
 
       server.to(userId).emit(RideEvents.ERROR, {
@@ -974,7 +988,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1023,7 +1037,7 @@ export class RideService {
         message: 'Reached pickup point successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1176,7 +1190,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1439,7 +1453,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1548,7 +1562,7 @@ export class RideService {
         message: 'Ride request cancelled successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1735,7 +1749,7 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1848,7 +1862,7 @@ export class RideService {
 
       throw new BadRequestException('Invalid role specified.');
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }
@@ -1950,7 +1964,7 @@ export class RideService {
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
-      console.log('totalEarning', totalEarning);
+      this.logger.log(`totalEarning ${totalEarning}`, this.context);
 
       return {
         message: 'Ride history fetched successfully',
@@ -1967,7 +1981,7 @@ export class RideService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.error(error, this.context);
       throw error;
     }
   }

@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
-import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../cache/redis.service';
 import { RedisKeys } from '../cache/redis-keys';
 

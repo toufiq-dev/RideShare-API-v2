@@ -142,6 +142,7 @@ model Pilot {
   pilotProgramId             String?
   acceptedTerms              Boolean            @default(true)
   isSelfieVerified           VerificationStatus @default(PENDING)
+  selfieRejectionReason      String?
   isNidVerified              VerificationStatus @default(PENDING)
   nidRejectionReason         String?
   isDLVerified               VerificationStatus @default(PENDING)

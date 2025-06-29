@@ -1,5 +1,5 @@
 import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD, VerificationStatus } from '@prisma/client';
-import { CouponsNames } from '../src/modules/admin/admin.constants';
+import { CouponsNames, PilotCouponsNames } from '../src/modules/admin/admin.constants';
 import { randomInt } from 'node:crypto';
 
 const prisma = new PrismaClient();
@@ -172,7 +172,7 @@ async function main() {
   ];
 
   const pilotCoupons = [
-    { name: 'BonusAutoRecharge', discount: 4500, validUntil: new Date('2025-12-12') },
+    { name: PilotCouponsNames.BONUS_AUTO_RECHARGE, discount: 4500, validUntil: new Date('2025-12-12') },
   ];
 
   for (const language of languages) {

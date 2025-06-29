@@ -1361,7 +1361,7 @@ export class RideService {
       const bonusConfig = await this.prisma.systemConfig.findUnique({
         where: { key: this.bonusRechargeThreshold },
       });
-      const threshold = bonusConfig?.value['amount'] ?? 300;
+      const threshold = bonusConfig?.value['amount'] ?? 500;
 
       // Check if balance is below threshold
       if (newBalance < threshold) {

@@ -353,8 +353,8 @@ export class AuthService {
         data: { status: UserStatus.DELETED },
       });
 
-      await this.redis.del(`accessToken:${userId}`);
-      await this.redis.del(`refreshToken:${userId}`);
+      await this.redis.del(`${RedisKeys.ACCESS_TOKEN}${userId}`);
+      await this.redis.del(`${RedisKeys.REFRESH_TOKEN}${userId}`);
 
       return {
         message: 'User deleted successfully.',
@@ -372,14 +372,18 @@ export class AuthService {
         select: { role: true },
       });
 
-      await this.redis.del(`accessToken:${userId}`);
-      await this.redis.del(`refreshToken:${userId}`);
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      await this.redis.del(`${RedisKeys.ACCESS_TOKEN}${userId}`);
+      await this.redis.del(`${RedisKeys.REFRESH_TOKEN}${userId}`);
 
       await this.prisma.deviceToken.deleteMany({
         where: { userId },
       });
 
-      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}${userId}`;
       const clientId = await this.redis.get(connectionKey);
       if (clientId) {
         // Disconnect socket if connected
@@ -546,8 +550,12 @@ export class AuthService {
 
   private async generateTokens(userId: string, role: any) {
     // 1. Check if user has existing tokens
-    const existingAccessToken = await this.redis.get(`accessToken:${userId}`);
-    const existingRefreshToken = await this.redis.get(`refreshToken:${userId}`);
+    const existingAccessToken = await this.redis.get(
+      `${RedisKeys.ACCESS_TOKEN}${userId}`,
+    );
+    const existingRefreshToken = await this.redis.get(
+      `${RedisKeys.REFRESH_TOKEN}${userId}`,
+    );
 
     if (existingAccessToken || existingRefreshToken) {
       await this.forceDisconnectUser(userId);
@@ -557,8 +565,8 @@ export class AuthService {
       }
     }
 
-    await this.redis.del(`accessToken:${userId}`);
-    await this.redis.del(`refreshToken:${userId}`);
+    await this.redis.del(`${RedisKeys.ACCESS_TOKEN}${userId}`);
+    await this.redis.del(`${RedisKeys.REFRESH_TOKEN}${userId}`);
 
     const accessToken = await this.jwtService.signAsync(
       { userId, role },
@@ -571,13 +579,13 @@ export class AuthService {
     );
 
     await this.redis.set(
-      `accessToken:${userId}`,
+      `${RedisKeys.ACCESS_TOKEN}${userId}`,
       accessToken,
       this.redisAccessTokenTTL,
     );
 
     await this.redis.set(
-      `refreshToken:${userId}`,
+      `${RedisKeys.REFRESH_TOKEN}${userId}`,
       refreshToken,
       this.redisRefreshTokenTTL,
     );
@@ -593,18 +601,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token payload');
     }
 
-    const storedToken = await this.redis.get(`refreshToken:${userId}`);
+    const storedToken = await this.redis.get(
+      `${RedisKeys.REFRESH_TOKEN}${userId}`,
+    );
 
     if (!storedToken || storedToken !== refreshToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    await this.redis.del(`refreshToken:${userId}`);
+    await this.redis.del(`${RedisKeys.REFRESH_TOKEN}${userId}`);
   }
 
   private async forceDisconnectUser(userId: string): Promise<void> {
     try {
-      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}${userId}`;
       const existingClientId = await this.redis.get(connectionKey);
 
       if (existingClientId) {

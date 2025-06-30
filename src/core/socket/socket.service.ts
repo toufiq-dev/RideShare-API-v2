@@ -44,7 +44,9 @@ export class SocketService {
       }
 
       // 1. Verify token is still valid in Redis
-      const storedAccessToken = await this.redis.get(`accessToken:${userId}`);
+      const storedAccessToken = await this.redis.get(
+        `${RedisKeys.ACCESS_TOKEN}${userId}`,
+      );
       if (!storedAccessToken || storedAccessToken !== token) {
         console.log(`Token mismatch for user ${userId} - disconnecting`);
         client.disconnect(true);
@@ -52,7 +54,7 @@ export class SocketService {
       }
 
       // Check for existing connection
-      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}-${userId}`;
+      const connectionKey = `${RedisKeys.SOCKET_CONNECTION}${userId}`;
       const existingClientId = await this.redis.get(connectionKey);
 
       if (existingClientId && existingClientId !== client.id) {

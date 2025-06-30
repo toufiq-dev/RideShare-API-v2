@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from 'src/core/cache/redis.service';
 import { ConfigService } from '@nestjs/config';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -37,7 +38,7 @@ export class JwtAuthGuard implements CanActivate {
       });
 
       const storedAccessToken = await this.redis.get(
-        `accessToken:${payload.userId}`,
+        `${RedisKeys.ACCESS_TOKEN}${payload.userId}`,
       );
       if (!storedAccessToken || storedAccessToken !== token) {
         throw new UnauthorizedException('Token has been invalidated');

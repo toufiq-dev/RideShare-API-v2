@@ -88,7 +88,13 @@ export class FareService {
     baseFare: number,
     perKmRate: number,
     perMinRate: number,
+    minFare: number,
   ): number {
-    return baseFare + perKmRate * distanceKm + perMinRate * durationMin;
+    return Math.ceil(
+      Math.max(
+        baseFare + perKmRate * distanceKm + perMinRate * durationMin,
+        minFare,
+      ),
+    );
   }
 }

@@ -18,13 +18,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import {
-  VehicleTypeName,
-  BookingStatus,
-  RideType,
-  UserStatus,
-} from '@prisma/client';
-import { RideService } from '../ride/ride.service';
+import { VehicleTypeName, RideType, UserStatus } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 
@@ -485,6 +479,7 @@ export class CustomerService {
           Number(item.baseFare),
           Number(item.perKmRate),
           Number(item.perMinRate),
+          Number(item.minFare),
         );
 
         const price =

@@ -190,13 +190,6 @@ export class VerificationService {
 
               IMPORTANT: Bangladeshi RC numbers follow this format: [Registration Point] [Bengali Series] [Numbers],
 
-              Examples:
-              - Dhaka Metro ক 1234 → registrationPoint: "DHK METRO", series: "ক", number: "1234"
-              - Chittagong Metro খ 5678 → registrationPoint: "CTG METRO", series: "খ", number: "5678"
-              - Sylhet গ 9012 → registrationPoint: "SYL METRO", series: "গ", number: "9012"
-              - Khulna ঘ 3456 → registrationPoint: "KHL Metro", series: "ঘ", number: "3456"
-              - Rajshahi চ 7890 → registrationPoint: "RAJ METRO", series: "চ", number: "7890"
-
               REGISTRATION POINT MAPPING (use these exact codes):
               - Dhaka Metro → "DHK METRO"
               - Chittagong Metro → "CTG METRO" 
@@ -283,13 +276,12 @@ export class VerificationService {
             content: [
               {
                 type: 'text',
-                text: `Extract the RC number from this Bangladeshi RC card image and parse it into the following JSON format:
-                
+                text: `Extract the RC number from this Bangladeshi RC card image and parse it into the following JSON format:                
                 {
                   "registrationPoint": "The exact registration point code from the mapping above (e.g., 'DHK METRO', 'CTG METRO', 'BH', 'BR')",
                   "series": "The Bengali series code (e.g., 'ক', 'খ', 'গ')",
                   "seriesEnglish": "The English equivalent of the series (e.g., 'KA', 'KHA', 'GA')",
-                  "number": "The numeric part (e.g., '1234', '5678')",
+                  "number": "The numeric part (e.g., '1234', '5678'), might be in Bengali script, you must translate it to English and return the English version in the number field.",
                   "vehicleType": "The vehicle type based on the series",
                   "vehicleColour": "Vehicle color if visible",
                   "registrationDate": "Registration date if visible",
@@ -305,6 +297,13 @@ export class VerificationService {
                 7. Do not include any markdown formatting or backticks in your response
                 8. Ensure the JSON is valid and properly formatted
                 9. For registration points, use the exact codes like "DHK METRO", "CTG METRO", "BH", etc.
+
+                Examples:
+                - Dhaka Metro ক 1234 → registrationPoint: "DHK METRO", series: "ক", number: "1234"
+                - Chittagong Metro খ 5678 → registrationPoint: "CTG METRO", series: "খ", number: "5678"
+                - Sylhet গ 9012 → registrationPoint: "SYL METRO", series: "গ", number: "9012"
+                - Khulna ঘ 3456 → registrationPoint: "KHL Metro", series: "ঘ", number: "3456"
+                - Rajshahi চ 7890 → registrationPoint: "RAJ METRO", series: "চ", number: "7890"
                 
                 Focus primarily on extracting the RC number components accurately with the correct registration point mapping.`,
               },

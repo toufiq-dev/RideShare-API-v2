@@ -320,7 +320,7 @@ export class PilotController {
   )
   async uploadBDRC(
     @UploadedFiles()
-    files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadBDRC(files, userId);

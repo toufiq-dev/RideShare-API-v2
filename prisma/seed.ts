@@ -443,22 +443,22 @@ async function main() {
     },
     {
       code: 'DHK METRO',
-      name: 'Dhaka Metropolitan',
+      name: 'Dhaka Metro',
       category: 'Metropolitan'
     },
     {
       code: 'CTG METRO',
-      name: 'Chittagong Metropolitan',
+      name: 'Chittagong Metro',
       category: 'Metropolitan'
     },
     {
       code: 'SYL METRO',
-      name: 'Sylhet Metropolitan',
+      name: 'Sylhet Metro',
       category: 'Metropolitan'
     },
     {
       code: 'KHL Metro',
-      name: 'Khulna Metropolitan',
+      name: 'Khulna Metro',
       category: 'Metropolitan'
     },
     {

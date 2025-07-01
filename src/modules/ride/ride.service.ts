@@ -333,16 +333,17 @@ export class RideService {
         Number(vehicleType.baseFare),
         Number(vehicleType.perKmRate),
         Number(vehicleType.perMinRate),
+        Number(vehicleType.minFare),
       );
 
-      const coupon = customer.coupon;
-      if (coupon && isNaN(Number(coupon.discount))) {
-        throw new BadRequestException('Invalid coupon discount');
+      let discount: number = Number(customer.coupon.discount);
+      if (!discount) {
+        discount = 0;
       }
 
       const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
+        discount && originalPrice > discount
+          ? originalPrice - discount
           : originalPrice;
 
       const booking = await this.prisma.booking.create({
@@ -381,7 +382,7 @@ export class RideService {
         location: [pickupLocation, dropLocation],
         originalPrice: Math.ceil(Number(originalPrice)),
         discountedPrice: Math.ceil(Number(price)),
-        coupon: coupon || null,
+        coupon: customer.coupon || null,
         otherPassengerInfo:
           booking.rideType === RideType.OTHERS
             ? { name: otherPassengerInfo.name }
@@ -450,6 +451,7 @@ export class RideService {
               baseFare: true,
               perKmRate: true,
               perMinRate: true,
+              minFare: true,
             },
           },
         },
@@ -488,6 +490,7 @@ export class RideService {
         Number(vehicle.vehicleTypeBD.baseFare),
         Number(vehicle.vehicleTypeBD.perKmRate),
         Number(vehicle.vehicleTypeBD.perMinRate),
+        Number(vehicle.vehicleTypeBD.minFare),
       );
 
       const coupon = booking.customer.coupon;
@@ -1616,6 +1619,7 @@ export class RideService {
                   baseFare: true,
                   perKmRate: true,
                   perMinRate: true,
+                  minFare: true,
                 },
               },
             },
@@ -1650,6 +1654,7 @@ export class RideService {
         Number(pilot?.vehicle?.vehicleTypeBD.baseFare),
         Number(pilot?.vehicle?.vehicleTypeBD.perKmRate),
         Number(pilot?.vehicle?.vehicleTypeBD.perMinRate),
+        Number(pilot?.vehicle?.vehicleTypeBD.minFare),
       );
 
       const coupon = customer?.coupon;

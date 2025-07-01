@@ -1217,7 +1217,7 @@ export class PilotService {
   }
 
   async uploadBDRC(
-    files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     userId: string,
   ) {
     try {
@@ -1230,8 +1230,6 @@ export class PilotService {
       }
 
       const frontSideBuffer = files.front[0].buffer;
-      const backSideBuffer = files.back[0].buffer;
-
       const frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
@@ -1239,22 +1237,29 @@ export class PilotService {
         files.front[0].mimetype,
       );
 
-      const backSideUrl = await this.azureServicce.uploadFile(
-        backSideBuffer,
-        files.back[0].originalname,
-        userId,
-        files.back[0].mimetype,
-      );
-
-      if (frontSideUrl && backSideUrl) {
-        await this.prisma.pilot.update({
-          where: { userId },
-          data: {
-            rcFrontSideUrl: frontSideUrl,
-            rcBackSideUrl: backSideUrl,
-          },
-        });
+      let backSideUrl = null;
+      if (files.back) {
+        const backSideBuffer = files.back[0].buffer;
+        backSideUrl = await this.azureServicce.uploadFile(
+          backSideBuffer,
+          files.back[0].originalname,
+          userId,
+          files.back[0].mimetype,
+        );
       }
+
+      const updateData: any = {
+        rcFrontSideUrl: frontSideUrl,
+      };
+
+      if (backSideUrl) {
+        updateData.rcBackSideUrl = backSideUrl;
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: updateData,
+      });
 
       let verificationResponse =
         await this.verificationService.extractRCData(frontSideBuffer);

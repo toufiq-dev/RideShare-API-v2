@@ -341,10 +341,15 @@ export class RideService {
         discount = 0;
       }
 
-      const price =
-        discount && originalPrice > discount
-          ? originalPrice - discount
-          : originalPrice;
+      let price = 0;
+      if (originalPrice !== Number(vehicleType.minFare)) {
+        price =
+          discount && originalPrice > discount
+            ? originalPrice - discount
+            : originalPrice;
+      } else {
+        price = originalPrice;
+      }
 
       const booking = await this.prisma.booking.create({
         data: {

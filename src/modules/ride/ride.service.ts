@@ -593,7 +593,7 @@ export class RideService {
 
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
         // Fetch all nearby pilots in the current radius
-        const nearbyPilots: any = await this.redis.geoRadius(
+        const nearbyPilots = await this.redis.geoRadius(
           RedisKeys.PILOT_LOCATION,
           pickupLocation.lng,
           pickupLocation.lat,
@@ -608,7 +608,7 @@ export class RideService {
         this.logger.log(`nearbyPilots ${nearbyPilots.length}`, this.context);
 
         // Iterate through all pilots in the radius
-        for (const [pilotUserId, distance] of nearbyPilots) {
+        for (const [pilotUserId, distance] of nearbyPilots as any) {
           // Check if this pilot was already notified
           const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
           const alreadyNotified = await this.redis.get(notifiedKey);

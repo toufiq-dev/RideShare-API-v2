@@ -18,7 +18,12 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { VehicleTypeName, RideType, UserStatus } from '@prisma/client';
+import {
+  VehicleTypeName,
+  RideType,
+  UserStatus,
+  PilotStatus,
+} from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 
@@ -487,16 +492,66 @@ export class CustomerService {
             ? originalPrice - Number(customer.coupon.discount)
             : originalPrice;
 
-        const driversLocation = {
-          lat: pickupLocation.lat,
-          lng: pickupLocation.lng,
-        };
+        // const driversLocation = {
+        //   lat: pickupLocation.lat,
+        //   lng: pickupLocation.lng,
+        // };
 
-        const { distanceKm: kmAway, durationMin: minsAway } =
-          await this.fareService.calculateDistanceAndDuration(
-            driversLocation,
-            pickupLocation,
-          );
+        // const { distanceKm: kmAway, durationMin: minsAway } =
+        //   await this.fareService.calculateDistanceAndDuration(
+        //     driversLocation,
+        //     pickupLocation,
+        //   );
+
+        const nearbyPilots = await this.redis.geoRadius(
+          RedisKeys.PILOT_LOCATION,
+          pickupLocation.lng,
+          pickupLocation.lat,
+          2000,
+          'm',
+          { withDist: true, sort: 'ASC' },
+        );
+
+        let minsAway = 5;
+        for (const [pilotUserId, distance] of nearbyPilots as any) {
+          const pilot = await this.prisma.pilot.findUnique({
+            where: {
+              userId: pilotUserId,
+              onlineStatus: PilotStatus.AVAILABLE,
+              activeBookingId: null,
+            },
+            select: {
+              vehicle: {
+                select: {
+                  vehicleTypeBD: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          });
+
+          if (
+            pilot &&
+            pilot.vehicle &&
+            pilot.vehicle.vehicleTypeBD &&
+            pilot.vehicle.vehicleTypeBD.id === item.id
+          ) {
+            const pilotLocation = await this.redis.geoPos(
+              RedisKeys.PILOT_LOCATION,
+              pilotUserId,
+            );
+            if (pilotLocation && pilotLocation[0] && pilotLocation[1]) {
+              const { durationMin } =
+                await this.fareService.calculateDistanceAndDuration(
+                  { lat: pilotLocation[0], lng: pilotLocation[1] },
+                  pickupLocation,
+                );
+              minsAway = durationMin;
+            }
+            break;
+          }
+        }
 
         vehicleData.push({
           id: item.id,
@@ -507,10 +562,10 @@ export class CustomerService {
           originalPrice: Math.ceil(Number(originalPrice)),
           price: Math.ceil(Number(price)),
           tolls: 0.0,
-          timeAway: `${minsAway} min away`,
+          timeAway: `${minsAway ? minsAway : 5} min away`,
         });
       }
-      console.log('customer.coupon', customer.coupon);
+
       if (customer.coupon) {
         customer.coupon.discount = customer.coupon.discount
           ? Number(customer.coupon.discount)

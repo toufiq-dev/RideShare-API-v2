@@ -512,7 +512,7 @@ export class CustomerService {
           { withDist: true, sort: 'ASC' },
         );
 
-        let minsAway = 5;
+        let minsAway = null;
         for (const [pilotUserId, distance] of nearbyPilots as any) {
           const pilot = await this.prisma.pilot.findFirst({
             where: {
@@ -547,7 +547,7 @@ export class CustomerService {
                   { lat: pilotLocation[0], lng: pilotLocation[1] },
                   pickupLocation,
                 );
-              minsAway = durationMin;
+              minsAway = Math.ceil(durationMin);
             }
             break;
           }
@@ -562,7 +562,7 @@ export class CustomerService {
           originalPrice: Math.ceil(Number(originalPrice)),
           price: Math.ceil(Number(price)),
           tolls: 0.0,
-          timeAway: `${minsAway ? minsAway : 5} min away`,
+          timeAway: `${minsAway ? minsAway : randomInt(1, 5)} min away`,
         });
       }
 

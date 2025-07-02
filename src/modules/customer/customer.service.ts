@@ -514,7 +514,7 @@ export class CustomerService {
 
         let minsAway = 5;
         for (const [pilotUserId, distance] of nearbyPilots as any) {
-          const pilot = await this.prisma.pilot.findUnique({
+          const pilot = await this.prisma.pilot.findFirst({
             where: {
               userId: pilotUserId,
               onlineStatus: PilotStatus.AVAILABLE,

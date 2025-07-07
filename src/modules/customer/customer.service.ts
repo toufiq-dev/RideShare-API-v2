@@ -482,7 +482,6 @@ export class CustomerService {
           distanceKm,
           durationMin,
           Number(item.baseFare),
-          Number(item.perKmRate),
           Number(item.perMinRate),
           Number(item.minFare),
         );

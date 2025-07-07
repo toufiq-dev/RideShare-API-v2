@@ -12,6 +12,9 @@ import { VehicleTypeNameBD } from '@prisma/client';
 export class FareService {
   private gmaps: Client;
   private readonly apiKey: string;
+  private readonly a: number;
+  private readonly b: number;
+  private readonly c: number;
 
   constructor(
     private configService: ConfigService,
@@ -19,6 +22,9 @@ export class FareService {
   ) {
     this.gmaps = new Client({});
     this.apiKey = this.configService.get<string>('googleMaps.apiKey');
+    this.a = this.configService.get<number>('pricing.a');
+    this.b = this.configService.get<number>('pricing.b');
+    this.c = this.configService.get<number>('pricing.c');
   }
 
   async updateFare(updateFareDto: UpdateFareDto) {
@@ -86,15 +92,23 @@ export class FareService {
     distanceKm: number,
     durationMin: number,
     baseFare: number,
-    perKmRate: number,
     perMinRate: number,
     minFare: number,
   ): number {
+    const perKmRate = this.calculatePerKmFare(distanceKm);
+
     return Math.ceil(
       Math.max(
         baseFare + perKmRate * distanceKm + perMinRate * durationMin,
         minFare,
       ),
     );
+  }
+
+  private calculatePerKmFare(distanceKm: number): number {
+    // Per-km fare for this distance
+    const perKmFare = this.a * Math.exp(-this.b * distanceKm) + this.c;
+    // Optionally, round to 2 decimal places
+    return Math.round(perKmFare * 100) / 100;
   }
 }

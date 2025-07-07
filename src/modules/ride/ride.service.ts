@@ -331,7 +331,6 @@ export class RideService {
         distanceKm,
         durationMin,
         Number(vehicleType.baseFare),
-        Number(vehicleType.perKmRate),
         Number(vehicleType.perMinRate),
         Number(vehicleType.minFare),
       );
@@ -493,7 +492,6 @@ export class RideService {
         distanceKm,
         durationMin,
         Number(vehicle.vehicleTypeBD.baseFare),
-        Number(vehicle.vehicleTypeBD.perKmRate),
         Number(vehicle.vehicleTypeBD.perMinRate),
         Number(vehicle.vehicleTypeBD.minFare),
       );
@@ -1657,7 +1655,6 @@ export class RideService {
         distanceKm,
         durationMin,
         Number(pilot?.vehicle?.vehicleTypeBD.baseFare),
-        Number(pilot?.vehicle?.vehicleTypeBD.perKmRate),
         Number(pilot?.vehicle?.vehicleTypeBD.perMinRate),
         Number(pilot?.vehicle?.vehicleTypeBD.minFare),
       );

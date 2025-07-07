@@ -50,7 +50,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // Fallback for unhandled errors
     else {
       status = HttpStatus.INTERNAL_SERVER_ERROR; // 500
-      errorMessage = 'Internal server error';
+      errorMessage = 'Something went wrong';
     }
 
     // Normalize error message

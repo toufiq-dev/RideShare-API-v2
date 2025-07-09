@@ -12,9 +12,9 @@ import { VehicleTypeNameBD } from '@prisma/client';
 export class FareService {
   private gmaps: Client;
   private readonly apiKey: string;
-  private readonly a: number;
-  private readonly b: number;
-  private readonly c: number;
+  private readonly aPlus: number;
+  private readonly bPlus: number;
+  private readonly cPlus: number;
 
   constructor(
     private configService: ConfigService,
@@ -22,9 +22,9 @@ export class FareService {
   ) {
     this.gmaps = new Client({});
     this.apiKey = this.configService.get<string>('googleMaps.apiKey');
-    this.a = this.configService.get<number>('pricing.a');
-    this.b = this.configService.get<number>('pricing.b');
-    this.c = this.configService.get<number>('pricing.c');
+    this.aPlus = this.configService.get<number>('pricing.aPlus');
+    this.bPlus = this.configService.get<number>('pricing.bPlus');
+    this.cPlus = this.configService.get<number>('pricing.cPlus');
   }
 
   async updateFare(updateFareDto: UpdateFareDto) {
@@ -94,21 +94,37 @@ export class FareService {
     baseFare: number,
     perMinRate: number,
     minFare: number,
+    vehicleType: VehicleTypeNameBD,
+    perKmFare?: number,
   ): number {
-    const perKmRate = this.calculatePerKmFare(distanceKm);
+    let perKmRate: number = 0;
+
+    if (vehicleType === VehicleTypeNameBD.FAIR_PLUS) {
+      perKmRate = this.calculatePerKmFare(distanceKm, vehicleType);
+    } else {
+      perKmRate = perKmFare;
+    }
 
     return Math.ceil(
       Math.max(
-        baseFare + perKmRate * distanceKm + perMinRate * durationMin,
+        (baseFare + perKmRate * distanceKm + perMinRate * durationMin) * 0.95,
         minFare,
       ),
     );
   }
 
-  private calculatePerKmFare(distanceKm: number): number {
+  private calculatePerKmFare(
+    distanceKm: number,
+    vehicleType: VehicleTypeNameBD,
+  ): number {
+    const a = this.aPlus;
+    const b = this.bPlus;
+    const c = this.cPlus;
+
     // Per-km fare for this distance
-    const perKmFare = this.a * Math.exp(-this.b * distanceKm) + this.c;
-    // Optionally, round to 2 decimal places
+    const perKmFare = a * Math.exp(-b * distanceKm) + c;
+
+    // round to 2 decimal places
     return Math.round(perKmFare * 100) / 100;
   }
 }

@@ -457,7 +457,7 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
-      const [vehicleTypesWithOther, distanceData] = await Promise.all([
+      const [vehicleTypes, distanceData] = await Promise.all([
         this.prisma.vehicleTypeBD.findMany({
           orderBy: {
             serialNumber: 'asc',
@@ -471,10 +471,6 @@ export class CustomerService {
 
       const { distanceKm, durationMin } = distanceData;
 
-      const vehicleTypes = vehicleTypesWithOther.filter(
-        (item: any) => item.name !== VehicleTypeName.OTHER,
-      );
-
       const vehicleData = [];
 
       for (const item of vehicleTypes) {
@@ -484,12 +480,26 @@ export class CustomerService {
           Number(item.baseFare),
           Number(item.perMinRate),
           Number(item.minFare),
+          item.name,
+          Number(item.perKmRate),
         );
 
-        const price =
-          customer?.coupon?.discount && originalPrice > customer.coupon.discount
-            ? originalPrice - Number(customer.coupon.discount)
-            : originalPrice;
+        let price = null;
+        if (originalPrice === Number(item.minFare)) {
+          console.log(
+            `${item.name} with in if and originalPrice ${originalPrice} and minFare: ${item.minFare}`,
+          );
+          price = originalPrice;
+        } else {
+          console.log(
+            `${item.name} with in else and originalPrice ${originalPrice}`,
+          );
+          price =
+            customer?.coupon?.discount &&
+            originalPrice > customer.coupon.discount
+              ? originalPrice - Number(customer.coupon.discount)
+              : originalPrice;
+        }
 
         // const driversLocation = {
         //   lat: pickupLocation.lat,
@@ -551,7 +561,7 @@ export class CustomerService {
             break;
           }
         }
-
+        console.log(`mins away: ${minsAway}`);
         vehicleData.push({
           id: item.id,
           vehicleType: item.name,

@@ -90,8 +90,8 @@ export default () => ({
     bonusRechargeThreshold: 'bonusRechargeThreshold',
   },
   pricing: {
-    a: 930, // a is the “height” of the initial per_km_fare above the flat rate,
-    b: 2.05, // b controls how quickly it drops as distance increases, Decay rate
-    c: 21.7, // c is the flat rate that per_km_fare approaches for long distances
+    aPlus: 924, // a is the “height” of the initial per_km_fare above the flat rate,
+    bPlus: 2.06, // b controls how quickly it drops as distance increases, Decay rate
+    cPlus: 22.0, // c is the flat rate that per_km_fare approaches for long distances
   },
 });

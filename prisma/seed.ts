@@ -81,6 +81,7 @@ async function main() {
   const vehicleTypesBD = [
     {
       name: VehicleTypeNameBD.FAIR_BIKE,
+      serialNumber: 1,
       isFaster: true,
       airCondition: [],
       passengerCapacity: 1,
@@ -91,18 +92,8 @@ async function main() {
       insuranceFee: 5.0,
     },
     {
-      name: VehicleTypeNameBD.FAIR_PRIME,
-      isFaster: false,
-      airCondition: [],
-      passengerCapacity: 4,
-      baseFare: 120.0,
-      perKmRate: 27.0,
-      perMinRate: 2.00,
-      minFare: 200.0,
-      insuranceFee: 15.0,
-    },
-    {
       name: VehicleTypeNameBD.FAIR_PLUS,
+      serialNumber: 2,
       isFaster: false,
       airCondition: [],
       passengerCapacity: 4,
@@ -113,7 +104,21 @@ async function main() {
       insuranceFee: 20.0,
     },
     {
+      name: VehicleTypeNameBD.FAIR_PRIME,
+      serialNumber: 3,
+      isFaster: false,
+      airCondition: [],
+      passengerCapacity: 4,
+      baseFare: 120.0,
+      perKmRate: 27.0,
+      perMinRate: 2.00,
+      minFare: 200.0,
+      insuranceFee: 15.0,
+    },
+    
+    {
       name: VehicleTypeNameBD.FAIR_MAX,
+      serialNumber: 4,
       isFaster: false,
       airCondition: [],
       passengerCapacity: 6,
@@ -125,6 +130,7 @@ async function main() {
     },
     {
       name: VehicleTypeNameBD.FAIR_CNG,
+      serialNumber: 5,
       isFaster: false,
       airCondition: [],
       passengerCapacity: 3,
@@ -287,7 +293,6 @@ async function main() {
   }
 
   const randromNumber = randomInt(0, vehicleTypeIds.length - 1);
-  console.log('randromNumber', randromNumber);
   
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -847,7 +852,7 @@ async function main() {
 
   // Vehicle Registration Point
   await prisma.systemConfig.upsert({
-    where: { key: 'vehicleRegistrationPoint' },
+    where: { key: 'vehicleRegistrationPoints' },
     update: {},
     create: {
       key: 'vehicleRegistrationPoints',

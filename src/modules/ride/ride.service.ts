@@ -292,19 +292,17 @@ export class RideService {
     } = createRideRequestDto;
 
     try {
-      // Fetch customer and vehicle type in one query
-      const [customer, vehicleType] = await Promise.all([
-        this.prisma.customer.findUnique({
-          where: { userId },
-          include: { coupon: true },
-        }),
-        this.prisma.vehicleTypeBD.findUnique({
-          where: { id: vehicleTypeId },
-        }),
-      ]);
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
+        include: { coupon: true },
+      });
       if (!customer) {
         throw new NotFoundException('Customer not found');
       }
+
+      const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
+        where: { id: vehicleTypeId },
+      });
       if (!vehicleType) {
         throw new NotFoundException('Vehicle type not found');
       }
@@ -333,6 +331,8 @@ export class RideService {
         Number(vehicleType.baseFare),
         Number(vehicleType.perMinRate),
         Number(vehicleType.minFare),
+        vehicleType.name,
+        Number(vehicleType.perKmRate),
       );
 
       let discount: number = Number(customer.coupon.discount);
@@ -452,6 +452,7 @@ export class RideService {
           vehicleTypeBD: {
             select: {
               id: true,
+              name: true,
               baseFare: true,
               perKmRate: true,
               perMinRate: true,
@@ -494,6 +495,8 @@ export class RideService {
         Number(vehicle.vehicleTypeBD.baseFare),
         Number(vehicle.vehicleTypeBD.perMinRate),
         Number(vehicle.vehicleTypeBD.minFare),
+        vehicle.vehicleTypeBD.name,
+        Number(vehicle.vehicleTypeBD.perKmRate),
       );
 
       const coupon = booking.customer.coupon;
@@ -589,11 +592,11 @@ export class RideService {
       dropLocation,
     } = payload;
 
-    try {
-      let radius = 500; // Initial radius in meters
-      const maxRadius = 2000; // Max radius
-      const driverTimeout = 15 * 1000; // 15 seconds per driver
+    let radius = 500; // Initial radius in meters
+    const maxRadius = 2000; // Max radius
+    const driverTimeout = 15 * 1000; // 15 seconds per driver
 
+    try {
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
         // Fetch all nearby pilots in the current radius
         const nearbyPilots = await this.redis.geoRadius(
@@ -608,7 +611,6 @@ export class RideService {
         if (!nearbyPilots.length) {
           return false; // No drivers in this radius
         }
-        this.logger.log(`nearbyPilots ${nearbyPilots.length}`, this.context);
 
         // Iterate through all pilots in the radius
         for (const [pilotUserId, distance] of nearbyPilots as any) {
@@ -636,6 +638,7 @@ export class RideService {
                   vehicleTypeBD: {
                     select: {
                       id: true,
+                      name: true,
                     },
                   },
                 },
@@ -647,6 +650,7 @@ export class RideService {
               },
             },
           });
+
           const walletBalance = pilot && Number(pilot.wallet.balance);
           const fare = Number(discountedFare);
 
@@ -787,13 +791,20 @@ export class RideService {
             data: { status: BookingStatus.CANCELLED },
           });
 
-          await tx.cancellationReason.create({
-            data: {
+          const alreadyCancelled = tx.cancellationReason.findUnique({
+            where: {
               bookingId,
-              reason: 'System error occurred while processing ride request',
-              cancelledBy: CancelledBy.SYSTEM,
             },
           });
+          if (!alreadyCancelled) {
+            await tx.cancellationReason.create({
+              data: {
+                bookingId,
+                reason: 'System error occurred while processing ride request',
+                cancelledBy: CancelledBy.SYSTEM,
+              },
+            });
+          }
         });
 
         // Update Redis cache
@@ -810,12 +821,12 @@ export class RideService {
           `Error during cleanup: ${cleanupError}`,
           this.context,
         );
+        server.to(userId).emit(RideEvents.ERROR, {
+          message: 'Failed to process ride request',
+          error: error.message,
+        });
       }
 
-      server.to(userId).emit(RideEvents.ERROR, {
-        message: 'Failed to process ride request',
-        error: error.message,
-      });
       throw error;
     }
   }
@@ -1657,6 +1668,8 @@ export class RideService {
         Number(pilot?.vehicle?.vehicleTypeBD.baseFare),
         Number(pilot?.vehicle?.vehicleTypeBD.perMinRate),
         Number(pilot?.vehicle?.vehicleTypeBD.minFare),
+        pilot?.vehicle?.vehicleTypeBD.name,
+        Number(pilot?.vehicle?.vehicleTypeBD.perKmRate),
       );
 
       const coupon = customer?.coupon;

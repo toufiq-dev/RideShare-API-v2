@@ -33,7 +33,6 @@ export class RideNotificationService {
     title: string,
     body: string,
     data: any,
-    path?: string,
   ) {
     try {
       const device = await this.prisma.deviceToken.findUnique({
@@ -49,7 +48,6 @@ export class RideNotificationService {
         title,
         body,
         data,
-        path,
       );
     } catch (error) {
       console.error(error);

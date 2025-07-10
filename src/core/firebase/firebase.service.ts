@@ -23,14 +23,15 @@ export class FirebaseService {
     title: string,
     body: string,
     data: any,
-    path?: string,
   ) {
     try {
-      const message = {
+      const message: admin.messaging.Message = {
         token,
         notification: { title, body },
         data,
-        path,
+        android: {
+          priority: 'high',
+        },
       };
 
       const response = await admin.messaging().send(message);

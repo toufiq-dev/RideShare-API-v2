@@ -1,99 +1,237 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# FairDrive API – Technical Documentation
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Table of Contents
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+1. [Overview](#overview)
+2. [Architecture](#architecture)
+3. [Getting Started](#getting-started)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Configuration](#configuration)
+   - [Running the Server](#running-the-server)
+4. [Project Structure](#project-structure)
+5. [Core Modules](#core-modules)
+6. [Common Utilities & Middleware](#common-utilities--middleware)
+7. [Database & ORM](#database--orm)
+8. [Testing](#testing)
+9. [Deployment](#deployment)
+10. [API Reference](#api-reference)
+11. [Contributing](#contributing)
+12. [License](#license)
+13. [Contact](#contact)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Overview
 
-## Project setup
+**FairDrive API** is a modular, scalable backend server built with [NestJS](https://nestjs.com/), designed to power ride-sharing and related services. It features robust authentication, real-time communication, payment processing, geofencing, and more. The project leverages Prisma ORM for database management and is structured for maintainability and extensibility.
+
+---
+
+## Architecture
+
+- **Framework:** [NestJS](https://nestjs.com/) (TypeScript)
+- **Database:** Managed via [Prisma ORM](https://www.prisma.io/)
+- **Authentication:** JWT-based, with role-based access control
+- **Real-time:** WebSocket gateways for chat and ride updates
+- **Queueing:** Bull for background jobs
+- **Caching:** Redis integration
+- **Deployment:** Docker-ready, PM2 ecosystem config
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v16+ recommended)
+- pnpm
+- Docker
+- PostgreSQL
+- Redis
+
+### Installation
 
 ```bash
-$ pnpm install
+git clone <repo-url>
+cd fairdrive-api
+pnpm install
 ```
 
-## Compile and run the project
+### Configuration
 
+- Copy.
+- Main configuration files are in `src/config/`:
+  - `app.config.ts`
+  - `jwt.config.ts`
+
+### Running the Server
+
+**First Run Docker command**
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+docker-compose up --d
 ```
 
-## Run tests
-
+**Development:**
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm run start:dev
 ```
+
+**Production:**
+```bash
+pnpm run build
+pnpm run start:prod
+```
+
+
+---
+
+## Project Structure
+
+```plaintext
+fairdrive-api/
+│
+├── src/
+│   ├── main.ts                # Entry point
+│   ├── app.module.ts          # Root module
+│   ├── config/                # App and JWT config
+│   ├── modules/               # Feature modules (auth, customer, ride, etc.)
+│   ├── core/                  # Core services (utils, cache, socket, etc.)
+│   ├── common/                # Shared code (filters, guards, DTOs, etc.)
+│
+├── prisma/                    # Prisma schema, migrations, seed scripts
+├── test/                      # End-to-end and integration tests
+├── static/                    # Static assets (geojson, etc.)
+├── uploads/                   # Uploaded files
+├── package.json
+├── docker-compose.yml
+├── README.md
+└── ...
+```
+
+---
+
+## Core Modules
+
+### 1. Authentication (`src/modules/auth/`)
+- **Files:** `auth.service.ts`, `auth.controller.ts`, `auth.module.ts`, `dto/`, `validator/`
+- **Features:** JWT authentication, phone number validation, multi-country support, role-based guards.
+
+### 2. Customer (`src/modules/customer/`)
+- **Files:** `customer.service.ts`, `customer.controller.ts`, `customer.module.ts`, `dto/`
+- **Features:** Customer registration, profile management, ride history.
+
+### 3. Ride (`src/modules/ride/`)
+- **Files:** `ride.service.ts`, `ride.controller.ts`, `ride.gateway.ts`, `ride-notification.service.ts`, `dto/`, `processor/`
+- **Features:** Ride booking, status updates, real-time ride tracking, notifications.
+
+### 4. Pilot (`src/modules/pilot/`)
+- **Files:** `pilot.service.ts`, `pilot.controller.ts`, `pilot.module.ts`, `dto/`, `interfaces/`
+- **Features:** Pilot (driver) onboarding, verification, trip management.
+
+### 5. Admin (`src/modules/admin/`)
+- **Files:** `admin.service.ts`, `admin.controller.ts`, `admin.module.ts`, `dto/`
+- **Features:** Admin operations, user management, reporting.
+
+### 6. Subscriptions, Payment, Email, Chat, Languages
+- **Directories:** `subscriptions/`, `payment/`, `email/`, `chat/`, `languages/`
+- **Features:** Subscription management, payment processing, email notifications, chat (WebSocket), language support.
+
+---
+
+## Common Utilities & Middleware
+
+- **Guards:** JWT, role-based, WebSocket token guards (`src/common/guards/`)
+- **Filters:** Exception handling (`src/common/filters/`)
+- **Interceptors:** Response transformation, file handling (`src/common/interceptors/`)
+- **Decorators:** Custom decorators for roles and user extraction (`src/common/decorators/`)
+- **Middleware:** Error logging (`src/common/middleware/`)
+- **DTOs & Types:** Shared data transfer objects and type definitions (`src/common/dto/`, `src/common/types/`)
+
+---
+
+## Database & ORM
+
+- **Prisma Schema:** `prisma/schema.prisma`
+- **Migrations:** `prisma/migrations/`
+- **Seeding:** `prisma/seed.ts`
+- **Services:** `src/core/database/prisma.service.ts`
+
+---
+
+## Testing
+
+- **Test Directory:** `test/`
+- **Framework:** Jest (NestJS default)
+- **Sample Test:** `app.e2e-spec.ts`
+- **Config:** `jest-e2e.json`
+
+---
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- **Docker Compose:** `docker-compose.yml` for multi-service orchestration
+- **PM2:** `ecosystem.config.js` for process management
+- **Static Assets:** Served from `static/`
+- **Uploads:** Handled in `uploads/`
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
 
-```bash
-$ pnpm install -g mau
-$ mau deploy
-```
+## API Reference
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> For a full API reference, see the controller files in each module (e.g., `auth.controller.ts`, `ride.controller.ts`, etc.).  
+> Endpoints are RESTful and follow standard HTTP conventions.
 
-## Resources
+### Example Endpoints
 
-Check out a few resources that may come in handy when working with NestJS:
+- `POST /auth/login` – Authenticate user
+- `POST /ride/book` – Book a ride
+- `GET /customer/profile` – Get customer profile
+- `POST /pilot/onboard` – Onboard a new pilot
+- `POST /payment/charge` – Process a payment
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+**WebSocket Gateways:**
+- `/ride` – Real-time ride updates
+- `/chat` – Real-time chat
 
-## Support
+**Swagger/OpenAPI:**  
+If enabled, API docs are available at `/api` (see `main.ts` for Swagger setup).
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## Contributing
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes
+4. Push to your branch
+5. Open a Pull Request
+
+**Coding Standards:**  
+- Follow the existing code style (see `.eslintrc.js`, `.prettierrc`)
+- Write/extend tests for new features
+- Document your code
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Contact
+
+For questions, issues, or contributions, please open an issue or contact the maintainers via the repository.
+
+---
+
+### Appendix: Additional Resources
+
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [Prisma Documentation](https://www.prisma.io/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+
+---
+
+If you need a more detailed API reference, module-specific documentation, or code-level comments, let me know!

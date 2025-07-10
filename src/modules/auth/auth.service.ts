@@ -560,9 +560,9 @@ export class AuthService {
     if (existingAccessToken || existingRefreshToken) {
       await this.forceDisconnectUser(userId);
 
-      if (role === RoleEnum.PILOT) {
-        await this.cleanupPilotData(userId);
-      }
+      // if (role === RoleEnum.PILOT) {
+      //   await this.cleanupPilotData(userId);
+      // }
     }
 
     await this.redis.del(`${RedisKeys.ACCESS_TOKEN}${userId}`);
@@ -646,16 +646,16 @@ export class AuthService {
       await this.redis.zRem(RedisKeys.PILOT_LOCATION, userId);
 
       // 2. Clean up active ride if any
-      await this.redis.removeActiveRide(userId);
+      // await this.redis.removeActiveRide(userId);
 
       // 3. Update pilot status to offline
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          onlineStatus: PilotStatus.OFFLINE,
-          activeBookingId: null,
-        },
-      });
+      // await this.prisma.pilot.update({
+      //   where: { userId },
+      //   data: {
+      //     onlineStatus: PilotStatus.OFFLINE,
+      //     activeBookingId: null,
+      //   },
+      // });
 
       console.log(`Cleaned up pilot data for user ${userId}`);
     } catch (error) {

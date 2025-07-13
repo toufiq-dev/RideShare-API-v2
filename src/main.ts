@@ -7,13 +7,16 @@ import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { WinstonModule } from 'nest-winston';
+import { winstonConfig } from './core/logging/winston.config';
 
 async function bootstrap() {
   process.env.TZ = 'UTC';
-  console.log('Node.js time zone:', process.env.TZ); // Should print "UTC"
-  console.log('Current UTC time:', new Date().toISOString());
 
-  const app = await NestFactory.create(AppModule, { abortOnError: false });
+  const app = await NestFactory.create(AppModule, {
+    abortOnError: false,
+    logger: WinstonModule.createLogger(winstonConfig),
+  });
 
   const logger = app.get(LoggerService);
   const configService = app.get(ConfigService);

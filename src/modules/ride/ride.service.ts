@@ -163,13 +163,8 @@ export class RideService {
     return this.redis.getBookingStatus(bookingId);
   }
 
-  async getRideDetails(bookingId: string, userId: string) {
+  async getRideDetails(bookingId: string) {
     try {
-      const customer = await this.prisma.customer.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
@@ -225,11 +220,6 @@ export class RideService {
       });
       if (!booking) {
         throw new NotFoundException('Booking not found.');
-      }
-      if (booking.customerId !== customer.id) {
-        throw new ForbiddenException(
-          'You are not authorized to access this ride.',
-        );
       }
 
       const pilotLocation = await this.redis.geoPos(

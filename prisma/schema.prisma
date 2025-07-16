@@ -286,6 +286,7 @@ model VehicleClassificationCache {
 model Subscription {
   id                  String        @id @default(uuid())
   name                String        @unique
+  serialNumber        Int?
   coins               Decimal       @db.Decimal(10, 2)
   price               Decimal       @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?      @db.Decimal(10, 2)

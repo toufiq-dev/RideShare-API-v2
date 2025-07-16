@@ -12,8 +12,6 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
-import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class RideNotificationService {
@@ -89,6 +87,7 @@ export class RideNotificationService {
       nearestPilotDistance: nearestPilotDistance.toString(),
       distanceKm: distanceKm.toString(),
       durationMin: durationMin.toString(),
+      url: `/trip/${bookingId}`,
     };
 
     // Send push notification to the driver
@@ -187,7 +186,11 @@ export class RideNotificationService {
       customerUserId,
       `Ride ${payload.bookingStatus.toLowerCase()}`,
       `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
-      { bookingId: payload.bookingId, bookingStatus: payload.bookingStatus },
+      {
+        bookingId: payload.bookingId,
+        bookingStatus: payload.bookingStatus,
+        url: `/trip/${payload.bookingId}`,
+      },
     );
 
     // Socket for ride status update
@@ -238,7 +241,11 @@ export class RideNotificationService {
       pilotUserId,
       'Ride Edit Location',
       'You have a new edit location request',
-      { bookingId: payload.bookingId, fare: payload.fare.toString() },
+      {
+        bookingId: payload.bookingId,
+        fare: payload.fare.toString(),
+        url: `/trip/${payload.bookingId}`,
+      },
     );
 
     // Socket for ride edit location

@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
+  AdminLoginDto,
   AppUpdateDto,
   CreateSubscriptionTypeDto,
   CreateSupportStuffDto,
@@ -9,10 +10,27 @@ import {
 import { RoleEnum } from '../auth/dto/auth.dto';
 import { randomInt } from 'crypto';
 import { AppPlatform } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly accessTokenExpiresIn: string;
+  private readonly refreshTokenExpiresIn: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {
+    this.accessTokenExpiresIn = this.configService.get<string>(
+      'jwt.accessTokenExpiresIn',
+    );
+    this.refreshTokenExpiresIn = this.configService.get<string>(
+      'jwt.refreshTokenExpiresIn',
+    );
+  }
 
   async updateAppVersion(appUpdateDto: AppUpdateDto) {
     const {
@@ -62,6 +80,49 @@ export class AdminService {
       return {
         message: 'App version fetched successfully.',
         data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async adminLogin(adminLoginDto: AdminLoginDto) {
+    const { email, password } = adminLoginDto;
+
+    try {
+      const admin = await this.prisma.admin.findUnique({
+        where: {
+          email,
+        },
+      });
+
+      if (!admin) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, admin.password);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      const accessToken = await this.jwtService.signAsync(
+        { id: admin.id },
+        { expiresIn: this.accessTokenExpiresIn },
+      );
+
+      const refreshToken = await this.jwtService.signAsync(
+        { id: admin.id },
+        { expiresIn: this.refreshTokenExpiresIn },
+      );
+
+      return {
+        message: 'Admin logged in successfully.',
+        data: {
+          accessToken,
+          refreshToken,
+        },
       };
     } catch (error) {
       console.error(error);

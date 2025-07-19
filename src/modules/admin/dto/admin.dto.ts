@@ -1,6 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AppPlatform } from '@prisma/client';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+
+export class AdminLoginDto {
+  @ApiProperty({ description: 'Email of the admin' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Password of the admin' })
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+}
 
 export class AppUpdateDto {
   @ApiProperty({ description: 'App version' })

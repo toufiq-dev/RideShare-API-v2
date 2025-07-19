@@ -14,6 +14,7 @@ import {
   UpdateSubscriptionTypeDto,
   CreateSupportStuffDto,
   AppUpdateDto,
+  AdminLoginDto,
 } from './dto/admin.dto';
 import { AppPlatform } from '@prisma/client';
 
@@ -35,6 +36,12 @@ export class AdminController {
   @ApiOperation({ summary: 'Get App Version' })
   async getAppVersion(@Query('platform') platform: AppPlatform) {
     return await this.adminService.getAppVersion(platform);
+  }
+
+  @Post('login')
+  @ApiOperation({ summary: 'Admin Login' })
+  async adminLogin(@Body() adminLoginDto: AdminLoginDto) {
+    return await this.adminService.adminLogin(adminLoginDto);
   }
 
   @Post('subscription')

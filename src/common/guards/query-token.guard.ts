@@ -9,10 +9,7 @@ import { PrismaService } from 'src/core/database/prisma.service';
 
 @Injectable()
 export class QueryTokenGuard implements CanActivate {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();

@@ -1,6 +1,17 @@
-import { PrismaClient, VehicleTypeName, UserRole, VehicleTypeNameBD, VerificationStatus } from '@prisma/client';
-import { CouponsNames, PilotCouponsNames } from '../src/modules/admin/admin.constants';
+import {
+  PrismaClient,
+  VehicleTypeName,
+  UserRole,
+  VehicleTypeNameBD,
+  VerificationStatus,
+  UserStatus,
+} from '@prisma/client';
+import {
+  CouponsNames,
+  PilotCouponsNames,
+} from '../src/modules/admin/admin.constants';
 import { randomInt } from 'node:crypto';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -99,7 +110,7 @@ async function main() {
       passengerCapacity: 4,
       baseFare: 190.0,
       perKmRate: 30.0,
-      perMinRate: 3.00,
+      perMinRate: 3.0,
       minFare: 350.0,
       insuranceFee: 20.0,
     },
@@ -111,11 +122,11 @@ async function main() {
       passengerCapacity: 4,
       baseFare: 120.0,
       perKmRate: 27.0,
-      perMinRate: 2.00,
+      perMinRate: 2.0,
       minFare: 200.0,
       insuranceFee: 15.0,
     },
-    
+
     {
       name: VehicleTypeNameBD.FAIR_MAX,
       serialNumber: 4,
@@ -124,7 +135,7 @@ async function main() {
       passengerCapacity: 6,
       baseFare: 250.0,
       perKmRate: 36.0,
-      perMinRate: 3.00,
+      perMinRate: 3.0,
       minFare: 500.0,
       insuranceFee: 30.0,
     },
@@ -136,7 +147,7 @@ async function main() {
       passengerCapacity: 3,
       baseFare: 100.0,
       perKmRate: 20.0,
-      perMinRate: 1.00,
+      perMinRate: 1.0,
       minFare: 250.0,
       insuranceFee: 20.0,
     },
@@ -148,7 +159,7 @@ async function main() {
       serialNumber: 2,
       coins: 22500,
       price: 715,
-      priceBeforeDiscount: 750.00,
+      priceBeforeDiscount: 750.0,
       tag: 'Most Popular',
     },
     {
@@ -178,11 +189,19 @@ async function main() {
   ];
 
   const coupons = [
-    { name: CouponsNames.MINI, discount: 49, validUntil: new Date('2025-12-12') },
+    {
+      name: CouponsNames.MINI,
+      discount: 49,
+      validUntil: new Date('2025-12-12'),
+    },
   ];
 
   const pilotCoupons = [
-    { name: PilotCouponsNames.BONUS_AUTO_RECHARGE, discount: 4500, validUntil: new Date('2025-12-12') },
+    {
+      name: PilotCouponsNames.BONUS_AUTO_RECHARGE,
+      discount: 4500,
+      validUntil: new Date('2025-12-12'),
+    },
   ];
 
   for (const language of languages) {
@@ -199,7 +218,6 @@ async function main() {
       console.log(`Language ${language.name} already exists`);
     }
   }
-
 
   const vehicleTypeIds = [];
   for (const vehicleType of vehicleTypesBD) {
@@ -249,7 +267,6 @@ async function main() {
     }
   }
 
-
   // Pilot Coupons
   for (const pilotCoupon of pilotCoupons) {
     const existingPilotCoupon = await prisma.pilotCoupon.findUnique({
@@ -266,7 +283,6 @@ async function main() {
     }
   }
 
-
   const users = [
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
@@ -276,7 +292,7 @@ async function main() {
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
   ];
-  
+
   const pilots = [
     { phone: '+911234567890' },
     { phone: '+911234567891' },
@@ -286,39 +302,39 @@ async function main() {
     { phone: '+8801412345671' },
     { phone: '+8801412345672' },
   ];
-  
+
   const english = await prisma.languages.findUnique({
     where: { name: 'English' },
   });
-  
+
   // Ensure the number of users and pilots match
   if (users.length !== pilots.length) {
     throw new Error('The number of users and pilots must match for seeding.');
   }
 
   const randromNumber = randomInt(0, vehicleTypeIds.length - 1);
-  
+
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
     const pilot = pilots[i];
-  
+
     // Check if pilot already exists
     const existingPilot = await prisma.pilot.findUnique({
       where: { phone: pilot.phone },
     });
-  
+
     if (existingPilot) {
       console.log(`Pilot with phone ${pilot.phone} already exists`);
       continue;
     }
-  
+
     // Create a new User
     const newUser = await prisma.user.create({
       data: {
         role: user.role,
       },
     });
-  
+
     // Create a new Pilot associated with the new User
     const newPilot = await prisma.pilot.create({
       data: {
@@ -330,10 +346,10 @@ async function main() {
         isNidVerified: VerificationStatus.APPROVED,
         isSelfieVerified: VerificationStatus.APPROVED,
         isNumberPlateVerified: VerificationStatus.APPROVED,
-        isFairCoinAvailed: true
+        isFairCoinAvailed: true,
       },
     });
-  
+
     // Create DrivingLicense
     await prisma.drivingLicense.create({
       data: {
@@ -345,12 +361,12 @@ async function main() {
         pilotId: newPilot.id,
       },
     });
-  
+
     // Fetch VehicleType
     const vehicleType = await prisma.vehicleTypeBD.findUnique({
       where: { name: VehicleTypeNameBD.FAIR_BIKE },
     });
-  
+
     // Create Vehicle
     const regNo = Date.now().toString() + i; // Ensure unique regNo
     await prisma.vehicle.create({
@@ -369,12 +385,12 @@ async function main() {
         vehicleTypeIdBD: vehicleTypeIds[randromNumber],
       },
     });
-  
+
     // Fetch Subscription
     const subscription = await prisma.subscription.findUnique({
       where: { name: 'Starter Pack' },
     });
-  
+
     // Create PilotWallet
     await prisma.pilotWallet.create({
       data: {
@@ -387,10 +403,10 @@ async function main() {
     await prisma.pilot.update({
       where: { id: newPilot.id },
       data: {
-        isFairCoinAvailed: true
+        isFairCoinAvailed: true,
       },
-    })
-  
+    });
+
     console.log(`Created pilot with phone ${pilot.phone}`);
   }
 
@@ -402,29 +418,29 @@ async function main() {
     { phone: '+8801412345671' },
     { phone: '+8801412345672' },
   ];
-  
+
   for (const customer of customers) {
     const existingCustomer = await prisma.customer.findUnique({
       where: { phone: customer.phone },
     });
-  
+
     if (!existingCustomer) {
       const user = await prisma.user.create({
         data: {
           role: UserRole.CUSTOMER,
         },
-      })
+      });
 
       const coupon = await prisma.coupon.findUnique({
         where: { name: 'Mini' },
-      })
+      });
 
       await prisma.customer.create({
         data: {
           phone: customer.phone,
           languageId: english.id,
           userId: user.id,
-          couponId: coupon.id
+          couponId: coupon.id,
         },
       });
       console.log(`Created customer with phone ${customer.phone}`);
@@ -440,7 +456,8 @@ async function main() {
     create: {
       key: 'bonusRechargeThreshold',
       value: { amount: 300 },
-      description: 'Low balance threshold to trigger bonus recharge eligibility.',
+      description:
+        'Low balance threshold to trigger bonus recharge eligibility.',
     },
   });
 
@@ -448,323 +465,323 @@ async function main() {
     {
       code: 'BH',
       name: 'Bagerhat',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'DHK METRO',
       name: 'Dhaka Metro',
-      category: 'Metropolitan'
+      category: 'Metropolitan',
     },
     {
       code: 'CTG METRO',
       name: 'Chittagong Metro',
-      category: 'Metropolitan'
+      category: 'Metropolitan',
     },
     {
       code: 'SYL METRO',
       name: 'Sylhet Metro',
-      category: 'Metropolitan'
+      category: 'Metropolitan',
     },
     {
       code: 'KHL Metro',
       name: 'Khulna Metro',
-      category: 'Metropolitan'
+      category: 'Metropolitan',
     },
     {
       code: 'BN',
       name: 'Barguna',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'BR',
       name: 'Barisal',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'BA',
       name: 'Bhola',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'BO',
       name: 'Bogra',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'BB',
       name: 'Bandarban',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'CH',
       name: 'Chandpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'CN',
       name: 'Chapainawabganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'CD',
       name: 'Chuadanga',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'CM',
       name: 'Comilla',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'CB',
-      name: 'Cox\'s Bazar',
-      category: 'District'
+      name: "Cox's Bazar",
+      category: 'District',
     },
     {
       code: 'DH',
       name: 'Dhaka',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'DP',
       name: 'Dinajpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'FP',
       name: 'Feni',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'FN',
       name: 'Faridpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'GB',
       name: 'Gaibandha',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'GP',
       name: 'Gazipur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'GO',
       name: 'Gopalganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'HB',
       name: 'Habiganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'JM',
       name: 'Jamalpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'JS',
       name: 'Jessore',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'JK',
       name: 'Jhenaidah',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'JD',
       name: 'Joypurhat',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'JP',
       name: 'Jhalokati',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'KG',
       name: 'Kishoreganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'KH',
       name: 'Khulna',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'KS',
       name: 'Kushtia',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'KT',
       name: 'Kurigram',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'LP',
       name: 'Lakshmipur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'LH',
       name: 'Lalmonirhat',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MP',
       name: 'Madaripur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MG',
       name: 'Magura',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MN',
       name: 'Manikganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MH',
       name: 'Mymensingh',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MB',
       name: 'Munshiganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MS',
       name: 'Meherpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'MY',
       name: 'Moulvibazar',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NG',
       name: 'Narayanganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NR',
       name: 'Narsingdi',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NA',
       name: 'Narail',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'ND',
       name: 'Netrokona',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NT',
       name: 'Natore',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NK',
       name: 'Naogaon',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NL',
       name: 'Nilphamari',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'NO',
       name: 'Noakhali',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'PB',
       name: 'Pabna',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'PA',
       name: 'Patuakhali',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'PT',
       name: 'Pirojpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'PJ',
       name: 'Panchagarh',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'RB',
       name: 'Rajbari',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'RAJ METRO',
       name: 'Rajshahi Metropolitan',
-      category: 'Metropolitan'
+      category: 'Metropolitan',
     },
     {
       code: 'RM',
       name: 'Rajshahi',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'RP',
       name: 'Rangpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'SK',
       name: 'Satkhira',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'SP',
       name: 'Sirajganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'SH',
       name: 'Sunamganj',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'SG',
       name: 'Shariatpur',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'SU',
       name: 'Sylhet',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'TG',
       name: 'Tangail',
-      category: 'District'
+      category: 'District',
     },
     {
       code: 'Tk',
       name: 'Thakurgaon',
-      category: 'District'
-    }
+      category: 'District',
+    },
   ];
 
   const vehicleSeries = {
@@ -773,84 +790,84 @@ async function main() {
         code: 'হ',
         english: 'HA',
         type: 'Motorcycle (80-125cc)',
-        category: 'Motorcycle'
+        category: 'Motorcycle',
       },
       {
         code: 'ল',
         english: 'LA',
         type: 'Motorcycle (135-200cc)',
-        category: 'Motorcycle'
-      }
+        category: 'Motorcycle',
+      },
     ],
     car: [
       {
         code: 'ক',
         english: 'KA',
         type: 'Private Car (800cc)',
-        category: 'Private Car'
+        category: 'Private Car',
       },
       {
         code: 'খ',
         english: 'KHA',
         type: 'Private Car (1000-1300cc)',
-        category: 'Private Car'
+        category: 'Private Car',
       },
       {
         code: 'গ',
         english: 'GA',
         type: 'Private Car (1500-1800cc)',
-        category: 'Private Car'
+        category: 'Private Car',
       },
       {
         code: 'ভ',
         english: 'BHA',
         type: 'Private Car (2000+cc)',
-        category: 'Private Car'
+        category: 'Private Car',
       },
       {
         code: 'চ',
         english: 'CHA',
         type: 'Microbus',
-        category: 'Commercial'
+        category: 'Commercial',
       },
       {
         code: 'ছ',
         english: 'CHHA',
         type: 'Rented Microbus',
-        category: 'Commercial'
+        category: 'Commercial',
       },
       {
         code: 'প',
         english: 'PA',
         type: 'Taxi',
-        category: 'Commercial'
+        category: 'Commercial',
       },
       {
         code: 'ম',
         english: 'MA',
         type: 'Commercial Pick-up',
-        category: 'Commercial'
+        category: 'Commercial',
       },
       {
         code: 'ঘ',
         english: 'GHA',
         type: 'Jeep',
-        category: 'Jeep'
-      }
+        category: 'Jeep',
+      },
     ],
     cng: [
       {
         code: 'ধ',
         english: 'DHA',
         type: 'Private CNG',
-        category: 'CNG'
+        category: 'CNG',
       },
       {
         code: 'থ',
         english: 'THA',
         type: 'Rented CNG',
-        category: 'CNG'
-      }
+        category: 'CNG',
+      },
     ],
   };
 
@@ -871,8 +888,27 @@ async function main() {
     update: {},
     create: {
       key: 'vehicleSeries',
-      value: vehicleSeries, 
+      value: vehicleSeries,
       description: 'Vehicle series',
+    },
+  });
+
+  // Admin
+  const adminUser = await prisma.user.create({
+    data: {
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  const hashedPassword = await bcrypt.hash('admin@2025', 10);
+
+  await prisma.admin.create({
+    data: {
+      name: 'Admin',
+      email: 'admin@fairdriveindia.com',
+      userId: adminUser.id,
+      password: hashedPassword,
     },
   });
 

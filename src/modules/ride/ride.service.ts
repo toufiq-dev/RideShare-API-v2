@@ -101,7 +101,9 @@ export class RideService {
       );
     } catch (error) {
       this.logger.error(error, this.context);
-      client.emit(RideEvents.ERROR, { message: 'Failed to update location' });
+      client.emitWithAck(RideEvents.ERROR, {
+        message: 'Failed to update location',
+      });
     }
   }
 
@@ -811,7 +813,7 @@ export class RideService {
           `Error during cleanup: ${cleanupError}`,
           this.context,
         );
-        server.to(userId).emit(RideEvents.ERROR, {
+        server.to(userId).emitWithAck(RideEvents.ERROR, {
           message: 'Failed to process ride request',
           error: error.message,
         });

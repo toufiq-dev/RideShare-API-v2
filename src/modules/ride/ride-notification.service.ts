@@ -101,9 +101,13 @@ export class RideNotificationService {
     // Socket for ride request
     this.server
       .to(pilotUserId)
-      .emit(RideEvents.RIDE_REQUEST, notificationPayload, (ack: boolean) => {
-        console.log('ack in ride request', ack);
-      });
+      .emitWithAck(
+        RideEvents.RIDE_REQUEST,
+        notificationPayload,
+        (ack: boolean) => {
+          console.log('ack in ride request', ack);
+        },
+      );
   }
 
   async notifyRideCancelled(
@@ -122,7 +126,7 @@ export class RideNotificationService {
     );
 
     // Socket for ride cancelled
-    this.server.to(recipientUserId).emit(
+    this.server.to(recipientUserId).emitWithAck(
       RideEvents.RIDE_CANCELLED,
       {
         bookingId,
@@ -153,7 +157,7 @@ export class RideNotificationService {
       );
 
       // Socket for driver not found
-      this.server.to(userId).emit(
+      this.server.to(userId).emitWithAck(
         RideEvents.DRIVER_NOT_FOUND,
         {
           bookingId,
@@ -171,7 +175,7 @@ export class RideNotificationService {
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
-    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
+    this.server.to(pilotUserId).emitWithAck(RideEvents.RIDE_REQUEST_TIMEOUT, {
       bookingId,
       reason: 'Time expired. You did not respond to the ride request.',
     });
@@ -196,7 +200,7 @@ export class RideNotificationService {
     // Socket for ride status update
     this.server
       .to(customerUserId)
-      .emit(RideEvents.RIDE_STATUS_UPDATE, payload, (ack: boolean) => {
+      .emitWithAck(RideEvents.RIDE_STATUS_UPDATE, payload, (ack: boolean) => {
         console.log('ack in ride status update', ack);
       });
   }
@@ -213,7 +217,7 @@ export class RideNotificationService {
     // Socket for reached pickup point
     this.server
       .to(customerUserId)
-      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
+      .emitWithAck(RideEvents.REACHED_PICKUP_POINT, { bookingId });
   }
 
   notifyDriverLiveLocation(
@@ -227,7 +231,7 @@ export class RideNotificationService {
 
     this.server
       .to(customerUserId)
-      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload, (ack: boolean) => {
+      .emitWithAck(RideEvents.DRIVER_LIVE_LOCATION, payload, (ack: boolean) => {
         console.log('ack in driver live location', ack);
       });
   }
@@ -251,7 +255,7 @@ export class RideNotificationService {
     // Socket for ride edit location
     this.server
       .to(pilotUserId)
-      .emit(RideEvents.RIDE_EDIT_LOCATION, payload, (ack: boolean) => {
+      .emitWithAck(RideEvents.RIDE_EDIT_LOCATION, payload, (ack: boolean) => {
         console.log('ack in ride edit location', ack);
       });
   }
@@ -266,6 +270,6 @@ export class RideNotificationService {
   }
 
   notifyError(userId: string, message: string, error?: string) {
-    this.server.to(userId).emit(RideEvents.ERROR, { message, error });
+    this.server.to(userId).emitWithAck(RideEvents.ERROR, { message, error });
   }
 }

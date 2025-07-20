@@ -1425,9 +1425,7 @@ export class PilotService {
 
       return {
         message: 'Number plate uploaded successfully.',
-        data: {
-          numberPlate: verificationResponse.numberPlate,
-        },
+        data: verificationResponse,
       };
     } catch (error) {
       console.error(error);

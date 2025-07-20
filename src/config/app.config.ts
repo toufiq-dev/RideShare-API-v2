@@ -36,6 +36,12 @@ export default () => ({
       endpoint: process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT,
       apiKey: process.env.AZURE_COGNITIVE_SERVICES_API_KEY,
     },
+    openai: {
+      endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+      apiKey: process.env.AZURE_OPENAI_KEY,
+      model: process.env.AZURE_MODEL_NAME,
+      apiVersion: process.env.AZURE_API_VERSION,
+    },
   },
   file: {
     allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],

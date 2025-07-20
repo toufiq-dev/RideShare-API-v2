@@ -38,7 +38,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.handleConnection(client);
     } catch (error) {
       console.error(error);
-      client.emitWithAck(ChatEvents.ERROR, {
+      client.emit(ChatEvents.ERROR, {
         message: 'Failed to connect Chat Gateway',
       });
     }
@@ -64,12 +64,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(userId)
         .to(recipientId)
-        .emitWithAck(ChatEvents.RECEIVE_MESSAGE, message);
+        .emit(ChatEvents.RECEIVE_MESSAGE, message);
 
       return { success: true };
     } catch (error) {
       console.error('sendMessage error:', error);
-      client.emitWithAck('error', {
+      client.emit('error', {
         message: 'Failed to send message',
         error: error.message,
       });

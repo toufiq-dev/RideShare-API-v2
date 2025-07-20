@@ -101,7 +101,7 @@ export class RideService {
       );
     } catch (error) {
       this.logger.error(error, this.context);
-      client.emitWithAck(RideEvents.ERROR, {
+      client.emit(RideEvents.ERROR, {
         message: 'Failed to update location',
       });
     }
@@ -753,13 +753,20 @@ export class RideService {
             data: { status: BookingStatus.NOT_FOUND },
           });
 
-          await tx.cancellationReason.create({
-            data: {
+          const alreadyCancelled = await tx.cancellationReason.findUnique({
+            where: {
               bookingId,
-              reason: 'Driver not found',
-              cancelledBy: CancelledBy.SYSTEM,
             },
           });
+          if (!alreadyCancelled) {
+            await tx.cancellationReason.create({
+              data: {
+                bookingId,
+                reason: 'Driver not found',
+                cancelledBy: CancelledBy.SYSTEM,
+              },
+            });
+          }
         });
 
         await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
@@ -813,7 +820,7 @@ export class RideService {
           `Error during cleanup: ${cleanupError}`,
           this.context,
         );
-        server.to(userId).emitWithAck(RideEvents.ERROR, {
+        server.to(userId).emit(RideEvents.ERROR, {
           message: 'Failed to process ride request',
           error: error.message,
         });

@@ -47,7 +47,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.handleConnection(client);
     } catch (error) {
       console.error(error);
-      client.emitWithAck(RideEvents.ERROR, {
+      client.emit(RideEvents.ERROR, {
         message: 'Failed to connect Ride Gateway',
       });
     }
@@ -148,7 +148,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     } catch (error) {
       console.error(error);
-      client.emitWithAck(RideEvents.ERROR, {
+      client.emit(RideEvents.ERROR, {
         message: 'Failed to update location',
       });
     }

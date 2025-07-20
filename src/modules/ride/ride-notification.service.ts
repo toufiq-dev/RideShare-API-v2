@@ -101,13 +101,7 @@ export class RideNotificationService {
     // Socket for ride request
     this.server
       .to(pilotUserId)
-      .emitWithAck(
-        RideEvents.RIDE_REQUEST,
-        notificationPayload,
-        (ack: boolean) => {
-          console.log('ack in ride request', ack);
-        },
-      );
+      .emit(RideEvents.RIDE_REQUEST, notificationPayload);
   }
 
   async notifyRideCancelled(
@@ -126,18 +120,12 @@ export class RideNotificationService {
     );
 
     // Socket for ride cancelled
-    this.server.to(recipientUserId).emitWithAck(
-      RideEvents.RIDE_CANCELLED,
-      {
-        bookingId,
-        message: `The ride has been cancelled by the ${
-          cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
-        }.`,
-      },
-      (ack: boolean) => {
-        console.log('ack in ride cancelled', ack);
-      },
-    );
+    this.server.to(recipientUserId).emit(RideEvents.RIDE_CANCELLED, {
+      bookingId,
+      message: `The ride has been cancelled by the ${
+        cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
+      }.`,
+    });
   }
 
   async notifyDriverNotFound(
@@ -157,17 +145,11 @@ export class RideNotificationService {
       );
 
       // Socket for driver not found
-      this.server.to(userId).emitWithAck(
-        RideEvents.DRIVER_NOT_FOUND,
-        {
-          bookingId,
-          bookingStatus,
-          message: 'Unfortunately ride request has been cancelled.',
-        },
-        (ack: boolean) => {
-          console.log('ack in driver not found', ack);
-        },
-      );
+      this.server.to(userId).emit(RideEvents.DRIVER_NOT_FOUND, {
+        bookingId,
+        bookingStatus,
+        message: 'Unfortunately ride request has been cancelled.',
+      });
     } catch (error) {
       console.error(error);
       throw error;
@@ -175,7 +157,7 @@ export class RideNotificationService {
   }
 
   async notifyRideRequestTimeout(bookingId: string, pilotUserId: string) {
-    this.server.to(pilotUserId).emitWithAck(RideEvents.RIDE_REQUEST_TIMEOUT, {
+    this.server.to(pilotUserId).emit(RideEvents.RIDE_REQUEST_TIMEOUT, {
       bookingId,
       reason: 'Time expired. You did not respond to the ride request.',
     });
@@ -198,11 +180,7 @@ export class RideNotificationService {
     );
 
     // Socket for ride status update
-    this.server
-      .to(customerUserId)
-      .emitWithAck(RideEvents.RIDE_STATUS_UPDATE, payload, (ack: boolean) => {
-        console.log('ack in ride status update', ack);
-      });
+    this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
   }
 
   async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
@@ -217,7 +195,7 @@ export class RideNotificationService {
     // Socket for reached pickup point
     this.server
       .to(customerUserId)
-      .emitWithAck(RideEvents.REACHED_PICKUP_POINT, { bookingId });
+      .emit(RideEvents.REACHED_PICKUP_POINT, { bookingId });
   }
 
   notifyDriverLiveLocation(
@@ -231,9 +209,7 @@ export class RideNotificationService {
 
     this.server
       .to(customerUserId)
-      .emitWithAck(RideEvents.DRIVER_LIVE_LOCATION, payload, (ack: boolean) => {
-        console.log('ack in driver live location', ack);
-      });
+      .emit(RideEvents.DRIVER_LIVE_LOCATION, payload);
   }
 
   async notifyDriverForEditLocation(
@@ -253,11 +229,7 @@ export class RideNotificationService {
     );
 
     // Socket for ride edit location
-    this.server
-      .to(pilotUserId)
-      .emitWithAck(RideEvents.RIDE_EDIT_LOCATION, payload, (ack: boolean) => {
-        console.log('ack in ride edit location', ack);
-      });
+    this.server.to(pilotUserId).emit(RideEvents.RIDE_EDIT_LOCATION, payload);
   }
 
   async notifyLowBalance(pilotUserId: string) {
@@ -270,6 +242,6 @@ export class RideNotificationService {
   }
 
   notifyError(userId: string, message: string, error?: string) {
-    this.server.to(userId).emitWithAck(RideEvents.ERROR, { message, error });
+    this.server.to(userId).emit(RideEvents.ERROR, { message, error });
   }
 }

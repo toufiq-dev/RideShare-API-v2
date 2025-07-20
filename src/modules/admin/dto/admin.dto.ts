@@ -1,11 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AppPlatform } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 
 export class AdminLoginDto {
@@ -86,6 +90,18 @@ export class UpdateSubscriptionTypeDto {
   priceBeforeDiscount?: string;
 }
 
+class SupportPermissionDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  menuKey: string;
+
+  @ApiProperty({ default: true })
+  @IsBoolean()
+  @IsOptional()
+  isVisible?: boolean;
+}
+
 export class CreateSupportStuffDto {
   @ApiProperty({ description: 'Name of the support stuff' })
   @IsString()
@@ -94,6 +110,13 @@ export class CreateSupportStuffDto {
 
   @ApiProperty({ description: 'Phone number of the support stuff' })
   @IsString()
-  @IsNotEmpty()
-  phone: string;
+  @IsOptional()
+  phone?: string;
+
+  @ApiProperty({ type: [SupportPermissionDto], required: false })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SupportPermissionDto)
+  @IsOptional()
+  permissions?: SupportPermissionDto[];
 }

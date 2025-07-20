@@ -13,22 +13,33 @@ import { AppPlatform } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { RedisService } from 'src/core/cache/redis.service';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class AdminService {
   private readonly accessTokenExpiresIn: string;
   private readonly refreshTokenExpiresIn: string;
+  private readonly redisAccessTokenTTL: number;
+  private readonly redisRefreshTokenTTL: number;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly redis: RedisService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
     );
     this.refreshTokenExpiresIn = this.configService.get<string>(
       'jwt.refreshTokenExpiresIn',
+    );
+    this.redisAccessTokenTTL = this.configService.get<number>(
+      'redis.accessTokenTTL',
+    );
+    this.redisRefreshTokenTTL = this.configService.get<number>(
+      'redis.refreshTokenTTL',
     );
   }
 
@@ -108,13 +119,24 @@ export class AdminService {
       }
 
       const accessToken = await this.jwtService.signAsync(
-        { id: admin.id },
+        { userId: admin.userId, role: RoleEnum.ADMIN },
         { expiresIn: this.accessTokenExpiresIn },
       );
 
       const refreshToken = await this.jwtService.signAsync(
-        { id: admin.id },
+        { userId: admin.userId, role: RoleEnum.ADMIN },
         { expiresIn: this.refreshTokenExpiresIn },
+      );
+
+      await this.redis.set(
+        `${RedisKeys.ACCESS_TOKEN}${admin.userId}`,
+        accessToken,
+        this.redisAccessTokenTTL,
+      );
+      await this.redis.set(
+        `${RedisKeys.REFRESH_TOKEN}${admin.userId}`,
+        refreshToken,
+        this.redisRefreshTokenTTL,
       );
 
       return {
@@ -196,7 +218,7 @@ export class AdminService {
   }
 
   async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
-    const { name, phone } = createSupportStuffDto;
+    const { name, phone, permissions } = createSupportStuffDto;
 
     try {
       const user = await this.prisma.user.create({
@@ -208,8 +230,22 @@ export class AdminService {
       const data = await this.prisma.support.create({
         data: {
           name,
+          phone,
           referralCode: randomInt(10000, 1000000).toString(),
           userId: user.id,
+          permissions: permissions
+            ? {
+                createMany: {
+                  data: permissions.map((perm) => ({
+                    menuKey: perm.menuKey,
+                    isVisible: perm.isVisible ?? true,
+                  })),
+                },
+              }
+            : undefined,
+        },
+        include: {
+          permissions: true,
         },
       });
 

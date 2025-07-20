@@ -6,9 +6,10 @@ import {
   Patch,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
@@ -17,6 +18,10 @@ import {
   AdminLoginDto,
 } from './dto/admin.dto';
 import { AppPlatform } from '@prisma/client';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RoleEnum } from '../auth/dto/auth.dto';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -78,7 +83,10 @@ export class AdminController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   @Post('support')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create Support Member' })
   @ApiBody({
     type: CreateSupportStuffDto,

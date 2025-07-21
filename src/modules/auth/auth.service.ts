@@ -127,6 +127,10 @@ export class AuthService {
       // For App review in ios and android store START
       if (
         (phone == '+8801412345670' && otp == '4242') ||
+        (phone == '+8801412345671' && otp == '4242') ||
+        (phone == '+8801412345672' && otp == '4242') ||
+        (phone == '+8801412345673' && otp == '4242') ||
+        (phone == '+8801412345674' && otp == '4242') ||
         (phone == '+919999999999' && otp == '4242')
       ) {
         let user = null;

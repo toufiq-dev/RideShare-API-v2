@@ -32,6 +32,7 @@ import {
   BDNidDto,
   BDRCDto,
   NumberPlateDto,
+  FreeRechargeDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -204,11 +205,15 @@ export class PilotController {
     return await this.pilotService.onboardingOffer(userId);
   }
 
-  @Get('bonus-recharge')
+  @Post('free-recharge')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Avail a bonus recharge when eligible.' })
-  async availBonusRecharge(@CurrentUser('userId') userId: string) {
-    return await this.pilotService.availBonusRecharge(userId);
+  @ApiBody({ type: FreeRechargeDto })
+  async availBonusRecharge(
+    @Body() freeREchargeDto: FreeRechargeDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.availBonusRecharge(freeREchargeDto, userId);
   }
 
   @Get('vehicle/list')

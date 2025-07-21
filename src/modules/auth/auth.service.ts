@@ -60,7 +60,14 @@ export class AuthService {
     const { language, phone, referralCode } = sendOtpDto;
 
     try {
-      if (phone === '+8801412345670' || phone === '+919999999999') {
+      if (
+        phone === '+8801412345670' ||
+        phone === '+8801412345671' ||
+        phone === '+8801412345672' ||
+        phone === '+8801412345673' ||
+        phone === '+8801412345674' ||
+        phone === '+919999999999'
+      ) {
         return {
           message: 'OTP sent to your phone successfully.',
           data: {

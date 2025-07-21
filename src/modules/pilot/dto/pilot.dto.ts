@@ -144,3 +144,10 @@ export class BeOnlineDto {
   @Type(() => LocationDto)
   currentLocation: LocationDto;
 }
+
+export class FreeRechargeDto {
+  @ApiProperty({ description: 'Coupon name' })
+  @IsNotEmpty()
+  @IsString()
+  coupon: string;
+}

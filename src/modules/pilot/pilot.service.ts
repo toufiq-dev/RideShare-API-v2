@@ -19,6 +19,7 @@ import {
   BDNidDto,
   BDRCDto,
   NumberPlateDto,
+  FreeRechargeDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -697,7 +698,9 @@ export class PilotService {
     }
   }
 
-  async availBonusRecharge(userId: string) {
+  async availBonusRecharge(freeRechargeDto: FreeRechargeDto, userId: string) {
+    const { coupon } = freeRechargeDto;
+
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
       if (!pilot) {
@@ -710,10 +713,13 @@ export class PilotService {
         throw new NotFoundException('Pilot wallet not found.');
       }
 
-      if (!wallet.autoRechargeEnabled) {
-        throw new BadRequestException(
-          'No bonus recharge available for you at the moment.',
-        );
+      const pilotCoupon = await this.prisma.pilotCoupon.findUnique({
+        where: {
+          name: coupon,
+        },
+      });
+      if (!pilotCoupon) {
+        throw new NotFoundException('This coupon is not valid');
       }
 
       const subscription = await this.prisma.subscription.findUnique({

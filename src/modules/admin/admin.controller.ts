@@ -102,4 +102,18 @@ export class AdminController {
   async getSupportStuffs() {
     return await this.adminService.getSupportStuffs();
   }
+
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(RoleEnum.SUPPORT)
+  @Get('driving-license')
+  @ApiOperation({ summary: 'Driving Lincese documents' })
+  async getDrivingLicense() {
+    return await this.adminService.getDrivingLicense();
+  }
+
+  @Get('numberplate')
+  @ApiOperation({ summary: 'Driving Lincese documents' })
+  async getNumberPlate() {
+    return await this.adminService.getNumberPlates();
+  }
 }

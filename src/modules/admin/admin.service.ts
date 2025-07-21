@@ -9,7 +9,7 @@ import {
 } from './dto/admin.dto';
 import { RoleEnum } from '../auth/dto/auth.dto';
 import { randomInt } from 'crypto';
-import { AppPlatform } from '@prisma/client';
+import { AppPlatform, VerificationStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -267,6 +267,61 @@ export class AdminService {
         message: 'Support stuffs fetched successfully.',
         data,
       };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getDrivingLicense() {
+    try {
+      const data = await this.prisma.pilot.findMany({
+        where: {
+          isDLVerified: {
+            not: VerificationStatus.APPROVED,
+          },
+        },
+        select: {
+          dlFrontSideUrl: true,
+          dlBackSideUrl: true,
+        },
+        orderBy: {
+          isDLVerified: 'asc',
+        },
+      });
+
+      return {
+        message: "Driving license document fetched successfully",
+        data
+      }
+
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getNumberPlates() {
+    try {
+      const data = await this.prisma.pilot.findMany({
+        where: {
+          isNumberPlateVerified: {
+            not: VerificationStatus.APPROVED,
+          },
+        },
+        select: {
+          numberPlateUrl: true
+        },
+        orderBy: {
+          isDLVerified: 'asc',
+        },
+      });
+
+      return {
+        message: "Driving license document fetched successfully",
+        data
+      }
+
     } catch (error) {
       console.error(error);
       throw error;

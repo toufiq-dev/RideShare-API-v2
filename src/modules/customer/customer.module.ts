@@ -7,10 +7,7 @@ import { FareModule } from '../fare/fare.module';
 import { BullModule } from '@nestjs/bullmq';
 
 @Module({
-  imports: [
-    RideModule,
-    FareModule,
-  ],
+  imports: [RideModule, FareModule],
   controllers: [CustomerController],
   providers: [CustomerService, OTPService],
 })

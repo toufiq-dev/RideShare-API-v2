@@ -1334,7 +1334,6 @@ export class PilotService {
 
       const vehicleTypeBD =
         await this.verificationService.mapVehicleType(vehicleType);
-
       if (
         !vehicleTypeBD ||
         !Object.values(VehicleTypeNameBD).includes(vehicleTypeBD)

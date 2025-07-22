@@ -166,6 +166,7 @@ export class RideService {
   }
 
   async getRideDetails(bookingId: string) {
+    console.log('**** getRideDetails ****');
     try {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -229,10 +230,12 @@ export class RideService {
         throw new NotFoundException('Booking not found.');
       }
 
-      const pilotLocation = await this.redis.geoPos(
-        RedisKeys.PILOT_LOCATION,
-        booking.pilot.userId,
-      );
+      const pilotLocation = booking.pilot
+        ? await this.redis.geoPos(
+            RedisKeys.PILOT_LOCATION,
+            booking.pilot.userId,
+          )
+        : [null, null];
 
       const data: CustomerRidePayload = {
         bookingId: booking.id,
@@ -240,21 +243,23 @@ export class RideService {
         bookingStatus: booking.status,
         estimatedDuration: booking.estimatedDuration,
         tripStart: booking.tripStart,
-        pilot: {
-          pilotId: booking.pilot.id,
-          pilotName: booking.pilot.drivingLicense.nameOnLicense,
-          profilePicture: booking.pilot.selfieUrl,
-          pilotPhone: booking.pilot.phone,
-          rating: booking.pilot.averageRating,
-          pilotLocation: {
-            lat: pilotLocation[0],
-            lng: pilotLocation[1],
-          },
-          vehicleNumber: booking.pilot.vehicle.regNo,
-          model: booking.pilot.vehicle.model,
-          colour: booking.pilot.vehicle.colour,
-          vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
-        },
+        pilot: booking.pilot
+          ? {
+              pilotId: booking.pilot.id,
+              pilotName: booking.pilot.drivingLicense.nameOnLicense,
+              profilePicture: booking.pilot.selfieUrl,
+              pilotPhone: booking.pilot.phone,
+              rating: booking.pilot.averageRating,
+              pilotLocation: {
+                lat: pilotLocation[0],
+                lng: pilotLocation[1],
+              },
+              vehicleNumber: booking.pilot.vehicle.regNo,
+              model: booking.pilot.vehicle.model,
+              colour: booking.pilot.vehicle.colour,
+              vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
+            }
+          : null,
         passenger: {
           passengerId: booking.customer.userId,
           name: booking.customer.name,

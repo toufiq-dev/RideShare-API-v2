@@ -194,12 +194,11 @@ export class RideController {
     return await this.rideService.getMyTrips(userId, status, page, pageSize);
   }
 
-  // @Roles(RoleEnum.CUSTOMER)
+  // @UseGuards()
   @Get(':bookingId')
-  @HttpCode(200)
-  // @ApiBearerAuth()
   @ApiOperation({ summary: 'Get ride details' })
   async getRideDetails(@Param('bookingId') bookingId: string) {
+    console.log('**** rideDetails ****');
     return await this.rideService.getRideDetails(bookingId);
   }
 }

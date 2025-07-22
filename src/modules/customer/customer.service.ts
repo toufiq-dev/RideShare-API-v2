@@ -18,11 +18,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import {
-  RideType,
-  UserStatus,
-  PilotStatus,
-} from '@prisma/client';
+import { RideType, UserStatus, PilotStatus } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 

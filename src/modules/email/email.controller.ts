@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
 import { EmailService } from './email.service';
 import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { ApiOperation } from '@nestjs/swagger';

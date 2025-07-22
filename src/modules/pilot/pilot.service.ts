@@ -1488,6 +1488,55 @@ export class PilotService {
     }
   }
 
+  async uploadTaxToken(file: Express.Multer.File, userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isTaxTokenVerified === VerificationStatus.APPROVED) {
+        throw new BadRequestException('Pilot already verified tax token.');
+      }
+
+      const taxTokenBuffer = file.buffer;
+
+      const taxTokenUrl = await this.azureServicce.uploadFile(
+        taxTokenBuffer,
+        file.originalname,
+        userId,
+        file.mimetype,
+      );
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          taxTokenUrl,
+        },
+      });
+
+      const verificationResponse =
+        await this.verificationService.extractTaxTokenData(taxTokenBuffer);
+
+      if (!verificationResponse) {
+        throw new BadRequestException('Failed to extract tax token data.');
+      }
+
+      if (!verificationResponse.name) {
+        throw new BadRequestException(
+          'Tax token is not valid or not readable.',
+        );
+      }
+
+      return {
+        message: 'Tax token uploaded successfully.',
+        data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 

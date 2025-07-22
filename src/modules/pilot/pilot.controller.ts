@@ -366,4 +366,16 @@ export class PilotController {
   ) {
     return await this.pilotService.processNumberPlate(numberPlateDto, userId);
   }
+
+  @Post('tax-token')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload Tax token photo' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadTaxToken(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.uploadTaxToken(file, userId);
+  }
 }

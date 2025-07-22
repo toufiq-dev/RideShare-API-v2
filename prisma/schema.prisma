@@ -66,25 +66,25 @@ model Admin {
 model Support {
   id                 String               @id @default(uuid())
   userId             String               @unique
-  name               String           
+  name               String
   phone              String?
-  referralCode       String?               @unique
+  referralCode       String?              @unique
   createdAt          DateTime             @default(now()) @db.Timestamptz
   updatedAt          DateTime             @updatedAt @db.Timestamptz
   user               User                 @relation(fields: [userId], references: [id])
   CancellationReason CancellationReason[]
-  permissions SupportPermission[]
+  permissions        SupportPermission[]
 }
 
 model SupportPermission {
-  id         String   @id @default(uuid())
-  supportId  String
-  menuKey    String   // Identifier for the menu item
-  isVisible  Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  support    Support  @relation(fields: [supportId], references: [id])
-  
+  id        String   @id @default(uuid())
+  supportId String
+  menuKey   String // Identifier for the menu item
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  support   Support  @relation(fields: [supportId], references: [id])
+
   @@unique([supportId, menuKey])
 }
 
@@ -146,6 +146,7 @@ model Pilot {
   rcFrontSideUrl             String?
   rcBackSideUrl              String?
   numberPlateUrl             String?
+  taxTokenUrl                String?
   languageId                 String
   referralCode               String?
   onlineStatus               PilotStatus        @default(OFFLINE)
@@ -165,6 +166,8 @@ model Pilot {
   rcRejectionReason          String?
   isNumberPlateVerified      VerificationStatus @default(PENDING)
   numberPlateRejectionReason String?
+  isTaxTokenVerified         VerificationStatus @default(PENDING)
+  taxTokenRejectionReason    String?
   isPanCardVerified          VerificationStatus @default(PENDING)
   isAadhaarVerified          VerificationStatus @default(PENDING)
   isFairCoinAvailed          Boolean            @default(false)

@@ -291,10 +291,9 @@ export class AdminService {
       });
 
       return {
-        message: "Driving license document fetched successfully",
-        data
-      }
-
+        message: 'Driving license document fetched successfully',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -310,7 +309,7 @@ export class AdminService {
           },
         },
         select: {
-          numberPlateUrl: true
+          numberPlateUrl: true,
         },
         orderBy: {
           isDLVerified: 'asc',
@@ -318,10 +317,9 @@ export class AdminService {
       });
 
       return {
-        message: "Driving license document fetched successfully",
-        data
-      }
-
+        message: 'Driving license document fetched successfully',
+        data,
+      };
     } catch (error) {
       console.error(error);
       throw error;

@@ -738,6 +738,20 @@ export class VerificationService {
     return this.extractDocumentData(buffer, systemPrompt, userPrompt);
   }
 
+  async extractTaxTokenData(buffer: Buffer) {
+    const systemPrompt =
+      'You are an expert in extracting and translating Bangladeshi tax token data.';
+
+    const userPrompt = `
+  Extract the name of the tax token owner from this Bangladeshi tax token image and parse it into the following JSON format:
+  {
+    "name": "The name of the tax token owner",
+  }
+  `;
+
+    return this.extractDocumentData(buffer, systemPrompt, userPrompt);
+  }
+
   async verifyDrivingLicense(dlNumber: string, dob: string) {
     const data = {
       number: dlNumber,

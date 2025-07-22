@@ -70,6 +70,7 @@ export class CustomerService {
             id: data.activeBooking.pilotId,
           },
           select: {
+            id: true,
             userId: true,
             selfieUrl: true,
             phone: true,
@@ -107,6 +108,7 @@ export class CustomerService {
           estimatedDuration: data.activeBooking.estimatedDuration,
           tripStart: data.activeBooking.tripStart,
           pilot: {
+            pilotId: pilot.id,
             pilotName: pilot.drivingLicense.nameOnLicense,
             profilePicture: pilot.selfieUrl,
             pilotPhone: pilot.phone,
@@ -119,6 +121,12 @@ export class CustomerService {
             model: pilot.vehicle.model,
             colour: pilot.vehicle.colour,
             vehicleType: pilot.vehicle.vehicleTypeBD.name,
+          },
+          passenger: {
+            passengerId: data.id,
+            name: data.name,
+            phone: data.phone,
+            rating: data.averageRating,
           },
           pickupInMinutes: null,
           pickupLocation: data.activeBooking.pickupLocation,

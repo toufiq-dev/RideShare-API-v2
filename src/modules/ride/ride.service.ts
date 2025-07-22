@@ -182,6 +182,10 @@ export class RideService {
           dropLocation: true,
           customer: {
             select: {
+              id: true,
+              name: true,
+              phone: true,
+              averageRating: true,
               coupon: {
                 select: {
                   id: true,
@@ -195,6 +199,7 @@ export class RideService {
           },
           pilot: {
             select: {
+              id: true,
               selfieUrl: true,
               phone: true,
               userId: true,
@@ -236,6 +241,7 @@ export class RideService {
         estimatedDuration: booking.estimatedDuration,
         tripStart: booking.tripStart,
         pilot: {
+          pilotId: booking.pilot.id,
           pilotName: booking.pilot.drivingLicense.nameOnLicense,
           profilePicture: booking.pilot.selfieUrl,
           pilotPhone: booking.pilot.phone,
@@ -248,6 +254,12 @@ export class RideService {
           model: booking.pilot.vehicle.model,
           colour: booking.pilot.vehicle.colour,
           vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
+        },
+        passenger: {
+          passengerId: booking.customerId,
+          name: booking.customer.name,
+          phone: booking.customer.phone,
+          rating: booking.customer.averageRating,
         },
         pickupInMinutes: null,
         pickupLocation: booking.pickupLocation,
@@ -949,6 +961,7 @@ export class RideService {
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: null,
         pilot: {
+          pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
@@ -961,6 +974,12 @@ export class RideService {
           model: vehicle.model,
           colour: vehicle.colour,
           vehicleType: vehicle.vehicleTypeBD.name,
+        },
+        passenger: {
+          passengerId: result.updated.customer.id,
+          name: result.updated.customer.name,
+          phone: result.updated.customer.phone,
+          rating: result.updated.customer.averageRating,
         },
         pickupInMinutes,
         pickupLocation: result.updated.pickupLocation,
@@ -1110,6 +1129,7 @@ export class RideService {
             tripStart: true,
             customer: {
               select: {
+                id: true,
                 userId: true,
                 name: true,
                 phone: true,
@@ -1119,6 +1139,7 @@ export class RideService {
             },
             pilot: {
               select: {
+                id: true,
                 userId: true,
                 selfieUrl: true,
                 phone: true,
@@ -1154,6 +1175,7 @@ export class RideService {
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: result.updated.tripStart,
         pilot: {
+          pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
           profilePicture: result.updated.pilot.selfieUrl,
           pilotPhone: result.updated.pilot.phone,
@@ -1166,6 +1188,12 @@ export class RideService {
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
+        },
+        passenger: {
+          passengerId: result.updated.customer.id,
+          name: result.updated.customer.name,
+          phone: result.updated.customer.phone,
+          rating: result.updated.customer.averageRating,
         },
         pickupInMinutes: null,
         pickupLocation: result.updated.pickupLocation,
@@ -1277,6 +1305,7 @@ export class RideService {
             dropLocation: true,
             customer: {
               select: {
+                id: true,
                 name: true,
                 userId: true,
                 phone: true,
@@ -1286,6 +1315,7 @@ export class RideService {
             },
             pilot: {
               select: {
+                id: true,
                 drivingLicense: true,
                 selfieUrl: true,
                 phone: true,
@@ -1419,6 +1449,7 @@ export class RideService {
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: result.updated.tripStart,
         pilot: {
+          pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
           profilePicture: result.updated.pilot.selfieUrl,
           pilotPhone: result.updated.pilot.phone,
@@ -1428,6 +1459,12 @@ export class RideService {
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
+        },
+        passenger: {
+          passengerId: result.updated.customer.id,
+          name: result.updated.customer.name,
+          phone: result.updated.customer.phone,
+          rating: result.updated.customer.averageRating,
         },
         pickupInMinutes: null,
         pickupLocation: result.updated.pickupLocation,
@@ -1611,6 +1648,7 @@ export class RideService {
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: booking.pilotId },
         select: {
+          id: true,
           userId: true,
           selfieUrl: true,
           phone: true,
@@ -1736,6 +1774,7 @@ export class RideService {
         estimatedDuration: updatedBooking.estimatedDuration,
         tripStart: updatedBooking.tripStart,
         pilot: {
+          pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
@@ -1748,6 +1787,12 @@ export class RideService {
           model: pilot.vehicle.model,
           colour: pilot.vehicle.colour,
           vehicleType: pilot.vehicle.vehicleTypeBD.name,
+        },
+        passenger: {
+          passengerId: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          rating: customer.averageRating,
         },
         pickupInMinutes: pickupInMinutes,
         pickupLocation: updatedBooking.pickupLocation,

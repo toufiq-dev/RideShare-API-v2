@@ -60,6 +60,7 @@ export interface CustomerRidePayload {
   estimatedDuration: number;
   tripStart: Date | null;
   pilot: {
+    pilotId: string;
     pilotName: string;
     profilePicture: string;
     pilotPhone: string;
@@ -69,6 +70,12 @@ export interface CustomerRidePayload {
     model: string;
     colour: string;
     vehicleType: VehicleTypeNameBD;
+  };
+  passenger: {
+    passengerId: string;
+    name: string;
+    phone: string;
+    rating: number;
   };
   pickupInMinutes: number | null;
   pickupLocation: JsonValue;

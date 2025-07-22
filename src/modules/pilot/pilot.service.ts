@@ -1538,6 +1538,20 @@ export class PilotService {
     }
   }
 
+  async getCoupons(userId: string) {
+    const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new NotFoundException('Pilot not found.');
+    }
+
+    const coupons = await this.prisma.pilotCoupon.findMany();
+
+    return {
+      message: 'Coupons fetched successfully.',
+      data: coupons,
+    };
+  }
+
   private async getOcrResult(buffer: any) {
     const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
 

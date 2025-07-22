@@ -378,4 +378,11 @@ export class PilotController {
   ) {
     return await this.pilotService.uploadTaxToken(file, userId);
   }
+
+  @Get('coupons')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get list of coupons' })
+  async getCoupons(@CurrentUser('userId') userId: string) {
+    return await this.pilotService.getCoupons(userId);
+  }
 }

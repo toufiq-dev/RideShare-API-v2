@@ -10,7 +10,6 @@ import { BullModule } from '@nestjs/bullmq';
   imports: [
     RideModule,
     FareModule,
-    BullModule.registerQueue({ name: 'ride-request' }),
   ],
   controllers: [CustomerController],
   providers: [CustomerService, OTPService],

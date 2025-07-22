@@ -182,7 +182,7 @@ export class RideService {
           dropLocation: true,
           customer: {
             select: {
-              id: true,
+              userId: true,
               name: true,
               phone: true,
               averageRating: true,
@@ -256,7 +256,7 @@ export class RideService {
           vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
         },
         passenger: {
-          passengerId: booking.customerId,
+          passengerId: booking.customer.userId,
           name: booking.customer.name,
           phone: booking.customer.phone,
           rating: booking.customer.averageRating,
@@ -886,7 +886,6 @@ export class RideService {
             dropLocation: true,
             customer: {
               select: {
-                id: true,
                 userId: true,
                 name: true,
                 email: true,
@@ -976,7 +975,7 @@ export class RideService {
           vehicleType: vehicle.vehicleTypeBD.name,
         },
         passenger: {
-          passengerId: result.updated.customer.id,
+          passengerId: result.updated.customer.userId,
           name: result.updated.customer.name,
           phone: result.updated.customer.phone,
           rating: result.updated.customer.averageRating,
@@ -1129,7 +1128,6 @@ export class RideService {
             tripStart: true,
             customer: {
               select: {
-                id: true,
                 userId: true,
                 name: true,
                 phone: true,
@@ -1190,7 +1188,7 @@ export class RideService {
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
         },
         passenger: {
-          passengerId: result.updated.customer.id,
+          passengerId: result.updated.customer.userId,
           name: result.updated.customer.name,
           phone: result.updated.customer.phone,
           rating: result.updated.customer.averageRating,
@@ -1305,9 +1303,8 @@ export class RideService {
             dropLocation: true,
             customer: {
               select: {
-                id: true,
-                name: true,
                 userId: true,
+                name: true,
                 phone: true,
                 averageRating: true,
                 coupon: true,
@@ -1461,7 +1458,7 @@ export class RideService {
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
         },
         passenger: {
-          passengerId: result.updated.customer.id,
+          passengerId: result.updated.customer.userId,
           name: result.updated.customer.name,
           phone: result.updated.customer.phone,
           rating: result.updated.customer.averageRating,
@@ -1789,7 +1786,7 @@ export class RideService {
           vehicleType: pilot.vehicle.vehicleTypeBD.name,
         },
         passenger: {
-          passengerId: customer.id,
+          passengerId: customer.userId,
           name: customer.name,
           phone: customer.phone,
           rating: customer.averageRating,

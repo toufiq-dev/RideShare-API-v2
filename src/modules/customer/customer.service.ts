@@ -19,7 +19,6 @@ import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
 import {
-  VehicleTypeName,
   RideType,
   UserStatus,
   PilotStatus,
@@ -123,7 +122,7 @@ export class CustomerService {
             vehicleType: pilot.vehicle.vehicleTypeBD.name,
           },
           passenger: {
-            passengerId: data.id,
+            passengerId: data.userId,
             name: data.name,
             phone: data.phone,
             rating: data.averageRating,

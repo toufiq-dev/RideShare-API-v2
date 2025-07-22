@@ -1511,6 +1511,7 @@ export class PilotService {
         where: { userId },
         data: {
           taxTokenUrl,
+          isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
         },
       });
 

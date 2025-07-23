@@ -32,11 +32,11 @@ import { BookingStatus } from '@prisma/client';
 
 @ApiTags('Ride')
 @Controller('ride')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class RideController {
   constructor(private readonly rideService: RideService) {}
 
   @Roles(RoleEnum.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('request')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -53,6 +53,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('request-again')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -66,6 +67,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('accept')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a ride' })
@@ -77,6 +79,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('reached-pickup')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reached the pick up point' })
@@ -91,6 +94,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('start')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Start the ride' })
@@ -102,6 +106,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('end')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'End the ride' })
@@ -113,6 +118,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('cancel')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -129,6 +135,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch('edit/:bookingId')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -147,6 +154,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT, RoleEnum.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rating')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -160,6 +168,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('history')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -181,6 +190,7 @@ export class RideController {
   }
 
   @Roles(RoleEnum.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('trips')
   @HttpCode(200)
   @ApiBearerAuth()
@@ -194,7 +204,6 @@ export class RideController {
     return await this.rideService.getMyTrips(userId, status, page, pageSize);
   }
 
-  // @UseGuards()
   @Get(':bookingId')
   @ApiOperation({ summary: 'Get ride details' })
   async getRideDetails(@Param('bookingId') bookingId: string) {

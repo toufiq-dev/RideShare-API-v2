@@ -207,7 +207,6 @@ export class RideController {
   @Get(':bookingId')
   @ApiOperation({ summary: 'Get ride details' })
   async getRideDetails(@Param('bookingId') bookingId: string) {
-    console.log('**** rideDetails ****');
     return await this.rideService.getRideDetails(bookingId);
   }
 }

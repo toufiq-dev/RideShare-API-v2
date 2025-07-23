@@ -160,6 +160,7 @@ async function main() {
       coins: 22500,
       price: 715,
       priceBeforeDiscount: 750.0,
+      quantifier: '10x',
       tag: 'Most Popular',
     },
     {
@@ -168,6 +169,7 @@ async function main() {
       coins: 67500,
       price: 2150,
       priceBeforeDiscount: 2250,
+      quantifier: '30x',
       tag: 'Best Value',
     },
     {
@@ -176,6 +178,7 @@ async function main() {
       coins: 225000,
       price: 6490,
       priceBeforeDiscount: 7500,
+      quantifier: '100x',
       tag: 'Super Saver',
     },
     {
@@ -196,13 +199,7 @@ async function main() {
     },
   ];
 
-  const pilotCoupons = [
-    {
-      name: PilotCouponsNames.BONUS_AUTO_RECHARGE,
-      discount: 4500,
-      validUntil: new Date('2025-12-12'),
-    },
-  ];
+  
 
   for (const language of languages) {
     const existingLanguage = await prisma.languages.findUnique({
@@ -268,12 +265,27 @@ async function main() {
   }
 
   // Pilot Coupons
+  const pilotCoupons = [
+    {
+      name: PilotCouponsNames.BONUS_AUTO_RECHARGE,
+      description: 'Get 100% OFF',
+      validUntil: new Date('2025-12-12'),
+      subscriptionId: null,
+    },
+  ];
   for (const pilotCoupon of pilotCoupons) {
     const existingPilotCoupon = await prisma.pilotCoupon.findUnique({
       where: { name: pilotCoupon.name },
     });
 
     if (!existingPilotCoupon) {
+      if (pilotCoupon.name === PilotCouponsNames.BONUS_AUTO_RECHARGE) {
+        const subscription = await prisma.subscription.findUnique({
+          where: { name: 'Flexi Pack' },
+        });
+        pilotCoupon.subscriptionId = subscription.id;
+      }
+
       await prisma.pilotCoupon.create({
         data: pilotCoupon,
       });
@@ -893,10 +905,10 @@ async function main() {
     },
   });
 
-  // Admin
-  const adminUser = await prisma.user.create({
+  // Super Admin
+  const superAdminUser = await prisma.user.create({
     data: {
-      role: UserRole.ADMIN,
+      role: UserRole.SUPER_ADMIN,
       status: UserStatus.ACTIVE,
     },
   });
@@ -907,7 +919,7 @@ async function main() {
     data: {
       name: 'Admin',
       email: 'admin@fairdriveindia.com',
-      userId: adminUser.id,
+      userId: superAdminUser.id,
       password: hashedPassword,
     },
   });

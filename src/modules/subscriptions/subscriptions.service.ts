@@ -12,7 +12,11 @@ export class SubscriptionsService {
 
   async getSubscriptionTypes() {
     try {
-      const data = await this.prisma.subscription.findMany();
+      const data = await this.prisma.subscription.findMany({
+        orderBy: {
+          serialNumber: 'asc',
+        },
+      });
 
       data.forEach((subscription: any) => {
         subscription.price = Number(subscription.price);

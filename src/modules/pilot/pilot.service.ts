@@ -1543,7 +1543,20 @@ export class PilotService {
       throw new NotFoundException('Pilot not found.');
     }
 
-    const coupons = await this.prisma.pilotCoupon.findMany();
+    const coupons = await this.prisma.pilotCoupon.findMany({
+      include: {
+        subscription: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    coupons.forEach((coupon: any) => {
+      coupon.message = 'Only applicabel for ' + coupon.subscription.name + ' (1X)';
+      delete coupon.subscription;
+    });
 
     return {
       message: 'Coupons fetched successfully.',

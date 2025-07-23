@@ -39,6 +39,7 @@ model User {
   pilot          Pilot?
   support        Support?
   supportTickets SupportTicket[]
+  superAdmin     SuperAdmin?
 }
 
 model DeviceToken {
@@ -54,13 +55,24 @@ model DeviceToken {
   @@index([fcmToken])
 }
 
-model Admin {
+model SuperAdmin {
   id       String @id @default(uuid())
   name     String
   userId   String @unique
   email    String @unique
   password String
   user     User   @relation(fields: [userId], references: [id])
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Support {
@@ -81,8 +93,8 @@ model SupportPermission {
   supportId String
   menuKey   String // Identifier for the menu item
   isVisible Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
   support   Support  @relation(fields: [supportId], references: [id])
 
   @@unique([supportId, menuKey])
@@ -198,12 +210,14 @@ model Pilot {
 }
 
 model PilotCoupon {
-  id         String    @id @default(uuid())
-  name       String    @unique
-  discount   Decimal   @db.Decimal(10, 2)
-  validUntil DateTime? @db.Timestamptz
-  createdAt  DateTime  @default(now()) @db.Timestamptz
-  pilots     Pilot[]
+  id             String        @id @default(uuid())
+  name           String        @unique
+  description    String?
+  subscriptionId String?
+  validUntil     DateTime?     @db.Timestamptz
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  pilots         Pilot[]
 }
 
 model Nid {
@@ -304,6 +318,7 @@ model Subscription {
   id                  String        @id @default(uuid())
   name                String        @unique
   serialNumber        Int?
+  quantifier          String?
   coins               Decimal       @db.Decimal(10, 2)
   price               Decimal       @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?      @db.Decimal(10, 2)
@@ -311,6 +326,7 @@ model Subscription {
   createdAt           DateTime      @default(now()) @db.Timestamptz
   transactions        Transaction[]
   wallets             PilotWallet[]
+  pilotCoupons        PilotCoupon[]
 }
 
 model PilotTrips {
@@ -541,6 +557,7 @@ enum AppPlatform {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   CUSTOMER
   PILOT

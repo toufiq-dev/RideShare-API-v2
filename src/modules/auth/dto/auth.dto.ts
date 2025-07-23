@@ -7,14 +7,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMultiCountryPhoneNumber } from '../validator/IsMultiCountryPhoneNumber';
-import { Country } from '@prisma/client';
-
-export enum RoleEnum {
-  CUSTOMER = 'CUSTOMER',
-  PILOT = 'PILOT',
-  ADMIN = 'ADMIN',
-  SUPPORT = 'SUPPORT',
-}
+import { Country, UserRole } from '@prisma/client';
 
 export class SendOtpDto {
   @ApiProperty({ description: 'Language Name' })
@@ -55,11 +48,11 @@ export class VerifyOtpDto {
 
   @ApiProperty({
     description: 'Role of the user',
-    enum: RoleEnum,
-    example: RoleEnum.CUSTOMER,
+    enum: UserRole,
+    example: UserRole.CUSTOMER,
   })
-  @IsEnum(RoleEnum, { message: 'Role must be either CUSTOMER or PILOT' })
-  role: RoleEnum;
+  @IsEnum(UserRole, { message: 'Role must be either CUSTOMER or PILOT' })
+  role: UserRole;
 
   @ApiPropertyOptional({ description: 'FCM Token' })
   @IsString()

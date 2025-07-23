@@ -1,15 +1,18 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
-  AdminLoginDto,
+  SuperAdminLoginDto,
   AppUpdateDto,
   CreateSubscriptionTypeDto,
   CreateSupportStuffDto,
   UpdateSubscriptionTypeDto,
+  CreateAdminDto,
+  AdminLoginDto,
+  VerifyEmailDto,
+  CreateSupportRoleDto,
 } from './dto/admin.dto';
-import { RoleEnum } from '../auth/dto/auth.dto';
 import { randomInt } from 'crypto';
-import { AppPlatform, VerificationStatus } from '@prisma/client';
+import { AppPlatform, UserRole, VerificationStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -98,11 +101,11 @@ export class AdminService {
     }
   }
 
-  async adminLogin(adminLoginDto: AdminLoginDto) {
-    const { email, password } = adminLoginDto;
+  async superAdminLogin(superAdminLoginDto: SuperAdminLoginDto) {
+    const { email, password } = superAdminLoginDto;
 
     try {
-      const admin = await this.prisma.admin.findUnique({
+      const admin = await this.prisma.superAdmin.findUnique({
         where: {
           email,
         },
@@ -119,12 +122,12 @@ export class AdminService {
       }
 
       const accessToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: RoleEnum.ADMIN },
+        { userId: admin.userId, role: UserRole.SUPER_ADMIN },
         { expiresIn: this.accessTokenExpiresIn },
       );
 
       const refreshToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: RoleEnum.ADMIN },
+        { userId: admin.userId, role: UserRole.SUPER_ADMIN },
         { expiresIn: this.refreshTokenExpiresIn },
       );
 
@@ -145,6 +148,156 @@ export class AdminService {
           accessToken,
           refreshToken,
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async createAdmin(createAdminDto: CreateAdminDto) {
+    const { email, password } = createAdminDto;
+
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          role: UserRole.ADMIN,
+        },
+      });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const admin = await this.prisma.admin.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name: 'Admin',
+          userId: user.id,
+        },
+      });
+
+      return {
+        message: 'Admin created successfully.',
+        data: {
+          email: admin.email,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async adminLogin(adminLoginDto: AdminLoginDto) {
+    const { email, password } = adminLoginDto;
+
+    try {
+      const admin = await this.prisma.admin.findUnique({
+        where: { email },
+      });
+
+      if (!admin) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, admin.password);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      return {
+        message:
+          'Admin credentials verified successfully. Verify Email to login.',
+        data: {
+          email: admin.email,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyEmail(verifyEmailDto: VerifyEmailDto) {
+    const { email, otp } = verifyEmailDto;
+
+    try {
+      const otpFromRedis = await this.redis.get(
+        `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
+      );
+
+      if (!otpFromRedis || otpFromRedis !== otp) {
+        throw new UnauthorizedException('Invalid or Expired OTP');
+      }
+
+      await this.redis.del(`${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`);
+
+      const admin = await this.prisma.admin.findUnique({
+        where: { email },
+      });
+
+      const accessToken = await this.jwtService.signAsync(
+        { userId: admin.userId, role: UserRole.ADMIN },
+        { expiresIn: this.accessTokenExpiresIn },
+      );
+
+      const refreshToken = await this.jwtService.signAsync(
+        { userId: admin.userId, role: UserRole.ADMIN },
+        { expiresIn: this.refreshTokenExpiresIn },
+      );
+
+      await this.redis.set(
+        `${RedisKeys.ACCESS_TOKEN}${admin.userId}`,
+        accessToken,
+        this.redisAccessTokenTTL,
+      );
+      await this.redis.set(
+        `${RedisKeys.REFRESH_TOKEN}${admin.userId}`,
+        refreshToken,
+        this.redisRefreshTokenTTL,
+      );
+
+      return {
+        message: 'Admin verified successfully.',
+        data: {
+          accessToken,
+          refreshToken,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getSupportRoles() {
+    try {
+      const data = await this.prisma.supportRole.findMany();
+
+      return {
+        message: 'Support roles fetched successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async createSupportRole(createSupportRoleDto: CreateSupportRoleDto) {
+    const { name } = createSupportRoleDto;
+
+    try {
+      const data = await this.prisma.supportRole.create({
+        data: {
+          name,
+        },
+      });
+
+      return {
+        message: 'User role created successfully.',
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -223,7 +376,7 @@ export class AdminService {
     try {
       const user = await this.prisma.user.create({
         data: {
-          role: RoleEnum.SUPPORT,
+          role: UserRole.SUPPORT,
         },
       });
 

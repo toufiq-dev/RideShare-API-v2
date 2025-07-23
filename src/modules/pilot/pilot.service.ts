@@ -1554,7 +1554,8 @@ export class PilotService {
     });
 
     coupons.forEach((coupon: any) => {
-      coupon.message = 'Only applicabel for ' + coupon.subscription.name + ' (1X)';
+      coupon.message =
+        'Only applicabel for ' + coupon.subscription.name + ' (1X)';
       delete coupon.subscription;
     });
 

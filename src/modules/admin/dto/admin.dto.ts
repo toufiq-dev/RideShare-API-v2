@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class AdminLoginDto {
+export class SuperAdminLoginDto {
   @ApiProperty({ description: 'Email of the admin' })
   @IsEmail()
   @IsNotEmpty()
@@ -22,6 +22,29 @@ export class AdminLoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+}
+
+export class CreateAdminDto extends SuperAdminLoginDto {}
+
+export class AdminLoginDto extends SuperAdminLoginDto {}
+
+export class VerifyEmailDto {
+  @ApiProperty({ description: 'Email of the admin' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Otp sent in the email' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+}
+
+export class CreateSupportRoleDto {
+  @ApiProperty({ description: 'Name of the user role' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 }
 
 export class AppUpdateDto {

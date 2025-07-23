@@ -11,6 +11,7 @@ import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()
 export class EmailService {
@@ -33,31 +34,22 @@ export class EmailService {
     });
   }
 
-  async sendOtpEmail(sendOtpDto: sendOtpDto, userId: string) {
+  async sendOtpEmail(sendOtpDto: sendOtpDto) {
     // enqueue the sending email job
-    await this.otpQueue.add('send-otp', { sendOtpDto, userId });
+    await this.otpQueue.add('send-otp', { sendOtpDto });
     return { message: 'OTP will be sent shortly' };
   }
 
-  async _sendOtpEmail(sendOtpDto: sendOtpDto, userId: string) {
+  async _sendOtpEmail(sendOtpDto: sendOtpDto) {
     try {
       const { email } = sendOtpDto;
       const otp = randomInt(1000, 10000).toString();
 
-      await this.redis.set(`emailVerificationotp:${email}`, otp, 270);
-      const customer = await this.prisma.customer.findUnique({
-        where: { userId },
-      });
-
-      if (!customer) {
-        throw new NotFoundException('Customer not found.');
-      }
-      const doesEmailExist = await this.prisma.customer.findUnique({
-        where: { email },
-      });
-      if (doesEmailExist && doesEmailExist.id !== customer.id) {
-        throw new BadRequestException('Email already exists.');
-      }
+      await this.redis.set(
+        `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
+        otp,
+        270,
+      );
 
       const mailOptions = {
         from: this.configService.get<string>('EMAIL_FROM'),
@@ -81,7 +73,7 @@ export class EmailService {
     }
   }
 
-  async verifyOtp(verifyOtpDto: VerifyEmailDto, userId: string) {
+  async verifyOtpCustomer(verifyOtpDto: VerifyEmailDto, userId: string) {
     const { email, otp } = verifyOtpDto;
 
     const storedOtp = await this.redis.get(`emailVerificationotp:${email}`);

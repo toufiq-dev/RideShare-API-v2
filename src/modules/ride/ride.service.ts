@@ -40,7 +40,7 @@ import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
 import { LocationDto } from 'src/common/dto/common.dto';
-import { RoleEnum } from '../auth/dto/auth.dto';
+import { UserRole } from '@prisma/client';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
@@ -1823,7 +1823,7 @@ export class RideService {
   async ratingRide(
     ratingRideDto: RatingRideDto,
     userId: string,
-    role: RoleEnum,
+    role: UserRole,
   ) {
     const { bookingId, rating, feedback } = ratingRideDto;
 
@@ -1841,7 +1841,7 @@ export class RideService {
       }
 
       // 2. Verify user permissions based on role
-      if (role === RoleEnum.PILOT) {
+      if (role === UserRole.PILOT) {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
         });
@@ -1882,7 +1882,7 @@ export class RideService {
           message: 'Rating has been submitted',
           data: ratingRecord,
         };
-      } else if (role === RoleEnum.CUSTOMER) {
+      } else if (role === UserRole.CUSTOMER) {
         const customer = await this.prisma.customer.findUnique({
           where: { userId },
         });

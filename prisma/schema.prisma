@@ -75,27 +75,42 @@ model Admin {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model SupportRole {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  description        String?
+  createdAt          DateTime            @default(now()) @db.Timestamptz
+  updatedAt          DateTime            @updatedAt @db.Timestamptz
+  support            Support[]
+  supportPermissions SupportPermission[]
+}
+
 model Support {
   id                 String               @id @default(uuid())
   userId             String               @unique
   name               String
+  email              String?
   phone              String?
   referralCode       String?              @unique
+  supportRoleId      String?
   createdAt          DateTime             @default(now()) @db.Timestamptz
   updatedAt          DateTime             @updatedAt @db.Timestamptz
   user               User                 @relation(fields: [userId], references: [id])
   CancellationReason CancellationReason[]
   permissions        SupportPermission[]
+  supportRole        SupportRole?         @relation(fields: [supportRoleId], references: [id])
 }
 
 model SupportPermission {
-  id        String   @id @default(uuid())
-  supportId String
-  menuKey   String // Identifier for the menu item
-  isVisible Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-  support   Support  @relation(fields: [supportId], references: [id])
+  id            String       @id @default(uuid())
+  supportId     String
+  menuKey       String // Identifier for the menu item
+  isVisible     Boolean      @default(true)
+  supportRoleId String?
+  createdAt     DateTime     @default(now()) @db.Timestamptz
+  updatedAt     DateTime     @updatedAt @db.Timestamptz
+  support       Support      @relation(fields: [supportId], references: [id])
+  supportRole   SupportRole? @relation(fields: [supportRoleId], references: [id])
 
   @@unique([supportId, menuKey])
 }

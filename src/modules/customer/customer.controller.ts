@@ -22,13 +22,13 @@ import {
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Customer')
 @Controller('customer')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleEnum.CUSTOMER)
+@Roles(UserRole.CUSTOMER)
 export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 

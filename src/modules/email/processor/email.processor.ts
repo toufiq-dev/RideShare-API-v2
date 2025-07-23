@@ -11,8 +11,8 @@ export class OtpEmailProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<any> {
-    const { sendOtpDto, userId } = job.data;
+    const { sendOtpDto } = job.data;
 
-    return this.emailService._sendOtpEmail(sendOtpDto, userId);
+    return this.emailService._sendOtpEmail(sendOtpDto);
   }
 }

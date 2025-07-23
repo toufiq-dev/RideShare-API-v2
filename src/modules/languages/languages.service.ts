@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateLanguageDto } from './dto/languages.dto';
-import { RoleEnum } from '../auth/dto/auth.dto';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class LanguagesService {
@@ -27,12 +27,12 @@ export class LanguagesService {
       });
 
       let data;
-      if (user.role === RoleEnum.PILOT) {
+      if (user.role === UserRole.PILOT) {
         data = await this.prisma.pilot.update({
           where: { userId },
           data: { languageId: languageRecord.id },
         });
-      } else if (user.role === RoleEnum.CUSTOMER) {
+      } else if (user.role === UserRole.CUSTOMER) {
         data = await this.prisma.customer.update({
           where: { userId },
           data: { languageId: languageRecord.id },

@@ -1,34 +1,39 @@
-import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import { EmailService } from './email.service';
 import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { RoleEnum } from '../auth/dto/auth.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('email')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleEnum.CUSTOMER)
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
   @Post('send-otp')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send otp to verify email' })
-  async sendOtp(
-    @Body() sendOtpDto: sendOtpDto,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return await this.emailService.sendOtpEmail(sendOtpDto, userId);
+  async sendOtp(@Body() sendOtpDto: sendOtpDto) {
+    return await this.emailService.sendOtpEmail(sendOtpDto);
   }
 
+  @Roles(UserRole.CUSTOMER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
   async verifyOtp(
     @Body() verifyEmailDto: VerifyEmailDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.emailService.verifyOtp(verifyEmailDto, userId);
+    return this.emailService.verifyOtpCustomer(verifyEmailDto, userId);
   }
 }

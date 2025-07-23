@@ -36,12 +36,12 @@ import {
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { RoleEnum } from 'src/modules/auth/dto/auth.dto';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('pilot')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleEnum.PILOT)
+@Roles(UserRole.PILOT)
 export class PilotController {
   constructor(private readonly pilotService: PilotService) {}
 

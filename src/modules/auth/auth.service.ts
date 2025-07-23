@@ -14,12 +14,11 @@ import {
   SendOtpDto,
   VerifyOtpDto,
   RefreshTokenDto,
-  RoleEnum,
   FindPilotDto,
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
-import { Country, PilotStatus, UserStatus } from '@prisma/client';
+import { Country, PilotStatus, UserRole, UserStatus } from '@prisma/client';
 import { CouponsNames } from '../admin/admin.constants';
 import { SocketService } from 'src/core/socket/socket.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
@@ -137,7 +136,7 @@ export class AuthService {
         let pilot = null;
         let customer = null;
 
-        if (role === RoleEnum.PILOT) {
+        if (role === UserRole.PILOT) {
           pilot = await this.prisma.pilot.findUnique({
             where: { phone },
           });
@@ -153,7 +152,7 @@ export class AuthService {
             },
           });
         }
-        if (role === RoleEnum.CUSTOMER) {
+        if (role === UserRole.CUSTOMER) {
           customer = await this.prisma.customer.findUnique({
             where: { phone },
           });
@@ -179,7 +178,7 @@ export class AuthService {
           message: 'OTP verified successfully.',
           data: {
             ...tokens,
-            user: role === RoleEnum.CUSTOMER ? customer : pilot,
+            user: role === UserRole.CUSTOMER ? customer : pilot,
           },
         };
       } // For App review in ios and android store END
@@ -200,7 +199,7 @@ export class AuthService {
       );
 
       let isAlreadyRegistered = true;
-      if (role === RoleEnum.CUSTOMER) {
+      if (role === UserRole.CUSTOMER) {
         isAlreadyRegistered = customer.isAlreadyRegistered;
         if (!customer.isAlreadyRegistered) {
           await this.prisma.customer.update({
@@ -208,7 +207,7 @@ export class AuthService {
             data: { isAlreadyRegistered: true },
           });
         }
-      } else if (role === RoleEnum.PILOT) {
+      } else if (role === UserRole.PILOT) {
         isAlreadyRegistered = pilot.isAlreadyRegistered;
         if (!pilot.isAlreadyRegistered) {
           await this.prisma.pilot.update({
@@ -244,7 +243,7 @@ export class AuthService {
         message: 'OTP verified successfully.',
         data: {
           ...tokens,
-          user: role === RoleEnum.CUSTOMER ? customer : pilot,
+          user: role === UserRole.CUSTOMER ? customer : pilot,
         },
       };
     } catch (error) {
@@ -256,13 +255,13 @@ export class AuthService {
   async checkLocation(
     locationDto: LocationDto,
     userId: string,
-    role: RoleEnum,
+    role: UserRole,
   ) {
     const { lat, lng } = locationDto;
 
     try {
       // For App review in ios and android store
-      if (role === RoleEnum.PILOT) {
+      if (role === UserRole.PILOT) {
         const pilot = await this.prisma.pilot.findUnique({
           where: { userId },
         });
@@ -406,7 +405,7 @@ export class AuthService {
         await this.redis.del(connectionKey);
       }
 
-      if (user.role === RoleEnum.PILOT) {
+      if (user.role === UserRole.PILOT) {
         // Remove from geospatial set
         await this.redis.zRem(RedisKeys.PILOT_LOCATION, userId);
 
@@ -487,7 +486,7 @@ export class AuthService {
 
   private async findOrCreateUser(
     phone: string,
-    role: RoleEnum,
+    role: UserRole,
     languageId: string,
     referralCode: string,
     countryCode: Country,
@@ -502,7 +501,7 @@ export class AuthService {
       },
     });
 
-    if (role === RoleEnum.CUSTOMER) {
+    if (role === UserRole.CUSTOMER) {
       customer = await this.prisma.customer.findUnique({
         where: { phone },
       });
@@ -512,7 +511,7 @@ export class AuthService {
           where: { id: customer.userId },
         });
       }
-    } else if (role === RoleEnum.PILOT) {
+    } else if (role === UserRole.PILOT) {
       pilot = await this.prisma.pilot.findUnique({ where: { phone } });
 
       if (pilot) {
@@ -530,7 +529,7 @@ export class AuthService {
         },
       });
 
-      if (role === RoleEnum.CUSTOMER && !customer) {
+      if (role === UserRole.CUSTOMER && !customer) {
         customer = await this.prisma.customer.create({
           data: {
             phone,
@@ -539,7 +538,7 @@ export class AuthService {
             couponId: coupon && coupon.id,
           },
         });
-      } else if (role === RoleEnum.PILOT && !pilot) {
+      } else if (role === UserRole.PILOT && !pilot) {
         pilot = await this.prisma.pilot.create({
           data: {
             phone,

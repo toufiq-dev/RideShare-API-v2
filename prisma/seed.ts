@@ -913,16 +913,29 @@ async function main() {
     },
   });
 
-  const hashedPassword = await bcrypt.hash('admin@2025', 10);
+  const superAdminEmail = 'admin@fairdriveindia.com';
+  const superAdminPassword = 'admin@2025';
+  const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
-  await prisma.admin.create({
-    data: {
-      name: 'Admin',
-      email: 'admin@fairdriveindia.com',
-      userId: superAdminUser.id,
-      password: hashedPassword,
+  const existingSuperAdmin = await prisma.superAdmin.findUnique({
+    where: {
+      email: superAdminEmail,
     },
   });
+
+  if (!existingSuperAdmin) {
+    await prisma.superAdmin.create({
+      data: {
+        name: 'Admin',
+        email: superAdminEmail,
+        userId: superAdminUser.id,
+        password: hashedPassword,
+      },
+    });
+    console.log('Super admin created successfully');
+  } else {
+    console.log('Super admin already exists');
+  }
 
   console.log('Seeding Bangladeshi vehicle registration data finished.');
   console.log('Seeding vehicle types finished.');

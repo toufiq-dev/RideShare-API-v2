@@ -5,6 +5,7 @@ import {
   HttpCode,
   UseGuards,
   Get,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -12,13 +13,13 @@ import {
   VerifyOtpDto,
   RefreshTokenDto,
   FindPilotDto,
-  RoleEnum,
 } from './dto/auth.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -26,7 +27,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('send-otp')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send OTP to user' })
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() sendOtpDto: SendOtpDto) {
@@ -41,21 +42,21 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
+  @Roles(UserRole.CUSTOMER, UserRole.PILOT)
   @Post('location')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Check location of user' })
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   async checkLocation(
     @Body() locationDto: LocationDto,
     @CurrentUser('userId') userId: string,
-    @CurrentUser('role') role: RoleEnum,
+    @CurrentUser('role') role: UserRole,
   ) {
     return await this.authService.checkLocation(locationDto, userId, role);
   }
 
   @Post('resend-otp')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend OTP to user' })
   @ApiBody({ type: SendOtpDto })
   async resendOtp(@Body() sendOtpDto: SendOtpDto) {
@@ -63,14 +64,14 @@ export class AuthController {
   }
 
   @Post('refresh-token')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return await this.authService.refreshToken(refreshTokenDto);
   }
 
   @Post('find-pilot')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Find Pilot Account' })
   async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
     return await this.authService.findMyAccount(findPilotDto);
@@ -78,24 +79,24 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('delete-account')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete Account' })
   async deleteAccount(@CurrentUser('userId') userId: string) {
     return await this.authService.deleteAccount(userId);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles(RoleEnum.CUSTOMER, RoleEnum.PILOT)
+  @Roles(UserRole.CUSTOMER, UserRole.PILOT)
   @Post('logout')
   @ApiBearerAuth()
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout' })
   async logout(@CurrentUser('userId') userId: string) {
     return await this.authService.logout(userId);
   }
 
   @Get('vehicle-data')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get vehicle registration points' })
   async getVehicleRegistrationPoints() {
     return await this.authService.getVehicleRegistrationPoints();

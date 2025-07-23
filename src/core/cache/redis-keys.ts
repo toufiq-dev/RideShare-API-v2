@@ -8,4 +8,5 @@ export const RedisKeys = {
   BOOKING_VEHICLE: 'bookingVehicle:',
   ACCESS_TOKEN: 'accessToken:',
   REFRESH_TOKEN: 'refreshToken:',
+  EMAIL_VERIFICATION_OTP: 'emailVerificationotp:',
 } as const;

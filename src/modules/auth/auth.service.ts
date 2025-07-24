@@ -15,6 +15,7 @@ import {
   VerifyOtpDto,
   RefreshTokenDto,
   FindPilotDto,
+  RefreshFcmTokenDto,
 } from './dto/auth.dto';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { GeofencingService } from 'src/core/geofencing/geofencing.service';
@@ -320,6 +321,35 @@ export class AuthService {
       return {
         message: 'Refresh token generated successfully.',
         data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async refreshFcmToken(
+    refreshFcmTokenDto: RefreshFcmTokenDto,
+    userId: string,
+  ) {
+    const { fcmToken } = refreshFcmTokenDto;
+
+    try {
+      const device = await this.prisma.deviceToken.findUnique({
+        where: { userId: userId },
+      });
+
+      if (!device) {
+        throw new NotFoundException('Device not found.');
+      }
+
+      await this.prisma.deviceToken.update({
+        where: { userId: userId },
+        data: { fcmToken },
+      });
+
+      return {
+        message: 'FCM token refreshed successfully.',
       };
     } catch (error) {
       console.error(error);

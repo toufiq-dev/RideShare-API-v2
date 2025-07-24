@@ -67,6 +67,13 @@ export class RefreshTokenDto {
   refreshToken: string;
 }
 
+export class RefreshFcmTokenDto {
+  @ApiProperty({ description: 'FCM Token' })
+  @IsString()
+  @IsNotEmpty({ message: 'FCM Token is required' })
+  fcmToken: string;
+}
+
 export class FindPilotDto {
   @ApiProperty({ description: 'Phone number' })
   @IsNotEmpty()

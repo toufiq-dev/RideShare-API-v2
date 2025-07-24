@@ -13,6 +13,7 @@ import {
   VerifyOtpDto,
   RefreshTokenDto,
   FindPilotDto,
+  RefreshFcmTokenDto,
 } from './dto/auth.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { LocationDto } from 'src/common/dto/common.dto';
@@ -68,6 +69,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return await this.authService.refreshToken(refreshTokenDto);
+  }
+
+  @Post('refresh-fcm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh FCM token' })
+  async refreshFcmToken(
+    @Body() refreshFcmTokenDto: RefreshFcmTokenDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.authService.refreshFcmToken(refreshFcmTokenDto, userId);
   }
 
   @Post('find-pilot')

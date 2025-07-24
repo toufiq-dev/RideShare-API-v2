@@ -12,21 +12,19 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class SuperAdminLoginDto {
-  @ApiProperty({ description: 'Email of the admin' })
+export class LoginDto {
+  @ApiProperty({ description: 'Email credentials' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ description: 'Password of the admin' })
+  @ApiProperty({ description: 'Password credentials' })
   @IsString()
   @IsNotEmpty()
   password: string;
 }
 
-export class CreateAdminDto extends SuperAdminLoginDto {}
-
-export class AdminLoginDto extends SuperAdminLoginDto {}
+export class CreateAdminDto extends LoginDto {}
 
 export class VerifyEmailDto {
   @ApiProperty({ description: 'Email of the admin' })
@@ -40,18 +38,6 @@ export class VerifyEmailDto {
   otp: string;
 }
 
-class SupportPermissionDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  menuKey: string;
-
-  @ApiProperty({ default: true })
-  @IsBoolean()
-  @IsOptional()
-  isVisible?: boolean;
-}
-
 export class CreateSupportRoleDto {
   @ApiProperty({ description: 'Name of the user role' })
   @IsString()
@@ -63,12 +49,11 @@ export class CreateSupportRoleDto {
   @IsNotEmpty()
   description: string;
 
-  @ApiProperty({ type: [SupportPermissionDto], required: false })
+  @ApiProperty({ description: 'Support permission ids' })
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SupportPermissionDto)
-  @IsOptional()
-  permissions?: SupportPermissionDto[];
+  @IsString({ each: true })
+  @IsNotEmpty()
+  supportPermissionIds?: string[];
 }
 
 export class AppUpdateDto {
@@ -142,6 +127,16 @@ export class CreateSupportStuffDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty({ description: 'Email of the support stuff' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Password of the support stuff' })
+  @IsString()
+  @IsNotEmpty()
+  password: string;
 
   @ApiProperty({ description: 'Phone number of the support stuff' })
   @IsString()

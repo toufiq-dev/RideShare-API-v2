@@ -5,15 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
-  SuperAdminLoginDto,
   AppUpdateDto,
   CreateSubscriptionTypeDto,
   CreateSupportStuffDto,
   UpdateSubscriptionTypeDto,
-  CreateAdminDto,
-  AdminLoginDto,
   VerifyEmailDto,
   CreateSupportRoleDto,
+  LoginDto,
+  CreateAdminDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import { AppPlatform, UserRole, VerificationStatus } from '@prisma/client';
@@ -105,116 +104,59 @@ export class AdminService {
     }
   }
 
-  async superAdminLogin(superAdminLoginDto: SuperAdminLoginDto) {
-    const { email, password } = superAdminLoginDto;
+  async login(loginDto: LoginDto) {
+    const { email, password } = loginDto;
 
     try {
-      const admin = await this.prisma.superAdmin.findUnique({
-        where: {
-          email,
-        },
-      });
-
-      if (!admin) {
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, admin.password);
-
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      const accessToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: UserRole.SUPER_ADMIN },
-        { expiresIn: this.accessTokenExpiresIn },
-      );
-
-      const refreshToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: UserRole.SUPER_ADMIN },
-        { expiresIn: this.refreshTokenExpiresIn },
-      );
-
-      await this.redis.set(
-        `${RedisKeys.ACCESS_TOKEN}${admin.userId}`,
-        accessToken,
-        this.redisAccessTokenTTL,
-      );
-      await this.redis.set(
-        `${RedisKeys.REFRESH_TOKEN}${admin.userId}`,
-        refreshToken,
-        this.redisRefreshTokenTTL,
-      );
-
-      return {
-        message: 'Admin logged in successfully.',
-        data: {
-          accessToken,
-          refreshToken,
-        },
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async createAdmin(createAdminDto: CreateAdminDto) {
-    const { email, password } = createAdminDto;
-
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          role: UserRole.ADMIN,
-        },
-      });
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const admin = await this.prisma.admin.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name: 'Admin',
-          userId: user.id,
-        },
-      });
-
-      return {
-        message: 'Admin created successfully.',
-        data: {
-          email: admin.email,
-        },
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async adminLogin(adminLoginDto: AdminLoginDto) {
-    const { email, password } = adminLoginDto;
-
-    try {
-      const admin = await this.prisma.admin.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { email },
       });
-
-      if (!admin) {
+      if (!user) {
         throw new UnauthorizedException('Invalid email or password');
       }
 
-      const isPasswordValid = await bcrypt.compare(password, admin.password);
+      let roledUser = null;
+      if (user.role === UserRole.ADMIN) {
+        roledUser = await this.prisma.admin.findUnique({
+          where: {
+            userId: user.id,
+          },
+          select: {
+            password: true,
+          },
+        });
+      } else if (user.role === UserRole.SUPPORT) {
+        roledUser = await this.prisma.support.findUnique({
+          where: {
+            userId: user.id,
+          },
+          select: {
+            password: true,
+          },
+        });
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        roledUser = await this.prisma.superAdmin.findUnique({
+          where: {
+            userId: user.id,
+          },
+          select: {
+            password: true,
+          },
+        });
+      }
+
+      const isPasswordValid = roledUser
+        ? await bcrypt.compare(password, roledUser.password)
+        : null;
 
       if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid email or password');
       }
 
       return {
-        message:
-          'Admin credentials verified successfully. Verify Email to login.',
+        message: 'Credentials verified successfully. Verify Email to login.',
         data: {
-          email: admin.email,
+          email: user.email,
         },
       };
     } catch (error) {
@@ -237,27 +179,27 @@ export class AdminService {
 
       await this.redis.del(`${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`);
 
-      const admin = await this.prisma.admin.findUnique({
+      const admin = await this.prisma.user.findUnique({
         where: { email },
       });
 
       const accessToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: UserRole.ADMIN },
+        { userId: admin.id, role: UserRole.ADMIN },
         { expiresIn: this.accessTokenExpiresIn },
       );
 
       const refreshToken = await this.jwtService.signAsync(
-        { userId: admin.userId, role: UserRole.ADMIN },
+        { userId: admin.id, role: UserRole.ADMIN },
         { expiresIn: this.refreshTokenExpiresIn },
       );
 
       await this.redis.set(
-        `${RedisKeys.ACCESS_TOKEN}${admin.userId}`,
+        `${RedisKeys.ACCESS_TOKEN}${admin.id}`,
         accessToken,
         this.redisAccessTokenTTL,
       );
       await this.redis.set(
-        `${RedisKeys.REFRESH_TOKEN}${admin.userId}`,
+        `${RedisKeys.REFRESH_TOKEN}${admin.id}`,
         refreshToken,
         this.redisRefreshTokenTTL,
       );
@@ -268,6 +210,62 @@ export class AdminService {
           accessToken,
           refreshToken,
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async createAdmin(createAdminDto: CreateAdminDto) {
+    const { email, password } = createAdminDto;
+
+    try {
+      const existingUser = await this.prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+      if (existingUser) {
+        throw new BadRequestException('Admin already exists');
+      }
+
+      const user = await this.prisma.user.create({
+        data: {
+          role: UserRole.ADMIN,
+          email,
+        },
+      });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await this.prisma.admin.create({
+        data: {
+          password: hashedPassword,
+          name: 'Admin',
+          userId: user.id,
+        },
+      });
+
+      return {
+        message: 'Admin created successfully.',
+        data: {
+          email: user.email,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getMenuPermissions() {
+    try {
+      const data = await this.prisma.supportPermission.findMany();
+
+      return {
+        message: 'Menu permissions fetched successfully.',
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -290,7 +288,7 @@ export class AdminService {
   }
 
   async createSupportRole(createSupportRoleDto: CreateSupportRoleDto) {
-    const { name, permissions, description } = createSupportRoleDto;
+    const { name, supportPermissionIds, description } = createSupportRoleDto;
 
     try {
       const existingRole = await this.prisma.supportRole.findFirst({
@@ -306,28 +304,19 @@ export class AdminService {
         throw new BadRequestException(`Role ${name} already exists`);
       }
 
-      const result = await this.prisma.$transaction(async (tx) => {
-        const role = await tx.supportRole.create({
-          data: {
-            name,
-            description,
+      const data = await this.prisma.supportRole.create({
+        data: {
+          name,
+          description,
+          supportPermissions: {
+            connect: supportPermissionIds.map((id) => ({ id })),
           },
-        });
-
-        await tx.supportPermission.createMany({
-          data: permissions.map((perm) => ({
-            menuKey: perm.menuKey,
-            isVisible: perm.isVisible ?? true,
-            supportRoleId: role.id,
-          })),
-        });
-
-        return role;
+        },
       });
 
       return {
         message: 'Support role created successfully.',
-        data: result,
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -336,14 +325,18 @@ export class AdminService {
   }
 
   async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
-    const { name, phone, supportRoleId } = createSupportStuffDto;
+    const { name, phone, supportRoleId, email, password } =
+      createSupportStuffDto;
 
     try {
       const user = await this.prisma.user.create({
         data: {
           role: UserRole.SUPPORT,
+          email,
         },
       });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       const data = await this.prisma.support.create({
         data: {
@@ -352,12 +345,15 @@ export class AdminService {
           referralCode: randomInt(10000, 1000000).toString(),
           userId: user.id,
           supportRoleId,
+          password: hashedPassword,
         },
       });
 
       return {
         message: 'Support stuff created successfully.',
-        data,
+        data: {
+          email: user.email,
+        },
       };
     } catch (error) {
       console.error(error);
@@ -367,7 +363,24 @@ export class AdminService {
 
   async getSupportStuffs() {
     try {
-      const data = await this.prisma.support.findMany();
+      const data = await this.prisma.support.findMany({
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          referralCode: true,
+          supportRole: {
+            select: {
+              name: true,
+              supportPermissions: {
+                select: {
+                  menuKey: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       return {
         message: 'Support stuffs fetched successfully.',

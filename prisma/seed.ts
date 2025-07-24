@@ -905,36 +905,73 @@ async function main() {
     },
   });
 
-  // Super Admin
-  const superAdminUser = await prisma.user.create({
-    data: {
-      role: UserRole.SUPER_ADMIN,
-      status: UserStatus.ACTIVE,
-    },
-  });
+  
 
+  // Super Admin creation
   const superAdminEmail = 'admin@fairdriveindia.com';
   const superAdminPassword = 'admin@2025';
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
-  const existingSuperAdmin = await prisma.superAdmin.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: {
       email: superAdminEmail,
+    },
+  });
+  let superAdminUser = existingUser;
+
+  if (!existingUser) {
+    superAdminUser = await prisma.user.create({
+      data: {
+        role: UserRole.SUPER_ADMIN,
+        status: UserStatus.ACTIVE,
+        email: superAdminEmail,
+      },
+    });
+  }
+
+  const existingSuperAdmin = await prisma.superAdmin.findUnique({
+    where: {
+      userId: superAdminUser.id,
     },
   });
 
   if (!existingSuperAdmin) {
     await prisma.superAdmin.create({
       data: {
-        name: 'Admin',
-        email: superAdminEmail,
-        userId: superAdminUser.id,
+        name: 'Super Admin',
+        userId: superAdminUser?.id,
         password: hashedPassword,
       },
     });
     console.log('Super admin created successfully');
   } else {
     console.log('Super admin already exists');
+  }
+
+
+  // Menu permissions
+  const menuPermissions = [
+    "View Driver",
+    "View Rides",
+    "Manage Drivers",
+    "Manage Rides",
+    "Manage Settings",
+  ];
+
+  for (const menuPermission of menuPermissions) {
+
+    const existingMenuPermission = await prisma.supportPermission.findUnique({
+      where: { menuKey: menuPermission },
+    });
+
+    if (!existingMenuPermission) {
+      await prisma.supportPermission.create({
+        data: { menuKey: menuPermission },
+      });
+      console.log(`Created menu permission: ${menuPermission}`);
+    } else {
+      console.log(`Menu permission ${menuPermission} already exists`);
+    }
   }
 
   console.log('Seeding Bangladeshi vehicle registration data finished.');

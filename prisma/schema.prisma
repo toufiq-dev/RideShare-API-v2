@@ -27,6 +27,7 @@ model SystemConfig {
 model User {
   id             String          @id @default(uuid())
   role           UserRole
+  email          String?         @unique
   status         UserStatus      @default(ACTIVE)
   country        Country?
   metadata       Json?
@@ -59,7 +60,6 @@ model SuperAdmin {
   id       String @id @default(uuid())
   name     String
   userId   String @unique
-  email    String @unique
   password String
   user     User   @relation(fields: [userId], references: [id])
 }
@@ -68,7 +68,6 @@ model Admin {
   id        String   @id @default(uuid())
   name      String
   userId    String   @unique
-  email     String   @unique
   password  String
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
@@ -89,10 +88,10 @@ model Support {
   id                 String               @id @default(uuid())
   userId             String               @unique
   name               String
-  email              String?
+  password           String
   phone              String?
   referralCode       String?              @unique
-  supportRoleId      String?
+  supportRoleId      String
   createdAt          DateTime             @default(now()) @db.Timestamptz
   updatedAt          DateTime             @updatedAt @db.Timestamptz
   user               User                 @relation(fields: [userId], references: [id])
@@ -102,14 +101,11 @@ model Support {
 
 model SupportPermission {
   id            String      @id @default(uuid())
-  menuKey       String // Identifier for the menu item
+  menuKey       String      @unique
   isVisible     Boolean     @default(true)
-  supportRoleId String
   createdAt     DateTime    @default(now()) @db.Timestamptz
   updatedAt     DateTime    @updatedAt @db.Timestamptz
-  supportRole   SupportRole @relation(fields: [supportRoleId], references: [id])
-
-  @@unique([supportRoleId, menuKey])
+  supportRole   SupportRole[]
 }
 
 model Customer {

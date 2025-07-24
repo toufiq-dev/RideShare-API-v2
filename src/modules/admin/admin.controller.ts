@@ -17,11 +17,10 @@ import {
   UpdateSubscriptionTypeDto,
   CreateSupportStuffDto,
   AppUpdateDto,
-  SuperAdminLoginDto,
-  CreateAdminDto,
-  AdminLoginDto,
   VerifyEmailDto,
   CreateSupportRoleDto,
+  LoginDto,
+  CreateAdminDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -33,32 +32,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Post('super/login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Super Admin Login' })
-  async superAdminLogin(@Body() superAdminLoginDto: SuperAdminLoginDto) {
-    return await this.adminService.superAdminLogin(superAdminLoginDto);
-  }
-
-  @Roles(UserRole.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Post('create-admin')
-  @ApiOperation({ summary: 'Create Admin' })
-  @ApiBody({
-    type: CreateAdminDto,
-  })
-  async createAdmin(@Body() createAdminDto: CreateAdminDto) {
-    return await this.adminService.createAdmin(createAdminDto);
-  }
-
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Admin Login' })
+  @ApiOperation({ summary: 'Login as Super Admin or Admin or Support' })
   @ApiBody({
-    type: AdminLoginDto,
+    type: LoginDto,
   })
-  async adminLogin(@Body() adminLoginDto: AdminLoginDto) {
-    return await this.adminService.adminLogin(adminLoginDto);
+  async login(@Body() loginDto: LoginDto) {
+    return await this.adminService.login(loginDto);
   }
 
   @Post('verify-email')
@@ -71,13 +52,24 @@ export class AdminController {
     return await this.adminService.verifyEmail(verifyEmailDto);
   }
 
+  // @Roles(UserRole.SUPER_ADMIN)
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @Post('create-admin')
+  @ApiOperation({ summary: 'Create Admin' })
+  @ApiBody({
+    type: CreateAdminDto,
+  })
+  async createAdmin(@Body() createAdminDto: CreateAdminDto) {
+    return await this.adminService.createAdmin(createAdminDto);
+  }
+
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Get('support-roles')
+  @Get('menu-permissions')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all Support Roles' })
-  async getSupportRoles() {
-    return await this.adminService.getSupportRoles();
+  @ApiOperation({ summary: 'Get all menu permissions' })
+  async getMenuPermissions() {
+    return await this.adminService.getMenuPermissions();
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
@@ -90,6 +82,15 @@ export class AdminController {
   })
   async createSupportRole(@Body() createSupportRoleDto: CreateSupportRoleDto) {
     return await this.adminService.createSupportRole(createSupportRoleDto);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('support-roles')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all Support Roles' })
+  async getSupportRoles() {
+    return await this.adminService.getSupportRoles();
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
@@ -115,7 +116,7 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPPORT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Get('driving-license')
   @ApiOperation({ summary: 'Driving Lincese documents' })
   async getDrivingLicense() {

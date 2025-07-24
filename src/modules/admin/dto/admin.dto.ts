@@ -40,11 +40,35 @@ export class VerifyEmailDto {
   otp: string;
 }
 
+class SupportPermissionDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  menuKey: string;
+
+  @ApiProperty({ default: true })
+  @IsBoolean()
+  @IsOptional()
+  isVisible?: boolean;
+}
+
 export class CreateSupportRoleDto {
   @ApiProperty({ description: 'Name of the user role' })
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty({ description: 'Description of the user role' })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @ApiProperty({ type: [SupportPermissionDto], required: false })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SupportPermissionDto)
+  @IsOptional()
+  permissions?: SupportPermissionDto[];
 }
 
 export class AppUpdateDto {
@@ -113,18 +137,6 @@ export class UpdateSubscriptionTypeDto {
   priceBeforeDiscount?: string;
 }
 
-class SupportPermissionDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  menuKey: string;
-
-  @ApiProperty({ default: true })
-  @IsBoolean()
-  @IsOptional()
-  isVisible?: boolean;
-}
-
 export class CreateSupportStuffDto {
   @ApiProperty({ description: 'Name of the support stuff' })
   @IsString()
@@ -136,10 +148,8 @@ export class CreateSupportStuffDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({ type: [SupportPermissionDto], required: false })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SupportPermissionDto)
-  @IsOptional()
-  permissions?: SupportPermissionDto[];
+  @ApiProperty({ description: 'Support role id' })
+  @IsString()
+  @IsNotEmpty()
+  supportRoleId: string;
 }

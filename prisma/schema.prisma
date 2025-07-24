@@ -97,22 +97,19 @@ model Support {
   updatedAt          DateTime             @updatedAt @db.Timestamptz
   user               User                 @relation(fields: [userId], references: [id])
   CancellationReason CancellationReason[]
-  permissions        SupportPermission[]
   supportRole        SupportRole?         @relation(fields: [supportRoleId], references: [id])
 }
 
 model SupportPermission {
-  id            String       @id @default(uuid())
-  supportId     String
+  id            String      @id @default(uuid())
   menuKey       String // Identifier for the menu item
-  isVisible     Boolean      @default(true)
-  supportRoleId String?
-  createdAt     DateTime     @default(now()) @db.Timestamptz
-  updatedAt     DateTime     @updatedAt @db.Timestamptz
-  support       Support      @relation(fields: [supportId], references: [id])
-  supportRole   SupportRole? @relation(fields: [supportRoleId], references: [id])
+  isVisible     Boolean     @default(true)
+  supportRoleId String
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @db.Timestamptz
+  supportRole   SupportRole @relation(fields: [supportRoleId], references: [id])
 
-  @@unique([supportId, menuKey])
+  @@unique([supportRoleId, menuKey])
 }
 
 model Customer {

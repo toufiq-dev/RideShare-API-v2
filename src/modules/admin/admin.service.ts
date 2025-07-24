@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
   SuperAdminLoginDto,
@@ -286,17 +290,87 @@ export class AdminService {
   }
 
   async createSupportRole(createSupportRoleDto: CreateSupportRoleDto) {
-    const { name } = createSupportRoleDto;
+    const { name, permissions, description } = createSupportRoleDto;
 
     try {
-      const data = await this.prisma.supportRole.create({
+      const existingRole = await this.prisma.supportRole.findFirst({
+        where: {
+          name: {
+            equals: name,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (existingRole) {
+        throw new BadRequestException(`Role ${name} already exists`);
+      }
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        const role = await tx.supportRole.create({
+          data: {
+            name,
+            description,
+          },
+        });
+
+        await tx.supportPermission.createMany({
+          data: permissions.map((perm) => ({
+            menuKey: perm.menuKey,
+            isVisible: perm.isVisible ?? true,
+            supportRoleId: role.id,
+          })),
+        });
+
+        return role;
+      });
+
+      return {
+        message: 'Support role created successfully.',
+        data: result,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
+    const { name, phone, supportRoleId } = createSupportStuffDto;
+
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          role: UserRole.SUPPORT,
+        },
+      });
+
+      const data = await this.prisma.support.create({
         data: {
           name,
+          phone,
+          referralCode: randomInt(10000, 1000000).toString(),
+          userId: user.id,
+          supportRoleId,
         },
       });
 
       return {
-        message: 'User role created successfully.',
+        message: 'Support stuff created successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getSupportStuffs() {
+    try {
+      const data = await this.prisma.support.findMany();
+
+      return {
+        message: 'Support stuffs fetched successfully.',
         data,
       };
     } catch (error) {
@@ -368,62 +442,6 @@ export class AdminService {
       message: 'Subscription type updated successfully.',
       data,
     };
-  }
-
-  async createSupportStuff(createSupportStuffDto: CreateSupportStuffDto) {
-    const { name, phone, permissions } = createSupportStuffDto;
-
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          role: UserRole.SUPPORT,
-        },
-      });
-
-      const data = await this.prisma.support.create({
-        data: {
-          name,
-          phone,
-          referralCode: randomInt(10000, 1000000).toString(),
-          userId: user.id,
-          permissions: permissions
-            ? {
-                createMany: {
-                  data: permissions.map((perm) => ({
-                    menuKey: perm.menuKey,
-                    isVisible: perm.isVisible ?? true,
-                  })),
-                },
-              }
-            : undefined,
-        },
-        include: {
-          permissions: true,
-        },
-      });
-
-      return {
-        message: 'Support stuff created successfully.',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async getSupportStuffs() {
-    try {
-      const data = await this.prisma.support.findMany();
-
-      return {
-        message: 'Support stuffs fetched successfully.',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
   }
 
   async getDrivingLicense() {

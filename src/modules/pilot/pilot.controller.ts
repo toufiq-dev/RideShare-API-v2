@@ -33,6 +33,7 @@ import {
   BDRCDto,
   NumberPlateDto,
   FreeRechargeDto,
+  BDNidTypeDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -296,9 +297,10 @@ export class PilotController {
   async uploadBDNid(
     @UploadedFiles()
     files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
+    @Query() query: BDNidTypeDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.pilotService.uploadBDNid(files, userId);
+    return await this.pilotService.uploadBDNid(files, userId, query.type);
   }
 
   @Post('bd-nid/confirmation')
@@ -308,9 +310,10 @@ export class PilotController {
   @ApiBody({ type: BDNidDto })
   async verifyBDNid(
     @Body() bDNidDto: BDNidDto,
+    @Query() query: BDNidTypeDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.pilotService.processBDNid(bDNidDto, userId);
+    return await this.pilotService.processBDNid(bDNidDto, userId, query.type);
   }
 
   @Post('bd-rc')

@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsDate,
   IsEnum,
+  IsIn,
   IsISO8601,
   IsNotEmpty,
   IsString,
@@ -150,4 +151,14 @@ export class FreeRechargeDto {
   @IsNotEmpty()
   @IsString()
   coupon: string;
+}
+
+export enum BDNidType {
+  PILOT = 'pilot',
+  VEHICLE_OWNER = 'vehicleOwner',
+}
+
+export class BDNidTypeDto {
+  @IsEnum(BDNidType, { message: 'type must be either pilot or vehicleOwner' })
+  type: BDNidType;
 }

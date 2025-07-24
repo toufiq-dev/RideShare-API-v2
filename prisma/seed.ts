@@ -358,6 +358,7 @@ async function main() {
         isNidVerified: VerificationStatus.APPROVED,
         isSelfieVerified: VerificationStatus.APPROVED,
         isNumberPlateVerified: VerificationStatus.APPROVED,
+        isTaxTokenVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true,
       },
     });

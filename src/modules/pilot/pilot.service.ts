@@ -20,6 +20,8 @@ import {
   BDRCDto,
   NumberPlateDto,
   FreeRechargeDto,
+  BDNidTypeDto,
+  BDNidType,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -1094,6 +1096,7 @@ export class PilotService {
   async uploadBDNid(
     files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     userId: string,
+    nidType: BDNidType,
   ) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
@@ -1103,8 +1106,17 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isNidVerified === VerificationStatus.APPROVED) {
+      if (
+        nidType === BDNidType.PILOT &&
+        pilot.isNidVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Pilot already verified NID.');
+      }
+      if (
+        nidType === BDNidType.VEHICLE_OWNER &&
+        pilot.isVehicleOwnersNidVerified === VerificationStatus.APPROVED
+      ) {
+        throw new BadRequestException('Vehicle owner already verified NID.');
       }
 
       const frontSideBuffer = files.front[0].buffer;
@@ -1125,13 +1137,25 @@ export class PilotService {
       );
 
       if (frontSideUrl && backSideUrl) {
-        await this.prisma.pilot.update({
-          where: { userId },
-          data: {
-            nidFrontSideUrl: frontSideUrl,
-            nidBackSideUrl: backSideUrl,
-          },
-        });
+        if (nidType === BDNidType.PILOT) {
+          await this.prisma.pilot.update({
+            where: { userId },
+            data: {
+              nidFrontSideUrl: frontSideUrl,
+              nidBackSideUrl: backSideUrl,
+            },
+          });
+        }
+
+        if (nidType === BDNidType.VEHICLE_OWNER) {
+          await this.prisma.pilot.update({
+            where: { userId },
+            data: {
+              vehicleOwnersNidFrontSideUrl: frontSideUrl,
+              vehicleOwnersNidBackSideUrl: backSideUrl,
+            },
+          });
+        }
       }
 
       const verificationResponse =
@@ -1172,7 +1196,7 @@ export class PilotService {
     }
   }
 
-  async processBDNid(bDNidDto: BDNidDto, userId: string) {
+  async processBDNid(bDNidDto: BDNidDto, userId: string, nidType: BDNidType) {
     const { nidNumber, name, dateOfBirth } = bDNidDto;
 
     try {
@@ -1180,36 +1204,78 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isNidVerified === VerificationStatus.APPROVED) {
+      if (
+        nidType === BDNidType.PILOT &&
+        pilot.isNidVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Pilot already verified NID.');
       }
+      if (
+        nidType === BDNidType.VEHICLE_OWNER &&
+        pilot.isVehicleOwnersNidVerified === VerificationStatus.APPROVED
+      ) {
+        throw new BadRequestException('Vehicle owner already verified NID.');
+      }
 
-      const data = await this.prisma.nid.upsert({
-        where: { pilotId: pilot.id },
-        update: {
-          nidNumber,
-          name,
-          dateOfBirth,
-        },
-        create: {
-          nidNumber,
-          name,
-          dateOfBirth,
-          pilotId: pilot.id,
-        },
-      });
+      let data = null;
 
-      await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          isNidVerified: VerificationStatus.IN_PROGRESS,
-        },
-      });
+      if (nidType === BDNidType.PILOT) {
+        data = await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            nidNumber,
+            name,
+            dateOfBirth,
+          },
+          create: {
+            nidNumber,
+            name,
+            dateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { userId },
+          data: {
+            isNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+      } else if (nidType === BDNidType.VEHICLE_OWNER) {
+        data = await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            vehicleOwnerNidNumber: nidNumber,
+            vehicleOwnerNidName: name,
+            vehicleOwnerNidDateOfBirth: dateOfBirth,
+          },
+          create: {
+            vehicleOwnerNidNumber: nidNumber,
+            vehicleOwnerNidName: name,
+            vehicleOwnerNidDateOfBirth: dateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { userId },
+          data: {
+            isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+      }
 
       const transformedData = {
-        dateOfBirth: data.dateOfBirth,
-        nidNumber: data.nidNumber,
-        name: data.name,
+        dateOfBirth:
+          nidType === BDNidType.PILOT
+            ? data.dateOfBirth
+            : data.vehicleOwnerNidDateOfBirth,
+        nidNumber:
+          nidType === BDNidType.PILOT
+            ? data.nidNumber
+            : data.vehicleOwnerNidNumber,
+        name:
+          nidType === BDNidType.PILOT ? data.name : data.vehicleOwnerNidName,
       };
 
       return {

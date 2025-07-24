@@ -100,12 +100,12 @@ model Support {
 }
 
 model SupportPermission {
-  id            String      @id @default(uuid())
-  menuKey       String      @unique
-  isVisible     Boolean     @default(true)
-  createdAt     DateTime    @default(now()) @db.Timestamptz
-  updatedAt     DateTime    @updatedAt @db.Timestamptz
-  supportRole   SupportRole[]
+  id          String        @id @default(uuid())
+  menuKey     String        @unique
+  isVisible   Boolean       @default(true)
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+  supportRole SupportRole[]
 }
 
 model Customer {
@@ -155,66 +155,70 @@ model SavedPlace {
 }
 
 model Pilot {
-  id                         String             @id @default(uuid())
-  phone                      String             @unique
-  userId                     String             @unique
-  selfieUrl                  String?
-  dlFrontSideUrl             String?
-  dlBackSideUrl              String?
-  nidFrontSideUrl            String?
-  nidBackSideUrl             String?
-  rcFrontSideUrl             String?
-  rcBackSideUrl              String?
-  numberPlateUrl             String?
-  taxTokenUrl                String?
-  languageId                 String
-  referralCode               String?
-  onlineStatus               PilotStatus        @default(OFFLINE)
-  activeBookingId            String?            @unique
-  isAlreadyRegistered        Boolean            @default(false)
-  averageRating              Float              @default(5.0)
-  totalTrips                 Int                @default(0)
-  pilotProgramId             String?
-  acceptedTerms              Boolean            @default(true)
-  isSelfieVerified           VerificationStatus @default(PENDING)
-  selfieRejectionReason      String?
-  isNidVerified              VerificationStatus @default(PENDING)
-  nidRejectionReason         String?
-  isDLVerified               VerificationStatus @default(PENDING)
-  dlRejectionReason          String?
-  isRCVerified               VerificationStatus @default(PENDING)
-  rcRejectionReason          String?
-  isNumberPlateVerified      VerificationStatus @default(PENDING)
-  numberPlateRejectionReason String?
-  isTaxTokenVerified         VerificationStatus @default(PENDING)
-  taxTokenRejectionReason    String?
-  isPanCardVerified          VerificationStatus @default(PENDING)
-  isAadhaarVerified          VerificationStatus @default(PENDING)
-  isFairCoinAvailed          Boolean            @default(false)
-  currentLocation            Json?
-  panCardName                String?
-  aadhaarName                String?
-  panCardNumber              String?            @unique
-  aadhaarCardNumber          String?            @unique
-  aadhaarCardAddress         String?
-  pilotCouponId              String?
-  createdAt                  DateTime           @default(now()) @db.Timestamptz
-  updatedAt                  DateTime           @updatedAt @db.Timestamptz
-  drivingLicense             DrivingLicense?
-  bookings                   Booking[]
-  language                   Languages          @relation(fields: [languageId], references: [id])
-  pilotProgram               PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
-  user                       User               @relation(fields: [userId], references: [id])
-  activeBooking              Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
-  pilotTrips                 PilotTrips[]
-  transaction                Transaction[]
-  ranking                    PilotRanking?
-  ratings                    PilotRating[]
-  wallet                     PilotWallet?
-  vehicle                    Vehicle?           @relation("PilotVehicle")
-  nid                        Nid?               @relation("PilotNid")
-  videoProgress              VideoProgress?
-  pilotCoupon                PilotCoupon?       @relation(fields: [pilotCouponId], references: [id])
+  id                              String             @id @default(uuid())
+  phone                           String             @unique
+  userId                          String             @unique
+  selfieUrl                       String?
+  dlFrontSideUrl                  String?
+  dlBackSideUrl                   String?
+  nidFrontSideUrl                 String?
+  nidBackSideUrl                  String?
+  vehicleOwnersNidFrontSideUrl    String?
+  vehicleOwnersNidBackSideUrl     String?
+  rcFrontSideUrl                  String?
+  rcBackSideUrl                   String?
+  numberPlateUrl                  String?
+  taxTokenUrl                     String?
+  languageId                      String
+  referralCode                    String?
+  onlineStatus                    PilotStatus        @default(OFFLINE)
+  activeBookingId                 String?            @unique
+  isAlreadyRegistered             Boolean            @default(false)
+  averageRating                   Float              @default(5.0)
+  totalTrips                      Int                @default(0)
+  pilotProgramId                  String?
+  acceptedTerms                   Boolean            @default(true)
+  isSelfieVerified                VerificationStatus @default(PENDING)
+  selfieRejectionReason           String?
+  isNidVerified                   VerificationStatus @default(PENDING)
+  nidRejectionReason              String?
+  isVehicleOwnersNidVerified      VerificationStatus @default(PENDING)
+  vehicleOwnersNidRejectionReason String?
+  isDLVerified                    VerificationStatus @default(PENDING)
+  dlRejectionReason               String?
+  isRCVerified                    VerificationStatus @default(PENDING)
+  rcRejectionReason               String?
+  isNumberPlateVerified           VerificationStatus @default(PENDING)
+  numberPlateRejectionReason      String?
+  isTaxTokenVerified              VerificationStatus @default(PENDING)
+  taxTokenRejectionReason         String?
+  isPanCardVerified               VerificationStatus @default(PENDING)
+  isAadhaarVerified               VerificationStatus @default(PENDING)
+  isFairCoinAvailed               Boolean            @default(false)
+  currentLocation                 Json?
+  panCardName                     String?
+  aadhaarName                     String?
+  panCardNumber                   String?            @unique
+  aadhaarCardNumber               String?            @unique
+  aadhaarCardAddress              String?
+  pilotCouponId                   String?
+  createdAt                       DateTime           @default(now()) @db.Timestamptz
+  updatedAt                       DateTime           @updatedAt @db.Timestamptz
+  drivingLicense                  DrivingLicense?
+  bookings                        Booking[]
+  language                        Languages          @relation(fields: [languageId], references: [id])
+  pilotProgram                    PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
+  user                            User               @relation(fields: [userId], references: [id])
+  activeBooking                   Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
+  pilotTrips                      PilotTrips[]
+  transaction                     Transaction[]
+  ranking                         PilotRanking?
+  ratings                         PilotRating[]
+  wallet                          PilotWallet?
+  vehicle                         Vehicle?           @relation("PilotVehicle")
+  nid                             Nid?               @relation("PilotNid")
+  videoProgress                   VideoProgress?
+  pilotCoupon                     PilotCoupon?       @relation(fields: [pilotCouponId], references: [id])
 }
 
 model PilotCoupon {
@@ -229,11 +233,14 @@ model PilotCoupon {
 }
 
 model Nid {
-  pilotId     String   @id @unique
-  nidNumber   String   @unique
-  name        String
-  dateOfBirth DateTime
-  pilot       Pilot    @relation("PilotNid", fields: [pilotId], references: [id])
+  pilotId                    String    @id @unique
+  nidNumber                  String?   @unique
+  name                       String?
+  dateOfBirth                DateTime?
+  vehicleOwnerNidNumber      String?   @unique
+  vehicleOwnerNidName        String?
+  vehicleOwnerNidDateOfBirth DateTime?
+  pilot                      Pilot     @relation("PilotNid", fields: [pilotId], references: [id])
 }
 
 model DrivingLicense {

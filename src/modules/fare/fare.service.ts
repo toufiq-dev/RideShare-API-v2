@@ -104,10 +104,10 @@ export class FareService {
     } else {
       perKmRate = perKmFare;
     }
-
+    
     return Math.ceil(
       Math.max(
-        (baseFare + perKmRate * distanceKm + perMinRate * durationMin) * 0.95,
+        (baseFare + perKmRate * distanceKm + perMinRate * durationMin) * 0.97,
         minFare,
       ),
     );

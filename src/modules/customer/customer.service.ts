@@ -564,7 +564,7 @@ export class CustomerService {
             break;
           }
         }
-        console.log(`mins away: ${minsAway}`);
+        
         vehicleData.push({
           id: item.id,
           vehicleType: item.name,

@@ -165,6 +165,79 @@ export class AdminService {
     }
   }
 
+  async getUserInfo(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (user.role === UserRole.ADMIN) {
+        const admin = await this.prisma.admin.findUnique({
+          where: { userId },
+          select: {
+            name: true,
+          },
+        });
+
+        return {
+          message: 'Admin info fetched successfully.',
+          data: {
+            name: admin.name,
+            role: user.role,
+          },
+        };
+      } else if (user.role === UserRole.SUPPORT) {
+        const support = await this.prisma.support.findUnique({
+          where: { userId },
+          select: {
+            name: true,
+            phone: true,
+            referralCode: true,
+            supportRole: {
+              select: {
+                name: true,
+                description: true,
+                supportPermissions: {
+                  select: {
+                    menuKey: true,
+                    isVisible: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        return {
+          message: 'Support info fetched successfully.',
+          data: support,
+        };
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        const superAdmin = await this.prisma.superAdmin.findUnique({
+          where: { userId },
+          select: {
+            name: true,
+          },
+        });
+
+        return {
+          message: 'Super admin info fetched successfully.',
+          data: {
+            name: superAdmin.name,
+            role: user.role,
+          },
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async verifyEmail(verifyEmailDto: VerifyEmailDto) {
     const { email, otp } = verifyEmailDto;
 

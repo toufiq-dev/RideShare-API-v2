@@ -26,6 +26,7 @@ import { AppPlatform, UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { CurrentUser } from 'src/common/decorators/user.decorator';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -40,6 +41,14 @@ export class AdminController {
   })
   async login(@Body() loginDto: LoginDto) {
     return await this.adminService.login(loginDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user-info')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get User Info' })
+  async getUserInfo(@CurrentUser('userId') userId: string) {
+    return await this.adminService.getUserInfo(userId);
   }
 
   @Post('verify-email')

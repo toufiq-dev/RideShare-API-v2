@@ -107,12 +107,15 @@ export class AuthService {
       // Khudebarta OTP
       if (countryCode === Country.BD) {
         const isSent = await this.otpService.sendOTPBD(phone, otp);
+
         if (!isSent) {
           throw new BadRequestException('Failed to send OTP.');
         }
+
         await this.redis.set(`otpSent:${phone}`, 'true', 180);
       } else if (countryCode === Country.IN) {
         const requestId = await this.otpService.sendOTP(phone);
+
         await this.redis.set(`requestId:${phone}`, requestId, 300);
       }
 

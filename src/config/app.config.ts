@@ -23,6 +23,7 @@ export default () => ({
     baseUrl: process.env.KHUDEBARTA_BASE_URL,
     apiKey: process.env.KHUDEBARTA_API_KEY,
     secretKey: process.env.KHUDEBARTA_SECRET_KEY,
+    senderId: process.env.KHUDEBARTA_SENDER_ID,
   },
   jwt: {
     secret: process.env.JWT_SECRET,

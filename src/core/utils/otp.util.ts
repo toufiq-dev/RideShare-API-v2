@@ -11,6 +11,7 @@ export class OTPService {
   private readonly khudebartaBaseUrl: string;
   private readonly khudebartaAPIKey: string;
   private readonly khudebartaSecretKey: string;
+  private readonly khudebartaSenderId: string;
 
   constructor(private configService: ConfigService) {
     this.baseUrl = this.configService.get<string>('msg91.baseUrl');
@@ -24,6 +25,9 @@ export class OTPService {
     this.khudebartaSecretKey = this.configService.get<string>(
       'khudebarta.secretKey',
     );
+    this.khudebartaSenderId = this.configService.get<string>(
+      'khudebarta.senderId',
+    );
   }
 
   async sendOTPBD(mobile: string, otp: string) {
@@ -33,7 +37,7 @@ export class OTPService {
 
     const requestBody = [
       {
-        callerID: 'fairdrive',
+        callerID: this.khudebartaSenderId,
         toUser: mobile,
         messageContent: message,
       },
@@ -47,7 +51,7 @@ export class OTPService {
           content: JSON.stringify(requestBody),
         },
       });
-      console.log('sendOTPBD', response.data);
+
       const responseData = response.data;
 
       if (responseData.Status === '0') {

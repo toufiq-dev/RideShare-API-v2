@@ -15,7 +15,12 @@ import {
   CreateAdminDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
-import { AppPlatform, UserRole, VerificationStatus } from '@prisma/client';
+import {
+  AppPlatform,
+  UserRole,
+  UserStatus,
+  VerificationStatus,
+} from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -528,26 +533,202 @@ export class AdminService {
     };
   }
 
-  async getDrivingLicense() {
+  async getDriverList(page: number, pageSize: number) {
     try {
-      const data = await this.prisma.pilot.findMany({
+      const skip = (page - 1) * pageSize;
+
+      const totalCount = await this.prisma.pilot.count();
+      const activeCount = await this.prisma.pilot.count({
+        where: {
+          user: {
+            status: UserStatus.ACTIVE,
+          },
+        },
+      });
+      const pendingCount = await this.prisma.pilot.count({
         where: {
           isDLVerified: {
             not: VerificationStatus.APPROVED,
           },
         },
+      });
+      const suspendedCount = await this.prisma.pilot.count({
+        where: {
+          user: {
+            status: UserStatus.SUSPENDED,
+          },
+        },
+      });
+
+      const pilots = await this.prisma.pilot.findMany({
         select: {
-          dlFrontSideUrl: true,
-          dlBackSideUrl: true,
+          id: true,
+          phone: true,
+          drivingLicense: {
+            select: {
+              nameOnLicense: true,
+            },
+          },
+          user: {
+            select: {
+              country: true,
+              status: true,
+            },
+          },
+          wallet: {
+            select: {
+              balance: true,
+            },
+          },
         },
         orderBy: {
-          isDLVerified: 'asc',
+          createdAt: 'desc',
+        },
+        skip,
+        take: pageSize,
+      });
+
+      const pilotsWithEarnings = await Promise.all(
+        pilots.map(async (pilot) => {
+          const earningsData = await this.prisma.pilotTrips.aggregate({
+            where: {
+              pilotId: pilot.id,
+            },
+            _sum: {
+              amount: true,
+            },
+            _count: {
+              id: true,
+            },
+          });
+
+          return {
+            ...pilot,
+            totalEarnings: Number(earningsData._sum.amount || 0),
+            totalTrips: earningsData._count.id,
+          };
+        }),
+      );
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Driver list fetched successfully.',
+        data: {
+          pilots: pilotsWithEarnings,
+          totalPilots: totalCount,
+          activePilots: activeCount,
+          pendingPilots: pendingCount,
+          suspendedPilots: suspendedCount,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getDriverDetails(id: string) {
+    try {
+      const data = await this.prisma.pilot.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          phone: true,
+          isDLVerified: true,
+          isRCVerified: true,
+          isNidVerified: true,
+          isSelfieVerified: true,
+          isVehicleOwnersNidVerified: true,
+          isNumberPlateVerified: true,
+          isTaxTokenVerified: true,
+          isPanCardVerified: true,
+          isAadhaarVerified: true,
+          isFairCoinAvailed: true,
+          drivingLicense: {
+            select: {
+              dateOfBirth: true,
+            },
+          },
+          vehicle: {
+            select: {
+              regNo: true,
+              model: true,
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                  passengerCapacity: true,
+                },
+              },
+            },
+          },
         },
       });
 
       return {
-        message: 'Driving license document fetched successfully',
+        message: 'Driver details fetched successfully.',
         data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getDriverVerification(page: number, pageSize: number) {
+    try {
+      const skip = (page - 1) * pageSize;
+
+      const totalCount = await this.prisma.pilot.count();
+
+      const pilots = await this.prisma.pilot.findMany({
+        select: {
+          id: true,
+          phone: true,
+          isDLVerified: true,
+          isRCVerified: true,
+          isNidVerified: true,
+          isSelfieVerified: true,
+          isVehicleOwnersNidVerified: true,
+          isNumberPlateVerified: true,
+          isTaxTokenVerified: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: pageSize,
+      });
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Driver verification fetched successfully.',
+        data: {
+          pilots,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
       };
     } catch (error) {
       console.error(error);

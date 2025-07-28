@@ -184,6 +184,12 @@ export class AuthService {
           throw new NotFoundException('User not found.');
         }
 
+        await this.prisma.deviceToken.upsert({
+          where: { userId: user.id },
+          update: { fcmToken: fcmToken },
+          create: { userId: user.id, fcmToken: fcmToken },
+        });
+
         const tokens = await this.generateTokens(user.id, user.role);
 
         return {

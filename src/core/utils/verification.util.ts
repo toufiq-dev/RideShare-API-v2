@@ -423,7 +423,9 @@ export class VerificationService {
         "number": "...",
         "vehicleType": "...",
         "vehicleColour": "...",
-        "registrationDate": "..."
+        "registrationDate": "...",
+        "model": "...",
+        "seatCapacity": "..."
       }
         
       REGISTRATION POINT MAPPING:

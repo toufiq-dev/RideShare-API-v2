@@ -9,6 +9,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -126,10 +128,32 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
-  @Get('driving-license')
-  @ApiOperation({ summary: 'Driving Lincese documents' })
-  async getDrivingLicense() {
-    return await this.adminService.getDrivingLicense();
+  @Get('driver-list')
+  @ApiOperation({ summary: 'Driver List' })
+  async getDriverList(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.adminService.getDriverList(page, pageSize);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('driver/:id')
+  @ApiOperation({ summary: 'Driver Details' })
+  async getDriverDetails(@Param('id') id: string) {
+    return await this.adminService.getDriverDetails(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('driver-verification')
+  @ApiOperation({ summary: 'Driver Verification' })
+  async getDriverVerification(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.adminService.getDriverVerification(page, pageSize);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

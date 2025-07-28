@@ -1345,10 +1345,11 @@ export class PilotService {
         !verificationResponse.series &&
         !verificationResponse.seriesEnglish &&
         !verificationResponse.number &&
-        !verificationResponse.fullNumber &&
         !verificationResponse.vehicleType &&
         !verificationResponse.registrationDate &&
-        !verificationResponse.vehicleColour
+        !verificationResponse.vehicleColour &&
+        !verificationResponse.model &&
+        !verificationResponse.seatCapacity
       ) {
         throw new BadRequestException(
           'This RC card is either non-existing or invalid.',
@@ -1378,8 +1379,14 @@ export class PilotService {
   }
 
   async processBDRC(bDRCDto: BDRCDto, userId: string) {
-    const { vehicleNumber, vehicleType, registrationDate, vehicleColour } =
-      bDRCDto;
+    const {
+      vehicleNumber,
+      vehicleType,
+      registrationDate,
+      vehicleColour,
+      model,
+      seatCapacity,
+    } = bDRCDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
@@ -1422,7 +1429,8 @@ export class PilotService {
           regNo: vehicleNumber,
           registrationDate,
           colour: vehicleColour,
-          model: vehicleType,
+          model,
+          seatCapacity,
           pilotId: pilot.id,
           vehicleTypeIdBD: vehicleTypeBDId.id,
         },

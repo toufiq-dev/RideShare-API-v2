@@ -84,6 +84,16 @@ export class BDRCDto {
   @IsNotEmpty({ message: 'Vehicle colour is required' })
   @IsString()
   vehicleColour: string;
+
+  @ApiProperty({ description: 'Model' })
+  @IsNotEmpty({ message: 'Model is required' })
+  @IsString()
+  model: string;
+
+  @ApiProperty({ description: 'Seat capacity' })
+  @IsNotEmpty({ message: 'Seat capacity is required' })
+  @IsString()
+  seatCapacity: string;
 }
 
 export class NumberPlateDto {

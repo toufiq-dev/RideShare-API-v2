@@ -237,7 +237,7 @@ model Nid {
   nidNumber                  String?   @unique
   name                       String?
   dateOfBirth                DateTime?
-  vehicleOwnerNidNumber      String?   @unique
+  vehicleOwnerNidNumber      String?
   vehicleOwnerNidName        String?
   vehicleOwnerNidDateOfBirth DateTime?
   pilot                      Pilot     @relation("PilotNid", fields: [pilotId], references: [id])

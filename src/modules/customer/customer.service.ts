@@ -488,32 +488,15 @@ export class CustomerService {
         );
 
         let price = null;
-        if (originalPrice === Number(item.minFare)) {
-          console.log(
-            `${item.name} with in if and originalPrice ${originalPrice} and minFare: ${item.minFare}`,
-          );
+        if (originalPrice <= Number(item.minFare)) {
           price = originalPrice;
         } else {
-          console.log(
-            `${item.name} with in else and originalPrice ${originalPrice}`,
-          );
           price =
             customer?.coupon?.discount &&
             originalPrice > customer.coupon.discount
               ? originalPrice - Number(customer.coupon.discount)
               : originalPrice;
         }
-
-        // const driversLocation = {
-        //   lat: pickupLocation.lat,
-        //   lng: pickupLocation.lng,
-        // };
-
-        // const { distanceKm: kmAway, durationMin: minsAway } =
-        //   await this.fareService.calculateDistanceAndDuration(
-        //     driversLocation,
-        //     pickupLocation,
-        //   );
 
         const nearbyPilots = await this.redis.geoRadius(
           RedisKeys.PILOT_LOCATION,
@@ -564,7 +547,7 @@ export class CustomerService {
             break;
           }
         }
-        
+
         vehicleData.push({
           id: item.id,
           vehicleType: item.name,

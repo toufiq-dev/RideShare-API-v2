@@ -45,10 +45,17 @@ export class EmailService {
       const { email } = sendOtpDto;
       const otp = randomInt(1000, 10000).toString();
 
+      const otpSent = await this.redis.get(`otpSent:${email}`);
+      if (otpSent) {
+        throw new BadRequestException(
+          'OTP already sent. Please wait for 3 minutes.',
+        );
+      }
+
       await this.redis.set(
         `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
         otp,
-        270,
+        180,
       );
 
       const mailOptions = {
@@ -66,7 +73,14 @@ export class EmailService {
       `,
       };
 
-      await this.transporter.sendMail(mailOptions);
+      const sentMail = await this.transporter.sendMail(mailOptions);
+      if (!sentMail) {
+        throw new BadRequestException('Failed to send OTP');
+      }
+
+      await this.redis.set(`otpSent:${email}`, 'true', 180);
+
+      return { message: 'OTP sent to your email successfully' };
     } catch (error) {
       console.error(error);
       throw error;
@@ -79,7 +93,7 @@ export class EmailService {
     const storedOtp = await this.redis.get(`emailVerificationotp:${email}`);
 
     if (!storedOtp) {
-      throw new BadRequestException('OTP not found');
+      throw new BadRequestException('OTP invalid or expired');
     }
 
     if (storedOtp === otp) {

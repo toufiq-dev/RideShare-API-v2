@@ -250,8 +250,6 @@ export class AdminService {
         throw new UnauthorizedException('Invalid or Expired OTP');
       }
 
-      await this.redis.del(`${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`);
-
       const admin = await this.prisma.user.findUnique({
         where: { email },
       });
@@ -557,6 +555,33 @@ export class AdminService {
     }
   }
 
+  async getNid() {
+    try {
+      const data = await this.prisma.pilot.findMany({
+        where: {
+          isNidVerified: {
+            not: VerificationStatus.APPROVED,
+          },
+        },
+        select: {
+          nidFrontSideUrl: true,
+          nidBackSideUrl: true,
+        },
+        orderBy: {
+          isNidVerified: 'asc',
+        },
+      });
+
+      return {
+        message: 'NID document fetched successfully',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async getNumberPlates() {
     try {
       const data = await this.prisma.pilot.findMany({
@@ -569,12 +594,12 @@ export class AdminService {
           numberPlateUrl: true,
         },
         orderBy: {
-          isDLVerified: 'asc',
+          isNumberPlateVerified: 'asc',
         },
       });
 
       return {
-        message: 'Driving license document fetched successfully',
+        message: 'Number plate document fetched successfully',
         data,
       };
     } catch (error) {

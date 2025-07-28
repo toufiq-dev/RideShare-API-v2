@@ -90,12 +90,19 @@ export class AuthService {
         countryCode = Country.IN;
       }
 
+      const otpSent = await this.redis.get(`otpSent:${phone}`);
+      if (otpSent) {
+        throw new BadRequestException(
+          'OTP already sent. Please wait for 3 minutes.',
+        );
+      }
+
       const otp = randomInt(1000, 10000).toString();
       // Disable this one when we are using OTP service
-      await this.redis.set(`otp:${phone}`, otp, 300);
-      await this.redis.set(`countryCode:${phone}`, countryCode, 300);
-      await this.redis.set(`languageId:${phone}`, Language.id, 300);
-      await this.redis.set(`referralCode:${phone}`, referralCode, 300);
+      await this.redis.set(`otp:${phone}`, otp, 180);
+      await this.redis.set(`countryCode:${phone}`, countryCode, 180);
+      await this.redis.set(`languageId:${phone}`, Language.id, 180);
+      await this.redis.set(`referralCode:${phone}`, referralCode, 180);
 
       // Khudebarta OTP
       if (countryCode === Country.BD) {
@@ -103,6 +110,7 @@ export class AuthService {
         if (!isSent) {
           throw new BadRequestException('Failed to send OTP.');
         }
+        await this.redis.set(`otpSent:${phone}`, 'true', 180);
       } else if (countryCode === Country.IN) {
         const requestId = await this.otpService.sendOTP(phone);
         await this.redis.set(`requestId:${phone}`, requestId, 300);

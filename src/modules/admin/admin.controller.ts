@@ -132,6 +132,14 @@ export class AdminController {
     return await this.adminService.getDrivingLicense();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('nid')
+  @ApiOperation({ summary: 'NID documents' })
+  async getNid() {
+    return await this.adminService.getNid();
+  }
+
   @Get('numberplate')
   @ApiOperation({ summary: 'Driving Lincese documents' })
   async getNumberPlate() {

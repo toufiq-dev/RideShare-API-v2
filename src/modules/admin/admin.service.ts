@@ -564,6 +564,7 @@ export class AdminService {
         select: {
           id: true,
           phone: true,
+          createdAt: true,
           drivingLicense: {
             select: {
               nameOnLicense: true,

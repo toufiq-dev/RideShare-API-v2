@@ -35,6 +35,15 @@ export class EmailService {
   }
 
   async sendOtpEmail(sendOtpDto: sendOtpDto) {
+    const { email } = sendOtpDto;
+
+    const otpSent = await this.redis.get(`otpSent:${email}`);
+    if (otpSent) {
+      throw new BadRequestException(
+        'OTP already sent. Please wait for 3 minutes.',
+      );
+    }
+
     // enqueue the sending email job
     await this.otpQueue.add('send-otp', { sendOtpDto });
     return { message: 'OTP will be sent shortly' };
@@ -44,13 +53,6 @@ export class EmailService {
     try {
       const { email } = sendOtpDto;
       const otp = randomInt(1000, 10000).toString();
-
-      const otpSent = await this.redis.get(`otpSent:${email}`);
-      if (otpSent) {
-        throw new BadRequestException(
-          'OTP already sent. Please wait for 3 minutes.',
-        );
-      }
 
       await this.redis.set(
         `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
@@ -76,9 +78,9 @@ export class EmailService {
       const sentMail = await this.transporter.sendMail(mailOptions);
       if (!sentMail) {
         throw new BadRequestException('Failed to send OTP');
+      } else {
+        await this.redis.set(`otpSent:${email}`, 'true', 180);
       }
-
-      await this.redis.set(`otpSent:${email}`, 'true', 180);
 
       return { message: 'OTP sent to your email successfully' };
     } catch (error) {

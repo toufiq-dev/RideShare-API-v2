@@ -99,16 +99,15 @@ export class FareService {
   ): number {
     let perKmRate: number = 0;
 
+    if (vehicleType === VehicleTypeNameBD.FAIR_BIKE) {
+      baseFare += 20;
+    }
+
     if (vehicleType === VehicleTypeNameBD.FAIR_PLUS) {
       perKmRate = this.calculatePerKmFare(distanceKm, vehicleType);
-      console.log('*** PerKmRate for fair plus ***', perKmRate);
     } else {
       perKmRate = perKmFare;
     }
-
-    console.log('*** PerKmRate ***', perKmRate);
-    console.log('*** BaseFare ***', baseFare);
-    console.log('*** PerMinRate ***', perMinRate);
 
     return Math.ceil(
       Math.max(

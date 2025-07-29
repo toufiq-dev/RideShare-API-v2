@@ -112,7 +112,7 @@ export class FareService {
 
     return Math.ceil(
       Math.max(
-        (baseFare + perKmRate * distanceKm + perMinRate * durationMin) * 0.97,
+        baseFare + perKmRate * distanceKm + perMinRate * durationMin,
         minFare,
       ),
     );

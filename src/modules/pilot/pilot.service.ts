@@ -62,7 +62,7 @@ export class PilotService {
   async getPilot(userId: string) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: { id: userId, status: UserStatus.ACTIVE },
+        where: { id: userId },
       });
       if (!user) {
         throw new NotFoundException('User not found.');

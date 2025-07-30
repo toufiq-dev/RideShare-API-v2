@@ -45,6 +45,7 @@ import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from 'src/core/logging/logger.service';
+import { RideGateway } from './ride.gateway';
 
 @Injectable()
 export class RideService {
@@ -58,36 +59,11 @@ export class RideService {
     private readonly fareService: FareService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
-    @InjectQueue('ride-request') private readonly rideQueue: Queue,
+    private readonly rideGateway: RideGateway,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(
       'systemConfig.bonusRechargeThreshold',
     );
-  }
-
-  async enqueueRideRequest(payload: RideRequestPayload) {
-    try {
-      const job = await this.rideQueue.add('broadcast-to-pilots', payload, {
-        jobId: `ride-${payload.bookingId}`,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
-        removeOnComplete: true,
-        removeOnFail: 1000,
-      });
-
-      this.logger.log(
-        `Rideservie enqueueRideRequest with jobId, ${job.id}`,
-        this.context,
-      );
-
-      return job;
-    } catch (error) {
-      this.logger.error(error, this.context);
-      throw error;
-    }
   }
 
   async handleUpdateLocation(client: Socket, lat: number, lng: number) {
@@ -300,8 +276,15 @@ export class RideService {
       otherPassengerInfo,
     } = createRideRequestDto;
 
+    let booking: any;
+    let originalPrice: number;
+    let price: number;
+    let customer: any;
+    let distanceKm: number;
+    let durationMin: number;
+
     try {
-      const customer = await this.prisma.customer.findUnique({
+      customer = await this.prisma.customer.findUnique({
         where: { userId },
         include: { coupon: true },
       });
@@ -328,13 +311,16 @@ export class RideService {
       const origin = { lat: pickupLocation.lat, lng: pickupLocation.lng };
       const destination = { lat: dropLocation.lat, lng: dropLocation.lng };
 
-      const { distanceKm, durationMin } =
+      const distanceDuration =
         await this.fareService.calculateDistanceAndDuration(
           origin,
           destination,
         );
 
-      const originalPrice = this.fareService.estimateFare(
+      distanceKm = distanceDuration.distanceKm;
+      durationMin = distanceDuration.durationMin;
+
+      originalPrice = this.fareService.estimateFare(
         distanceKm,
         durationMin,
         Number(vehicleType.baseFare),
@@ -349,7 +335,7 @@ export class RideService {
         discount = 0;
       }
 
-      let price = 0;
+      price = 0;
       if (originalPrice !== Number(vehicleType.minFare)) {
         price =
           discount && originalPrice > discount
@@ -359,7 +345,7 @@ export class RideService {
         price = originalPrice;
       }
 
-      const booking = await this.prisma.booking.create({
+      booking = await this.prisma.booking.create({
         data: {
           bookingCode: randomInt(1000, 10000).toString(),
           customerId: customer.id,
@@ -378,7 +364,7 @@ export class RideService {
         },
       });
 
-      await this.enqueueRideRequest({
+      await this.handleRideRequest(this.rideGateway.server, {
         userId: customer.userId,
         bookingId: booking.id,
         estimatedFare: booking.estimatedFare,
@@ -410,7 +396,22 @@ export class RideService {
       };
     } catch (error) {
       this.logger.error(error, this.context);
-      throw error;
+
+      return {
+        success: true,
+        message: 'Driver search encountered issues. Please try again.',
+        data: {
+          bookingId: booking.id,
+          location: [pickupLocation, dropLocation],
+          originalPrice: Math.ceil(Number(originalPrice)),
+          discountedPrice: Math.ceil(Number(price)),
+          coupon: customer.coupon || null,
+          otherPassengerInfo:
+            booking.rideType === RideType.OTHERS
+              ? { name: otherPassengerInfo.name }
+              : null,
+        },
+      };
     }
   }
 
@@ -537,7 +538,7 @@ export class RideService {
         },
       });
 
-      await this.enqueueRideRequest({
+      await this.handleRideRequest(this.rideGateway.server, {
         userId: booking.customer.userId,
         bookingId: newBooking.id,
         estimatedFare: newBooking.estimatedFare,
@@ -807,7 +808,7 @@ export class RideService {
             data: { status: BookingStatus.CANCELLED },
           });
 
-          const alreadyCancelled = tx.cancellationReason.findUnique({
+          const alreadyCancelled = await tx.cancellationReason.findUnique({
             where: {
               bookingId,
             },
@@ -1523,7 +1524,6 @@ export class RideService {
         where: {
           id: bookingId,
         },
-
         select: {
           pilotId: true,
           customerId: true,
@@ -1567,13 +1567,21 @@ export class RideService {
           },
         });
 
-        await this.prisma.cancellationReason.create({
-          data: {
-            bookingId: bookingId,
-            reason: reason,
-            cancelledBy,
+        const alreadyCancelled = await tx.cancellationReason.findUnique({
+          where: {
+            bookingId,
           },
         });
+
+        if (!alreadyCancelled) {
+          await tx.cancellationReason.create({
+            data: {
+              bookingId: bookingId,
+              reason: reason,
+              cancelledBy,
+            },
+          });
+        }
 
         if (booking.pilotId) {
           await tx.pilot.update({

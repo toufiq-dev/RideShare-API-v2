@@ -909,7 +909,7 @@ async function main() {
   
 
   // Super Admin creation
-  const superAdminEmail = 'admin@fairdriveindia.com';
+  const superAdminEmail = 'safayetdib@gmail.com';
   const superAdminPassword = 'admin@2025';
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 

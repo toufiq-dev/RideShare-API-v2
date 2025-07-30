@@ -113,6 +113,13 @@ export class AuthService {
         }
 
         await this.redis.set(`otpSent:${phone}`, 'true', 180);
+
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
       } else if (countryCode === Country.IN) {
         const requestId = await this.otpService.sendOTP(phone);
 
@@ -594,13 +601,13 @@ export class AuthService {
             referralCode,
           },
         });
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { status: UserStatus.IN_REVIEW },
+        });
       }
     }
-
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { status: UserStatus.ACTIVE },
-    });
 
     return { user, customer, pilot };
   }

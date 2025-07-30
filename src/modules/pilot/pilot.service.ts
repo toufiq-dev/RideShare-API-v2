@@ -995,16 +995,6 @@ export class PilotService {
         );
       }
 
-      if (
-        !verificationResponse.licenseNumber &&
-        !verificationResponse.dateOfBirth &&
-        !verificationResponse.licenseExpiryDate
-      ) {
-        throw new BadRequestException(
-          'This driving license is either non-existing or invalid.',
-        );
-      }
-
       const formattedDateOfBirth = moment(
         verificationResponse?.dateOfBirth,
         'DD MMM YYYY',

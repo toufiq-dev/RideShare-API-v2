@@ -143,7 +143,6 @@ export class RideService {
   }
 
   async getRideDetails(bookingId: string) {
-    console.log('**** getRideDetails ****');
     try {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -365,7 +364,7 @@ export class RideService {
         },
       });
 
-      await this.handleRideRequest(this.rideGateway.server, {
+      this.handleRideRequest(this.rideGateway.server, {
         userId: customer.userId,
         bookingId: booking.id,
         estimatedFare: booking.estimatedFare,
@@ -539,7 +538,7 @@ export class RideService {
         },
       });
 
-      await this.handleRideRequest(this.rideGateway.server, {
+      this.handleRideRequest(this.rideGateway.server, {
         userId: booking.customer.userId,
         bookingId: newBooking.id,
         estimatedFare: newBooking.estimatedFare,
@@ -1029,6 +1028,7 @@ export class RideService {
         data,
       };
     } catch (error) {
+      console.log('errorInAcceptRide', error);
       this.logger.error(error, this.context);
       throw error;
     }

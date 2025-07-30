@@ -5,6 +5,8 @@ import {
   UnauthorizedException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import {
@@ -18,8 +20,6 @@ import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
 import { PilotStatus } from '@prisma/client';
 import { Server } from 'socket.io';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import {
   NotifyDriverPayload,
   RideRequestPayload,
@@ -59,6 +59,7 @@ export class RideService {
     private readonly fareService: FareService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
+    @Inject(forwardRef(() => RideGateway))
     private readonly rideGateway: RideGateway,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(

@@ -9,7 +9,17 @@ import { FirebaseModule } from 'src/core/firebase/firebase.module';
 
 @Module({
   imports: [SocketModule, FareModule, FirebaseModule],
-  providers: [RideGateway, RideService, RideNotificationService],
+  providers: [
+    {
+      provide: RideService,
+      useClass: RideService,
+    },
+    {
+      provide: RideGateway,
+      useClass: RideGateway,
+    },
+    RideNotificationService,
+  ],
   exports: [RideGateway, RideService],
   controllers: [RideController],
 })

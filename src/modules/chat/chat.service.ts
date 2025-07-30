@@ -1,4 +1,3 @@
-// src/modules/chat/chat.service.ts
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { BookingStatus } from '@prisma/client';

@@ -36,7 +36,6 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
-  UserStatus,
   VehicleTypeNameBD,
   VerificationStatus,
 } from '@prisma/client';

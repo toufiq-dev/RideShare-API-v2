@@ -503,13 +503,6 @@ export class VerificationService {
       );
     }
 
-    // Validate that number contains only English digits
-    if (!/^\d+$/.test(result.number)) {
-      throw new BadRequestException(
-        'Number plate contains invalid characters. Only English digits are allowed.',
-      );
-    }
-
     return result;
   }
 

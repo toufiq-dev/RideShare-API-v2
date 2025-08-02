@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -13,6 +14,8 @@ import {
   CreateSupportRoleDto,
   LoginDto,
   CreateAdminDto,
+  VerifyDriverDto,
+  VerificationType,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -335,13 +338,31 @@ export class AdminService {
     }
   }
 
-  async getMenuPermissions() {
+  async getMenuPermissions(page: number, pageSize: number) {
     try {
-      const data = await this.prisma.supportPermission.findMany();
+      const skip = (page - 1) * pageSize;
+      const totalCount = await this.prisma.supportPermission.count();
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+      const data = await this.prisma.supportPermission.findMany({
+        skip,
+        take: pageSize,
+      });
 
       return {
         message: 'Menu permissions fetched successfully.',
-        data,
+        data: {
+          menuPermissions: data,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
       };
     } catch (error) {
       console.error(error);
@@ -349,13 +370,32 @@ export class AdminService {
     }
   }
 
-  async getSupportRoles() {
+  async getSupportRoles(page: number, pageSize: number) {
     try {
-      const data = await this.prisma.supportRole.findMany();
+      const skip = (page - 1) * pageSize;
+      const totalCount = await this.prisma.supportRole.count();
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      const data = await this.prisma.supportRole.findMany({
+        skip,
+        take: pageSize,
+      });
 
       return {
         message: 'Support roles fetched successfully.',
-        data,
+        data: {
+          supportRoles: data,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
       };
     } catch (error) {
       console.error(error);
@@ -437,9 +477,13 @@ export class AdminService {
     }
   }
 
-  async getSupportStuffs() {
+  async getSupportStuffs(page: number, pageSize: number) {
     try {
-      const data = await this.prisma.support.findMany({
+      const skip = (page - 1) * pageSize;
+
+      const totalCount = await this.prisma.support.count();
+
+      const supportStuffs = await this.prisma.support.findMany({
         select: {
           id: true,
           name: true,
@@ -456,11 +500,27 @@ export class AdminService {
             },
           },
         },
+        skip,
+        take: pageSize,
       });
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
 
       return {
         message: 'Support stuffs fetched successfully.',
-        data,
+        data: {
+          supportStuffs,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
       };
     } catch (error) {
       console.error(error);
@@ -729,6 +789,268 @@ export class AdminService {
             hasNextPage,
             hasPrevPage,
           },
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyDriver(userId: string, verifyDriverDto: VerifyDriverDto) {
+    const {
+      driverId,
+      verificationStatus,
+      verificationDocument,
+      cancellationReason,
+    } = verifyDriverDto;
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id: driverId },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Driver not found');
+      }
+
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+        throw new UnauthorizedException('User not authorized');
+      }
+
+      if (verificationDocument === VerificationType.isNidVerified) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isNidVerified: verificationStatus,
+              nidRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isNidVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      } else if (verificationDocument === VerificationType.isDlVerified) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isDLVerified: verificationStatus,
+              dlRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isDLVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+        ``;
+      } else if (verificationDocument === VerificationType.isSelfieVerified) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isSelfieVerified: verificationStatus,
+              selfieRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isSelfieVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      } else if (
+        verificationDocument === VerificationType.isVehicleOwnersNidVerified
+      ) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isVehicleOwnersNidVerified: verificationStatus,
+              vehicleOwnersNidRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isVehicleOwnersNidVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      } else if (verificationDocument === VerificationType.isRcVerified) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isRCVerified: verificationStatus,
+              rcRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isRCVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      } else if (
+        verificationDocument === VerificationType.isNumberPlateVerified
+      ) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isNumberPlateVerified: verificationStatus,
+              numberPlateRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isNumberPlateVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      } else if (verificationDocument === VerificationType.isTaxTokenVerified) {
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          await this.prisma.pilot.update({
+            where: { id: driverId },
+            data: {
+              isTaxTokenVerified: verificationStatus,
+              taxTokenRejectionReason: cancellationReason,
+            },
+          });
+
+          return {
+            message: 'Driver verification updated successfully.',
+            data: {
+              verificationStatus,
+            },
+          };
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: driverId },
+          data: {
+            isTaxTokenVerified: verificationStatus,
+          },
+        });
+
+        return {
+          message: 'Driver verification updated successfully.',
+          data: {
+            verificationStatus,
+          },
+        };
+      }
+
+      return {
+        message: 'Driver verification updated successfully.',
+        data: {
+          verificationStatus,
         },
       };
     } catch (error) {

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AppPlatform } from '@prisma/client';
+import { AppPlatform, VerificationStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -54,6 +54,38 @@ export class CreateSupportRoleDto {
   @IsString({ each: true })
   @IsNotEmpty()
   supportPermissionIds?: string[];
+}
+
+export enum VerificationType {
+  isSelfieVerified = 'isSelfieVerified',
+  isNidVerified = 'isNidVerified',
+  isVehicleOwnersNidVerified = 'isVehicleOwnersNidVerified',
+  isDlVerified = 'isDlVerified',
+  isRcVerified = 'isRcVerified',
+  isNumberPlateVerified = 'isNumberPlateVerified',
+  isTaxTokenVerified = 'isTaxTokenVerified',
+}
+
+export class VerifyDriverDto {
+  @ApiProperty({ description: 'Driver id' })
+  @IsString()
+  @IsNotEmpty()
+  driverId: string;
+
+  @ApiProperty({ description: 'Verification status' })
+  @IsString()
+  @IsNotEmpty()
+  verificationStatus: VerificationStatus;
+
+  @ApiProperty({ description: 'Verification document' })
+  @IsString()
+  @IsNotEmpty()
+  verificationDocument: VerificationType;
+
+  @ApiProperty({ description: 'Cancellation reason' })
+  @IsString()
+  @IsOptional()
+  cancellationReason?: string;
 }
 
 export class AppUpdateDto {

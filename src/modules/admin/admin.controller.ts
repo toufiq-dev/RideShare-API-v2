@@ -23,6 +23,7 @@ import {
   CreateSupportRoleDto,
   LoginDto,
   CreateAdminDto,
+  VerifyDriverDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -79,8 +80,11 @@ export class AdminController {
   @Get('menu-permissions')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all menu permissions' })
-  async getMenuPermissions() {
-    return await this.adminService.getMenuPermissions();
+  async getMenuPermissions(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.adminService.getMenuPermissions(page, pageSize);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
@@ -100,8 +104,11 @@ export class AdminController {
   @Get('support-roles')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all Support Roles' })
-  async getSupportRoles() {
-    return await this.adminService.getSupportRoles();
+  async getSupportRoles(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.adminService.getSupportRoles(page, pageSize);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
@@ -122,8 +129,11 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('support')
   @ApiOperation({ summary: 'Get all Support Members' })
-  async getSupportStuffs() {
-    return await this.adminService.getSupportStuffs();
+  async getSupportStuffs(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return await this.adminService.getSupportStuffs(page, pageSize);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -154,6 +164,19 @@ export class AdminController {
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
   ) {
     return await this.adminService.getDriverVerification(page, pageSize);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('verify-driver')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify Driver' })
+  @HttpCode(HttpStatus.OK)
+  async verifyDriver(
+    @Body() verifyDriverDto: VerifyDriverDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminService.verifyDriver(userId, verifyDriverDto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

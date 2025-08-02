@@ -806,22 +806,22 @@ export class AdminService {
     } = verifyDriverDto;
 
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
+      // const user = await this.prisma.user.findUnique({
+      //   where: { id: userId },
+      // });
+      // if (!user) {
+      //   throw new UnauthorizedException('User not found');
+      // }
+
+      // if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      //   throw new UnauthorizedException('User not authorized');
+      // }
 
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: driverId },
       });
       if (!pilot) {
         throw new NotFoundException('Driver not found');
-      }
-
-      if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
-        throw new UnauthorizedException('User not authorized');
       }
 
       if (verificationDocument === VerificationType.isNidVerified) {
@@ -886,7 +886,6 @@ export class AdminService {
             verificationStatus,
           },
         };
-        ``;
       } else if (verificationDocument === VerificationType.isSelfieVerified) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({

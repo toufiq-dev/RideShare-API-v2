@@ -144,7 +144,7 @@ export class RideService {
 
   async getRideDetails(bookingId: string) {
     try {
-      const booking = await this.prisma.booking.findUnique({
+      const booking: any = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
           id: true,
@@ -212,6 +212,12 @@ export class RideService {
             booking.pilot.userId,
           )
         : [null, null];
+
+      if (booking?.customer?.coupon?.discount) {
+        booking.customer.coupon.discount = Number(
+          booking.customer.coupon.discount,
+        );
+      }
 
       const data: CustomerRidePayload = {
         bookingId: booking.id,
@@ -301,7 +307,7 @@ export class RideService {
 
       // Check active booking
       const activeBooking = await this.prisma.booking.findFirst({
-        where: { customerId: customer.id, status: BookingStatus.PENDING },
+        where: { customerId: customer.id },
       });
       if (activeBooking)
         throw new BadRequestException(
@@ -396,22 +402,7 @@ export class RideService {
       };
     } catch (error) {
       this.logger.error(error, this.context);
-
-      return {
-        success: true,
-        message: 'Driver search encountered issues. Please try again.',
-        data: {
-          bookingId: booking.id,
-          location: [pickupLocation, dropLocation],
-          originalPrice: Math.ceil(Number(originalPrice)),
-          discountedPrice: Math.ceil(Number(price)),
-          coupon: customer.coupon || null,
-          otherPassengerInfo:
-            booking.rideType === RideType.OTHERS
-              ? { name: otherPassengerInfo.name }
-              : null,
-        },
-      };
+      throw error;
     }
   }
 

@@ -307,7 +307,15 @@ export class RideService {
 
       // Check active booking
       const activeBooking = await this.prisma.booking.findFirst({
-        where: { customerId: customer.id },
+        where: {
+          customerId: customer.id,
+          OR: [
+            { status: BookingStatus.PENDING },
+            { status: BookingStatus.ACCEPTED },
+            { status: BookingStatus.ARRIVED },
+            { status: BookingStatus.ONGOING },
+          ],
+        },
       });
       if (activeBooking)
         throw new BadRequestException(

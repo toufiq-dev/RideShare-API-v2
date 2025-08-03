@@ -338,6 +338,53 @@ export class AdminService {
     }
   }
 
+  async getStaffList() {
+    try {
+      const adminList = await this.prisma.admin.findMany({
+        select: {
+          name: true,
+          user: {
+            select: {
+              email: true,
+              status: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      const supportList = await this.prisma.support.findMany({
+        select: {
+          name: true,
+          user: {
+            select: {
+              email: true,
+              status: true,
+              role: true,
+            },
+          },
+          supportRole: {
+            select: {
+              name: true,
+              description: true,
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Staff list fetched successfully.',
+        data: {
+          adminList,
+          supportList,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async getMenuPermissions(page: number, pageSize: number) {
     try {
       const skip = (page - 1) * pageSize;

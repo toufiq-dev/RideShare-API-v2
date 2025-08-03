@@ -64,8 +64,8 @@ export class AdminController {
     return await this.adminService.verifyEmail(verifyEmailDto);
   }
 
-  // @Roles(UserRole.SUPER_ADMIN)
-  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('create-admin')
   @ApiOperation({ summary: 'Create Admin' })
   @ApiBody({
@@ -73,6 +73,15 @@ export class AdminController {
   })
   async createAdmin(@Body() createAdminDto: CreateAdminDto) {
     return await this.adminService.createAdmin(createAdminDto);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('staff-list')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all Staffs' })
+  async getStaffList() {
+    return await this.adminService.getStaffList();
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

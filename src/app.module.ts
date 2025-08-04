@@ -23,6 +23,7 @@ import { FareModule } from './modules/fare/fare.module';
 import { GeofencingModule } from './core/geofencing/geofencing.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './core/firebase/firebase.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { FirebaseModule } from './core/firebase/firebase.module';
     GeofencingModule,
     ChatModule,
     FirebaseModule,
+    HealthModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

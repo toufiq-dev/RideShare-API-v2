@@ -41,6 +41,7 @@ model User {
   support        Support?
   supportTickets SupportTicket[]
   superAdmin     SuperAdmin?
+  promoter       Promoter?
 }
 
 model DeviceToken {
@@ -106,6 +107,26 @@ model SupportPermission {
   createdAt   DateTime      @default(now()) @db.Timestamptz
   updatedAt   DateTime      @updatedAt @db.Timestamptz
   supportRole SupportRole[]
+}
+
+model Promoter {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  phone                 String   @unique
+  name                  String
+  address               String?
+  bloodGroup            String?
+  livePhotoUrl          String?
+  idPhotoUrl            String?
+  nidPhotoUrl           String?
+  referralCode          String   @unique
+  isAlreadyRegistered   Boolean  @default(false)
+  isApproved            Boolean  @default(false)
+  totalDriversOnboarded Int      @default(0)
+  createdAt             DateTime @default(now()) @db.Timestamptz
+  updatedAt             DateTime @updatedAt @db.Timestamptz
+  user                  User     @relation(fields: [userId], references: [id])
+  onboardedPilots       Pilot[]
 }
 
 model Customer {
@@ -202,6 +223,7 @@ model Pilot {
   aadhaarCardNumber               String?            @unique
   aadhaarCardAddress              String?
   pilotCouponId                   String?
+  promoterId                      String?
   createdAt                       DateTime           @default(now()) @db.Timestamptz
   updatedAt                       DateTime           @updatedAt @db.Timestamptz
   drivingLicense                  DrivingLicense?
@@ -219,6 +241,7 @@ model Pilot {
   nid                             Nid?               @relation("PilotNid")
   videoProgress                   VideoProgress?
   pilotCoupon                     PilotCoupon?       @relation(fields: [pilotCouponId], references: [id])
+  promoter                        Promoter?          @relation(fields: [promoterId], references: [id])
 }
 
 model PilotCoupon {
@@ -577,6 +600,7 @@ enum UserRole {
   CUSTOMER
   PILOT
   SUPPORT
+  PROMOTER
 }
 
 enum UserStatus {

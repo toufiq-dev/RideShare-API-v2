@@ -29,6 +29,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { AzureService } from 'src/core/utils/azure.util';
 
 @Injectable()
 export class AdminService {
@@ -42,6 +43,7 @@ export class AdminService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redis: RedisService,
+    private readonly azureService: AzureService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -1156,5 +1158,124 @@ export class AdminService {
       console.error(error);
       throw error;
     }
+  }
+
+  async uploadDocuments(
+    files: {
+      livePhoto?: Express.Multer.File[];
+      idPhoto?: Express.Multer.File[];
+      nidPhoto?: Express.Multer.File[];
+    },
+    userId: string,
+  ) {
+    try {
+      const promoter = await this.prisma.promoter.findUnique({
+        where: { userId },
+      });
+
+      if (!promoter) {
+        throw new NotFoundException('Promoter not found');
+      }
+
+      const updateData: any = {};
+
+      if (files?.livePhoto?.[0]) {
+        const livePhotoUrl = await this.azureService.uploadFile(
+          files.livePhoto[0].buffer,
+          files.livePhoto[0].originalname,
+          userId,
+          files.livePhoto[0].mimetype,
+        );
+        updateData.livePhotoUrl = livePhotoUrl;
+      }
+
+      if (files?.idPhoto?.[0]) {
+        const idPhotoUrl = await this.azureService.uploadFile(
+          files.idPhoto[0].buffer,
+          files.idPhoto[0].originalname,
+          userId,
+          files.idPhoto[0].mimetype,
+        );
+        updateData.idPhotoUrl = idPhotoUrl;
+      }
+
+      if (files?.nidPhoto?.[0]) {
+        const nidPhotoUrl = await this.azureService.uploadFile(
+          files.nidPhoto[0].buffer,
+          files.nidPhoto[0].originalname,
+          userId,
+          files.nidPhoto[0].mimetype,
+        );
+        updateData.nidPhotoUrl = nidPhotoUrl;
+      }
+
+      // Auto-approve if all required documents are uploaded
+      if (
+        updateData.livePhotoUrl &&
+        updateData.idPhotoUrl &&
+        updateData.nidPhotoUrl
+      ) {
+        updateData.isApproved = true;
+      }
+
+      const updatedPromoter = await this.prisma.promoter.update({
+        where: { userId },
+        data: updateData,
+      });
+
+      return {
+        message: 'Documents uploaded successfully',
+        data: updatedPromoter,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getPromoterProfile(userId: string) {
+    const promoter = await this.prisma.promoter.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        livePhotoUrl: true,
+        idPhotoUrl: true,
+        nidPhotoUrl: true,
+        isApproved: true,
+        totalDriversOnboarded: true,
+        onboardedPilots: {
+          select: {
+            id: true,
+            phone: true,
+            isSelfieVerified: true,
+            isNidVerified: true,
+            isVehicleOwnersNidVerified: true,
+            isRCVerified: true,
+            isNumberPlateVerified: true,
+            isTaxTokenVerified: true,
+          },
+        },
+      },
+    });
+
+    promoter.onboardedPilots.forEach((pilot) => {
+      pilot.phone = this.maskPhoneNumber(pilot.phone);
+    });
+
+    if (!promoter) {
+      throw new NotFoundException('Promoter not found');
+    }
+
+    return {
+      message: 'Promoter profile fetched successfully',
+      data: promoter,
+    };
+  }
+
+  private maskPhoneNumber(phone: string): string {
+    if (phone.length <= 4) return phone;
+    return phone.slice(0, 2) + '*'.repeat(phone.length - 4) + phone.slice(-2);
   }
 }

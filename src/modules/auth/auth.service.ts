@@ -65,8 +65,7 @@ export class AuthService {
         phone === '+8801412345671' ||
         phone === '+8801412345672' ||
         phone === '+8801412345673' ||
-        phone === '+8801412345674' ||
-        phone === '+919999999999'
+        phone === '+8801412345674'
       ) {
         return {
           message: 'OTP sent to your phone successfully.',
@@ -99,7 +98,7 @@ export class AuthService {
 
       const otp = randomInt(1000, 10000).toString();
       // Disable this one when we are using OTP service
-      await this.redis.set(`otp:${phone}`, otp, 180);
+      await this.redis.set(`otp:${phone}`, otp, 120);
       await this.redis.set(`countryCode:${phone}`, countryCode, 180);
       await this.redis.set(`languageId:${phone}`, Language.id, 180);
       await this.redis.set(`referralCode:${phone}`, referralCode, 180);
@@ -139,7 +138,7 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const { phone, otp, role, fcmToken } = verifyOtpDto;
+    const { phone, otp, role, fcmToken, promoterName } = verifyOtpDto;
 
     try {
       // For App review in ios and android store START
@@ -215,7 +214,7 @@ export class AuthService {
 
       // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
       const countryCode = await this.redis.get(`countryCode:${phone}`);
-      const { user, customer, pilot } = await this.findOrCreateUser(
+      let { user, customer, pilot } = await this.findOrCreateUser(
         phone,
         role,
         languageId,
@@ -223,6 +222,7 @@ export class AuthService {
         countryCode as Country,
       );
 
+      let promoter = null;
       let isAlreadyRegistered = true;
       if (role === UserRole.CUSTOMER) {
         isAlreadyRegistered = customer.isAlreadyRegistered;
@@ -240,6 +240,35 @@ export class AuthService {
             data: { isAlreadyRegistered: true },
           });
         }
+      } else if (role === UserRole.PROMOTER) {
+        promoter = await this.prisma.promoter.findUnique({
+          where: { phone },
+        });
+
+        if (promoter) {
+          user = await this.prisma.user.findUnique({
+            where: { id: promoter.userId },
+          });
+        }
+
+        if (!promoter) {
+          user = await this.prisma.user.create({
+            data: {
+              role: UserRole.PROMOTER,
+            },
+          });
+
+          promoter = await this.prisma.promoter.create({
+            data: {
+              phone,
+              userId: user.id,
+              referralCode: phone,
+              name: promoterName ? promoterName : ' ',
+              isAlreadyRegistered: true,
+            },
+          });
+        }
+        console.log('***PROMOTER***', promoter);
       }
 
       const device = await this.prisma.deviceToken.findUnique({
@@ -268,7 +297,14 @@ export class AuthService {
         message: 'OTP verified successfully.',
         data: {
           ...tokens,
-          user: role === UserRole.CUSTOMER ? customer : pilot,
+          user:
+            role === UserRole.CUSTOMER
+              ? customer
+              : role === UserRole.PILOT
+                ? pilot
+                : role === UserRole.PROMOTER
+                  ? promoter
+                  : null,
         },
       };
     } catch (error) {
@@ -506,17 +542,13 @@ export class AuthService {
 
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
-    console.log(storedOtp);
+
     if (!storedOtp || storedOtp !== otp) {
       throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
     const refferalCode = await this.redis.get(`referralCode:${phone}`);
-
-    await this.redis.del(`otp:${phone}`);
-    await this.redis.del(`languageId:${phone}`);
-    await this.redis.del(`referralCode:${phone}`);
 
     return { languageId, refferalCode };
   }
@@ -593,12 +625,21 @@ export class AuthService {
           },
         });
       } else if (role === UserRole.PILOT && !pilot) {
+        const promoter = await this.prisma.promoter.findUnique({
+          where: { referralCode },
+        });
+
+        if (!promoter) {
+          throw new NotFoundException('Referral code not found.');
+        }
+
         pilot = await this.prisma.pilot.create({
           data: {
             phone,
             userId: user.id,
             languageId,
             referralCode,
+            promoterId: promoter.id,
           },
         });
 
@@ -606,6 +647,17 @@ export class AuthService {
           where: { id: user.id },
           data: { status: UserStatus.IN_REVIEW },
         });
+
+        const updatedPromoter = await this.prisma.promoter.update({
+          where: { id: promoter.id },
+          data: {
+            totalDriversOnboarded: { increment: 1 },
+          },
+        });
+
+        if (!updatedPromoter) {
+          throw new NotFoundException('Promoter referral code not found.');
+        }
       }
     }
 

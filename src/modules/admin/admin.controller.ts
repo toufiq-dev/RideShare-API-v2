@@ -11,6 +11,8 @@ import {
   HttpStatus,
   DefaultValuePipe,
   ParseIntPipe,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -30,6 +32,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -249,5 +252,40 @@ export class AdminController {
       id,
       updateSubscriptionTypeDto,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROMOTER)
+  @Post('promoter-documents')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload Documents' })
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'livePhoto', maxCount: 1 },
+      { name: 'idPhoto', maxCount: 1 },
+      { name: 'nidPhoto', maxCount: 1 },
+    ]),
+  )
+  async uploadDocuments(
+    @UploadedFiles()
+    files: {
+      livePhoto: Express.Multer.File[];
+      idPhoto: Express.Multer.File[];
+      nidPhoto: Express.Multer.File[];
+    },
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.adminService.uploadDocuments(files, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROMOTER)
+  @Get('promoter-profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Promoter Profile' })
+  async getPromoterProfile(@CurrentUser('userId') userId: string) {
+    return await this.adminService.getPromoterProfile(userId);
   }
 }

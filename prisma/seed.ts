@@ -333,17 +333,6 @@ async function main() {
     },
   });
 
-  const promoter = await prisma.promoter.create({
-    data: {
-      phone: '+8801401678150',
-      name: 'Akash',
-      address: 'Dhaka',
-      bloodGroup: 'AB+',
-      userId: user.id,
-      referralCode: '01401678150',
-    },
-  });
-
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
     const pilot = pilots[i];
@@ -379,7 +368,6 @@ async function main() {
         isTaxTokenVerified: VerificationStatus.APPROVED,
         isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true,
-        referralCode: promoter.referralCode,
       },
     });
 
@@ -929,44 +917,49 @@ async function main() {
   
 
   // Super Admin creation
-  const superAdminEmail = 'safayetdib@gmail.com';
+  const superAdminEmail = [
+    'safayetdib@gmail.com',
+    'toufiq.dev@gmail.com',
+  ];
   const superAdminPassword = 'admin@2025';
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
-  const existingUser = await prisma.user.findUnique({
-    where: {
-      email: superAdminEmail,
-    },
-  });
-  let superAdminUser = existingUser;
-
-  if (!existingUser) {
-    superAdminUser = await prisma.user.create({
-      data: {
-        role: UserRole.SUPER_ADMIN,
-        status: UserStatus.ACTIVE,
-        email: superAdminEmail,
+  for (const email of superAdminEmail) {
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email: email,
       },
     });
-  }
-
-  const existingSuperAdmin = await prisma.superAdmin.findUnique({
-    where: {
-      userId: superAdminUser.id,
-    },
-  });
-
-  if (!existingSuperAdmin) {
-    await prisma.superAdmin.create({
-      data: {
-        name: 'Super Admin',
-        userId: superAdminUser?.id,
-        password: hashedPassword,
+    let superAdminUser = existingUser;
+  
+    if (!existingUser) {
+      superAdminUser = await prisma.user.create({
+        data: {
+          role: UserRole.SUPER_ADMIN,
+          status: UserStatus.ACTIVE,
+          email: email,
+        },
+      });
+    }
+  
+    const existingSuperAdmin = await prisma.superAdmin.findUnique({
+      where: {
+        userId: superAdminUser.id,
       },
     });
-    console.log('Super admin created successfully');
-  } else {
-    console.log('Super admin already exists');
+  
+    if (!existingSuperAdmin) {
+      await prisma.superAdmin.create({
+        data: {
+          name: 'Super Admin',
+          userId: superAdminUser?.id,
+          password: hashedPassword,
+        },
+      });
+      console.log('Super admin created successfully');
+    } else {
+      console.log('Super admin already exists');
+    }
   }
 
 

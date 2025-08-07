@@ -1281,6 +1281,98 @@ export class AdminService {
     };
   }
 
+  async getPromoterList(page: number, pageSize: number, search: string) {
+    try {
+      const skip = (page - 1) * pageSize;
+
+      const whereClause: any = {};
+      if (search) {
+        whereClause.OR = [
+          {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            phone: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      }
+
+      const totalCount = await this.prisma.promoter.count();
+
+      const promoters = await this.prisma.promoter.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          totalDriversOnboarded: true,
+          onboardedPilots: {
+            select: {
+              id: true,
+              phone: true,
+              isSelfieVerified: true,
+              isDLVerified: true,
+              isNidVerified: true,
+              isRCVerified: true,
+              isVehicleOwnersNidVerified: true,
+              isNumberPlateVerified: true,
+              isTaxTokenVerified: true,
+              selfieUrl: true,
+              dlFrontSideUrl: true,
+              dlBackSideUrl: true,
+              nidFrontSideUrl: true,
+              nidBackSideUrl: true,
+              rcFrontSideUrl: true,
+              rcBackSideUrl: true,
+              vehicleOwnersNidFrontSideUrl: true,
+              vehicleOwnersNidBackSideUrl: true,
+              numberPlateUrl: true,
+              taxTokenUrl: true,
+              user: {
+                select: {
+                  status: true,
+                },
+              },
+              drivingLicense: {
+                select: {
+                  nameOnLicense: true,
+                },
+              },
+            },
+          },
+        },
+        skip,
+        take: pageSize,
+      });
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Promoter list fetched successfully',
+        data: promoters,
+        pagination: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: page,
+          pageSize,
+          hasNextPage,
+          hasPrevPage,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private maskPhoneNumber(phone: string): string {
     if (phone.length <= 4) return phone;
     return phone.slice(0, 2) + '*'.repeat(phone.length - 4) + phone.slice(-2);

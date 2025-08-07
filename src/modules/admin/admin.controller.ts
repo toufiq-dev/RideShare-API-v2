@@ -290,4 +290,16 @@ export class AdminController {
   async getPromoterProfile(@CurrentUser('userId') userId: string) {
     return await this.adminService.getPromoterProfile(userId);
   }
+
+  @Get('promoter-list')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all Promoters' })
+  async getPromoterList(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+    @Query('search') search: string,
+  ) {
+    return await this.adminService.getPromoterList(page, pageSize, search);
+  }
 }

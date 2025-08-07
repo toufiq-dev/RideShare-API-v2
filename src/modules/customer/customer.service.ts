@@ -590,11 +590,11 @@ export class CustomerService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
-    const refferalCode = await this.redis.get(`referralCode:${phone}`);
+    const referralCode = await this.redis.get(`referralCode:${phone}`);
 
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return { languageId, refferalCode };
+    return { languageId, referralCode };
   }
 }

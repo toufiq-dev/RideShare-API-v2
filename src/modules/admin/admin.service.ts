@@ -1252,12 +1252,16 @@ export class AdminService {
           select: {
             id: true,
             phone: true,
-            isSelfieVerified: true,
-            isNidVerified: true,
-            isVehicleOwnersNidVerified: true,
-            isRCVerified: true,
-            isNumberPlateVerified: true,
-            isTaxTokenVerified: true,
+            user: {
+              select: {
+                status: true,
+              },
+            },
+            drivingLicense: {
+              select: {
+                nameOnLicense: true,
+              },
+            },
           },
         },
       },

@@ -92,7 +92,7 @@ export class AuthService {
       const otpSent = await this.redis.get(`otpSent:${phone}`);
       if (otpSent) {
         throw new BadRequestException(
-          'OTP already sent. Please wait for 3 minutes.',
+          'OTP already sent. Please wait for 2 minutes.',
         );
       }
 
@@ -231,7 +231,7 @@ export class AuthService {
         otp,
       );
 
-      // const { languageId, refferalCode } = await this.validateOtp(phone, otp);
+      // const { languageId, referralCode } = await this.validateOtp(phone, otp);
       const countryCode = await this.redis.get(`countryCode:${phone}`);
       let { user, customer, pilot } = await this.findOrCreateUser(
         phone,
@@ -565,7 +565,11 @@ export class AuthService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
-    const referralCode = await this.redis.get(`referralCode:${phone}`);
+    let referralCode = await this.redis.get(`referralCode:${phone}`);
+
+    if (!referralCode) {
+      referralCode = null;
+    }
 
     return { languageId, referralCode };
   }
@@ -591,7 +595,7 @@ export class AuthService {
     phone: string,
     role: UserRole,
     languageId: string,
-    referralCode: string,
+    referralCode: string | null,
     countryCode: Country,
   ) {
     let customer = null;
@@ -642,11 +646,17 @@ export class AuthService {
           },
         });
       } else if (role === UserRole.PILOT && !pilot) {
-        const promoter = await this.prisma.promoter.findUnique({
-          where: { referralCode },
-        });
+        let promoter = null;
 
-        if (!promoter) {
+        if (referralCode) {
+          const normalizedReferralCode = this.normalizeReferral(referralCode);
+
+          promoter = await this.prisma.promoter.findUnique({
+            where: { referralCode: normalizedReferralCode },
+          });
+        }
+
+        if (referralCode && !promoter) {
           throw new NotFoundException('Referral code not found.');
         }
 
@@ -656,7 +666,7 @@ export class AuthService {
             userId: user.id,
             languageId,
             referralCode,
-            promoterId: promoter.id,
+            promoterId: promoter ? promoter.id : null,
           },
         });
 
@@ -665,15 +675,13 @@ export class AuthService {
           data: { status: UserStatus.IN_REVIEW },
         });
 
-        const updatedPromoter = await this.prisma.promoter.update({
-          where: { id: promoter.id },
-          data: {
-            totalDriversOnboarded: { increment: 1 },
-          },
-        });
-
-        if (!updatedPromoter) {
-          throw new NotFoundException('Promoter referral code not found.');
+        if (promoter) {
+          await this.prisma.promoter.update({
+            where: { id: promoter.id },
+            data: {
+              totalDriversOnboarded: { increment: 1 },
+            },
+          });
         }
       }
     }

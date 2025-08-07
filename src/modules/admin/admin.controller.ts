@@ -34,6 +34,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { IsOptional } from 'class-validator';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -298,7 +299,7 @@ export class AdminController {
   async getPromoterList(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
-    @Query('search') search: string,
+    @Query('search') search?: string,
   ) {
     return await this.adminService.getPromoterList(page, pageSize, search);
   }

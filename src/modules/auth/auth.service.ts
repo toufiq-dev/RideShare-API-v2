@@ -285,6 +285,7 @@ export class AuthService {
               phone,
               userId: user.id,
               referralCode: this.normalizeReferral(phone),
+              isAlreadyRegistered: true,
             },
           });
         }

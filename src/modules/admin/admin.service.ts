@@ -1211,15 +1211,8 @@ export class AdminService {
         updateData.nidPhotoUrl = nidPhotoUrl;
       }
 
-      // Auto-approve if all required documents are uploaded
-      if (
-        updateData.livePhotoUrl &&
-        updateData.idPhotoUrl &&
-        updateData.nidPhotoUrl
-      ) {
-        updateData.isApproved = true;
-      }
-      updateData.isAlreadyRegistered = true;
+      
+      updateData.isApproved = true;
       const updatedPromoter = await this.prisma.promoter.update({
         where: { userId },
         data: updateData,
@@ -1286,24 +1279,26 @@ export class AdminService {
       const skip = (page - 1) * pageSize;
 
       const whereClause: any = {};
-      if (search) {
+      if (search && search.trim()) {
         whereClause.OR = [
           {
             name: {
-              contains: search,
+              contains: search.trim(),
               mode: 'insensitive',
             },
           },
           {
             phone: {
-              contains: search,
+              contains: search.trim(),
               mode: 'insensitive',
             },
           },
         ];
       }
 
-      const totalCount = await this.prisma.promoter.count();
+      const totalCount = await this.prisma.promoter.count({
+        where: whereClause,
+      });
 
       const promoters = await this.prisma.promoter.findMany({
         where: whereClause,

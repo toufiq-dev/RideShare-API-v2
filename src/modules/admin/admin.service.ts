@@ -673,10 +673,11 @@ export class AdminService {
         ];
       }
 
+      const orderByClause: any = {};
       if (sortBy && sortOrder) {
-        const orderBy = {};
-        orderBy[sortBy] = sortOrder;
-        whereClause.orderBy = orderBy;
+        orderByClause[sortBy] = sortOrder;
+      } else {
+        orderByClause.createdAt = 'desc';
       }
 
       const totalCount = await this.prisma.pilot.count({
@@ -709,6 +710,7 @@ export class AdminService {
 
       const pilots = await this.prisma.pilot.findMany({
         where: whereClause,
+        orderBy: orderByClause,
         select: {
           id: true,
           phone: true,
@@ -787,6 +789,14 @@ export class AdminService {
 
   async getDriverDetails(id: string) {
     try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id },
+      });
+
+      if (!pilot) {
+        throw new NotFoundException('Driver not found');
+      }
+
       const data = await this.prisma.pilot.findUnique({
         where: { id },
         select: {
@@ -804,7 +814,18 @@ export class AdminService {
           isFairCoinAvailed: true,
           drivingLicense: {
             select: {
+              nameOnLicense: true,
               dateOfBirth: true,
+            },
+          },
+          wallet: {
+            select: {
+              balance: true,
+              subscription: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
           vehicle: {

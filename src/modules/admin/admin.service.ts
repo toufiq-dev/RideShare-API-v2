@@ -853,13 +853,42 @@ export class AdminService {
     }
   }
 
-  async getDriverVerification(page: number, pageSize: number) {
+  async getDriverVerification(
+    page: number,
+    pageSize: number,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ) {
     try {
       const skip = (page - 1) * pageSize;
 
-      const totalCount = await this.prisma.pilot.count();
+      const whereClause: any = {};
+
+      if (search) {
+        whereClause.OR = [
+          { phone: { contains: search.trim(), mode: 'insensitive' } },
+          {
+            drivingLicense: {
+              nameOnLicense: { contains: search.trim(), mode: 'insensitive' },
+            },
+          },
+        ];
+      }
+
+      const orderByClause: any = {};
+      if (sortBy && sortOrder) {
+        orderByClause[sortBy] = sortOrder;
+      } else {
+        orderByClause.createdAt = 'desc';
+      }
+
+      const totalCount = await this.prisma.pilot.count({
+        where: whereClause,
+      });
 
       const pilots = await this.prisma.pilot.findMany({
+        where: whereClause,
         select: {
           id: true,
           phone: true,
@@ -870,10 +899,14 @@ export class AdminService {
           isVehicleOwnersNidVerified: true,
           isNumberPlateVerified: true,
           isTaxTokenVerified: true,
+          drivingLicense: {
+            select: {
+              nameOnLicense: true,
+            },
+          },
+          createdAt: true,
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: orderByClause,
         skip,
         take: pageSize,
       });

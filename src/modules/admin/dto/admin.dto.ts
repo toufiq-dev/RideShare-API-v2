@@ -56,14 +56,22 @@ export class CreateSupportRoleDto {
   supportPermissionIds?: string[];
 }
 
-export enum VerificationType {
-  isSelfieVerified = 'isSelfieVerified',
-  isNidVerified = 'isNidVerified',
-  isVehicleOwnersNidVerified = 'isVehicleOwnersNidVerified',
-  isDlVerified = 'isDlVerified',
-  isRcVerified = 'isRcVerified',
-  isNumberPlateVerified = 'isNumberPlateVerified',
-  isTaxTokenVerified = 'isTaxTokenVerified',
+export enum DocumentType {
+  SELFIE = 'SELFIE',
+  DRIVING_LICENSE = 'DRIVING_LICENSE',
+  NID = 'NID',
+  REGISTRATION_CERTIFICATE = 'REGISTRATION_CERTIFICATE',
+  NUMBER_PLATE = 'NUMBER_PLATE',
+  TAX_TOKEN = 'TAX_TOKEN',
+  VEHICLE_OWNERS_NID = 'VEHICLE_OWNERS_NID',
+  POLICE_CLEARANCE = 'POLICE_CLEARANCE',
+}
+
+export class GetDriverDocumentDto {
+  @ApiProperty({ description: 'Document type' })
+  @IsString()
+  @IsNotEmpty()
+  documentType: DocumentType;
 }
 
 export class VerifyDriverDto {
@@ -80,12 +88,15 @@ export class VerifyDriverDto {
   @ApiProperty({ description: 'Verification document' })
   @IsString()
   @IsNotEmpty()
-  verificationDocument: VerificationType;
+  verificationDocument: DocumentType;
 
-  @ApiProperty({ description: 'Cancellation reason' })
+  @ApiProperty({
+    description: 'Rejection reason (required if status is REJECTED)',
+    required: false,
+  })
   @IsString()
   @IsOptional()
-  cancellationReason?: string;
+  rejectionReason?: string;
 }
 
 export class AppUpdateDto {

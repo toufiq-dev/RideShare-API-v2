@@ -15,8 +15,9 @@ import {
   LoginDto,
   CreateAdminDto,
   VerifyDriverDto,
-  VerificationType,
   PromoterDetailsDto,
+  DocumentType,
+  GetDriverDocumentDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -936,26 +937,74 @@ export class AdminService {
     }
   }
 
-  async verifyDriver(userId: string, verifyDriverDto: VerifyDriverDto) {
+  async getDriverDocument(
+    driverId: string,
+    getDriverDocumentDto: GetDriverDocumentDto,
+  ) {
+    const { documentType } = getDriverDocumentDto;
+
+    try {
+      const data = await this.prisma.pilot.findUnique({
+        where: { id: driverId },
+      });
+
+      if (!data) {
+        throw new NotFoundException('Driver not found');
+      }
+
+      if (documentType === DocumentType.NID) {
+        return {
+          message: 'NID document fetched successfully.',
+          data: {
+            nidFrontSideUrl: data.nidFrontSideUrl,
+            nidBackSideUrl: data.nidBackSideUrl,
+          },
+        };
+      } else if (documentType === DocumentType.DRIVING_LICENSE) {
+        return {
+          message: 'Driving license document fetched successfully.',
+          data: {
+            dlFrontSideUrl: data.dlFrontSideUrl,
+          },
+        };
+      } else if (documentType === DocumentType.SELFIE) {
+        return {
+          message: 'Selfie document fetched successfully.',
+          data: {
+            selfieUrl: data.selfieUrl,
+          },
+        };
+      } else if (documentType === DocumentType.VEHICLE_OWNERS_NID) {
+        return {
+          message: 'Vehicle owners NID document fetched successfully.',
+          data: {
+            vehicleOwnersNidFrontSideUrl: data.vehicleOwnersNidFrontSideUrl,
+            vehicleOwnersNidBackSideUrl: data.vehicleOwnersNidBackSideUrl,
+          },
+        };
+      } else if (documentType === DocumentType.REGISTRATION_CERTIFICATE) {
+        return {
+          message: 'Registration certificate document fetched successfully.',
+          data: {
+            rcFrontSideUrl: data.rcFrontSideUrl,
+          },
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async verifyDriver(verifyDriverDto: VerifyDriverDto) {
     const {
       driverId,
       verificationStatus,
       verificationDocument,
-      cancellationReason,
+      rejectionReason,
     } = verifyDriverDto;
 
     try {
-      // const user = await this.prisma.user.findUnique({
-      //   where: { id: userId },
-      // });
-      // if (!user) {
-      //   throw new UnauthorizedException('User not found');
-      // }
-
-      // if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
-      //   throw new UnauthorizedException('User not authorized');
-      // }
-
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: driverId },
       });
@@ -963,13 +1012,13 @@ export class AdminService {
         throw new NotFoundException('Driver not found');
       }
 
-      if (verificationDocument === VerificationType.isNidVerified) {
+      if (verificationDocument === DocumentType.NID) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isNidVerified: verificationStatus,
-              nidRejectionReason: cancellationReason,
+              nidRejectionReason: rejectionReason,
             },
           });
 
@@ -994,13 +1043,13 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (verificationDocument === VerificationType.isDlVerified) {
+      } else if (verificationDocument === DocumentType.DRIVING_LICENSE) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isDLVerified: verificationStatus,
-              dlRejectionReason: cancellationReason,
+              dlRejectionReason: rejectionReason,
             },
           });
 
@@ -1025,13 +1074,13 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (verificationDocument === VerificationType.isSelfieVerified) {
+      } else if (verificationDocument === DocumentType.SELFIE) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isSelfieVerified: verificationStatus,
-              selfieRejectionReason: cancellationReason,
+              selfieRejectionReason: rejectionReason,
             },
           });
 
@@ -1056,15 +1105,13 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (
-        verificationDocument === VerificationType.isVehicleOwnersNidVerified
-      ) {
+      } else if (verificationDocument === DocumentType.VEHICLE_OWNERS_NID) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isVehicleOwnersNidVerified: verificationStatus,
-              vehicleOwnersNidRejectionReason: cancellationReason,
+              vehicleOwnersNidRejectionReason: rejectionReason,
             },
           });
 
@@ -1088,13 +1135,15 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (verificationDocument === VerificationType.isRcVerified) {
+      } else if (
+        verificationDocument === DocumentType.REGISTRATION_CERTIFICATE
+      ) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isRCVerified: verificationStatus,
-              rcRejectionReason: cancellationReason,
+              rcRejectionReason: rejectionReason,
             },
           });
 
@@ -1119,15 +1168,13 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (
-        verificationDocument === VerificationType.isNumberPlateVerified
-      ) {
+      } else if (verificationDocument === DocumentType.NUMBER_PLATE) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isNumberPlateVerified: verificationStatus,
-              numberPlateRejectionReason: cancellationReason,
+              numberPlateRejectionReason: rejectionReason,
             },
           });
 
@@ -1152,13 +1199,13 @@ export class AdminService {
             verificationStatus,
           },
         };
-      } else if (verificationDocument === VerificationType.isTaxTokenVerified) {
+      } else if (verificationDocument === DocumentType.TAX_TOKEN) {
         if (verificationStatus === VerificationStatus.REJECTED) {
           await this.prisma.pilot.update({
             where: { id: driverId },
             data: {
               isTaxTokenVerified: verificationStatus,
-              taxTokenRejectionReason: cancellationReason,
+              taxTokenRejectionReason: rejectionReason,
             },
           });
 

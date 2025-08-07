@@ -27,6 +27,7 @@ import {
   CreateAdminDto,
   VerifyDriverDto,
   PromoterDetailsDto,
+  GetDriverDocumentDto,
 } from './dto/admin.dto';
 import {
   AppPlatform,
@@ -207,15 +208,31 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
-  @Get('verify-driver')
+  @Get('driver-document/:driverId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify Driver' })
+  @HttpCode(HttpStatus.OK)
+  async getDriverDocument(
+    @Param('driverId') driverId: string,
+    @Body() getDriverDocumentDto: GetDriverDocumentDto,
+  ) {
+    return await this.adminService.getDriverDocument(
+      driverId,
+      getDriverDocumentDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('verify-driver/:driverId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify Driver' })
   @HttpCode(HttpStatus.OK)
   async verifyDriver(
+    @Param('driverId') driverId: string,
     @Body() verifyDriverDto: VerifyDriverDto,
-    @CurrentUser('userId') userId: string,
   ) {
-    return await this.adminService.verifyDriver(userId, verifyDriverDto);
+    return await this.adminService.verifyDriver(verifyDriverDto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

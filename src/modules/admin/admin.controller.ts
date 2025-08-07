@@ -224,7 +224,7 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
-  @Get('verify-driver/:driverId')
+  @Patch('verify-driver/:driverId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify Driver' })
   @HttpCode(HttpStatus.OK)
@@ -232,7 +232,7 @@ export class AdminController {
     @Param('driverId') driverId: string,
     @Body() verifyDriverDto: VerifyDriverDto,
   ) {
-    return await this.adminService.verifyDriver(verifyDriverDto);
+    return await this.adminService.verifyDriver(driverId, verifyDriverDto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

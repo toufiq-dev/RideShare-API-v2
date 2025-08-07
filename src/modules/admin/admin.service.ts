@@ -40,6 +40,26 @@ export class AdminService {
   private readonly redisAccessTokenTTL: number;
   private readonly redisRefreshTokenTTL: number;
 
+  private readonly verificationFieldMap = {
+    [DocumentType.SELFIE]: 'isSelfieVerified',
+    [DocumentType.NID]: 'isNidVerified',
+    [DocumentType.DRIVING_LICENSE]: 'isDLVerified',
+    [DocumentType.REGISTRATION_CERTIFICATE]: 'isRCVerified',
+    [DocumentType.NUMBER_PLATE]: 'isNumberPlateVerified',
+    [DocumentType.TAX_TOKEN]: 'isTaxTokenVerified',
+    [DocumentType.VEHICLE_OWNERS_NID]: 'isVehicleOwnersNidVerified',
+  } as const;
+
+  private readonly rejectionReasonFieldMap = {
+    [DocumentType.SELFIE]: 'selfieRejectionReason',
+    [DocumentType.NID]: 'nidRejectionReason',
+    [DocumentType.DRIVING_LICENSE]: 'dlRejectionReason',
+    [DocumentType.REGISTRATION_CERTIFICATE]: 'rcRejectionReason',
+    [DocumentType.NUMBER_PLATE]: 'numberPlateRejectionReason',
+    [DocumentType.TAX_TOKEN]: 'taxTokenRejectionReason',
+    [DocumentType.VEHICLE_OWNERS_NID]: 'vehicleOwnersNidRejectionReason',
+  } as const;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -267,12 +287,12 @@ export class AdminService {
       });
 
       const accessToken = await this.jwtService.signAsync(
-        { userId: admin.id, role: UserRole.ADMIN },
+        { userId: admin.id, role: admin.role },
         { expiresIn: this.accessTokenExpiresIn },
       );
 
       const refreshToken = await this.jwtService.signAsync(
-        { userId: admin.id, role: UserRole.ADMIN },
+        { userId: admin.id, role: admin.role },
         { expiresIn: this.refreshTokenExpiresIn },
       );
 
@@ -946,6 +966,36 @@ export class AdminService {
     try {
       const data = await this.prisma.pilot.findUnique({
         where: { id: driverId },
+        include: {
+          drivingLicense: {
+            select: {
+              dateOfBirth: true,
+              licenseNumber: true,
+              validUntill: true,
+            },
+          },
+          nid: {
+            select: {
+              name: true,
+              dateOfBirth: true,
+              nidNumber: true,
+            },
+          },
+          vehicle: {
+            select: {
+              regNo: true,
+              registrationDate: true,
+              colour: true,
+              model: true,
+              seatCapacity: true,
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!data) {
@@ -958,6 +1008,9 @@ export class AdminService {
           data: {
             nidFrontSideUrl: data.nidFrontSideUrl,
             nidBackSideUrl: data.nidBackSideUrl,
+            name: data.nid.name,
+            dateOfBirth: data.nid.dateOfBirth,
+            nidNumber: data.nid.nidNumber,
           },
         };
       } else if (documentType === DocumentType.DRIVING_LICENSE) {
@@ -965,6 +1018,10 @@ export class AdminService {
           message: 'Driving license document fetched successfully.',
           data: {
             dlFrontSideUrl: data.dlFrontSideUrl,
+            dlBackSideUrl: data.dlBackSideUrl,
+            dateOfBirth: data.drivingLicense.dateOfBirth,
+            licenseNumber: data.drivingLicense.licenseNumber,
+            validUntill: data.drivingLicense.validUntill,
           },
         };
       } else if (documentType === DocumentType.SELFIE) {
@@ -987,6 +1044,26 @@ export class AdminService {
           message: 'Registration certificate document fetched successfully.',
           data: {
             rcFrontSideUrl: data.rcFrontSideUrl,
+            rcBackSideUrl: data.rcBackSideUrl,
+            vehicleNumber: data.vehicle.regNo,
+            vehicleType: data.vehicle.vehicleTypeBD.name,
+            registrationDate: data.vehicle.registrationDate,
+            vehicleColour: data.vehicle.colour,
+            seatCapacity: data.vehicle.seatCapacity,
+          },
+        };
+      } else if (documentType === DocumentType.NUMBER_PLATE) {
+        return {
+          message: 'Number plate document fetched successfully.',
+          data: {
+            numberPlateUrl: data.numberPlateUrl,
+          },
+        };
+      } else if (documentType === DocumentType.TAX_TOKEN) {
+        return {
+          message: 'Tax token document fetched successfully.',
+          data: {
+            taxTokenUrl: data.taxTokenUrl,
           },
         };
       }
@@ -996,247 +1073,91 @@ export class AdminService {
     }
   }
 
-  async verifyDriver(verifyDriverDto: VerifyDriverDto) {
+  async verifyDriver(driverId: string, verifyDriverDto: VerifyDriverDto) {
     const {
-      driverId,
       verificationStatus,
       verificationDocument,
       rejectionReason,
+      name,
+      dateOfBirth,
+      documentNumber,
+      vehicleRegNo,
+      vehicleType,
+      vehicleColor,
+      vehicleModel,
+      seatCapacity,
+      expiryDate,
+      issueDate,
     } = verifyDriverDto;
 
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: driverId },
+        include: {
+          drivingLicense: true,
+          nid: true,
+          vehicle: {
+            include: {
+              vehicleTypeBD: true,
+            },
+          },
+        },
       });
+
       if (!pilot) {
         throw new NotFoundException('Driver not found');
       }
 
-      if (verificationDocument === DocumentType.NID) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isNidVerified: verificationStatus,
-              nidRejectionReason: rejectionReason,
-            },
-          });
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // Prepare pilot update data
+        const pilotUpdateData: any = {
+          [this.verificationFieldMap[verificationDocument]]: verificationStatus,
+        };
 
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
+        // Add rejection reason if status is REJECTED, clear it otherwise
+        if (verificationStatus === VerificationStatus.REJECTED) {
+          pilotUpdateData[this.rejectionReasonFieldMap[verificationDocument]] =
+            rejectionReason;
+        } else {
+          pilotUpdateData[this.rejectionReasonFieldMap[verificationDocument]] =
+            null;
         }
 
-        await this.prisma.pilot.update({
+        // Update pilot verification status
+        const updatedPilot = await prisma.pilot.update({
           where: { id: driverId },
-          data: {
-            isNidVerified: verificationStatus,
+          data: pilotUpdateData,
+          include: {
+            drivingLicense: true,
+            nid: true,
+            vehicle: {
+              include: {
+                vehicleTypeBD: true,
+              },
+            },
           },
         });
 
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (verificationDocument === DocumentType.DRIVING_LICENSE) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isDLVerified: verificationStatus,
-              dlRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isDLVerified: verificationStatus,
-          },
+        // Update related fields based on document type
+        await this.updateRelatedFields(prisma, driverId, verificationDocument, {
+          name,
+          dateOfBirth,
+          documentNumber,
+          vehicleRegNo,
+          vehicleType,
+          vehicleColor,
+          vehicleModel,
+          seatCapacity,
+          expiryDate,
+          issueDate,
         });
 
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (verificationDocument === DocumentType.SELFIE) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isSelfieVerified: verificationStatus,
-              selfieRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isSelfieVerified: verificationStatus,
-          },
-        });
-
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (verificationDocument === DocumentType.VEHICLE_OWNERS_NID) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isVehicleOwnersNidVerified: verificationStatus,
-              vehicleOwnersNidRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isVehicleOwnersNidVerified: verificationStatus,
-          },
-        });
-
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (
-        verificationDocument === DocumentType.REGISTRATION_CERTIFICATE
-      ) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isRCVerified: verificationStatus,
-              rcRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isRCVerified: verificationStatus,
-          },
-        });
-
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (verificationDocument === DocumentType.NUMBER_PLATE) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isNumberPlateVerified: verificationStatus,
-              numberPlateRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isNumberPlateVerified: verificationStatus,
-          },
-        });
-
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      } else if (verificationDocument === DocumentType.TAX_TOKEN) {
-        if (verificationStatus === VerificationStatus.REJECTED) {
-          await this.prisma.pilot.update({
-            where: { id: driverId },
-            data: {
-              isTaxTokenVerified: verificationStatus,
-              taxTokenRejectionReason: rejectionReason,
-            },
-          });
-
-          return {
-            message: 'Driver verification updated successfully.',
-            data: {
-              verificationStatus,
-            },
-          };
-        }
-
-        await this.prisma.pilot.update({
-          where: { id: driverId },
-          data: {
-            isTaxTokenVerified: verificationStatus,
-          },
-        });
-
-        return {
-          message: 'Driver verification updated successfully.',
-          data: {
-            verificationStatus,
-          },
-        };
-      }
+        return updatedPilot;
+      });
 
       return {
         message: 'Driver verification updated successfully.',
-        data: {
-          verificationStatus,
-        },
+        data: result,
       };
     } catch (error) {
       console.error(error);
@@ -1506,5 +1427,137 @@ export class AdminService {
   private maskPhoneNumber(phone: string): string {
     if (phone.length <= 4) return phone;
     return phone.slice(0, 2) + '*'.repeat(phone.length - 4) + phone.slice(-2);
+  }
+
+  private async updateRelatedFields(
+    prisma: any,
+    driverId: string,
+    documentType: DocumentType,
+    fields: {
+      name?: string;
+      dateOfBirth?: string;
+      documentNumber?: string;
+      vehicleRegNo?: string;
+      vehicleType?: string;
+      vehicleColor?: string;
+      vehicleModel?: string;
+      seatCapacity?: number;
+      expiryDate?: string;
+      issueDate?: string;
+    },
+  ) {
+    const {
+      name,
+      dateOfBirth,
+      documentNumber,
+      vehicleRegNo,
+      vehicleType,
+      vehicleColor,
+      vehicleModel,
+      seatCapacity,
+      expiryDate,
+      issueDate,
+    } = fields;
+
+    switch (documentType) {
+      case DocumentType.NID:
+        if (name || dateOfBirth || documentNumber) {
+          const nidUpdateData: any = {};
+          if (name) nidUpdateData.name = name;
+          if (dateOfBirth) nidUpdateData.dateOfBirth = new Date(dateOfBirth);
+          if (documentNumber) nidUpdateData.nidNumber = documentNumber;
+
+          await prisma.nid.upsert({
+            where: { pilotId: driverId },
+            update: nidUpdateData,
+            create: {
+              pilotId: driverId,
+              ...nidUpdateData,
+            },
+          });
+        }
+        break;
+
+      case DocumentType.DRIVING_LICENSE:
+        if (name || dateOfBirth || documentNumber || expiryDate || issueDate) {
+          const dlUpdateData: any = {};
+          if (name) dlUpdateData.nameOnLicense = name;
+          if (dateOfBirth) dlUpdateData.dateOfBirth = new Date(dateOfBirth);
+          if (documentNumber) dlUpdateData.licenseNumber = documentNumber;
+          if (expiryDate) dlUpdateData.validUntill = new Date(expiryDate);
+          if (issueDate) dlUpdateData.dateOfIssue = new Date(issueDate);
+
+          await prisma.drivingLicense.upsert({
+            where: { pilotId: driverId },
+            update: dlUpdateData,
+            create: {
+              pilotId: driverId,
+              ...dlUpdateData,
+            },
+          });
+        }
+        break;
+
+      case DocumentType.REGISTRATION_CERTIFICATE:
+      case DocumentType.NUMBER_PLATE:
+      case DocumentType.TAX_TOKEN:
+        if (
+          vehicleRegNo ||
+          vehicleType ||
+          vehicleColor ||
+          vehicleModel ||
+          seatCapacity
+        ) {
+          const vehicleUpdateData: any = {};
+          if (vehicleRegNo) vehicleUpdateData.regNo = vehicleRegNo;
+          if (vehicleColor) vehicleUpdateData.colour = vehicleColor;
+          if (vehicleModel) vehicleUpdateData.model = vehicleModel;
+          if (seatCapacity) vehicleUpdateData.seatCapacity = seatCapacity;
+
+          // Handle vehicle type update
+          if (vehicleType) {
+            const vehicleTypeBD = await prisma.vehicleTypeBD.findFirst({
+              where: { name: vehicleType },
+            });
+            if (vehicleTypeBD) {
+              vehicleUpdateData.vehicleTypeBDId = vehicleTypeBD.id;
+            }
+          }
+
+          await prisma.vehicle.upsert({
+            where: { pilotId: driverId },
+            update: vehicleUpdateData,
+            create: {
+              pilotId: driverId,
+              ...vehicleUpdateData,
+            },
+          });
+        }
+        break;
+
+      case DocumentType.VEHICLE_OWNERS_NID:
+        if (name || dateOfBirth || documentNumber) {
+          const nidUpdateData: any = {};
+          if (name) nidUpdateData.vehicleOwnerNidName = name;
+          if (dateOfBirth)
+            nidUpdateData.vehicleOwnerNidDateOfBirth = new Date(dateOfBirth);
+          if (documentNumber)
+            nidUpdateData.vehicleOwnerNidNumber = documentNumber;
+
+          await prisma.nid.upsert({
+            where: { pilotId: driverId },
+            update: nidUpdateData,
+            create: {
+              pilotId: driverId,
+              ...nidUpdateData,
+            },
+          });
+        }
+        break;
+
+      default:
+        // No additional fields to update for other document types
+        break;
+    }
   }
 }

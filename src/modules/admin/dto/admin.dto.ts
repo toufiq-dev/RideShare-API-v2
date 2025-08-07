@@ -1,14 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AppPlatform, VerificationStatus } from '@prisma/client';
+import {
+  AppPlatform,
+  VehicleTypeBD,
+  VehicleTypeNameBD,
+  VerificationStatus,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -75,11 +82,6 @@ export class GetDriverDocumentDto {
 }
 
 export class VerifyDriverDto {
-  @ApiProperty({ description: 'Driver id' })
-  @IsString()
-  @IsNotEmpty()
-  driverId: string;
-
   @ApiProperty({ description: 'Verification status' })
   @IsString()
   @IsNotEmpty()
@@ -95,8 +97,91 @@ export class VerifyDriverDto {
     required: false,
   })
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.verificationStatus === VerificationStatus.REJECTED)
+  @IsNotEmpty({
+    message: 'Rejection reason is required when status is REJECTED',
+  })
   rejectionReason?: string;
+
+  // Additional fields for comprehensive updates
+  @ApiProperty({
+    description: 'Name from document (for NID, DL, etc.)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({
+    description: 'Date of birth from document',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @ApiProperty({
+    description: 'Document number (NID number, License number, etc.)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  documentNumber?: string;
+
+  @ApiProperty({
+    description: 'Vehicle registration number',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  vehicleRegNo?: string;
+
+  @ApiProperty({
+    description: 'Vehicle type',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  vehicleType?: VehicleTypeNameBD;
+
+  @ApiProperty({
+    description: 'Vehicle color',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  vehicleColor?: string;
+
+  @ApiProperty({
+    description: 'Vehicle model',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  vehicleModel?: string;
+
+  @ApiProperty({
+    description: 'Vehicle seat capacity',
+    required: false,
+  })
+  @IsOptional()
+  seatCapacity?: number;
+
+  @ApiProperty({
+    description: 'Document expiry date',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  expiryDate?: string;
+
+  @ApiProperty({
+    description: 'Document issue date',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  issueDate?: string;
 }
 
 export class AppUpdateDto {

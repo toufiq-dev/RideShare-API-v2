@@ -28,7 +28,7 @@ import {
   VerifyDriverDto,
   PromoterDetailsDto,
 } from './dto/admin.dto';
-import { AppPlatform, UserRole } from '@prisma/client';
+import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -157,8 +157,19 @@ export class AdminController {
   async getDriverList(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+    @Query('search') search?: string,
+    @Query('status') status?: UserStatus,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
-    return await this.adminService.getDriverList(page, pageSize);
+    return await this.adminService.getDriverList(
+      page,
+      pageSize,
+      search,
+      status,
+      sortBy,
+      sortOrder,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -643,13 +643,48 @@ export class AdminService {
     };
   }
 
-  async getDriverList(page: number, pageSize: number) {
+  async getDriverList(
+    page: number,
+    pageSize: number,
+    search?: string,
+    status?: UserStatus,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ) {
     try {
       const skip = (page - 1) * pageSize;
 
-      const totalCount = await this.prisma.pilot.count();
+      const whereClause: any = {};
+
+      if (status) {
+        whereClause.user = {
+          status: status,
+        };
+      }
+
+      if (search) {
+        whereClause.OR = [
+          { phone: { contains: search.trim(), mode: 'insensitive' } },
+          {
+            drivingLicense: {
+              nameOnLicense: { contains: search.trim(), mode: 'insensitive' },
+            },
+          },
+        ];
+      }
+
+      if (sortBy && sortOrder) {
+        const orderBy = {};
+        orderBy[sortBy] = sortOrder;
+        whereClause.orderBy = orderBy;
+      }
+
+      const totalCount = await this.prisma.pilot.count({
+        where: whereClause,
+      });
       const activeCount = await this.prisma.pilot.count({
         where: {
+          ...whereClause,
           user: {
             status: UserStatus.ACTIVE,
           },
@@ -657,13 +692,15 @@ export class AdminService {
       });
       const pendingCount = await this.prisma.pilot.count({
         where: {
-          isDLVerified: {
-            not: VerificationStatus.APPROVED,
+          ...whereClause,
+          user: {
+            status: UserStatus.IN_REVIEW,
           },
         },
       });
       const suspendedCount = await this.prisma.pilot.count({
         where: {
+          ...whereClause,
           user: {
             status: UserStatus.SUSPENDED,
           },
@@ -671,6 +708,7 @@ export class AdminService {
       });
 
       const pilots = await this.prisma.pilot.findMany({
+        where: whereClause,
         select: {
           id: true,
           phone: true,
@@ -691,9 +729,6 @@ export class AdminService {
               balance: true,
             },
           },
-        },
-        orderBy: {
-          createdAt: 'desc',
         },
         skip,
         take: pageSize,
@@ -1211,7 +1246,6 @@ export class AdminService {
         updateData.nidPhotoUrl = nidPhotoUrl;
       }
 
-      
       updateData.isApproved = true;
       const updatedPromoter = await this.prisma.promoter.update({
         where: { userId },

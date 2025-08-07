@@ -16,6 +16,7 @@ import {
   CreateAdminDto,
   VerifyDriverDto,
   VerificationType,
+  PromoterDetailsDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -1166,6 +1167,7 @@ export class AdminService {
       idPhoto?: Express.Multer.File[];
       nidPhoto?: Express.Multer.File[];
     },
+    promoterData: PromoterDetailsDto,
     userId: string,
   ) {
     try {
@@ -1177,7 +1179,7 @@ export class AdminService {
         throw new NotFoundException('Promoter not found');
       }
 
-      const updateData: any = {};
+      const updateData: any = promoterData;
 
       if (files?.livePhoto?.[0]) {
         const livePhotoUrl = await this.azureService.uploadFile(
@@ -1217,7 +1219,7 @@ export class AdminService {
       ) {
         updateData.isApproved = true;
       }
-
+      updateData.isAlreadyRegistered = true;
       const updatedPromoter = await this.prisma.promoter.update({
         where: { userId },
         data: updateData,
@@ -1243,6 +1245,7 @@ export class AdminService {
         livePhotoUrl: true,
         idPhotoUrl: true,
         nidPhotoUrl: true,
+        isAlreadyRegistered: true,
         isApproved: true,
         totalDriversOnboarded: true,
         onboardedPilots: {

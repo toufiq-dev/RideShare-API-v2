@@ -326,6 +326,24 @@ async function main() {
 
   const randromNumber = randomInt(0, vehicleTypeIds.length - 1);
 
+
+  const user = await prisma.user.create({
+    data: {
+      role: UserRole.PROMOTER,
+    },
+  });
+
+  const promoter = await prisma.promoter.create({
+    data: {
+      phone: '+8801401678150',
+      name: 'Akash',
+      address: 'Dhaka',
+      bloodGroup: 'AB+',
+      userId: user.id,
+      referralCode: '01401678150',
+    },
+  });
+
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
     const pilot = pilots[i];
@@ -359,7 +377,9 @@ async function main() {
         isSelfieVerified: VerificationStatus.APPROVED,
         isNumberPlateVerified: VerificationStatus.APPROVED,
         isTaxTokenVerified: VerificationStatus.APPROVED,
+        isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true,
+        referralCode: promoter.referralCode,
       },
     });
 

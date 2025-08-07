@@ -113,7 +113,7 @@ model Promoter {
   id                    String   @id @default(uuid())
   userId                String   @unique
   phone                 String   @unique
-  name                  String
+  name                  String?
   address               String?
   bloodGroup            String?
   livePhotoUrl          String?

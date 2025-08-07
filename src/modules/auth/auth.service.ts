@@ -103,6 +103,25 @@ export class AuthService {
       await this.redis.set(`languageId:${phone}`, Language.id, 180);
       await this.redis.set(`referralCode:${phone}`, referralCode, 180);
 
+      if (referralCode) {
+        const normalizedReferralCode = this.normalizeReferral(referralCode);
+
+        await this.redis.set(
+          `referralCode:${phone}`,
+          normalizedReferralCode,
+          180,
+        );
+        const promoter = await this.prisma.promoter.findUnique({
+          where: {
+            referralCode: normalizedReferralCode,
+          },
+        });
+
+        if (!promoter) {
+          throw new NotFoundException('Invalid referral code');
+        }
+      }
+
       // Khudebarta OTP
       if (countryCode === Country.BD) {
         const isSent = await this.otpService.sendOTPBD(phone, otp);
@@ -138,7 +157,7 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const { phone, otp, role, fcmToken, promoterName } = verifyOtpDto;
+    const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
       // For App review in ios and android store START
@@ -207,7 +226,7 @@ export class AuthService {
         };
       } // For App review in ios and android store END
 
-      const { languageId, refferalCode } = await this.validateOtpRedis(
+      const { languageId, referralCode } = await this.validateOtpRedis(
         phone,
         otp,
       );
@@ -218,12 +237,13 @@ export class AuthService {
         phone,
         role,
         languageId,
-        refferalCode,
+        referralCode,
         countryCode as Country,
       );
 
       let promoter = null;
       let isAlreadyRegistered = true;
+
       if (role === UserRole.CUSTOMER) {
         isAlreadyRegistered = customer.isAlreadyRegistered;
         if (!customer.isAlreadyRegistered) {
@@ -262,13 +282,10 @@ export class AuthService {
             data: {
               phone,
               userId: user.id,
-              referralCode: phone,
-              name: promoterName ? promoterName : ' ',
-              isAlreadyRegistered: true,
+              referralCode: this.normalizeReferral(phone),
             },
           });
         }
-        console.log('***PROMOTER***', promoter);
       }
 
       const device = await this.prisma.deviceToken.findUnique({
@@ -548,9 +565,9 @@ export class AuthService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
-    const refferalCode = await this.redis.get(`referralCode:${phone}`);
+    const referralCode = await this.redis.get(`referralCode:${phone}`);
 
-    return { languageId, refferalCode };
+    return { languageId, referralCode };
   }
 
   private async validateOtp(phone: string, otp: string) {
@@ -562,12 +579,12 @@ export class AuthService {
     }
 
     const languageId = await this.redis.get(`languageId:${phone}`);
-    const refferalCode = await this.redis.get(`referralCode:${phone}`);
+    const referralCode = await this.redis.get(`referralCode:${phone}`);
 
     await this.redis.del(`languageId:${phone}`);
     await this.redis.del(`referralCode:${phone}`);
 
-    return { languageId, refferalCode };
+    return { languageId, referralCode };
   }
 
   private async findOrCreateUser(
@@ -777,5 +794,11 @@ export class AuthService {
     } catch (error) {
       console.error('Error cleaning up pilot data:', error);
     }
+  }
+
+  private normalizeReferral(referralCode: string) {
+    return referralCode.startsWith('+88')
+      ? referralCode.substring(3)
+      : referralCode;
   }
 }

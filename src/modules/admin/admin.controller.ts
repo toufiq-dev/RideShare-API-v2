@@ -26,6 +26,7 @@ import {
   LoginDto,
   CreateAdminDto,
   VerifyDriverDto,
+  PromoterDetailsDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -256,10 +257,10 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.PROMOTER)
-  @Post('promoter-documents')
+  @Post('promoter-details')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload Documents' })
+  @ApiOperation({ summary: 'Update Promoter Details' })
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'livePhoto', maxCount: 1 },
@@ -274,9 +275,10 @@ export class AdminController {
       idPhoto: Express.Multer.File[];
       nidPhoto: Express.Multer.File[];
     },
+    @Body() promoterData: PromoterDetailsDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.adminService.uploadDocuments(files, userId);
+    return this.adminService.uploadDocuments(files, promoterData, userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

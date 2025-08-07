@@ -180,3 +180,20 @@ export class CreateSupportStuffDto {
   @IsNotEmpty()
   supportRoleId: string;
 }
+
+export class PromoterDetailsDto {
+  @ApiProperty({ description: 'Promoter name', required: false })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({ description: 'Promoter address', required: false })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @ApiProperty({ description: 'Promoter blood group', required: false })
+  @IsString()
+  @IsOptional()
+  bloodGroup?: string;
+}

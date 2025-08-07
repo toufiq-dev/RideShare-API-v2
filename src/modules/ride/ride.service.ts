@@ -149,6 +149,8 @@ export class RideService {
         select: {
           id: true,
           bookingCode: true,
+          rideType: true,
+          name: true,
           status: true,
           estimatedDuration: true,
           tripStart: true,
@@ -248,7 +250,7 @@ export class RideService {
           phone: booking.customer.phone,
           rating: booking.customer.averageRating,
         },
-        pickupInMinutes: null,
+        pickupInMinutes: randomInt(1, 4),
         pickupLocation: booking.pickupLocation,
         dropLocation: booking.dropLocation,
         fairDetails: {
@@ -256,7 +258,8 @@ export class RideService {
           discountedFare: Math.ceil(Number(booking.discountedFare)),
           coupon: booking.customer.coupon,
         },
-        otherPassengerInfo: null,
+        otherPassengerInfo:
+          booking.rideType === RideType.OTHERS ? { name: booking.name } : null,
       };
 
       return {

@@ -466,6 +466,11 @@ export class AdminService {
   async getStaffList() {
     try {
       const adminList = await this.prisma.admin.findMany({
+        where: {
+          user: {
+            status: UserStatus.ACTIVE,
+          },
+        },
         select: {
           name: true,
           user: {
@@ -479,6 +484,11 @@ export class AdminService {
       });
 
       const supportList = await this.prisma.support.findMany({
+        where: {
+          user: {
+            status: UserStatus.ACTIVE,
+          },
+        },
         select: {
           name: true,
           user: {
@@ -503,6 +513,34 @@ export class AdminService {
           adminList,
           supportList,
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async deleteStaff(id: string) {
+    try {
+      const support = await this.prisma.support.findUnique({
+        where: {
+          id,
+        },
+      });
+
+      if (!support) {
+        throw new NotFoundException('Staff not found');
+      }
+
+      await this.prisma.user.update({
+        where: { id: support.userId },
+        data: {
+          status: UserStatus.INACTIVE,
+        },
+      });
+
+      return {
+        message: 'Staff deleted successfully.',
       };
     } catch (error) {
       console.error(error);

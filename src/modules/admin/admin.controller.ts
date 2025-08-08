@@ -13,6 +13,7 @@ import {
   ParseIntPipe,
   UploadedFiles,
   UseInterceptors,
+  Delete,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -113,6 +114,15 @@ export class AdminController {
   @ApiOperation({ summary: 'Get all Staffs' })
   async getStaffList() {
     return await this.adminService.getStaffList();
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete('staff/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete Staff' })
+  async deleteStaff(@Param('id') id: string) {
+    return await this.adminService.deleteStaff(id);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

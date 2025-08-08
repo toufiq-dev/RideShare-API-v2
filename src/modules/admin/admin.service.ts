@@ -21,6 +21,7 @@ import {
   ResetPasswordDto,
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
+  EditStaffDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -473,6 +474,7 @@ export class AdminService {
           },
         },
         select: {
+          id: true,
           name: true,
           user: {
             select: {
@@ -491,6 +493,7 @@ export class AdminService {
           },
         },
         select: {
+          id: true,
           name: true,
           user: {
             select: {
@@ -503,6 +506,13 @@ export class AdminService {
             select: {
               name: true,
               description: true,
+              supportPermissions: {
+                select: {
+                  id: true,
+                  menuKey: true,
+                  isVisible: true,
+                },
+              },
             },
           },
         },
@@ -542,6 +552,72 @@ export class AdminService {
 
       return {
         message: 'Staff deleted successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async editStaff(id: string, editStaffDto: EditStaffDto) {
+    const { supportRoleId } = editStaffDto;
+
+    try {
+      const staff = await this.prisma.support.findUnique({
+        where: { id },
+      });
+
+      if (!staff) {
+        throw new NotFoundException('Staff not found');
+      }
+
+      if (supportRoleId) {
+        const roleExists = await this.prisma.supportRole.findUnique({
+          where: { id: supportRoleId },
+        });
+
+        if (!roleExists) {
+          throw new BadRequestException('Invalid support role');
+        }
+
+        // Update staff's role assignment
+        await this.prisma.support.update({
+          where: { id },
+          data: {
+            supportRoleId,
+          },
+        });
+      }
+
+      const updatedSupport = await this.prisma.support.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              email: true,
+              status: true,
+              role: true,
+            },
+          },
+          supportRole: {
+            select: {
+              name: true,
+              description: true,
+              supportPermissions: {
+                select: {
+                  id: true,
+                  menuKey: true,
+                  isVisible: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Staff role updated successfully.',
+        data: updatedSupport,
       };
     } catch (error) {
       console.error(error);
@@ -645,6 +721,10 @@ export class AdminService {
       const hasPrevPage = page > 1;
 
       const data = await this.prisma.supportRole.findMany({
+        include: {
+          supportPermissions: true,
+        },
+
         skip,
         take: pageSize,
       });

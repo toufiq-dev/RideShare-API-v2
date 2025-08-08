@@ -32,6 +32,7 @@ import {
   ResetPasswordDto,
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
+  EditStaffDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -124,6 +125,15 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete Staff' })
   async deleteStaff(@Param('id') id: string) {
     return await this.adminService.deleteStaff(id);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch('staff/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edit Staff' })
+  async editStaff(@Param('id') id: string, @Body() editStaffDto: EditStaffDto) {
+    return await this.adminService.editStaff(id, editStaffDto);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

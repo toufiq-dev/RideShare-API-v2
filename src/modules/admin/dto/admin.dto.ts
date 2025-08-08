@@ -320,3 +320,10 @@ export class EditMenuPermissionsDto {
   @IsNotEmpty()
   menuKey: string;
 }
+
+export class EditStaffDto {
+  @ApiProperty({ description: 'Support role id' })
+  @IsString()
+  @IsNotEmpty()
+  supportRoleId: string;
+}

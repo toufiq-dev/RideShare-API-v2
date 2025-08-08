@@ -28,6 +28,7 @@ import {
   VerifyDriverDto,
   PromoterDetailsDto,
   GetDriverDocumentDto,
+  ResetPasswordDto,
 } from './dto/admin.dto';
 import {
   AppPlatform,
@@ -63,6 +64,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Get User Info' })
   async getUserInfo(@CurrentUser('userId') userId: string) {
     return await this.adminService.getUserInfo(userId);
+  }
+
+  @Post('reset-password')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reset Password' })
+  @ApiBody({
+    type: ResetPasswordDto,
+  })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return await this.adminService.resetPassword(resetPasswordDto);
   }
 
   @Post('verify-email')

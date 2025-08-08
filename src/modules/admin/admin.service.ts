@@ -18,6 +18,7 @@ import {
   PromoterDetailsDto,
   DocumentType,
   GetDriverDocumentDto,
+  ResetPasswordDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -270,6 +271,72 @@ export class AdminService {
     }
   }
 
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { email, newPassword } = resetPasswordDto;
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Invalid email');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      if (user.role === UserRole.ADMIN) {
+        await this.prisma.admin.update({
+          where: { userId: user.id },
+          data: { password: hashedPassword },
+        });
+      } else if (user.role === UserRole.SUPPORT) {
+        await this.prisma.support.update({
+          where: { userId: user.id },
+          data: { password: hashedPassword },
+        });
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        await this.prisma.superAdmin.update({
+          where: { userId: user.id },
+          data: { password: hashedPassword },
+        });
+      }
+
+      const accessToken = await this.jwtService.signAsync(
+        { userId: user.id, role: user.role },
+        { expiresIn: this.accessTokenExpiresIn },
+      );
+
+      const refreshToken = await this.jwtService.signAsync(
+        { userId: user.id, role: user.role },
+        { expiresIn: this.refreshTokenExpiresIn },
+      );
+
+      await this.redis.set(
+        `${RedisKeys.ACCESS_TOKEN}${user.id}`,
+        accessToken,
+        this.redisAccessTokenTTL,
+      );
+      await this.redis.set(
+        `${RedisKeys.REFRESH_TOKEN}${user.id}`,
+        refreshToken,
+        this.redisRefreshTokenTTL,
+      );
+
+      return {
+        message: 'Password reset successfully.',
+        data: {
+          accessToken,
+          refreshToken,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   async verifyEmail(verifyEmailDto: VerifyEmailDto) {
     const { email, otp } = verifyEmailDto;
 
@@ -284,6 +351,7 @@ export class AdminService {
 
       const admin = await this.prisma.user.findUnique({
         where: { email },
+        select: { id: true, role: true },
       });
 
       const accessToken = await this.jwtService.signAsync(

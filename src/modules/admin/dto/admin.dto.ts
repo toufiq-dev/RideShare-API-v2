@@ -1,14 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   AppPlatform,
-  VehicleTypeBD,
   VehicleTypeNameBD,
   VerificationStatus,
 } from '@prisma/client';
-import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsBoolean,
   IsDateString,
   IsEmail,
   IsNotEmpty,
@@ -16,7 +13,6 @@ import {
   IsOptional,
   IsString,
   ValidateIf,
-  ValidateNested,
 } from 'class-validator';
 
 export class LoginDto {
@@ -29,6 +25,18 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ description: 'Email of the admin' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'New password' })
+  @IsString()
+  @IsNotEmpty()
+  newPassword: string;
 }
 
 export class CreateAdminDto extends LoginDto {}

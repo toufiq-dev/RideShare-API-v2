@@ -20,6 +20,7 @@ import {
   GetDriverDocumentDto,
   ResetPasswordDto,
   SendResetPasswordOtpDto,
+  EditMenuPermissionsDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -573,6 +574,61 @@ export class AdminService {
             hasPrevPage,
           },
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async editMenuPermissions(
+    id: string,
+    editMenuPermissionsDto: EditMenuPermissionsDto,
+  ) {
+    const { menuKey } = editMenuPermissionsDto;
+
+    try {
+      const menuPermission = await this.prisma.supportPermission.findUnique({
+        where: { id },
+      });
+
+      if (!menuPermission) {
+        throw new NotFoundException('Menu permission not found');
+      }
+
+      const data = await this.prisma.supportPermission.update({
+        where: { id },
+        data: {
+          menuKey,
+        },
+      });
+
+      return {
+        message: 'Menu permission updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async deleteMenuPermissions(id: string) {
+    try {
+      const menuPermission = await this.prisma.supportPermission.findUnique({
+        where: { id },
+      });
+
+      if (!menuPermission) {
+        throw new NotFoundException('Menu permission not found');
+      }
+
+      await this.prisma.supportPermission.delete({
+        where: { id },
+      });
+
+      return {
+        message: 'Menu permission deleted successfully.',
       };
     } catch (error) {
       console.error(error);

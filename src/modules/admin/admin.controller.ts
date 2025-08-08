@@ -31,6 +31,7 @@ import {
   GetDriverDocumentDto,
   ResetPasswordDto,
   SendResetPasswordOtpDto,
+  EditMenuPermissionsDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -135,6 +136,30 @@ export class AdminController {
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
   ) {
     return await this.adminService.getMenuPermissions(page, pageSize);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch('menu-permissions/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edit menu permissions by id' })
+  async editMenuPermissions(
+    @Param('id') id: string,
+    @Body() editMenuPermissionsDto: EditMenuPermissionsDto,
+  ) {
+    return await this.adminService.editMenuPermissions(
+      id,
+      editMenuPermissionsDto,
+    );
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete('menu-permissions/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete menu permissions by id' })
+  async deleteMenuPermissions(@Param('id') id: string) {
+    return await this.adminService.deleteMenuPermissions(id);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

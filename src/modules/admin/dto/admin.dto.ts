@@ -313,3 +313,10 @@ export class PromoterDetailsDto {
   @IsOptional()
   bloodGroup?: string;
 }
+
+export class EditMenuPermissionsDto {
+  @ApiProperty({ description: 'Menu key' })
+  @IsString()
+  @IsNotEmpty()
+  menuKey: string;
+}

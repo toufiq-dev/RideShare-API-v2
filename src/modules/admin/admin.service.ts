@@ -19,6 +19,7 @@ import {
   DocumentType,
   GetDriverDocumentDto,
   ResetPasswordDto,
+  SendResetPasswordOtpDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -33,6 +34,8 @@ import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { AzureService } from 'src/core/utils/azure.util';
+import { EmailService } from '../email/email.service';
+import { SendOtpDto } from '../email/dto/email.dto';
 
 @Injectable()
 export class AdminService {
@@ -67,6 +70,7 @@ export class AdminService {
     private readonly configService: ConfigService,
     private readonly redis: RedisService,
     private readonly azureService: AzureService,
+    private readonly emailService: EmailService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -271,8 +275,8 @@ export class AdminService {
     }
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { email, newPassword } = resetPasswordDto;
+  async sendResetPasswordOtp(sendResetPasswordOtpDto: SendResetPasswordOtpDto) {
+    const { email } = sendResetPasswordOtpDto;
 
     try {
       const user = await this.prisma.user.findUnique({
@@ -283,6 +287,35 @@ export class AdminService {
       if (!user) {
         throw new UnauthorizedException('Invalid email');
       }
+
+      const emailOtpDto: SendOtpDto = { email };
+
+      await this.emailService.sendOtpEmail(emailOtpDto);
+
+      return {
+        message: 'Reset password OTP sent to your email successfully.',
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { otp, newPassword, email } = resetPasswordDto;
+
+    try {
+      const otpFromRedis = await this.redis.get(
+        `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
+      );
+
+      if (!otpFromRedis || otpFromRedis !== otp) {
+        throw new UnauthorizedException('Invalid or Expired OTP');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 

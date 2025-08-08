@@ -7,7 +7,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { EmailService } from './email.service';
-import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
+import { SendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -22,7 +22,7 @@ export class EmailController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send otp to verify email' })
-  async sendOtp(@Body() sendOtpDto: sendOtpDto) {
+  async sendOtp(@Body() sendOtpDto: SendOtpDto) {
     return await this.emailService.sendOtpEmail(sendOtpDto);
   }
 

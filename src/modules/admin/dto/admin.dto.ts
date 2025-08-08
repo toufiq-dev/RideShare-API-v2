@@ -27,7 +27,19 @@ export class LoginDto {
   password: string;
 }
 
+export class SendResetPasswordOtpDto {
+  @ApiProperty({ description: 'Email of the admin' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
 export class ResetPasswordDto {
+  @ApiProperty({ description: 'Otp sent in the email' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+
   @ApiProperty({ description: 'Email of the admin' })
   @IsEmail()
   @IsNotEmpty()

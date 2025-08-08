@@ -29,19 +29,14 @@ import {
   PromoterDetailsDto,
   GetDriverDocumentDto,
   ResetPasswordDto,
+  SendResetPasswordOtpDto,
 } from './dto/admin.dto';
-import {
-  AppPlatform,
-  UserRole,
-  UserStatus,
-  VerificationStatus,
-} from '@prisma/client';
+import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { IsOptional } from 'class-validator';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -64,6 +59,20 @@ export class AdminController {
   @ApiOperation({ summary: 'Get User Info' })
   async getUserInfo(@CurrentUser('userId') userId: string) {
     return await this.adminService.getUserInfo(userId);
+  }
+
+  @Post('reset-password/send-otp')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send Reset Password OTP' })
+  @ApiBody({
+    type: SendResetPasswordOtpDto,
+  })
+  async sendResetPasswordOtp(
+    @Body() sendResetPasswordOtpDto: SendResetPasswordOtpDto,
+  ) {
+    return await this.adminService.sendResetPasswordOtp(
+      sendResetPasswordOtpDto,
+    );
   }
 
   @Post('reset-password')

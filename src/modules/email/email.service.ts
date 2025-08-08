@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { sendOtpDto, VerifyEmailDto } from './dto/email.dto';
+import { SendOtpDto, VerifyEmailDto } from './dto/email.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -34,7 +34,7 @@ export class EmailService {
     });
   }
 
-  async sendOtpEmail(sendOtpDto: sendOtpDto) {
+  async sendOtpEmail(sendOtpDto: SendOtpDto) {
     const { email } = sendOtpDto;
 
     const otpSent = await this.redis.get(`otpSent:${email}`);
@@ -49,7 +49,7 @@ export class EmailService {
     return { message: 'OTP will be sent shortly' };
   }
 
-  async _sendOtpEmail(sendOtpDto: sendOtpDto) {
+  async _sendOtpEmail(sendOtpDto: SendOtpDto) {
     try {
       const { email } = sendOtpDto;
       const otp = randomInt(1000, 10000).toString();

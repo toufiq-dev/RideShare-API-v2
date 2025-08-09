@@ -28,7 +28,7 @@ import {
   CreateAdminDto,
   VerifyDriverDto,
   PromoterDetailsDto,
-  GetDriverDocumentDto,
+  DocumentType,
   ResetPasswordDto,
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
@@ -302,12 +302,9 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async getDriverDocument(
     @Param('driverId') driverId: string,
-    @Body() getDriverDocumentDto: GetDriverDocumentDto,
+    @Query('documentType') documentType: DocumentType,
   ) {
-    return await this.adminService.getDriverDocument(
-      driverId,
-      getDriverDocumentDto,
-    );
+    return await this.adminService.getDriverDocument(driverId, documentType);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -318,9 +315,14 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async verifyDriver(
     @Param('driverId') driverId: string,
+    @Query('documentType') documentType: DocumentType,
     @Body() verifyDriverDto: VerifyDriverDto,
   ) {
-    return await this.adminService.verifyDriver(driverId, verifyDriverDto);
+    return await this.adminService.verifyDriver(
+      driverId,
+      documentType,
+      verifyDriverDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

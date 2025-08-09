@@ -17,7 +17,6 @@ import {
   VerifyDriverDto,
   PromoterDetailsDto,
   DocumentType,
-  GetDriverDocumentDto,
   ResetPasswordDto,
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
@@ -1370,12 +1369,7 @@ export class AdminService {
     }
   }
 
-  async getDriverDocument(
-    driverId: string,
-    getDriverDocumentDto: GetDriverDocumentDto,
-  ) {
-    const { documentType } = getDriverDocumentDto;
-
+  async getDriverDocument(driverId: string, documentType: DocumentType) {
     try {
       const data = await this.prisma.pilot.findUnique({
         where: { id: driverId },
@@ -1419,6 +1413,8 @@ export class AdminService {
         return {
           message: 'NID document fetched successfully.',
           data: {
+            id: data.id,
+            nidVerified: data.isNidVerified,
             nidFrontSideUrl: data.nidFrontSideUrl,
             nidBackSideUrl: data.nidBackSideUrl,
             name: data.nid.name,
@@ -1430,6 +1426,8 @@ export class AdminService {
         return {
           message: 'Driving license document fetched successfully.',
           data: {
+            id: data.id,
+            dlVerified: data.isDLVerified,
             dlFrontSideUrl: data.dlFrontSideUrl,
             dlBackSideUrl: data.dlBackSideUrl,
             dateOfBirth: data.drivingLicense.dateOfBirth,
@@ -1441,6 +1439,8 @@ export class AdminService {
         return {
           message: 'Selfie document fetched successfully.',
           data: {
+            id: data.id,
+            selfieVerified: data.isSelfieVerified,
             selfieUrl: data.selfieUrl,
           },
         };
@@ -1448,6 +1448,8 @@ export class AdminService {
         return {
           message: 'Vehicle owners NID document fetched successfully.',
           data: {
+            id: data.id,
+            vehicleOwnersNidVerified: data.isVehicleOwnersNidVerified,
             vehicleOwnersNidFrontSideUrl: data.vehicleOwnersNidFrontSideUrl,
             vehicleOwnersNidBackSideUrl: data.vehicleOwnersNidBackSideUrl,
           },
@@ -1456,6 +1458,8 @@ export class AdminService {
         return {
           message: 'Registration certificate document fetched successfully.',
           data: {
+            id: data.id,
+            rcVerified: data.isRCVerified,
             rcFrontSideUrl: data.rcFrontSideUrl,
             rcBackSideUrl: data.rcBackSideUrl,
             vehicleNumber: data.vehicle.regNo,
@@ -1469,6 +1473,8 @@ export class AdminService {
         return {
           message: 'Number plate document fetched successfully.',
           data: {
+            id: data.id,
+            numberPlateVerified: data.isNumberPlateVerified,
             numberPlateUrl: data.numberPlateUrl,
           },
         };
@@ -1476,6 +1482,8 @@ export class AdminService {
         return {
           message: 'Tax token document fetched successfully.',
           data: {
+            id: data.id,
+            taxTokenVerified: data.isTaxTokenVerified,
             taxTokenUrl: data.taxTokenUrl,
           },
         };
@@ -1486,10 +1494,13 @@ export class AdminService {
     }
   }
 
-  async verifyDriver(driverId: string, verifyDriverDto: VerifyDriverDto) {
+  async verifyDriver(
+    driverId: string,
+    documentType: DocumentType,
+    verifyDriverDto: VerifyDriverDto,
+  ) {
     const {
       verificationStatus,
-      verificationDocument,
       rejectionReason,
       name,
       dateOfBirth,
@@ -1524,16 +1535,15 @@ export class AdminService {
       const result = await this.prisma.$transaction(async (prisma) => {
         // Prepare pilot update data
         const pilotUpdateData: any = {
-          [this.verificationFieldMap[verificationDocument]]: verificationStatus,
+          [this.verificationFieldMap[documentType]]: verificationStatus,
         };
 
         // Add rejection reason if status is REJECTED, clear it otherwise
         if (verificationStatus === VerificationStatus.REJECTED) {
-          pilotUpdateData[this.rejectionReasonFieldMap[verificationDocument]] =
+          pilotUpdateData[this.rejectionReasonFieldMap[documentType]] =
             rejectionReason;
         } else {
-          pilotUpdateData[this.rejectionReasonFieldMap[verificationDocument]] =
-            null;
+          pilotUpdateData[this.rejectionReasonFieldMap[documentType]] = null;
         }
 
         // Update pilot verification status
@@ -1552,7 +1562,7 @@ export class AdminService {
         });
 
         // Update related fields based on document type
-        await this.updateRelatedFields(prisma, driverId, verificationDocument, {
+        await this.updateRelatedFields(prisma, driverId, documentType, {
           name,
           dateOfBirth,
           documentNumber,

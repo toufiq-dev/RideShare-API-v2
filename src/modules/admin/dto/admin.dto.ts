@@ -94,27 +94,14 @@ export enum DocumentType {
   POLICE_CLEARANCE = 'POLICE_CLEARANCE',
 }
 
-export class GetDriverDocumentDto {
-  @ApiProperty({ description: 'Document type' })
-  @IsString()
-  @IsNotEmpty()
-  documentType: DocumentType;
-}
-
 export class VerifyDriverDto {
   @ApiProperty({ description: 'Verification status' })
   @IsString()
   @IsNotEmpty()
   verificationStatus: VerificationStatus;
 
-  @ApiProperty({ description: 'Verification document' })
-  @IsString()
-  @IsNotEmpty()
-  verificationDocument: DocumentType;
-
   @ApiProperty({
     description: 'Rejection reason (required if status is REJECTED)',
-    required: false,
   })
   @IsString()
   @ValidateIf((o) => o.verificationStatus === VerificationStatus.REJECTED)

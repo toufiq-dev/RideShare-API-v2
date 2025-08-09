@@ -22,6 +22,7 @@ import {
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
   EditStaffDto,
+  EditSupportRoleDto,
 } from './dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
@@ -504,6 +505,7 @@ export class AdminService {
           },
           supportRole: {
             select: {
+              id: true,
               name: true,
               description: true,
               supportPermissions: {
@@ -712,15 +714,38 @@ export class AdminService {
     }
   }
 
-  async getSupportRoles(page: number, pageSize: number) {
+  async getSupportRoles(page: number, pageSize: number, search?: string) {
     try {
       const skip = (page - 1) * pageSize;
-      const totalCount = await this.prisma.supportRole.count();
+
+      const whereClause: any = {};
+
+      if (search) {
+        whereClause.OR = [
+          {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      }
+
+      const totalCount = await this.prisma.supportRole.count({
+        where: whereClause,
+      });
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
       const data = await this.prisma.supportRole.findMany({
+        where: whereClause,
         include: {
           supportPermissions: true,
         },
@@ -742,6 +767,119 @@ export class AdminService {
             hasPrevPage,
           },
         },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async editSupportRole(id: string, editSupportRoleDto: EditSupportRoleDto) {
+    const { name, description, supportPermissionIds } = editSupportRoleDto;
+
+    try {
+      // Check if role exists
+      const existingRole = await this.prisma.supportRole.findUnique({
+        where: { id },
+      });
+
+      if (!existingRole) {
+        throw new NotFoundException('Support role not found');
+      }
+
+      // If name is being updated, check for duplicates
+      if (name && name !== existingRole.name) {
+        const duplicateRole = await this.prisma.supportRole.findFirst({
+          where: {
+            name: {
+              equals: name,
+              mode: 'insensitive',
+            },
+            id: { not: id }, // Exclude current role
+          },
+        });
+
+        if (duplicateRole) {
+          throw new BadRequestException(`Role ${name} already exists`);
+        }
+      }
+
+      // Validate permissions if provided
+      if (supportPermissionIds && supportPermissionIds.length > 0) {
+        const validPermissions = await this.prisma.supportPermission.findMany({
+          where: {
+            id: { in: supportPermissionIds },
+          },
+        });
+
+        if (validPermissions.length !== supportPermissionIds.length) {
+          throw new BadRequestException('Some permission IDs are invalid');
+        }
+      }
+
+      // Update the role
+      const data = await this.prisma.supportRole.update({
+        where: { id },
+        data: {
+          ...(name && { name }),
+          ...(description && { description }),
+          ...(supportPermissionIds && {
+            supportPermissions: {
+              set: supportPermissionIds.map((permissionId) => ({
+                id: permissionId,
+              })),
+            },
+          }),
+        },
+        include: {
+          supportPermissions: {
+            select: {
+              id: true,
+              menuKey: true,
+              isVisible: true,
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Support role updated successfully.',
+        data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async deleteSupportRole(id: string) {
+    try {
+      // Check if role exists
+      const existingRole = await this.prisma.supportRole.findUnique({
+        where: { id },
+        include: {
+          support: true, // Check if any support staff are using this role
+        },
+      });
+
+      if (!existingRole) {
+        throw new NotFoundException('Support role not found');
+      }
+
+      // Check if role is being used by any support staff
+      if (existingRole.support && existingRole.support.length > 0) {
+        throw new BadRequestException(
+          `Cannot delete role. ${existingRole.support.length} support staff are currently assigned to this role.`,
+        );
+      }
+
+      // Delete the role
+      await this.prisma.supportRole.delete({
+        where: { id },
+      });
+
+      return {
+        message: 'Support role deleted successfully.',
       };
     } catch (error) {
       console.error(error);

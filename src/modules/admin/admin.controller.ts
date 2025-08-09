@@ -33,6 +33,7 @@ import {
   SendResetPasswordOtpDto,
   EditMenuPermissionsDto,
   EditStaffDto,
+  EditSupportRoleDto,
 } from './dto/admin.dto';
 import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -192,8 +193,30 @@ export class AdminController {
   async getSupportRoles(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+    @Query('search') search?: string,
   ) {
-    return await this.adminService.getSupportRoles(page, pageSize);
+    return await this.adminService.getSupportRoles(page, pageSize, search);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch('support-role/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edit Support Role' })
+  async editSupportRole(
+    @Param('id') id: string,
+    @Body() editSupportRoleDto: EditSupportRoleDto,
+  ) {
+    return await this.adminService.editSupportRole(id, editSupportRoleDto);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete('support-role/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete Support Role' })
+  async deleteSupportRole(@Param('id') id: string) {
+    return await this.adminService.deleteSupportRole(id);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

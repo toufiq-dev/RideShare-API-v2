@@ -327,3 +327,21 @@ export class EditStaffDto {
   @IsNotEmpty()
   supportRoleId: string;
 }
+
+export class EditSupportRoleDto {
+  @ApiProperty({ description: 'Name of the user role' })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({ description: 'Description of the user role' })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ description: 'Support permission ids' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  supportPermissionIds?: string[];
+}

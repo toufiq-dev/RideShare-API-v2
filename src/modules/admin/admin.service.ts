@@ -1714,6 +1714,7 @@ export class AdminService {
         id: true,
         name: true,
         phone: true,
+        referralCode: true,
         livePhotoUrl: true,
         idPhotoUrl: true,
         nidPhotoUrl: true,

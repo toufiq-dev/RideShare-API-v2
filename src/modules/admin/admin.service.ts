@@ -1415,11 +1415,11 @@ export class AdminService {
           data: {
             id: data.id,
             nidVerified: data.isNidVerified,
-            nidFrontSideUrl: data.nidFrontSideUrl,
-            nidBackSideUrl: data.nidBackSideUrl,
-            name: data.nid.name,
-            dateOfBirth: data.nid.dateOfBirth,
-            nidNumber: data.nid.nidNumber,
+            nidFrontSideUrl: data?.nidFrontSideUrl,
+            nidBackSideUrl: data?.nidBackSideUrl,
+            name: data?.nid?.name,
+            dateOfBirth: data?.nid?.dateOfBirth,
+            nidNumber: data?.nid?.nidNumber,
           },
         };
       } else if (documentType === DocumentType.DRIVING_LICENSE) {
@@ -1428,11 +1428,11 @@ export class AdminService {
           data: {
             id: data.id,
             dlVerified: data.isDLVerified,
-            dlFrontSideUrl: data.dlFrontSideUrl,
-            dlBackSideUrl: data.dlBackSideUrl,
-            dateOfBirth: data.drivingLicense.dateOfBirth,
-            licenseNumber: data.drivingLicense.licenseNumber,
-            validUntill: data.drivingLicense.validUntill,
+            dlFrontSideUrl: data?.dlFrontSideUrl,
+            dlBackSideUrl: data?.dlBackSideUrl,
+            dateOfBirth: data?.drivingLicense?.dateOfBirth,
+            licenseNumber: data?.drivingLicense?.licenseNumber,
+            validUntill: data?.drivingLicense?.validUntill,
           },
         };
       } else if (documentType === DocumentType.SELFIE) {
@@ -1441,7 +1441,7 @@ export class AdminService {
           data: {
             id: data.id,
             selfieVerified: data.isSelfieVerified,
-            selfieUrl: data.selfieUrl,
+            selfieUrl: data?.selfieUrl,
           },
         };
       } else if (documentType === DocumentType.VEHICLE_OWNERS_NID) {
@@ -1450,8 +1450,8 @@ export class AdminService {
           data: {
             id: data.id,
             vehicleOwnersNidVerified: data.isVehicleOwnersNidVerified,
-            vehicleOwnersNidFrontSideUrl: data.vehicleOwnersNidFrontSideUrl,
-            vehicleOwnersNidBackSideUrl: data.vehicleOwnersNidBackSideUrl,
+            vehicleOwnersNidFrontSideUrl: data?.vehicleOwnersNidFrontSideUrl,
+            vehicleOwnersNidBackSideUrl: data?.vehicleOwnersNidBackSideUrl,
           },
         };
       } else if (documentType === DocumentType.REGISTRATION_CERTIFICATE) {
@@ -1460,13 +1460,13 @@ export class AdminService {
           data: {
             id: data.id,
             rcVerified: data.isRCVerified,
-            rcFrontSideUrl: data.rcFrontSideUrl,
-            rcBackSideUrl: data.rcBackSideUrl,
-            vehicleNumber: data.vehicle.regNo,
-            vehicleType: data.vehicle.vehicleTypeBD.name,
-            registrationDate: data.vehicle.registrationDate,
-            vehicleColour: data.vehicle.colour,
-            seatCapacity: data.vehicle.seatCapacity,
+            rcFrontSideUrl: data?.rcFrontSideUrl,
+            rcBackSideUrl: data?.rcBackSideUrl,
+            vehicleNumber: data?.vehicle?.regNo,
+            vehicleType: data?.vehicle?.vehicleTypeBD?.name,
+            registrationDate: data?.vehicle?.registrationDate,
+            vehicleColour: data?.vehicle?.colour,
+            seatCapacity: data?.vehicle?.seatCapacity,
           },
         };
       } else if (documentType === DocumentType.NUMBER_PLATE) {
@@ -1475,7 +1475,7 @@ export class AdminService {
           data: {
             id: data.id,
             numberPlateVerified: data.isNumberPlateVerified,
-            numberPlateUrl: data.numberPlateUrl,
+            numberPlateUrl: data?.numberPlateUrl,
           },
         };
       } else if (documentType === DocumentType.TAX_TOKEN) {
@@ -1484,7 +1484,7 @@ export class AdminService {
           data: {
             id: data.id,
             taxTokenVerified: data.isTaxTokenVerified,
-            taxTokenUrl: data.taxTokenUrl,
+            taxTokenUrl: data?.taxTokenUrl,
           },
         };
       }

@@ -1787,6 +1787,7 @@ export class AdminService {
           name: true,
           phone: true,
           totalDriversOnboarded: true,
+          createdAt: true,
           onboardedPilots: {
             select: {
               id: true,
@@ -1809,6 +1810,7 @@ export class AdminService {
               vehicleOwnersNidBackSideUrl: true,
               numberPlateUrl: true,
               taxTokenUrl: true,
+              createdAt: true,
               user: {
                 select: {
                   status: true,

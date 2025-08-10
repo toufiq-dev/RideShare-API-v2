@@ -309,6 +309,16 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  @Get('vehicle-types')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all Vehicle Types' })
+  @HttpCode(HttpStatus.OK)
+  async vehicleTypes() {
+    return await this.adminService.getVehicleTypes();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Patch('verify-driver/:driverId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify Driver' })
@@ -317,11 +327,13 @@ export class AdminController {
     @Param('driverId') driverId: string,
     @Query('documentType') documentType: DocumentType,
     @Body() verifyDriverDto: VerifyDriverDto,
+    @CurrentUser('userId') userId: string,
   ) {
     return await this.adminService.verifyDriver(
       driverId,
       documentType,
       verifyDriverDto,
+      userId,
     );
   }
 

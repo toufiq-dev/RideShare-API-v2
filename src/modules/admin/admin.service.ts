@@ -38,6 +38,7 @@ import { RedisKeys } from 'src/core/cache/redis-keys';
 import { AzureService } from 'src/core/utils/azure.util';
 import { EmailService } from '../email/email.service';
 import { SendOtpDto } from '../email/dto/email.dto';
+import { DocumentValidation } from './admin.constants';
 
 @Injectable()
 export class AdminService {
@@ -1374,11 +1375,18 @@ export class AdminService {
       const data = await this.prisma.pilot.findUnique({
         where: { id: driverId },
         include: {
+          user: {
+            select: {
+              metadata: true,
+            },
+          },
           drivingLicense: {
             select: {
+              nameOnLicense: true,
               dateOfBirth: true,
               licenseNumber: true,
               validUntill: true,
+              createdAt: true,
             },
           },
           nid: {
@@ -1395,6 +1403,7 @@ export class AdminService {
               colour: true,
               model: true,
               seatCapacity: true,
+              createdAt: true,
               vehicleTypeBD: {
                 select: {
                   name: true,
@@ -1409,17 +1418,29 @@ export class AdminService {
         throw new NotFoundException('Driver not found');
       }
 
+      const getDocumentValidation = (documentType: DocumentType) => {
+        if (!data.user?.metadata || !Array.isArray(data.user.metadata)) {
+          return null;
+        }
+
+        return data.user.metadata.filter(
+          (item: any) => item.documentType === documentType,
+        );
+      };
+
       if (documentType === DocumentType.NID) {
         return {
           message: 'NID document fetched successfully.',
           data: {
             id: data.id,
             nidVerified: data.isNidVerified,
-            nidFrontSideUrl: data?.nidFrontSideUrl,
-            nidBackSideUrl: data?.nidBackSideUrl,
-            name: data?.nid?.name,
-            dateOfBirth: data?.nid?.dateOfBirth,
-            nidNumber: data?.nid?.nidNumber,
+            nidFrontSideUrl: data?.nidFrontSideUrl ?? null,
+            nidBackSideUrl: data?.nidBackSideUrl ?? null,
+            name: data?.nid?.name ?? null,
+            dateOfBirth: data?.nid?.dateOfBirth ?? null,
+            nidNumber: data?.nid?.nidNumber ?? null,
+            uploadedAt: data.createdAt,
+            validation: getDocumentValidation(DocumentType.NID),
           },
         };
       } else if (documentType === DocumentType.DRIVING_LICENSE) {
@@ -1427,12 +1448,15 @@ export class AdminService {
           message: 'Driving license document fetched successfully.',
           data: {
             id: data.id,
+            nameOnLicense: data?.drivingLicense?.nameOnLicense ?? null,
             dlVerified: data.isDLVerified,
-            dlFrontSideUrl: data?.dlFrontSideUrl,
-            dlBackSideUrl: data?.dlBackSideUrl,
-            dateOfBirth: data?.drivingLicense?.dateOfBirth,
-            licenseNumber: data?.drivingLicense?.licenseNumber,
-            validUntill: data?.drivingLicense?.validUntill,
+            dlFrontSideUrl: data?.dlFrontSideUrl ?? null,
+            dlBackSideUrl: data?.dlBackSideUrl ?? null,
+            dateOfBirth: data?.drivingLicense?.dateOfBirth ?? null,
+            licenseNumber: data?.drivingLicense?.licenseNumber ?? null,
+            validUntill: data?.drivingLicense?.validUntill ?? null,
+            uploadedAt: data?.drivingLicense?.createdAt ?? null,
+            validation: getDocumentValidation(DocumentType.DRIVING_LICENSE),
           },
         };
       } else if (documentType === DocumentType.SELFIE) {
@@ -1441,7 +1465,9 @@ export class AdminService {
           data: {
             id: data.id,
             selfieVerified: data.isSelfieVerified,
-            selfieUrl: data?.selfieUrl,
+            selfieUrl: data?.selfieUrl ?? null,
+            uploadedAt: data.createdAt,
+            validation: getDocumentValidation(DocumentType.SELFIE),
           },
         };
       } else if (documentType === DocumentType.VEHICLE_OWNERS_NID) {
@@ -1450,8 +1476,12 @@ export class AdminService {
           data: {
             id: data.id,
             vehicleOwnersNidVerified: data.isVehicleOwnersNidVerified,
-            vehicleOwnersNidFrontSideUrl: data?.vehicleOwnersNidFrontSideUrl,
-            vehicleOwnersNidBackSideUrl: data?.vehicleOwnersNidBackSideUrl,
+            vehicleOwnersNidFrontSideUrl:
+              data?.vehicleOwnersNidFrontSideUrl ?? null,
+            vehicleOwnersNidBackSideUrl:
+              data?.vehicleOwnersNidBackSideUrl ?? null,
+            uploadedAt: data.createdAt,
+            validation: getDocumentValidation(DocumentType.VEHICLE_OWNERS_NID),
           },
         };
       } else if (documentType === DocumentType.REGISTRATION_CERTIFICATE) {
@@ -1460,13 +1490,17 @@ export class AdminService {
           data: {
             id: data.id,
             rcVerified: data.isRCVerified,
-            rcFrontSideUrl: data?.rcFrontSideUrl,
-            rcBackSideUrl: data?.rcBackSideUrl,
-            vehicleNumber: data?.vehicle?.regNo,
-            vehicleType: data?.vehicle?.vehicleTypeBD?.name,
-            registrationDate: data?.vehicle?.registrationDate,
-            vehicleColour: data?.vehicle?.colour,
-            seatCapacity: data?.vehicle?.seatCapacity,
+            rcFrontSideUrl: data?.rcFrontSideUrl ?? null,
+            rcBackSideUrl: data?.rcBackSideUrl ?? null,
+            vehicleNumber: data?.vehicle?.regNo ?? null,
+            vehicleType: data?.vehicle?.vehicleTypeBD?.name ?? null,
+            registrationDate: data?.vehicle?.registrationDate ?? null,
+            vehicleColour: data?.vehicle?.colour ?? null,
+            seatCapacity: data?.vehicle?.seatCapacity ?? null,
+            uploadedAt: data?.vehicle?.createdAt ?? null,
+            validation: getDocumentValidation(
+              DocumentType.REGISTRATION_CERTIFICATE,
+            ),
           },
         };
       } else if (documentType === DocumentType.NUMBER_PLATE) {
@@ -1475,7 +1509,9 @@ export class AdminService {
           data: {
             id: data.id,
             numberPlateVerified: data.isNumberPlateVerified,
-            numberPlateUrl: data?.numberPlateUrl,
+            numberPlateUrl: data?.numberPlateUrl ?? null,
+            uploadedAt: data.createdAt,
+            validation: getDocumentValidation(DocumentType.NUMBER_PLATE),
           },
         };
       } else if (documentType === DocumentType.TAX_TOKEN) {
@@ -1484,7 +1520,9 @@ export class AdminService {
           data: {
             id: data.id,
             taxTokenVerified: data.isTaxTokenVerified,
-            taxTokenUrl: data?.taxTokenUrl,
+            taxTokenUrl: data?.taxTokenUrl ?? null,
+            uploadedAt: data.createdAt,
+            validation: getDocumentValidation(DocumentType.TAX_TOKEN),
           },
         };
       }
@@ -1494,10 +1532,19 @@ export class AdminService {
     }
   }
 
+  async getVehicleTypes() {
+    const data = await this.prisma.vehicleTypeBD.findMany();
+    return {
+      message: 'Vehicle types fetched successfully.',
+      data,
+    };
+  }
+
   async verifyDriver(
     driverId: string,
     documentType: DocumentType,
     verifyDriverDto: VerifyDriverDto,
+    userId: string,
   ) {
     const {
       verificationStatus,
@@ -1506,15 +1553,22 @@ export class AdminService {
       dateOfBirth,
       documentNumber,
       vehicleRegNo,
-      vehicleType,
+      vehicleTypeId,
       vehicleColor,
-      vehicleModel,
-      seatCapacity,
       expiryDate,
-      issueDate,
+      vehicleRegDate,
     } = verifyDriverDto;
 
     try {
+      const supportStuff = await this.prisma.support.findUnique({
+        where: {
+          userId,
+        },
+        select: {
+          name: true,
+        },
+      });
+
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: driverId },
         include: {
@@ -1532,7 +1586,18 @@ export class AdminService {
         throw new NotFoundException('Driver not found');
       }
 
-      const result = await this.prisma.$transaction(async (prisma) => {
+      const user = await this.prisma.user.findUnique({
+        where: { id: pilot.userId },
+        select: {
+          metadata: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      await this.prisma.$transaction(async (prisma) => {
         // Prepare pilot update data
         const pilotUpdateData: any = {
           [this.verificationFieldMap[documentType]]: verificationStatus,
@@ -1547,18 +1612,9 @@ export class AdminService {
         }
 
         // Update pilot verification status
-        const updatedPilot = await prisma.pilot.update({
+        await prisma.pilot.update({
           where: { id: driverId },
           data: pilotUpdateData,
-          include: {
-            drivingLicense: true,
-            nid: true,
-            vehicle: {
-              include: {
-                vehicleTypeBD: true,
-              },
-            },
-          },
         });
 
         // Update related fields based on document type
@@ -1567,20 +1623,74 @@ export class AdminService {
           dateOfBirth,
           documentNumber,
           vehicleRegNo,
-          vehicleType,
+          vehicleTypeId,
           vehicleColor,
-          vehicleModel,
-          seatCapacity,
           expiryDate,
-          issueDate,
+          vehicleRegDate,
         });
 
-        return updatedPilot;
+        const validationRecord: DocumentValidation = {
+          documentType,
+          reviewedOn: new Date().toISOString(),
+          reviewedBy: supportStuff?.name ?? 'Unknown',
+          verificationStatus,
+          rejectionReason: rejectionReason || '',
+        };
+
+        if (!user.metadata || !Array.isArray(user.metadata)) {
+          await prisma.user.update({
+            where: { id: pilot.userId },
+            data: {
+              metadata: [validationRecord] as any,
+            },
+          });
+        } else {
+          await prisma.user.update({
+            where: { id: pilot.userId },
+            data: {
+              metadata: [...(user.metadata as any[]), validationRecord] as any,
+            },
+          });
+        }
       });
+
+      const data = await this.prisma.pilot.findUnique({
+        where: { id: driverId },
+        include: {
+          drivingLicense: true,
+          nid: true,
+          vehicle: {
+            include: {
+              vehicleTypeBD: true,
+            },
+          },
+          user: {
+            select: {
+              metadata: true,
+            },
+          },
+        },
+      });
+
+      if (
+        data.isSelfieVerified === VerificationStatus.APPROVED &&
+        data.isNidVerified === VerificationStatus.APPROVED &&
+        data.isDLVerified === VerificationStatus.APPROVED &&
+        data.isRCVerified === VerificationStatus.APPROVED &&
+        data.isNumberPlateVerified === VerificationStatus.APPROVED &&
+        data.isTaxTokenVerified === VerificationStatus.APPROVED
+      ) {
+        await this.prisma.user.update({
+          where: { id: pilot.userId },
+          data: {
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
 
       return {
         message: 'Driver verification updated successfully.',
-        data: result,
+        data,
       };
     } catch (error) {
       console.error(error);
@@ -1864,12 +1974,10 @@ export class AdminService {
       dateOfBirth?: string;
       documentNumber?: string;
       vehicleRegNo?: string;
-      vehicleType?: string;
+      vehicleTypeId?: string;
       vehicleColor?: string;
-      vehicleModel?: string;
-      seatCapacity?: number;
       expiryDate?: string;
-      issueDate?: string;
+      vehicleRegDate?: string;
     },
   ) {
     const {
@@ -1877,12 +1985,10 @@ export class AdminService {
       dateOfBirth,
       documentNumber,
       vehicleRegNo,
-      vehicleType,
+      vehicleTypeId,
       vehicleColor,
-      vehicleModel,
-      seatCapacity,
       expiryDate,
-      issueDate,
+      vehicleRegDate,
     } = fields;
 
     switch (documentType) {
@@ -1893,70 +1999,61 @@ export class AdminService {
           if (dateOfBirth) nidUpdateData.dateOfBirth = new Date(dateOfBirth);
           if (documentNumber) nidUpdateData.nidNumber = documentNumber;
 
-          await prisma.nid.upsert({
+          await prisma.nid.update({
             where: { pilotId: driverId },
-            update: nidUpdateData,
-            create: {
-              pilotId: driverId,
-              ...nidUpdateData,
-            },
+            data: nidUpdateData,
           });
         }
         break;
 
       case DocumentType.DRIVING_LICENSE:
-        if (name || dateOfBirth || documentNumber || expiryDate || issueDate) {
+        if (name || dateOfBirth || documentNumber || expiryDate) {
           const dlUpdateData: any = {};
           if (name) dlUpdateData.nameOnLicense = name;
           if (dateOfBirth) dlUpdateData.dateOfBirth = new Date(dateOfBirth);
           if (documentNumber) dlUpdateData.licenseNumber = documentNumber;
           if (expiryDate) dlUpdateData.validUntill = new Date(expiryDate);
-          if (issueDate) dlUpdateData.dateOfIssue = new Date(issueDate);
 
-          await prisma.drivingLicense.upsert({
+          await prisma.drivingLicense.update({
             where: { pilotId: driverId },
-            update: dlUpdateData,
-            create: {
-              pilotId: driverId,
-              ...dlUpdateData,
-            },
+            data: dlUpdateData,
           });
         }
         break;
 
       case DocumentType.REGISTRATION_CERTIFICATE:
-      case DocumentType.NUMBER_PLATE:
-      case DocumentType.TAX_TOKEN:
-        if (
-          vehicleRegNo ||
-          vehicleType ||
-          vehicleColor ||
-          vehicleModel ||
-          seatCapacity
-        ) {
+        if (vehicleRegNo || vehicleTypeId || vehicleColor) {
           const vehicleUpdateData: any = {};
           if (vehicleRegNo) vehicleUpdateData.regNo = vehicleRegNo;
           if (vehicleColor) vehicleUpdateData.colour = vehicleColor;
-          if (vehicleModel) vehicleUpdateData.model = vehicleModel;
-          if (seatCapacity) vehicleUpdateData.seatCapacity = seatCapacity;
+          if (vehicleRegDate)
+            vehicleUpdateData.regUpto = new Date(vehicleRegDate);
 
           // Handle vehicle type update
-          if (vehicleType) {
+          if (vehicleTypeId) {
             const vehicleTypeBD = await prisma.vehicleTypeBD.findFirst({
-              where: { name: vehicleType },
+              where: { id: vehicleTypeId },
             });
             if (vehicleTypeBD) {
-              vehicleUpdateData.vehicleTypeBDId = vehicleTypeBD.id;
+              vehicleUpdateData.vehicleTypeIdBD = vehicleTypeBD.id;
             }
           }
 
-          await prisma.vehicle.upsert({
+          await prisma.vehicle.update({
             where: { pilotId: driverId },
-            update: vehicleUpdateData,
-            create: {
-              pilotId: driverId,
-              ...vehicleUpdateData,
-            },
+            data: vehicleUpdateData,
+          });
+        }
+        break;
+
+      case DocumentType.NUMBER_PLATE:
+        if (vehicleRegNo) {
+          const vehicleUpdateData: any = {};
+          if (vehicleRegNo) vehicleUpdateData.regNo = vehicleRegNo;
+
+          await prisma.vehicle.update({
+            where: { pilotId: driverId },
+            data: vehicleUpdateData,
           });
         }
         break;
@@ -1970,13 +2067,9 @@ export class AdminService {
           if (documentNumber)
             nidUpdateData.vehicleOwnerNidNumber = documentNumber;
 
-          await prisma.nid.upsert({
+          await prisma.nid.update({
             where: { pilotId: driverId },
-            update: nidUpdateData,
-            create: {
-              pilotId: driverId,
-              ...nidUpdateData,
-            },
+            data: nidUpdateData,
           });
         }
         break;

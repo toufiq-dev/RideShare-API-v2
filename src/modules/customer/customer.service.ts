@@ -487,16 +487,11 @@ export class CustomerService {
           Number(item.perKmRate),
         );
 
-        let price = null;
-        if (originalPrice <= Number(item.minFare)) {
-          price = originalPrice;
-        } else {
-          price =
-            customer?.coupon?.discount &&
-            originalPrice > customer.coupon.discount
-              ? originalPrice - Number(customer.coupon.discount)
-              : originalPrice;
-        }
+        let discountedPrice = customer?.coupon?.discount && originalPrice > customer.coupon.discount
+          ? originalPrice - Number(customer.coupon.discount)
+          : originalPrice;
+        
+        const price = Math.max(discountedPrice, Number(item.minFare));
 
         const nearbyPilots = await this.redis.geoRadius(
           RedisKeys.PILOT_LOCATION,

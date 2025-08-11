@@ -287,7 +287,6 @@ export class RideService {
 
     let booking: any;
     let originalPrice: number;
-    let price: number;
     let customer: any;
     let distanceKm: number;
     let durationMin: number;
@@ -352,15 +351,12 @@ export class RideService {
         discount = 0;
       }
 
-      price = 0;
-      if (originalPrice !== Number(vehicleType.minFare)) {
-        price =
-          discount && originalPrice > discount
-            ? originalPrice - discount
-            : originalPrice;
-      } else {
-        price = originalPrice;
-      }
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
+          : originalPrice;
+
+      const price = Math.max(discountedPrice, Number(vehicleType.minFare));
 
       booking = await this.prisma.booking.create({
         data: {
@@ -516,10 +512,20 @@ export class RideService {
         throw new BadRequestException('Invalid coupon discount');
       }
 
-      const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
+      let discount: number = Number(coupon.discount);
+      if (!discount) {
+        discount = 0;
+      }
+
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
           : originalPrice;
+
+      const price = Math.max(
+        discountedPrice,
+        Number(vehicle.vehicleTypeBD.minFare),
+      );
 
       const newBooking = await this.prisma.booking.create({
         data: {
@@ -1727,10 +1733,20 @@ export class RideService {
         throw new BadRequestException('Invalid coupon discount');
       }
 
-      const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
+      let discount = Number(coupon?.discount);
+      if (!discount) {
+        discount = 0;
+      }
+
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
           : originalPrice;
+
+      const price = Math.max(
+        discountedPrice,
+        Number(pilot?.vehicle?.vehicleTypeBD.minFare),
+      );
 
       const updatedBooking = await this.prisma.booking.update({
         where: { id: booking.id },

@@ -1394,6 +1394,9 @@ export class AdminService {
               name: true,
               dateOfBirth: true,
               nidNumber: true,
+              vehicleOwnerNidName: true,
+              vehicleOwnerNidDateOfBirth: true,
+              vehicleOwnerNidNumber: true,
             },
           },
           vehicle: {
@@ -1475,6 +1478,9 @@ export class AdminService {
           message: 'Vehicle owners NID document fetched successfully.',
           data: {
             id: data.id,
+            name: data?.nid?.vehicleOwnerNidName ?? null,
+            dateOfBirth: data?.nid?.vehicleOwnerNidDateOfBirth ?? null,
+            nidNumber: data?.nid?.vehicleOwnerNidNumber ?? null,
             vehicleOwnersNidVerified: data.isVehicleOwnersNidVerified,
             vehicleOwnersNidFrontSideUrl:
               data?.vehicleOwnersNidFrontSideUrl ?? null,

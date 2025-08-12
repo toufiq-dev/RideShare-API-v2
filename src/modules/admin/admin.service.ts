@@ -2012,6 +2012,22 @@ export class AdminService {
         }
         break;
 
+      case DocumentType.VEHICLE_OWNERS_NID:
+        if (name || dateOfBirth || documentNumber) {
+          const nidUpdateData: any = {};
+          if (name) nidUpdateData.vehicleOwnerNidName = name;
+          if (dateOfBirth)
+            nidUpdateData.vehicleOwnerNidDateOfBirth = new Date(dateOfBirth);
+          if (documentNumber)
+            nidUpdateData.vehicleOwnerNidNumber = documentNumber;
+
+          await prisma.nid.update({
+            where: { pilotId: driverId },
+            data: nidUpdateData,
+          });
+        }
+        break;
+
       case DocumentType.DRIVING_LICENSE:
         if (name || dateOfBirth || documentNumber || expiryDate) {
           const dlUpdateData: any = {};

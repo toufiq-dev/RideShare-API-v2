@@ -1706,15 +1706,26 @@ export class RideService {
         booking.pilotId,
       );
 
-      const [lat, lng] = pilotLocation;
+      let lat: number;
+      let lng: number;
+      if (pilotLocation) {
+        [lat, lng] = pilotLocation;
+      }
+
+      console.log('***PilotLocationEdit***', pilotLocation, lat, lng);
 
       if (pickupLocation) {
-        const newDistanceDuration =
-          await this.fareService.calculateDistanceAndDuration(
-            { lat, lng },
-            pickupLocation,
-          );
-        pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
+        if (pilotLocation) {
+          const newDistanceDuration =
+            await this.fareService.calculateDistanceAndDuration(
+              { lat, lng },
+              pickupLocation,
+            );
+
+          pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
+        } else {
+          pickupInMinutes = randomInt(1, 4);
+        }
       } else if (dropLocation) {
         const newDistanceAndDuration =
           await this.fareService.calculateDistanceAndDuration(

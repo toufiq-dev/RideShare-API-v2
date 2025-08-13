@@ -1700,22 +1700,44 @@ export class RideService {
       let distanceKm: number;
       let durationMin: number;
       let pickupInMinutes: number = 0;
+
+      const pilotLocation = await this.redis.geoPos(
+        RedisKeys.PILOT_LOCATION,
+        booking.pilotId,
+      );
+
+      const [lat, lng] = pilotLocation;
+
       if (pickupLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          pickupLocation,
-          booking.dropLocation,
-        ));
-        pickupInMinutes = Math.ceil(durationMin);
+        const newDistanceDuration =
+          await this.fareService.calculateDistanceAndDuration(
+            { lat, lng },
+            pickupLocation,
+          );
+        pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
       } else if (dropLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          booking.pickupLocation,
-          dropLocation,
-        ));
+        const newDistanceAndDuration =
+          await this.fareService.calculateDistanceAndDuration(
+            booking.pickupLocation,
+            dropLocation,
+          );
+        distanceKm = newDistanceAndDuration.distanceKm;
+        durationMin = newDistanceAndDuration.durationMin;
       } else if (pickupLocation && dropLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          pickupLocation,
-          dropLocation,
-        ));
+        const newDistanceAndDuration =
+          await this.fareService.calculateDistanceAndDuration(
+            pickupLocation,
+            dropLocation,
+          );
+        distanceKm = newDistanceAndDuration.distanceKm;
+        durationMin = newDistanceAndDuration.durationMin;
+
+        const newPickupInMinutes =
+          await this.fareService.calculateDistanceAndDuration(
+            { lat, lng },
+            pickupLocation,
+          );
+        pickupInMinutes = Math.ceil(newPickupInMinutes.durationMin);
       }
 
       const originalPrice = this.fareService.estimateFare(
@@ -1785,11 +1807,6 @@ export class RideService {
       await this.rideNotificationService.notifyDriverForEditLocation(
         pilot.userId,
         payload,
-      );
-
-      const pilotLocation = await this.redis.geoPos(
-        RedisKeys.PILOT_LOCATION,
-        pilot.userId,
       );
 
       if (coupon) {
@@ -2193,13 +2210,13 @@ export class RideService {
     }
   }
 
-  private async newDistanceAndDuration(
-    origin: LocationDto,
-    destination: LocationDto,
-  ): Promise<{ distanceKm: number; durationMin: number }> {
-    const { distanceKm, durationMin } =
-      await this.fareService.calculateDistanceAndDuration(origin, destination);
+  // private async newDistanceAndDuration(
+  //   origin: LocationDto,
+  //   destination: LocationDto,
+  // ): Promise<{ distanceKm: number; durationMin: number }> {
+  //   const { distanceKm, durationMin } =
+  //     await this.fareService.calculateDistanceAndDuration(origin, destination);
 
-    return { distanceKm, durationMin };
-  }
+  //   return { distanceKm, durationMin };
+  // }
 }

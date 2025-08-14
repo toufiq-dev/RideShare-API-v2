@@ -579,8 +579,8 @@ export class RideService {
         bookingId: newBooking.id,
         pickupLocation,
         dropLocation,
-        originalPrice: Math.ceil(Number(booking.estimatedFare)),
-        discountedPrice: Math.ceil(Number(booking.discountedFare)),
+        originalPrice: Math.ceil(Number(newBooking.estimatedFare)),
+        discountedPrice: Math.ceil(Number(newBooking.discountedFare)),
         coupon: coupon || null,
         otherPassengerInfo:
           booking.rideType === RideType.OTHERS ? { name: booking.name } : null,
@@ -1433,7 +1433,7 @@ export class RideService {
       const bonusConfig = await this.prisma.systemConfig.findUnique({
         where: { key: this.bonusRechargeThreshold },
       });
-      const threshold = bonusConfig?.value['amount'] ?? 500;
+      const threshold = Number(bonusConfig?.value['amount'] ?? 300);
 
       // Check if balance is below threshold
       if (newBalance < threshold) {
@@ -1703,7 +1703,7 @@ export class RideService {
 
       const pilotLocation = await this.redis.geoPos(
         RedisKeys.PILOT_LOCATION,
-        booking.pilotId,
+        pilot.userId,
       );
 
       let lat: number;
@@ -1715,8 +1715,9 @@ export class RideService {
       console.log('***PilotLocationEdit***', pilotLocation, lat, lng);
 
       if (pickupLocation) {
+        let newDistanceDuration: any;
         if (pilotLocation) {
-          const newDistanceDuration =
+          newDistanceDuration =
             await this.fareService.calculateDistanceAndDuration(
               { lat, lng },
               pickupLocation,
@@ -1726,29 +1727,29 @@ export class RideService {
         } else {
           pickupInMinutes = randomInt(1, 4);
         }
+
+        distanceKm = newDistanceDuration.distanceKm;
+        durationMin = newDistanceDuration.durationMin;
       } else if (dropLocation) {
         const newDistanceAndDuration =
           await this.fareService.calculateDistanceAndDuration(
             booking.pickupLocation,
             dropLocation,
           );
+
         distanceKm = newDistanceAndDuration.distanceKm;
         durationMin = newDistanceAndDuration.durationMin;
       } else if (pickupLocation && dropLocation) {
-        const newDistanceAndDuration =
+        const newDistanceDuration =
           await this.fareService.calculateDistanceAndDuration(
             pickupLocation,
             dropLocation,
           );
-        distanceKm = newDistanceAndDuration.distanceKm;
-        durationMin = newDistanceAndDuration.durationMin;
 
-        const newPickupInMinutes =
-          await this.fareService.calculateDistanceAndDuration(
-            { lat, lng },
-            pickupLocation,
-          );
-        pickupInMinutes = Math.ceil(newPickupInMinutes.durationMin);
+        pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
+
+        distanceKm = newDistanceDuration.distanceKm;
+        durationMin = newDistanceDuration.durationMin;
       }
 
       const originalPrice = this.fareService.estimateFare(

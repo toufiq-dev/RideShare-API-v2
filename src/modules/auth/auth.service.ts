@@ -321,8 +321,14 @@ export class AuthService {
 
       const tokens = await this.generateTokens(user.id, user.role);
 
-      const { user: nestedUser, ...customerData } = customer;
-      customerData.status = nestedUser.status;
+      let userData = null;
+      if (role === UserRole.CUSTOMER) {
+        const { user: nestedUser, ...customerData } = customer;
+        userData = {
+          ...customerData,
+          status: nestedUser.status,
+        };
+      }
 
       return {
         message: 'OTP verified successfully.',
@@ -330,7 +336,7 @@ export class AuthService {
           ...tokens,
           user:
             role === UserRole.CUSTOMER
-              ? customerData
+              ? userData
               : role === UserRole.PILOT
                 ? pilot
                 : role === UserRole.PROMOTER

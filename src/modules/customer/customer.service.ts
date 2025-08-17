@@ -45,6 +45,11 @@ export class CustomerService {
           userId,
         },
         include: {
+          user: {
+            select: {
+              status: true,
+            },
+          },
           coupon: true,
           language: true,
           activeBooking: true,
@@ -142,9 +147,12 @@ export class CustomerService {
         data.activeBooking = payload;
       }
 
+      const { user: nestedUser, ...customerData } = data;
+      customerData.status = nestedUser.status;
+
       return {
         message: 'Customer fetched successfully.',
-        data,
+        data: customerData,
       };
     } catch (error) {
       console.error(error);

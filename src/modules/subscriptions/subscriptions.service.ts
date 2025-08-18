@@ -5,6 +5,7 @@ import {
   UpdateSubscriptionTypeDto,
 } from './dto/subscriptions.dto';
 import { plainToInstance } from 'class-transformer';
+import { TransactionStatus, TransactionType } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionsService {
@@ -91,12 +92,24 @@ export class SubscriptionsService {
       });
 
       // Create pilot wallet
-      const data = await this.prisma.pilotWallet.create({
-        data: {
-          pilotId: pilot.id,
-          balance: subscription.coins,
-          subscriptionId: subscription.id,
-        },
+      let data = null;
+      this.prisma.$transaction(async (tx) => {
+        data = await tx.pilotWallet.create({
+          data: {
+            pilotId: pilot.id,
+            balance: subscription.coins,
+            subscriptionId: subscription.id,
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            pilotId: pilot.id,
+            amount: subscription.coins,
+            type: TransactionType.ONBOARDING_OFFER,
+            status: TransactionStatus.SUCCESSFUL,
+          },
+        });
       });
 
       return {

@@ -224,14 +224,18 @@ export class AuthService {
 
         const tokens = await this.generateTokens(user.id, user.role);
 
-        const { user: nestedUser, ...customerData } = customer;
-        customerData.status = nestedUser.status;
+        let userData = null;
+        if (role === UserRole.CUSTOMER) {
+          const { user: nestedUser, ...customerData } = customer;
+          customerData.status = nestedUser.status;
+          userData = customerData;
+        }
 
         return {
           message: 'OTP verified successfully.',
           data: {
             ...tokens,
-            user: role === UserRole.CUSTOMER ? customerData : pilot,
+            user: userData,
           },
         };
       } // For App review in ios and android store END

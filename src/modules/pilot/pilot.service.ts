@@ -1544,17 +1544,17 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified number plate.');
       }
 
-      const vehicle = await this.prisma.vehicle.findFirst({
-        where: { pilotId: pilot.id },
-        select: {
-          regNo: true,
-        },
-      });
-      if (!vehicle) {
-        throw new BadRequestException(
-          'You did not upload any vehicle registration number.',
-        );
-      }
+      // const vehicle = await this.prisma.vehicle.findFirst({
+      //   where: { pilotId: pilot.id },
+      //   select: {
+      //     regNo: true,
+      //   },
+      // });
+      // if (!vehicle) {
+      //   throw new BadRequestException(
+      //     'You did not upload any vehicle registration number.',
+      //   );
+      // }
 
       // if (!vehicle.regNo.includes(numberPlate)) {
       //   throw new BadRequestException(

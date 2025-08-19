@@ -54,6 +54,30 @@ export class AzureService {
     }
   }
 
+  async deleteFile(fileUrl: string) {
+    try {
+      if (!fileUrl) return;
+
+      // Extract blob name from URL
+      const urlParts = fileUrl.split('/');
+      const blobName = urlParts[urlParts.length - 1];
+
+      const containerClient = this.blobServiceClient.getContainerClient(
+        this.containerName,
+      );
+
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      // Check if blob exists before deleting
+      const exists = await blockBlobClient.exists();
+      if (exists) {
+        await blockBlobClient.delete();
+      }
+    } catch (error) {
+      throw new Error('Failed to delete file from Azure Blob Storage');
+    }
+  }
+
   async extractTextFromImage(imageBuffer: Buffer): Promise<any> {
     try {
       const url = `${this.endpoint}vision/v3.2/read/analyze`;

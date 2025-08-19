@@ -192,6 +192,13 @@ export class AuthService {
         if (role === UserRole.CUSTOMER) {
           customer = await this.prisma.customer.findUnique({
             where: { phone },
+            include: {
+              user: {
+                select: {
+                  status: true,
+                },
+              },
+            },
           });
 
           user = await this.prisma.user.findUnique({
@@ -217,11 +224,18 @@ export class AuthService {
 
         const tokens = await this.generateTokens(user.id, user.role);
 
+        let userData = null;
+        if (role === UserRole.CUSTOMER) {
+          const { user: nestedUser, ...customerData } = customer;
+          customerData.status = nestedUser.status;
+          userData = customerData;
+        }
+
         return {
           message: 'OTP verified successfully.',
           data: {
             ...tokens,
-            user: role === UserRole.CUSTOMER ? customer : pilot,
+            user: userData,
           },
         };
       } // For App review in ios and android store END
@@ -311,13 +325,22 @@ export class AuthService {
 
       const tokens = await this.generateTokens(user.id, user.role);
 
+      let userData = null;
+      if (role === UserRole.CUSTOMER) {
+        const { user: nestedUser, ...customerData } = customer;
+        userData = {
+          ...customerData,
+          status: nestedUser.status,
+        };
+      }
+
       return {
         message: 'OTP verified successfully.',
         data: {
           ...tokens,
           user:
             role === UserRole.CUSTOMER
-              ? customer
+              ? userData
               : role === UserRole.PILOT
                 ? pilot
                 : role === UserRole.PROMOTER
@@ -612,6 +635,13 @@ export class AuthService {
     if (role === UserRole.CUSTOMER) {
       customer = await this.prisma.customer.findUnique({
         where: { phone },
+        include: {
+          user: {
+            select: {
+              status: true,
+            },
+          },
+        },
       });
 
       if (customer) {
@@ -644,6 +674,15 @@ export class AuthService {
             userId: user.id,
             languageId,
             couponId: coupon && coupon.id,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                role: true,
+                status: true,
+              },
+            },
           },
         });
       } else if (role === UserRole.PILOT && !pilot) {

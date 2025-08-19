@@ -1,9 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  AppPlatform,
-  VehicleTypeNameBD,
-  VerificationStatus,
-} from '@prisma/client';
+import { AppPlatform, VerificationStatus } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
@@ -91,7 +87,6 @@ export enum DocumentType {
   NUMBER_PLATE = 'NUMBER_PLATE',
   TAX_TOKEN = 'TAX_TOKEN',
   VEHICLE_OWNERS_NID = 'VEHICLE_OWNERS_NID',
-  POLICE_CLEARANCE = 'POLICE_CLEARANCE',
 }
 
 export class VerifyDriverDto {
@@ -149,7 +144,7 @@ export class VerifyDriverDto {
   })
   @IsString()
   @IsOptional()
-  vehicleType?: VehicleTypeNameBD;
+  vehicleTypeId?: string;
 
   @ApiProperty({
     description: 'Vehicle color',
@@ -160,19 +155,12 @@ export class VerifyDriverDto {
   vehicleColor?: string;
 
   @ApiProperty({
-    description: 'Vehicle model',
+    description: 'Vehicle reg date',
     required: false,
   })
   @IsString()
   @IsOptional()
-  vehicleModel?: string;
-
-  @ApiProperty({
-    description: 'Vehicle seat capacity',
-    required: false,
-  })
-  @IsOptional()
-  seatCapacity?: number;
+  vehicleRegDate?: string;
 
   @ApiProperty({
     description: 'Document expiry date',
@@ -181,14 +169,6 @@ export class VerifyDriverDto {
   @IsDateString()
   @IsOptional()
   expiryDate?: string;
-
-  @ApiProperty({
-    description: 'Document issue date',
-    required: false,
-  })
-  @IsDateString()
-  @IsOptional()
-  issueDate?: string;
 }
 
 export class AppUpdateDto {

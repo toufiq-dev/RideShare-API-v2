@@ -287,7 +287,6 @@ export class RideService {
 
     let booking: any;
     let originalPrice: number;
-    let price: number;
     let customer: any;
     let distanceKm: number;
     let durationMin: number;
@@ -352,15 +351,12 @@ export class RideService {
         discount = 0;
       }
 
-      price = 0;
-      if (originalPrice !== Number(vehicleType.minFare)) {
-        price =
-          discount && originalPrice > discount
-            ? originalPrice - discount
-            : originalPrice;
-      } else {
-        price = originalPrice;
-      }
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
+          : originalPrice;
+
+      const price = Math.max(discountedPrice, Number(vehicleType.minFare));
 
       booking = await this.prisma.booking.create({
         data: {
@@ -516,10 +512,20 @@ export class RideService {
         throw new BadRequestException('Invalid coupon discount');
       }
 
-      const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
+      let discount: number = Number(coupon.discount);
+      if (!discount) {
+        discount = 0;
+      }
+
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
           : originalPrice;
+
+      const price = Math.max(
+        discountedPrice,
+        Number(vehicle.vehicleTypeBD.minFare),
+      );
 
       const newBooking = await this.prisma.booking.create({
         data: {
@@ -573,8 +579,8 @@ export class RideService {
         bookingId: newBooking.id,
         pickupLocation,
         dropLocation,
-        originalPrice: Math.ceil(Number(booking.estimatedFare)),
-        discountedPrice: Math.ceil(Number(booking.discountedFare)),
+        originalPrice: Math.ceil(Number(newBooking.estimatedFare)),
+        discountedPrice: Math.ceil(Number(newBooking.discountedFare)),
         coupon: coupon || null,
         otherPassengerInfo:
           booking.rideType === RideType.OTHERS ? { name: booking.name } : null,
@@ -1427,7 +1433,7 @@ export class RideService {
       const bonusConfig = await this.prisma.systemConfig.findUnique({
         where: { key: this.bonusRechargeThreshold },
       });
-      const threshold = bonusConfig?.value['amount'] ?? 500;
+      const threshold = Number(bonusConfig?.value['amount'] ?? 300);
 
       // Check if balance is below threshold
       if (newBalance < threshold) {
@@ -1694,22 +1700,56 @@ export class RideService {
       let distanceKm: number;
       let durationMin: number;
       let pickupInMinutes: number = 0;
+
+      const pilotLocation = await this.redis.geoPos(
+        RedisKeys.PILOT_LOCATION,
+        pilot.userId,
+      );
+
+      let lat: number;
+      let lng: number;
+      if (pilotLocation) {
+        [lat, lng] = pilotLocation;
+      }
+
+      console.log('***PilotLocationEdit***', pilotLocation, lat, lng);
+
       if (pickupLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          pickupLocation,
-          booking.dropLocation,
-        ));
-        pickupInMinutes = Math.ceil(durationMin);
+        let newDistanceDuration: any;
+        if (pilotLocation) {
+          newDistanceDuration =
+            await this.fareService.calculateDistanceAndDuration(
+              { lat, lng },
+              pickupLocation,
+            );
+
+          pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
+        } else {
+          pickupInMinutes = randomInt(1, 4);
+        }
+
+        distanceKm = newDistanceDuration.distanceKm;
+        durationMin = newDistanceDuration.durationMin;
       } else if (dropLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          booking.pickupLocation,
-          dropLocation,
-        ));
+        const newDistanceAndDuration =
+          await this.fareService.calculateDistanceAndDuration(
+            booking.pickupLocation,
+            dropLocation,
+          );
+
+        distanceKm = newDistanceAndDuration.distanceKm;
+        durationMin = newDistanceAndDuration.durationMin;
       } else if (pickupLocation && dropLocation) {
-        ({ distanceKm, durationMin } = await this.newDistanceAndDuration(
-          pickupLocation,
-          dropLocation,
-        ));
+        const newDistanceDuration =
+          await this.fareService.calculateDistanceAndDuration(
+            pickupLocation,
+            dropLocation,
+          );
+
+        pickupInMinutes = Math.ceil(newDistanceDuration.durationMin);
+
+        distanceKm = newDistanceDuration.distanceKm;
+        durationMin = newDistanceDuration.durationMin;
       }
 
       const originalPrice = this.fareService.estimateFare(
@@ -1727,10 +1767,20 @@ export class RideService {
         throw new BadRequestException('Invalid coupon discount');
       }
 
-      const price =
-        coupon && originalPrice > Number(coupon.discount)
-          ? originalPrice - Number(coupon.discount)
+      let discount = Number(coupon?.discount);
+      if (!discount) {
+        discount = 0;
+      }
+
+      const discountedPrice =
+        discount && originalPrice > discount
+          ? originalPrice - discount
           : originalPrice;
+
+      const price = Math.max(
+        discountedPrice,
+        Number(pilot?.vehicle?.vehicleTypeBD.minFare),
+      );
 
       const updatedBooking = await this.prisma.booking.update({
         where: { id: booking.id },
@@ -1769,11 +1819,6 @@ export class RideService {
       await this.rideNotificationService.notifyDriverForEditLocation(
         pilot.userId,
         payload,
-      );
-
-      const pilotLocation = await this.redis.geoPos(
-        RedisKeys.PILOT_LOCATION,
-        pilot.userId,
       );
 
       if (coupon) {
@@ -2177,13 +2222,13 @@ export class RideService {
     }
   }
 
-  private async newDistanceAndDuration(
-    origin: LocationDto,
-    destination: LocationDto,
-  ): Promise<{ distanceKm: number; durationMin: number }> {
-    const { distanceKm, durationMin } =
-      await this.fareService.calculateDistanceAndDuration(origin, destination);
+  // private async newDistanceAndDuration(
+  //   origin: LocationDto,
+  //   destination: LocationDto,
+  // ): Promise<{ distanceKm: number; durationMin: number }> {
+  //   const { distanceKm, durationMin } =
+  //     await this.fareService.calculateDistanceAndDuration(origin, destination);
 
-    return { distanceKm, durationMin };
-  }
+  //   return { distanceKm, durationMin };
+  // }
 }

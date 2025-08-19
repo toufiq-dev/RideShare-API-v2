@@ -34,7 +34,7 @@ export class CustomerService {
   async getCustomer(userId: string) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: { id: userId, status: UserStatus.ACTIVE },
+        where: { id: userId },
       });
       if (!user) {
         throw new NotFoundException('User not found.');
@@ -45,6 +45,11 @@ export class CustomerService {
           userId,
         },
         include: {
+          user: {
+            select: {
+              status: true,
+            },
+          },
           coupon: true,
           language: true,
           activeBooking: true,
@@ -142,9 +147,12 @@ export class CustomerService {
         data.activeBooking = payload;
       }
 
+      const { user: nestedUser, ...customerData } = data;
+      customerData.status = nestedUser.status;
+
       return {
         message: 'Customer fetched successfully.',
-        data,
+        data: customerData,
       };
     } catch (error) {
       console.error(error);
@@ -487,16 +495,12 @@ export class CustomerService {
           Number(item.perKmRate),
         );
 
-        let price = null;
-        if (originalPrice <= Number(item.minFare)) {
-          price = originalPrice;
-        } else {
-          price =
-            customer?.coupon?.discount &&
-            originalPrice > customer.coupon.discount
-              ? originalPrice - Number(customer.coupon.discount)
-              : originalPrice;
-        }
+        let discountedPrice =
+          customer?.coupon?.discount && originalPrice > customer.coupon.discount
+            ? originalPrice - Number(customer.coupon.discount)
+            : originalPrice;
+
+        const price = Math.max(discountedPrice, Number(item.minFare));
 
         const nearbyPilots = await this.redis.geoRadius(
           RedisKeys.PILOT_LOCATION,

@@ -20,7 +20,6 @@ import {
   BDRCDto,
   NumberPlateDto,
   FreeRechargeDto,
-  BDNidTypeDto,
   BDNidType,
 } from './dto/pilot.dto';
 import {
@@ -952,6 +951,8 @@ export class PilotService {
           'Pilot already verified Driving License.',
         );
       }
+      const previousFrontUrl = pilot.dlFrontSideUrl;
+      const previousBackUrl = pilot.dlBackSideUrl;
 
       const frontSideBuffer = files.front[0].buffer;
       const frontSideUrl = await this.azureServicce.uploadFile(
@@ -1013,6 +1014,8 @@ export class PilotService {
         dateOfBirth: formattedDateOfBirth,
         licenseExpiryDate: formattedLicenseExpiryDate,
       };
+
+      await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
 
       return {
         message: 'Driving license data extracted successfully.',
@@ -1108,6 +1111,9 @@ export class PilotService {
         throw new BadRequestException('Vehicle owner already verified NID.');
       }
 
+      const previousFrontUrl = pilot.nidFrontSideUrl;
+      const previousBackUrl = pilot.nidBackSideUrl;
+
       const frontSideBuffer = files.front[0].buffer;
       const backSideBuffer = files.back[0].buffer;
 
@@ -1170,6 +1176,8 @@ export class PilotService {
       )
         .startOf('day')
         .toISOString();
+
+      await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
 
       return {
         message: 'NID data extracted successfully.',
@@ -1290,6 +1298,11 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified RC.');
       }
 
+      const previousFrontUrl = pilot.rcFrontSideUrl;
+      const previousBackUrl = pilot.rcBackSideUrl;
+
+      console.time(`imageToBlob_${pilot.phone}`);
+
       const frontSideBuffer = files.front[0].buffer;
       const frontSideUrl = await this.azureServicce.uploadFile(
         frontSideBuffer,
@@ -1322,6 +1335,9 @@ export class PilotService {
         data: updateData,
       });
 
+      console.timeEnd(`imageToBlob_${pilot.phone}`);
+
+      console.time(`extractRCData_${pilot.phone}`);
       let verificationResponse =
         await this.verificationService.extractRCData(frontSideBuffer);
 
@@ -1356,6 +1372,10 @@ export class PilotService {
         ...verificationResponse,
         registrationDate: formattedRegistrationDate,
       };
+
+      await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
+
+      console.timeEnd(`extractRCData_${pilot.phone}`);
 
       return {
         message: 'RC data extracted successfully.',
@@ -1460,6 +1480,8 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified number plate.');
       }
 
+      const previousNumberPlateUrl = pilot.numberPlateUrl;
+
       const numberPlateBuffer = file.buffer;
 
       const numberPlateUrl = await this.azureServicce.uploadFile(
@@ -1490,6 +1512,8 @@ export class PilotService {
           'Number plate is not valid or not readable.',
         );
       }
+
+      await this.deletePreviousFiles(previousNumberPlateUrl);
 
       return {
         message: 'Number plate uploaded successfully.',
@@ -1560,6 +1584,8 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified tax token.');
       }
 
+      const previousTaxTokenUrl = pilot.taxTokenUrl;
+
       const taxTokenBuffer = file.buffer;
 
       const taxTokenUrl = await this.azureServicce.uploadFile(
@@ -1589,6 +1615,8 @@ export class PilotService {
           'Tax token is not valid or not readable.',
         );
       }
+
+      await this.deletePreviousFiles(previousTaxTokenUrl);
 
       return {
         message: 'Tax token uploaded successfully.',
@@ -1834,6 +1862,26 @@ export class PilotService {
     });
 
     return vehicle;
+  }
+
+  private async deletePreviousFiles(frontUrl: string, backUrl?: string) {
+    try {
+      const deletePromises: Promise<void>[] = [];
+
+      if (frontUrl) {
+        deletePromises.push(this.azureServicce.deleteFile(frontUrl));
+      }
+
+      if (backUrl) {
+        deletePromises.push(this.azureServicce.deleteFile(backUrl));
+      }
+
+      if (deletePromises.length > 0) {
+        await Promise.allSettled(deletePromises);
+      }
+    } catch (error) {
+      console.error('Error cleaning up previous files', error);
+    }
   }
 
   private async verifyPancardName(verificationResponse: any, userId: string) {

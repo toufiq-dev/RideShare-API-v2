@@ -1111,8 +1111,15 @@ export class PilotService {
         throw new BadRequestException('Vehicle owner already verified NID.');
       }
 
-      const previousFrontUrl = pilot.nidFrontSideUrl;
-      const previousBackUrl = pilot.nidBackSideUrl;
+      let previousFrontUrl = null;
+      let previousBackUrl = null;
+      if (nidType === BDNidType.PILOT) {
+        previousFrontUrl = pilot.nidFrontSideUrl;
+        previousBackUrl = pilot.nidBackSideUrl;
+      } else if (nidType === BDNidType.VEHICLE_OWNER) {
+        previousFrontUrl = pilot.vehicleOwnersNidFrontSideUrl;
+        previousBackUrl = pilot.vehicleOwnersNidBackSideUrl;
+      }
 
       const frontSideBuffer = files.front[0].buffer;
       const backSideBuffer = files.back[0].buffer;

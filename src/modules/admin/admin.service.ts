@@ -1679,12 +1679,28 @@ export class AdminService {
       });
 
       if (
+        data.isSelfieVerified === VerificationStatus.REJECTED ||
+        data.isNidVerified === VerificationStatus.REJECTED ||
+        data.isDLVerified === VerificationStatus.REJECTED ||
+        data.isRCVerified === VerificationStatus.REJECTED ||
+        data.isNumberPlateVerified === VerificationStatus.REJECTED ||
+        data.isTaxTokenVerified === VerificationStatus.REJECTED ||
+        data.isVehicleOwnersNidVerified === VerificationStatus.REJECTED
+      ) {
+        await this.prisma.user.update({
+          where: { id: data.userId },
+          data: { status: UserStatus.ONBOARDING },
+        });
+      }
+
+      if (
         data.isSelfieVerified === VerificationStatus.APPROVED &&
         data.isNidVerified === VerificationStatus.APPROVED &&
         data.isDLVerified === VerificationStatus.APPROVED &&
         data.isRCVerified === VerificationStatus.APPROVED &&
         data.isNumberPlateVerified === VerificationStatus.APPROVED &&
-        data.isTaxTokenVerified === VerificationStatus.APPROVED
+        data.isTaxTokenVerified === VerificationStatus.APPROVED &&
+        data.isVehicleOwnersNidVerified === VerificationStatus.APPROVED
       ) {
         await this.prisma.user.update({
           where: { id: pilot.userId },

@@ -54,6 +54,44 @@ export class AzureService {
     }
   }
 
+  async deleteFile(fileUrl: string): Promise<void> {
+    try {
+      if (!fileUrl) {
+        console.log('No file URL provided for deletion');
+        return;
+      }
+
+      const url = new URL(fileUrl);
+      const pathParts = url.pathname.split('/').filter(Boolean);
+
+      if (pathParts.length < 2) {
+        console.log('Invalid URL structure:', fileUrl);
+        return;
+      }
+
+      const containerName = pathParts[0];
+      const blobName = decodeURIComponent(pathParts.slice(1).join('/'));
+
+      console.log(`Attempting to delete: ${containerName}/${blobName}`);
+
+      const containerClient =
+        this.blobServiceClient.getContainerClient(containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      const exists = await blockBlobClient.exists();
+      if (!exists) {
+        console.log(`Blob ${blobName} does not exist.`);
+        return;
+      }
+
+      await blockBlobClient.deleteIfExists({ deleteSnapshots: 'include' });
+      console.log(`Blob ${blobName} deleted successfully.`);
+    } catch (error) {
+      console.error('Error while deleting blob:', error);
+      throw new Error('Failed to delete file from Azure Blob Storage');
+    }
+  }
+
   async extractTextFromImage(imageBuffer: Buffer): Promise<any> {
     try {
       const url = `${this.endpoint}vision/v3.2/read/analyze`;

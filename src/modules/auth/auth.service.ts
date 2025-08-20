@@ -712,7 +712,7 @@ export class AuthService {
 
         await this.prisma.user.update({
           where: { id: user.id },
-          data: { status: UserStatus.IN_REVIEW },
+          data: { status: UserStatus.INACTIVE },
         });
 
         if (promoter) {

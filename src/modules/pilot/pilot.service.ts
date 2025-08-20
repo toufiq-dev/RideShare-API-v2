@@ -35,6 +35,7 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
+  UserStatus,
   VehicleTypeNameBD,
   VerificationStatus,
 } from '@prisma/client';
@@ -341,12 +342,19 @@ export class PilotService {
       const fileUrl = file.azureFileUrl;
 
       if (fileUrl) {
-        await this.prisma.pilot.update({
-          where: { userId },
-          data: {
-            selfieUrl: fileUrl,
-            isSelfieVerified: VerificationStatus.IN_PROGRESS,
-          },
+        await this.prisma.$transaction(async (tx) => {
+          await tx.pilot.update({
+            where: { userId },
+            data: {
+              selfieUrl: fileUrl,
+              isSelfieVerified: VerificationStatus.IN_PROGRESS,
+            },
+          });
+
+          await tx.user.update({
+            where: { id: userId },
+            data: { status: UserStatus.ONBOARDING },
+          });
         });
       }
 
@@ -1068,6 +1076,8 @@ export class PilotService {
         },
       });
 
+      await this.updateUserStatusAfterDocumentUpload(pilot.id);
+
       const transformedData = {
         name: data.nameOnLicense,
         dateOfBirth: data.dateOfBirth,
@@ -1239,12 +1249,14 @@ export class PilotService {
           },
         });
 
-        await this.prisma.pilot.update({
+        const updatedPilot = await this.prisma.pilot.update({
           where: { userId },
           data: {
             isNidVerified: VerificationStatus.IN_PROGRESS,
           },
         });
+
+        await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
       } else if (nidType === BDNidType.VEHICLE_OWNER) {
         data = await this.prisma.nid.upsert({
           where: { pilotId: pilot.id },
@@ -1261,12 +1273,14 @@ export class PilotService {
           },
         });
 
-        await this.prisma.pilot.update({
+        const updatedPilot = await this.prisma.pilot.update({
           where: { userId },
           data: {
             isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
           },
         });
+
+        await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
       }
 
       const transformedData = {
@@ -1414,7 +1428,7 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified RC.');
       }
 
-      await this.prisma.pilot.update({
+      const updatedPilot = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isRCVerified: VerificationStatus.IN_PROGRESS,
@@ -1466,6 +1480,8 @@ export class PilotService {
         registrationDate: data.registrationDate,
         vehicleColour: data.colour,
       };
+
+      await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
 
       return {
         message: 'RC data added successfully.',
@@ -1562,12 +1578,14 @@ export class PilotService {
       //   );
       // }
 
-      await this.prisma.pilot.update({
+      const updatedPilot = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
         },
       });
+
+      await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
 
       return {
         message: 'Number plate added successfully.',
@@ -1602,7 +1620,7 @@ export class PilotService {
         file.mimetype,
       );
 
-      await this.prisma.pilot.update({
+      const updatedPilot = await this.prisma.pilot.update({
         where: { userId },
         data: {
           taxTokenUrl,
@@ -1625,6 +1643,7 @@ export class PilotService {
 
       await this.deletePreviousFiles(previousTaxTokenUrl);
 
+      await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
       return {
         message: 'Tax token uploaded successfully.',
         data: verificationResponse,
@@ -1888,6 +1907,58 @@ export class PilotService {
       }
     } catch (error) {
       console.error('Error cleaning up previous files', error);
+    }
+  }
+
+  private async updateUserStatusToOnboarding(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+
+    if (user.status !== UserStatus.ONBOARDING) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { status: UserStatus.ONBOARDING },
+      });
+    }
+  }
+
+  private async updateUserStatusAfterDocumentUpload(pilotId: string) {
+    const pilot = await this.prisma.pilot.findUnique({
+      where: { id: pilotId },
+      select: {
+        userId: true,
+        isSelfieVerified: true,
+        isDLVerified: true,
+        isRCVerified: true,
+        isNidVerified: true,
+        isTaxTokenVerified: true,
+        isNumberPlateVerified: true,
+        isVehicleOwnersNidVerified: true,
+      },
+    });
+
+    if (!pilot) return;
+
+    // Check if all documents are in progress
+    const allDocumentsInProgress = [
+      pilot.isSelfieVerified,
+      pilot.isDLVerified,
+      pilot.isRCVerified,
+      pilot.isNidVerified,
+      pilot.isTaxTokenVerified,
+      pilot.isNumberPlateVerified,
+      pilot.isVehicleOwnersNidVerified,
+    ].every((status) => status === VerificationStatus.IN_PROGRESS);
+
+    if (allDocumentsInProgress) {
+      await this.prisma.user.update({
+        where: { id: pilot.userId },
+        data: { status: UserStatus.IN_REVIEW },
+      });
+    } else {
+      await this.prisma.user.update({
+        where: { id: pilot.userId },
+        data: { status: UserStatus.ONBOARDING },
+      });
     }
   }
 

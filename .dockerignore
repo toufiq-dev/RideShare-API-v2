@@ -1,0 +1,21 @@
+# Never send these to Docker
+node_modules
+.pnpm-store
+dist
+coverage
+tmp
+.logs
+.git
+.gitignore
+*.log
+
+# Local/editor cruft
+.vscode
+.idea
+
+# Env and secrets (copy what you actually need via env_file)
+.env*
+!.env.example
+
+# Docker build output
+docker-compose.override.yml

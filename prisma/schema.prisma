@@ -606,6 +606,7 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   IN_REVIEW
+  ONBOARDING
   INACTIVE
   SUSPENDED
   DELETED

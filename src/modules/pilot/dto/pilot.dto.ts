@@ -11,7 +11,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
-import { VehicleTypeNameBD } from '@prisma/client';
 
 export class DrivingLicenseDto {
   @ApiProperty({ description: 'Driving license number' })

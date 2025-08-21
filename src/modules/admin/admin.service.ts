@@ -548,7 +548,7 @@ export class AdminService {
       await this.prisma.user.update({
         where: { id: support.userId },
         data: {
-          status: UserStatus.INACTIVE,
+          status: UserStatus.DELETED,
         },
       });
 

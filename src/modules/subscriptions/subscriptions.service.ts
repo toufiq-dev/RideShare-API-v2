@@ -4,8 +4,10 @@ import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
 } from './dto/subscriptions.dto';
-import { plainToInstance } from 'class-transformer';
-import { TransactionStatus, TransactionType } from '@prisma/client';
+import {
+  TransactionType,
+  TransactionStatus,
+} from 'src/common/types/common.type';
 
 @Injectable()
 export class SubscriptionsService {

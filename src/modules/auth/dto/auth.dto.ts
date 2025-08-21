@@ -7,7 +7,20 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMultiCountryPhoneNumber } from '../validator/IsMultiCountryPhoneNumber';
-import { Country, UserRole } from '@prisma/client';
+
+enum Country {
+  BD = 'BD',
+  IN = 'IN',
+}
+
+export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  ADMIN = 'ADMIN',
+  CUSTOMER = 'CUSTOMER',
+  PILOT = 'PILOT',
+  SUPPORT = 'SUPPORT',
+  PROMOTER = 'PROMOTER',
+}
 
 export class SendOtpDto {
   @ApiProperty({ description: 'Language Name' })

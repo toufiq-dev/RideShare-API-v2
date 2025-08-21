@@ -1,13 +1,12 @@
 FROM node:22-alpine AS builder
 
-# Install pnpm
-RUN npm install -g pnpm
-
 WORKDIR /app
 
+# Install pnpm
+RUN npm i -g pnpm
+
 # Copy package files
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
+COPY package*.json pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -16,7 +15,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Generate Prisma client
-RUN pnpm prisma generate
+RUN pnpm dlx prisma generate
 
 # Build the application
 RUN pnpm run build
@@ -44,7 +43,6 @@ RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/static ./static
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create logs directory
 RUN mkdir -p logs && chown -R nestjs:nodejs logs

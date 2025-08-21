@@ -24,7 +24,7 @@ services:
       dockerfile: Dockerfile
     container_name: fairdrive-api-legacy
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     env_file:
       - .env.production
     depends_on:
@@ -44,7 +44,7 @@ services:
       start_period: 60s
     networks:
       - fairdrive-network
-    command: sh -c "pnpm prisma generate && pnpm prisma migrate deploy && pnpm run seed && node dist/src/main"
+    command: ["node", "dist/src/main"] 
 
   # Production Latest API (Port 3001)
   fairdrive-api-latest:
@@ -53,7 +53,7 @@ services:
       dockerfile: Dockerfile.v1
     container_name: fairdrive-api-latest
     ports:
-      - "127.0.0.1:3001:3000"
+      - "3001:3000"
     env_file:
       - .env.production.v1
     depends_on:
@@ -66,14 +66,14 @@ services:
           memory: 1G
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     networks:
       - fairdrive-network
-    command: sh -c "pnpm prisma generate && pnpm prisma migrate deploy && pnpm run seed && node dist/src/main"
+    command: ["node", "dist/src/main"]
 
   # Development API (Port 8080)
   fairdrive-api-dev:
@@ -82,7 +82,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: fairdrive-api-dev
     ports:
-      - "127.0.0.1:8080:3000"
+      - "8080:3000"
     env_file:
       - .env.development
     volumes:
@@ -94,14 +94,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     networks:
       - fairdrive-network
-    command: sh -c "pnpm prisma generate && pnpm prisma migrate deploy && pnpm run seed && pnpm run start:dev"
+    command: ["pnpm", "run", "start:dev"]
 
   # Prometheus for monitoring
   prometheus:

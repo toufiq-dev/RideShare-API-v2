@@ -25,23 +25,24 @@ model SystemConfig {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  role           UserRole
-  email          String?         @unique
-  status         UserStatus      @default(ACTIVE)
-  country        Country?
-  metadata       Json?
-  lastLogin      DateTime?
-  createdAt      DateTime        @default(now()) @db.Timestamptz
-  updatedAt      DateTime        @updatedAt @db.Timestamptz
-  admin          Admin?
-  customer       Customer?
-  deviceTokens   DeviceToken[]
-  pilot          Pilot?
-  support        Support?
-  supportTickets SupportTicket[]
-  superAdmin     SuperAdmin?
-  promoter       Promoter?
+  id                     String                 @id @default(uuid())
+  role                   UserRole
+  email                  String?                @unique
+  status                 UserStatus             @default(ACTIVE)
+  country                Country?
+  metadata               Json?
+  lastLogin              DateTime?
+  createdAt              DateTime               @default(now()) @db.Timestamptz
+  updatedAt              DateTime               @updatedAt @db.Timestamptz
+  admin                  Admin?
+  customer               Customer?
+  deviceTokens           DeviceToken[]
+  pilot                  Pilot?
+  support                Support?
+  supportTickets         SupportTicket[]
+  superAdmin             SuperAdmin?
+  promoter               Promoter?
+  announcementDeliveries AnnouncementDelivery[]
 }
 
 model DeviceToken {
@@ -583,6 +584,34 @@ model VideoProgress {
   @@unique([pilotId, videoId])
 }
 
+model Announcement {
+  id          String                 @id @default(uuid())
+  title       String
+  message     String
+  audience    AnnouncementAudience
+  schedule    DateTime?              @db.Timestamptz
+  bannerUrl   String?
+  impressions Int                    @default(0)
+  createdBy   String // Link to Admin/SuperAdmin userId
+  status      AnnouncementStatus     @default(DRAFT)
+  createdAt   DateTime               @default(now()) @db.Timestamptz
+  updatedAt   DateTime               @updatedAt @db.Timestamptz
+  deliveries  AnnouncementDelivery[] // Relation to track which users received this announcement
+}
+
+model AnnouncementDelivery {
+  id             String             @id @default(uuid())
+  announcementId String
+  userId         String
+  sentAt         DateTime           @db.Timestamptz
+  viewedAt       DateTime?          @db.Timestamptz // For in-app banners
+  status         AnnouncementStatus @default(SCHEDULED)
+  createdAt      DateTime           @default(now()) @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @db.Timestamptz
+  announcement   Announcement       @relation(fields: [announcementId], references: [id])
+  user           User               @relation(fields: [userId], references: [id])
+}
+
 enum Country {
   BD
   IN
@@ -707,4 +736,18 @@ enum SupportStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum AnnouncementAudience {
+  ALL
+  CUSTOM
+  DRIVERS
+  CUSTOMERS
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
 }

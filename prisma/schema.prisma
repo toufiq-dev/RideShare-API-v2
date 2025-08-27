@@ -181,6 +181,8 @@ model Pilot {
   id                              String             @id @default(uuid())
   phone                           String             @unique
   userId                          String             @unique
+  name                            String?
+  city                            String?
   selfieUrl                       String?
   dlFrontSideUrl                  String?
   dlBackSideUrl                   String?

@@ -10,6 +10,7 @@ import {
   Query,
   DefaultValuePipe,
   ParseIntPipe,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -37,7 +38,7 @@ export class RideController {
   @Roles(UserRole.CUSTOMER)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('request')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create ride request' })
   @ApiBody({ type: CreateRideRequestDto })
@@ -54,7 +55,7 @@ export class RideController {
   @Roles(UserRole.CUSTOMER)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('request-again')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create ride request again' })
   @ApiBody({ type: RideRequestAgainDto })
@@ -119,7 +120,7 @@ export class RideController {
   @Roles(UserRole.CUSTOMER, UserRole.PILOT)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('cancel')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancel ride request' })
   @ApiBody({ type: CancelRideRequestDto })
@@ -136,7 +137,7 @@ export class RideController {
   @Roles(UserRole.CUSTOMER)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch('edit/:bookingId')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Edit ride request' })
   @ApiBody({ type: CancelRideRequestDto })
@@ -155,7 +156,7 @@ export class RideController {
   @Roles(UserRole.PILOT, UserRole.CUSTOMER)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rating')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Rating a ride' })
   async ratingRide(
@@ -169,7 +170,7 @@ export class RideController {
   @Roles(UserRole.PILOT)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('history')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get ride history' })
   async getRideHistory(
@@ -191,7 +192,7 @@ export class RideController {
   @Roles(UserRole.CUSTOMER)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('trips')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my trips' })
   async getMyTrips(

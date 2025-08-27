@@ -1773,7 +1773,183 @@ export class AdminService {
     }
   }
 
-  async uploadDocuments(
+  async driverDocumentsUpload(
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    driverId: string,
+    documentType: DocumentType,
+  ) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id: driverId },
+        select: {
+          isDLVerified: true,
+          isRCVerified: true,
+          isNidVerified: true,
+          isVehicleOwnersNidVerified: true,
+          isNumberPlateVerified: true,
+          isTaxTokenVerified: true,
+          isSelfieVerified: true,
+        },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Driver not found');
+      }
+
+      const updateData: any = {};
+
+      if (
+        documentType === DocumentType.DRIVING_LICENSE &&
+        pilot.isDLVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const dlFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.dlFrontSideUrl = dlFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const dlBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.dlBackSideUrl = dlBackSideUrl;
+        }
+      } else if (
+        documentType === DocumentType.REGISTRATION_CERTIFICATE &&
+        pilot.isRCVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const rcFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.rcFrontSideUrl = rcFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const rcBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.rcBackSideUrl = rcBackSideUrl;
+        }
+      } else if (
+        documentType === DocumentType.NID &&
+        pilot.isNidVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const nidFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.nidFrontSideUrl = nidFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const nidBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.nidBackSideUrl = nidBackSideUrl;
+        }
+      } else if (
+        documentType === DocumentType.VEHICLE_OWNERS_NID &&
+        pilot.isVehicleOwnersNidVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const vehicleOwnersNidFrontSideUrl =
+            await this.azureService.uploadFile(
+              files.front[0].buffer,
+              files.front[0].originalname,
+              driverId,
+              files.front[0].mimetype,
+            );
+          updateData.vehicleOwnersNidFrontSideUrl =
+            vehicleOwnersNidFrontSideUrl;
+        }
+        if (files?.back?.[0]) {
+          const vehicleOwnersNidBackSideUrl =
+            await this.azureService.uploadFile(
+              files.back[0].buffer,
+              files.back[0].originalname,
+              driverId,
+              files.back[0].mimetype,
+            );
+          updateData.vehicleOwnersNidBackSideUrl = vehicleOwnersNidBackSideUrl;
+        }
+      } else if (
+        documentType === DocumentType.NUMBER_PLATE &&
+        pilot.isNumberPlateVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const numberPlateUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.numberPlateUrl = numberPlateUrl;
+        }
+      } else if (
+        documentType === DocumentType.TAX_TOKEN &&
+        pilot.isTaxTokenVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const taxTokenUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.taxTokenUrl = taxTokenUrl;
+        }
+      } else if (
+        documentType === DocumentType.SELFIE &&
+        pilot.isSelfieVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const selfieUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.selfieUrl = selfieUrl;
+        }
+      } else {
+        throw new BadRequestException(
+          'Document type is already approved or invalid document type',
+        );
+      }
+      const updatedPilot = await this.prisma.pilot.update({
+        where: { id: driverId },
+        data: updateData,
+      });
+      return {
+        message: 'Documents uploaded successfully',
+        data: updatedPilot,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async promoterDocumentsUpload(
     files: {
       livePhoto?: Express.Multer.File[];
       idPhoto?: Express.Multer.File[];

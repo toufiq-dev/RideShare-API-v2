@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   Query,
   UploadedFiles,
+  HttpStatus,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -47,7 +48,7 @@ export class PilotController {
   constructor(private readonly pilotService: PilotService) {}
 
   @Get()
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get pilot' })
   async getPilot(@CurrentUser('userId') userId: string) {
@@ -55,7 +56,7 @@ export class PilotController {
   }
 
   @Post('phone/otp')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send otp to Update phone' })
   async updatePhone(@CurrentUser('userId') userId: string) {
@@ -63,7 +64,7 @@ export class PilotController {
   }
 
   @Post('phone/verify')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
   async verifyPhone(
@@ -74,7 +75,7 @@ export class PilotController {
   }
 
   @Post('driving-license')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license of pilot' })
   @UseInterceptors(FileInterceptor('file'))
@@ -86,7 +87,7 @@ export class PilotController {
   }
 
   @Post('driving-license/manual')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
   @ApiBody({ type: DrivingLicenseDto })
@@ -101,7 +102,7 @@ export class PilotController {
   }
 
   @Post('live-selfie')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload live selfie for pilot' })
   @UseInterceptors(CustomFileInterceptor)
@@ -113,7 +114,7 @@ export class PilotController {
   }
 
   @Post('vehicle-rc')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Vehicle RC' })
   @UseInterceptors(FileInterceptor('file'))
@@ -125,7 +126,7 @@ export class PilotController {
   }
 
   @Post('vehicle-rc/manual')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Vehicle RC' })
   @ApiBody({ type: VehicleRcDto })
@@ -137,7 +138,7 @@ export class PilotController {
   }
 
   @Post('pancard')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Pancard of pilot' })
   @UseInterceptors(FileInterceptor('file'))
@@ -149,7 +150,7 @@ export class PilotController {
   }
 
   @Post('pancard/manual')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Pancard of pilot' })
   @ApiBody({ type: PancardDto })
@@ -161,7 +162,7 @@ export class PilotController {
   }
 
   @Post('aadhaar')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Aadhaar card verification document' })
   @UseInterceptors(FileInterceptor('file'))
@@ -173,7 +174,7 @@ export class PilotController {
   }
 
   @Post('aadhaar/manual')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Aadhaar card verification' })
   @ApiBody({ type: VerifyAadhaarDto })
@@ -188,7 +189,7 @@ export class PilotController {
   }
 
   @Post('aadhaar/verify')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Aadhaar card verification' })
   @ApiBody({ type: VerifyAadhaarDto })
@@ -244,7 +245,7 @@ export class PilotController {
   }
 
   @Post('online')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Make Pilot available for trips' })
   async beOnline(
@@ -255,7 +256,7 @@ export class PilotController {
   }
 
   @Post('bd-license')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license photo' })
   @UseInterceptors(
@@ -273,7 +274,7 @@ export class PilotController {
   }
 
   @Post('bd-license/confirmation')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
   @ApiBody({ type: BDLicenseDto })
@@ -285,7 +286,7 @@ export class PilotController {
   }
 
   @Post('bd-nid')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload NID card photo' })
   @UseInterceptors(
@@ -304,7 +305,7 @@ export class PilotController {
   }
 
   @Post('bd-nid/confirmation')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give NID card and dob of pilot' })
   @ApiBody({ type: BDNidDto })
@@ -317,7 +318,7 @@ export class PilotController {
   }
 
   @Post('bd-rc')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
   @UseInterceptors(
@@ -335,7 +336,7 @@ export class PilotController {
   }
 
   @Post('bd-rc/confirmation')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give RC card and dob of pilot' })
   @ApiBody({ type: BDRCDto })
@@ -347,7 +348,7 @@ export class PilotController {
   }
 
   @Post('number-plate')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Number plate photo' })
   @UseInterceptors(FileInterceptor('file'))
@@ -359,7 +360,7 @@ export class PilotController {
   }
 
   @Post('number-plate/confirmation')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Number plate of pilot' })
   @ApiBody({ type: NumberPlateDto })
@@ -371,7 +372,7 @@ export class PilotController {
   }
 
   @Post('tax-token')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Tax token photo' })
   @UseInterceptors(FileInterceptor('file'))

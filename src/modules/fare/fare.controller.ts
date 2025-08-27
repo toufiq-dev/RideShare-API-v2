@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { FareService } from './fare.service';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 import { UpdateFareDto } from './dto/fare.dto';
@@ -8,7 +8,7 @@ export class FareController {
   constructor(private readonly fareService: FareService) {}
 
   @Post('update-fare')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update Fare' })
   @ApiBody({ type: UpdateFareDto })
   async updateFare(@Body() updateFareDto: UpdateFareDto) {

@@ -1783,12 +1783,23 @@ export class AdminService {
         where: { id: driverId },
         select: {
           isDLVerified: true,
+          dlFrontSideUrl: true,
+          dlBackSideUrl: true,
           isRCVerified: true,
+          rcFrontSideUrl: true,
+          rcBackSideUrl: true,
           isNidVerified: true,
+          nidFrontSideUrl: true,
+          nidBackSideUrl: true,
           isVehicleOwnersNidVerified: true,
+          vehicleOwnersNidFrontSideUrl: true,
+          vehicleOwnersNidBackSideUrl: true,
           isNumberPlateVerified: true,
+          numberPlateUrl: true,
           isTaxTokenVerified: true,
+          taxTokenUrl: true,
           isSelfieVerified: true,
+          selfieUrl: true,
         },
       });
       if (!pilot) {
@@ -1820,6 +1831,13 @@ export class AdminService {
           );
           updateData.dlBackSideUrl = dlBackSideUrl;
         }
+
+        if (pilot.dlFrontSideUrl || pilot.dlBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.dlFrontSideUrl,
+            pilot.dlBackSideUrl,
+          );
+        }
       } else if (
         documentType === DocumentType.REGISTRATION_CERTIFICATE &&
         pilot.isRCVerified !== VerificationStatus.APPROVED
@@ -1843,6 +1861,13 @@ export class AdminService {
           );
           updateData.rcBackSideUrl = rcBackSideUrl;
         }
+
+        if (pilot.rcFrontSideUrl || pilot.rcBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.rcFrontSideUrl,
+            pilot.rcBackSideUrl,
+          );
+        }
       } else if (
         documentType === DocumentType.NID &&
         pilot.isNidVerified !== VerificationStatus.APPROVED
@@ -1865,6 +1890,13 @@ export class AdminService {
             files.back[0].mimetype,
           );
           updateData.nidBackSideUrl = nidBackSideUrl;
+        }
+
+        if (pilot.nidFrontSideUrl || pilot.nidBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.nidFrontSideUrl,
+            pilot.nidBackSideUrl,
+          );
         }
       } else if (
         documentType === DocumentType.VEHICLE_OWNERS_NID &&
@@ -1891,6 +1923,16 @@ export class AdminService {
             );
           updateData.vehicleOwnersNidBackSideUrl = vehicleOwnersNidBackSideUrl;
         }
+
+        if (
+          pilot.vehicleOwnersNidFrontSideUrl ||
+          pilot.vehicleOwnersNidBackSideUrl
+        ) {
+          await this.deletePreviousFiles(
+            pilot.vehicleOwnersNidFrontSideUrl,
+            pilot.vehicleOwnersNidBackSideUrl,
+          );
+        }
       } else if (
         documentType === DocumentType.NUMBER_PLATE &&
         pilot.isNumberPlateVerified !== VerificationStatus.APPROVED
@@ -1903,6 +1945,10 @@ export class AdminService {
             files.front[0].mimetype,
           );
           updateData.numberPlateUrl = numberPlateUrl;
+        }
+
+        if (pilot.numberPlateUrl) {
+          await this.deletePreviousFiles(pilot.numberPlateUrl);
         }
       } else if (
         documentType === DocumentType.TAX_TOKEN &&
@@ -1917,6 +1963,10 @@ export class AdminService {
           );
           updateData.taxTokenUrl = taxTokenUrl;
         }
+
+        if (pilot.taxTokenUrl) {
+          await this.deletePreviousFiles(pilot.taxTokenUrl);
+        }
       } else if (
         documentType === DocumentType.SELFIE &&
         pilot.isSelfieVerified !== VerificationStatus.APPROVED
@@ -1929,6 +1979,10 @@ export class AdminService {
             files.front[0].mimetype,
           );
           updateData.selfieUrl = selfieUrl;
+        }
+
+        if (pilot.selfieUrl) {
+          await this.deletePreviousFiles(pilot.selfieUrl);
         }
       } else {
         throw new BadRequestException(
@@ -2291,6 +2345,26 @@ export class AdminService {
       default:
         // No additional fields to update for other document types
         break;
+    }
+  }
+
+  private async deletePreviousFiles(frontUrl: string, backUrl?: string) {
+    try {
+      const deletePromises: Promise<void>[] = [];
+
+      if (frontUrl) {
+        deletePromises.push(this.azureService.deleteFile(frontUrl));
+      }
+
+      if (backUrl) {
+        deletePromises.push(this.azureService.deleteFile(backUrl));
+      }
+
+      if (deletePromises.length > 0) {
+        await Promise.allSettled(deletePromises);
+      }
+    } catch (error) {
+      console.error('Error cleaning up previous files', error);
     }
   }
 }

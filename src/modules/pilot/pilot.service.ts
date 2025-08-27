@@ -50,7 +50,7 @@ export class PilotService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly azureServicce: AzureService,
+    private readonly azureService: AzureService,
     private readonly verificationService: VerificationService,
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
@@ -963,7 +963,7 @@ export class PilotService {
       const previousBackUrl = pilot.dlBackSideUrl;
 
       const frontSideBuffer = files.front[0].buffer;
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
@@ -973,7 +973,7 @@ export class PilotService {
       let backSideUrl = null;
       if (files.back) {
         const backSideBuffer = files.back[0].buffer;
-        backSideUrl = await this.azureServicce.uploadFile(
+        backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
           userId,
@@ -1134,14 +1134,14 @@ export class PilotService {
       const frontSideBuffer = files.front[0].buffer;
       const backSideBuffer = files.back[0].buffer;
 
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
         files.front[0].mimetype,
       );
 
-      const backSideUrl = await this.azureServicce.uploadFile(
+      const backSideUrl = await this.azureService.uploadFile(
         backSideBuffer,
         files.back[0].originalname,
         userId,
@@ -1325,7 +1325,7 @@ export class PilotService {
       console.time(`imageToBlob_${pilot.phone}`);
 
       const frontSideBuffer = files.front[0].buffer;
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
@@ -1335,7 +1335,7 @@ export class PilotService {
       let backSideUrl = null;
       if (files.back) {
         const backSideBuffer = files.back[0].buffer;
-        backSideUrl = await this.azureServicce.uploadFile(
+        backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
           userId,
@@ -1507,7 +1507,7 @@ export class PilotService {
 
       const numberPlateBuffer = file.buffer;
 
-      const numberPlateUrl = await this.azureServicce.uploadFile(
+      const numberPlateUrl = await this.azureService.uploadFile(
         numberPlateBuffer,
         file.originalname,
         userId,
@@ -1613,7 +1613,7 @@ export class PilotService {
 
       const taxTokenBuffer = file.buffer;
 
-      const taxTokenUrl = await this.azureServicce.uploadFile(
+      const taxTokenUrl = await this.azureService.uploadFile(
         taxTokenBuffer,
         file.originalname,
         userId,
@@ -1683,7 +1683,7 @@ export class PilotService {
   }
 
   private async getOcrResult(buffer: any) {
-    const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
+    const ocrResult = await this.azureService.extractTextFromImage(buffer);
 
     if (!ocrResult?.analyzeResult?.readResults?.[0]?.lines) {
       throw new BadRequestException('Unable to process the image.');
@@ -1895,11 +1895,11 @@ export class PilotService {
       const deletePromises: Promise<void>[] = [];
 
       if (frontUrl) {
-        deletePromises.push(this.azureServicce.deleteFile(frontUrl));
+        deletePromises.push(this.azureService.deleteFile(frontUrl));
       }
 
       if (backUrl) {
-        deletePromises.push(this.azureServicce.deleteFile(backUrl));
+        deletePromises.push(this.azureService.deleteFile(backUrl));
       }
 
       if (deletePromises.length > 0) {

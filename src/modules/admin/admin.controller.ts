@@ -14,6 +14,8 @@ import {
   UploadedFiles,
   UseInterceptors,
   Delete,
+  ParseUUIDPipe,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -302,7 +304,8 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async getDriverDocument(
     @Param('driverId') driverId: string,
-    @Query('documentType') documentType: DocumentType,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
   ) {
     return await this.adminService.getDriverDocument(driverId, documentType);
   }
@@ -325,7 +328,8 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async verifyDriver(
     @Param('driverId') driverId: string,
-    @Query('documentType') documentType: DocumentType,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
     @Body() verifyDriverDto: VerifyDriverDto,
     @CurrentUser('userId') userId: string,
   ) {
@@ -351,7 +355,7 @@ export class AdminController {
     return await this.adminService.getNumberPlates();
   }
 
-  @Post('document-upload')
+  @Post('document-upload/:driverId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Upload Document of driver' })
   @UseInterceptors(
@@ -363,8 +367,9 @@ export class AdminController {
   async driverDocumentsUpload(
     @UploadedFiles()
     files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
-    @Param('driverId') driverId: string,
-    @Query('documentType') documentType: DocumentType,
+    @Param('driverId', ParseUUIDPipe) driverId: string,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
   ) {
     return await this.adminService.driverDocumentsUpload(
       files,

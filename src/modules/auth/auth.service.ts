@@ -92,13 +92,13 @@ export class AuthService {
       const otpSent = await this.redis.get(`otpSent:${phone}`);
       if (otpSent) {
         throw new BadRequestException(
-          'OTP already sent. Please wait for 2 minutes.',
+          'OTP already sent. Please wait for 1 minute.',
         );
       }
 
       const otp = randomInt(1000, 10000).toString();
       // Disable this one when we are using OTP service
-      await this.redis.set(`otp:${phone}`, otp, 120);
+      await this.redis.set(`otp:${phone}`, otp, 60);
       await this.redis.set(`countryCode:${phone}`, countryCode, 180);
       await this.redis.set(`languageId:${phone}`, Language.id, 180);
       await this.redis.set(`referralCode:${phone}`, referralCode, 180);
@@ -130,7 +130,7 @@ export class AuthService {
           throw new BadRequestException('Failed to send OTP.');
         }
 
-        await this.redis.set(`otpSent:${phone}`, 'true', 180);
+        await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
         return {
           message: 'OTP sent to your phone successfully.',

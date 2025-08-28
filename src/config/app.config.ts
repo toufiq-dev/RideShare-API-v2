@@ -43,6 +43,10 @@ export default () => ({
       model: process.env.AZURE_MODEL_NAME,
       apiVersion: process.env.AZURE_API_VERSION,
     },
+    communication: {
+      connectionString: process.env.AZURE_COMMUNICATION_CONNECTION_STRING,
+      senderAddress: process.env.AZURE_COMMUNICATION_SENDER_ADDRESS,
+    },
   },
   file: {
     allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],

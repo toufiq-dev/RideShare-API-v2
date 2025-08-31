@@ -18,7 +18,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { RideType, UserStatus, PilotStatus } from '@prisma/client';
+import { RideType, PilotStatus } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 
@@ -272,7 +272,10 @@ export class CustomerService {
       if (!storedOtp || storedOtp !== otp) {
         throw new UnauthorizedException('Invalid or expired OTP.');
       }
-      await this.redis.del(`otp:${userId}`);
+      const cachedOtp: any = await this.redis.del(`otp:${userId}`);
+      if (!cachedOtp) {
+        throw new UnauthorizedException('Invalid or expired OTP.');
+      }
 
       const data = await this.prisma.customer.update({
         where: {

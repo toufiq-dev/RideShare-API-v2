@@ -1534,6 +1534,7 @@ export class RideService {
           id: bookingId,
         },
         select: {
+          status: true,
           pilotId: true,
           customerId: true,
           customer: {
@@ -1558,6 +1559,15 @@ export class RideService {
       ) {
         throw new UnauthorizedException(
           'You are not authorized to cancel this booking.',
+        );
+      }
+
+      if (
+        booking.customer.userId === userId &&
+        booking.status === BookingStatus.ONGOING
+      ) {
+        throw new BadRequestException(
+          'Cannot cancel an ongoing ride. Please contact support.',
         );
       }
 

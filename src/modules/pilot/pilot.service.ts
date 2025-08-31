@@ -1921,7 +1921,7 @@ export class PilotService {
     }
   }
 
-  private async updateUserStatusAfterDocumentUpload(pilotId: string) {
+  public async updateUserStatusAfterDocumentUpload(pilotId: string) {
     const pilot = await this.prisma.pilot.findUnique({
       where: { id: pilotId },
       select: {

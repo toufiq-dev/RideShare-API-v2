@@ -18,5 +18,6 @@ import { OTPService } from 'src/core/utils/otp.util';
     VerificationService,
     OTPService,
   ],
+  exports: [PilotService],
 })
 export class PilotModule {}

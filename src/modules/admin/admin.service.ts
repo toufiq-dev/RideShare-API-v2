@@ -39,6 +39,9 @@ import { AzureService } from 'src/core/utils/azure.util';
 import { EmailService } from '../email/email.service';
 import { SendOtpDto } from '../email/dto/email.dto';
 import { DocumentValidation } from './admin.constants';
+import { VerificationService } from 'src/core/utils/verification.util';
+import moment from 'moment-timezone';
+import { PilotService } from '../pilot/pilot.service';
 
 @Injectable()
 export class AdminService {
@@ -74,6 +77,8 @@ export class AdminService {
     private readonly redis: RedisService,
     private readonly azureService: AzureService,
     private readonly emailService: EmailService,
+    private readonly verificationService: VerificationService,
+    private readonly pilotService: PilotService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -1782,6 +1787,7 @@ export class AdminService {
       const pilot = await this.prisma.pilot.findUnique({
         where: { id: driverId },
         select: {
+          id: true,
           isDLVerified: true,
           dlFrontSideUrl: true,
           dlBackSideUrl: true,
@@ -1838,6 +1844,61 @@ export class AdminService {
             pilot.dlBackSideUrl,
           );
         }
+
+        let verificationResponse = await this.verificationService.extractDLData(
+          files.front[0].buffer,
+        );
+
+        if (!verificationResponse) {
+          throw new BadRequestException(
+            'Failed to extract driving license data.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+        const formattedLicenseExpiryDate = moment(
+          verificationResponse?.licenseExpiryDate,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        verificationResponse = {
+          ...verificationResponse,
+          dateOfBirth: formattedDateOfBirth,
+          licenseExpiryDate: formattedLicenseExpiryDate,
+        };
+
+        const data = await this.prisma.drivingLicense.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            licenseNumber: verificationResponse.licenseNumber,
+            dateOfBirth: formattedDateOfBirth,
+            validUntill: formattedLicenseExpiryDate,
+            nameOnLicense: verificationResponse.name,
+          },
+          create: {
+            licenseNumber: verificationResponse.licenseNumber,
+            dateOfBirth: formattedDateOfBirth,
+            validUntill: formattedLicenseExpiryDate,
+            nameOnLicense: verificationResponse.name,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isDLVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.REGISTRATION_CERTIFICATE &&
         pilot.isRCVerified !== VerificationStatus.APPROVED

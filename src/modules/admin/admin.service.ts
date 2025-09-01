@@ -28,6 +28,7 @@ import {
   AppPlatform,
   UserRole,
   UserStatus,
+  VehicleTypeNameBD,
   VerificationStatus,
 } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -1929,6 +1930,81 @@ export class AdminService {
             pilot.rcBackSideUrl,
           );
         }
+
+        let verificationResponse = await this.verificationService.extractRCData(
+          files.front[0].buffer,
+        );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract RC data.');
+        }
+
+        if (
+          !verificationResponse.registrationPoint &&
+          !verificationResponse.series &&
+          !verificationResponse.seriesEnglish &&
+          !verificationResponse.number &&
+          !verificationResponse.vehicleType &&
+          !verificationResponse.registrationDate &&
+          !verificationResponse.vehicleColour &&
+          !verificationResponse.model &&
+          !verificationResponse.seatCapacity
+        ) {
+          throw new BadRequestException(
+            'This RC card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedRegistrationDate = moment(
+          verificationResponse?.registrationDate,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        const vehicleTypeBD = await this.verificationService.mapVehicleType(
+          verificationResponse.vehicleType,
+        );
+        if (
+          !vehicleTypeBD ||
+          !Object.values(VehicleTypeNameBD).includes(vehicleTypeBD)
+        ) {
+          throw new BadRequestException('Invalid vehicle type');
+        }
+        const vehicleTypeBDId = await this.prisma.vehicleTypeBD.findUnique({
+          where: { name: vehicleTypeBD },
+          select: { id: true },
+        });
+
+        await this.prisma.vehicle.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            regNo: verificationResponse.number,
+            colour: verificationResponse.vehicleColour,
+            model: verificationResponse.model,
+            seatCapacity: verificationResponse.seatCapacity,
+            vehicleTypeIdBD: vehicleTypeBDId.id,
+            registrationDate: formattedRegistrationDate,
+          },
+          create: {
+            regNo: verificationResponse.number,
+            colour: verificationResponse.vehicleColour,
+            model: verificationResponse.model,
+            seatCapacity: verificationResponse.seatCapacity,
+            vehicleTypeIdBD: vehicleTypeBDId.id,
+            registrationDate: formattedRegistrationDate,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isRCVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.NID &&
         pilot.isNidVerified !== VerificationStatus.APPROVED
@@ -1959,6 +2035,53 @@ export class AdminService {
             pilot.nidBackSideUrl,
           );
         }
+
+        const verificationResponse =
+          await this.verificationService.extractNidData(files.front[0].buffer);
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract NID data.');
+        }
+        if (
+          !verificationResponse.nidNumber &&
+          !verificationResponse.name &&
+          !verificationResponse.dateOfBirth
+        ) {
+          throw new BadRequestException(
+            'This NID card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            nidNumber: verificationResponse.nidNumber,
+            name: verificationResponse.name,
+            dateOfBirth: formattedDateOfBirth,
+          },
+          create: {
+            nidNumber: verificationResponse.nidNumber,
+            name: verificationResponse.name,
+            dateOfBirth: formattedDateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.VEHICLE_OWNERS_NID &&
         pilot.isVehicleOwnersNidVerified !== VerificationStatus.APPROVED
@@ -1994,6 +2117,52 @@ export class AdminService {
             pilot.vehicleOwnersNidBackSideUrl,
           );
         }
+
+        const verificationResponse =
+          await this.verificationService.extractNidData(files.front[0].buffer);
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract NID data.');
+        }
+        if (
+          !verificationResponse.nidNumber &&
+          !verificationResponse.name &&
+          !verificationResponse.dateOfBirth
+        ) {
+          throw new BadRequestException(
+            'This NID card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            vehicleOwnerNidNumber: verificationResponse.nidNumber,
+            vehicleOwnerNidName: verificationResponse.name,
+            vehicleOwnerNidDateOfBirth: formattedDateOfBirth,
+          },
+          create: {
+            vehicleOwnerNidNumber: verificationResponse.nidNumber,
+            vehicleOwnerNidName: verificationResponse.name,
+            vehicleOwnerNidDateOfBirth: formattedDateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.NUMBER_PLATE &&
         pilot.isNumberPlateVerified !== VerificationStatus.APPROVED
@@ -2011,6 +2180,30 @@ export class AdminService {
         if (pilot.numberPlateUrl) {
           await this.deletePreviousFiles(pilot.numberPlateUrl);
         }
+
+        const verificationResponse =
+          await this.verificationService.extractNumberPlateData(
+            files.front[0].buffer,
+          );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract number plate data.');
+        }
+
+        if (!verificationResponse.numberPlate) {
+          throw new BadRequestException(
+            'Number plate is not valid or not readable.',
+          );
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.TAX_TOKEN &&
         pilot.isTaxTokenVerified !== VerificationStatus.APPROVED
@@ -2028,6 +2221,30 @@ export class AdminService {
         if (pilot.taxTokenUrl) {
           await this.deletePreviousFiles(pilot.taxTokenUrl);
         }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        const verificationResponse =
+          await this.verificationService.extractTaxTokenData(
+            files.front[0].buffer,
+          );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract tax token data.');
+        }
+
+        if (!verificationResponse.name) {
+          throw new BadRequestException(
+            'Tax token is not valid or not readable.',
+          );
+        }
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
         documentType === DocumentType.SELFIE &&
         pilot.isSelfieVerified !== VerificationStatus.APPROVED
@@ -2045,15 +2262,26 @@ export class AdminService {
         if (pilot.selfieUrl) {
           await this.deletePreviousFiles(pilot.selfieUrl);
         }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isSelfieVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else {
         throw new BadRequestException(
           'Document type is already approved or invalid document type',
         );
       }
+
       const updatedPilot = await this.prisma.pilot.update({
         where: { id: driverId },
         data: updateData,
       });
+
       return {
         message: 'Documents uploaded successfully',
         data: updatedPilot,

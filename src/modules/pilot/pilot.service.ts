@@ -1620,14 +1620,6 @@ export class PilotService {
         file.mimetype,
       );
 
-      const updatedPilot = await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          taxTokenUrl,
-          isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
-        },
-      });
-
       const verificationResponse =
         await this.verificationService.extractTaxTokenData(taxTokenBuffer);
 
@@ -1640,6 +1632,14 @@ export class PilotService {
           'Tax token is not valid or not readable.',
         );
       }
+
+      const updatedPilot = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          taxTokenUrl,
+          isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
+        },
+      });
 
       await this.deletePreviousFiles(previousTaxTokenUrl);
 

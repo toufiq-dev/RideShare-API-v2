@@ -21,6 +21,7 @@ import {
   NumberPlateDto,
   FreeRechargeDto,
   BDNidType,
+  UpdateDriverDetailsDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -1647,6 +1648,33 @@ export class PilotService {
       return {
         message: 'Tax token uploaded successfully.',
         data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updateDriverDetails(
+    updateDriverDetailsDto: UpdateDriverDetailsDto,
+    userId: string,
+  ) {
+    const { name, city } = updateDriverDetailsDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { name, city },
+      });
+
+      return {
+        message: 'Driver details updated successfully.',
+        data: { name, city },
       };
     } catch (error) {
       console.error(error);

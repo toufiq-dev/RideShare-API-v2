@@ -172,3 +172,15 @@ export class BDNidTypeDto {
   @IsEnum(BDNidType, { message: 'type must be either pilot or vehicleOwner' })
   type: BDNidType;
 }
+
+export class UpdateDriverDetailsDto {
+  @ApiProperty({ description: 'Name of driver' })
+  @IsNotEmpty({ message: 'Driver details is required' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'city of driver' })
+  @IsNotEmpty({ message: 'City is required' })
+  @IsString()
+  city: string;
+}

@@ -35,6 +35,7 @@ import {
   NumberPlateDto,
   FreeRechargeDto,
   BDNidTypeDto,
+  UpdateDriverDetailsDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -381,6 +382,21 @@ export class PilotController {
     @CurrentUser('userId') userId: string,
   ) {
     return await this.pilotService.uploadTaxToken(file, userId);
+  }
+
+  @Post('driver-details')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update Driver details' })
+  @ApiBody({ type: UpdateDriverDetailsDto })
+  async updateDriverDetails(
+    @Body() updateDriverDetailsDto: UpdateDriverDetailsDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.updateDriverDetails(
+      updateDriverDetailsDto,
+      userId,
+    );
   }
 
   @Get('coupons')

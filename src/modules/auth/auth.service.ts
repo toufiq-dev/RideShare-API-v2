@@ -216,11 +216,13 @@ export class AuthService {
           throw new NotFoundException('User not found.');
         }
 
-        await this.prisma.deviceToken.upsert({
-          where: { userId: user.id },
-          update: { fcmToken: fcmToken },
-          create: { userId: user.id, fcmToken: fcmToken },
-        });
+        if (fcmToken) {
+          await this.prisma.deviceToken.upsert({
+            where: { userId: user.id },
+            update: { fcmToken: fcmToken },
+            create: { userId: user.id, fcmToken: fcmToken },
+          });
+        }
 
         const tokens = await this.generateTokens(user.id, user.role);
 
@@ -307,14 +309,14 @@ export class AuthService {
         where: { userId: user.id },
       });
 
-      if (!device) {
+      if (!device && fcmToken) {
         await this.prisma.deviceToken.create({
           data: {
             userId: user.id,
             fcmToken,
           },
         });
-      } else if (device.fcmToken !== fcmToken) {
+      } else if (device && fcmToken && device.fcmToken !== fcmToken) {
         await this.prisma.deviceToken.update({
           where: { userId: user.id },
           data: {

@@ -56,8 +56,8 @@ export class VerifyOtpDto {
 
   @ApiPropertyOptional({ description: 'FCM Token' })
   @IsString()
-  @IsNotEmpty({ message: 'FCM Token must be given' })
-  fcmToken: string;
+  @IsOptional({ message: 'FCM Token must be given' })
+  fcmToken?: string;
 }
 
 export class RefreshTokenDto {

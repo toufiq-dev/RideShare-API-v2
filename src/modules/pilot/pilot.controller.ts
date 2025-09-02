@@ -384,7 +384,7 @@ export class PilotController {
     return await this.pilotService.uploadTaxToken(file, userId);
   }
 
-  @Post('driver-details')
+  @Post('details')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update Driver details' })

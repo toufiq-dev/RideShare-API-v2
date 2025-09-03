@@ -687,6 +687,8 @@ export class PilotService {
             walletId: wallet.id,
             type: TransactionType.ONBOARDING_OFFER,
             status: TransactionStatus.SUCCESSFUL,
+            balanceBefore: 0,
+            balanceAfter: subscription.coins,
           },
         });
 

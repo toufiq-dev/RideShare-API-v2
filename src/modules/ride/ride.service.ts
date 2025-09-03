@@ -1411,8 +1411,9 @@ export class RideService {
             amount: tripAmount,
             walletId: wallet.id,
             type: TransactionType.TRIP_DEDUCTION,
-            balanceBefore: Math.ceil(Number(wallet.balance)),
             status: TransactionStatus.SUCCESSFUL,
+            balanceBefore: Math.ceil(Number(wallet.balance)),
+            balanceAfter: Math.ceil(Number(wallet.balance) - tripAmount),
           },
         });
 

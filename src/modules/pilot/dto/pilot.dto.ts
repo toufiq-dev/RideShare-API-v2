@@ -7,6 +7,7 @@ import {
   IsIn,
   IsISO8601,
   IsNotEmpty,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -86,9 +87,9 @@ export class BDRCDto {
   vehicleColour: string;
 
   @ApiProperty({ description: 'Model' })
-  @IsNotEmpty({ message: 'Model is required' })
-  @IsString()
-  model: string;
+  // @IsNotEmpty({ message: 'Model is required' })
+  @IsOptional()
+  model: any;
 
   @ApiProperty({ description: 'Seat capacity' })
   @IsNotEmpty({ message: 'Seat capacity is required' })

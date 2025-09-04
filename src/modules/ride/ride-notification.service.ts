@@ -183,13 +183,17 @@ export class RideNotificationService {
     this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
   }
 
-  async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
+  async notifyReachedPickupPoint(
+    customerUserId: string,
+    bookingId: string,
+    bookingStatus: BookingStatus,
+  ) {
     // Send push notification for reached pickup point
     await this.sendPushNotification(
       customerUserId,
       'Reached Pickup Point',
       'You have reached the pickup point',
-      { bookingId },
+      { bookingId, bookingStatus },
     );
 
     // Socket for reached pickup point

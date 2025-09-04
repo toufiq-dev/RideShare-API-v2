@@ -836,7 +836,7 @@ export class PilotService {
 
       const whereClause = {
         pilotId: pilot.id,
-        type: TransactionType.SUBSCRIPTION_PURCHASE,
+        // type: TransactionType.SUBSCRIPTION_PURCHASE,
         createdAt: {
           gte: start.toDate(),
           lte: end.toDate(),

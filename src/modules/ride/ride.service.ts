@@ -1078,6 +1078,7 @@ export class RideService {
       await this.rideNotificationService.notifyReachedPickupPoint(
         booking.customer.userId,
         bookingId,
+        BookingStatus.ARRIVED,
       );
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.ARRIVED);
@@ -1109,7 +1110,7 @@ export class RideService {
       });
 
       if (!booking || booking.bookingCode !== bookingCode) {
-        throw new BadRequestException('Invalid Booking.');
+        throw new BadRequestException('Invalid otp.');
       }
 
       const result = await this.prisma.$transaction(async (tx) => {

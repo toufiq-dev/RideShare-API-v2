@@ -615,6 +615,12 @@ export class RideService {
     const driverTimeout = 15 * 1000; // 15 seconds per driver
 
     try {
+      // Set up Redis subscription for real-time booking status updates
+      const bookingStatusChannel = `booking:${bookingId}:status`;
+      let isBookingResolved = false;
+      let messageHandler: ((channel: string, message: string) => void) | null =
+        null;
+
       const searchAndNotifyNextDriver = async (): Promise<boolean> => {
         // Fetch all nearby pilots in the current radius
         const nearbyPilots = await this.redis.geoRadius(
@@ -630,51 +636,81 @@ export class RideService {
           return false; // No drivers in this radius
         }
 
-        // Iterate through all pilots in the radius
-        for (const [pilotUserId, distance] of nearbyPilots as any) {
-          // Check if this pilot was already notified
-          const notifiedKey = `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`;
-          const alreadyNotified = await this.redis.get(notifiedKey);
-          if (alreadyNotified) {
-            continue; // Skip already notified driver
-          }
+        // Extract pilot user IDs and check notification status in batch
+        const pilotUserIds = nearbyPilots.map(([pilotUserId]) => pilotUserId);
 
-          // Fetch pilot details
-          const pilot = await this.prisma.pilot.findFirst({
-            where: {
-              userId: pilotUserId,
-              onlineStatus: PilotStatus.AVAILABLE,
-              activeBookingId: null,
-            },
-            select: {
-              id: true,
-              phone: true,
-              userId: true,
-              vehicle: {
-                select: {
-                  id: true,
-                  vehicleTypeBD: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
+        // Batch check notification status for all pilots
+        const notificationKeys = pilotUserIds.map(
+          (pilotUserId) => `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`,
+        );
+
+        const notificationStatuses = await this.redis.mget(...notificationKeys);
+        const notifiedPilots = new Set(
+          pilotUserIds.filter((_, index) => notificationStatuses[index]),
+        );
+
+        // Filter out already notified pilots
+        const eligiblePilotUserIds = pilotUserIds.filter(
+          (pilotUserId) => !notifiedPilots.has(pilotUserId),
+        );
+
+        if (!eligiblePilotUserIds.length) {
+          return false; // All pilots already notified
+        }
+
+        // Batch fetch all eligible pilots with their details
+        const eligiblePilots = await this.prisma.pilot.findMany({
+          where: {
+            userId: { in: eligiblePilotUserIds },
+            onlineStatus: PilotStatus.AVAILABLE,
+            activeBookingId: null,
+          },
+          select: {
+            id: true,
+            phone: true,
+            userId: true,
+            vehicle: {
+              select: {
+                id: true,
+                vehicleTypeBD: {
+                  select: {
+                    id: true,
+                    name: true,
                   },
                 },
               },
-              wallet: {
-                select: {
-                  balance: true,
-                },
+            },
+            wallet: {
+              select: {
+                balance: true,
               },
             },
-          });
+          },
+        });
 
-          const walletBalance = pilot && Number(pilot.wallet.balance);
-          const fare = Number(discountedFare);
+        // Create a map for quick lookup
+        const pilotMap = new Map(
+          eligiblePilots.map((pilot) => [pilot.userId, pilot]),
+        );
 
+        const fare = Number(discountedFare);
+
+        // Process pilots in order of distance
+        for (const [pilotUserId, distance] of nearbyPilots as any) {
+          if (notifiedPilots.has(pilotUserId)) {
+            continue; // Skip already notified pilots
+          }
+
+          const pilot = pilotMap.get(pilotUserId);
+          if (!pilot) {
+            continue; // Pilot not found or not eligible
+          }
+
+          const walletBalance = Number(pilot.wallet?.balance || 0);
+
+          // Check eligibility criteria
           if (
-            pilot &&
-            pilot.vehicle?.vehicleTypeBD.id === vehicleTypeId &&
+            pilot.vehicle?.vehicleTypeBD?.id === vehicleTypeId &&
             walletBalance > fare
           ) {
             this.logger.log(
@@ -682,11 +718,28 @@ export class RideService {
               this.context,
             );
 
-            await this.redis.set(
+            // Batch Redis operations using pipeline
+            const pipeline = this.redis.pipeline();
+
+            // Mark pilot as notified
+            pipeline.set(
+              `${RedisKeys.NOTIFIED}${bookingId}:${pilotUserId}`,
+              'true',
+              300,
+            );
+
+            // Set booking vehicle info
+            pipeline.set(
               `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
               pilot.vehicle.id,
               25,
-            ); // 25 seconds TTL (15 seconds + buffer)
+            );
+
+            // Set acceptance tracking
+            const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
+            pipeline.set(acceptanceKey, 'pending', driverTimeout / 1000);
+
+            await pipeline.exec();
 
             const notifyDriverPayload: NotifyDriverPayload = {
               pilotUserId: pilot.userId,
@@ -702,43 +755,59 @@ export class RideService {
               durationMin: Math.ceil(durationMin),
             };
 
-            // Notify driver ride request
-            await this.rideNotificationService.notifyRideRequest(
-              notifyDriverPayload,
-            );
+            // Notify driver ride request (this is async but we don't wait)
+            this.rideNotificationService.notifyRideRequest(notifyDriverPayload);
 
-            // Track driver acceptance
-            const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
-            await this.redis.set(
-              acceptanceKey,
-              'pending',
-              driverTimeout / 1000,
-            );
+            // Set up real-time booking status monitoring (NO MORE POLLING!)
+            if (!messageHandler) {
+              messageHandler = (channel: string, message: string) => {
+                if (channel === bookingStatusChannel) {
+                  const status = JSON.parse(message);
+                  if (status !== BookingStatus.PENDING) {
+                    isBookingResolved = true;
+                  }
+                }
+              };
 
-            const startTime = Date.now();
-            while (Date.now() - startTime < driverTimeout) {
-              const bookingStatus = await this.prisma.booking.findUnique({
-                where: { id: bookingId },
-                select: {
-                  status: true,
-                },
-              });
-
-              if (bookingStatus.status !== BookingStatus.PENDING) {
-                return true; // Booking was accepted or cancelled
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, 500));
+              this.redis.onMessage(messageHandler);
+              await this.redis.subscribe(bookingStatusChannel);
             }
 
-            await this.redis.del(acceptanceKey);
+            // Wait for driver response with timeout using Promise.race (NO POLLING!)
+            const driverResponsePromise = new Promise<boolean>((resolve) => {
+              const timeoutId = setTimeout(() => {
+                resolve(false); // Timeout
+              }, driverTimeout);
 
+              // Check if booking is already resolved
+              const checkResolved = () => {
+                if (isBookingResolved) {
+                  clearTimeout(timeoutId);
+                  resolve(true);
+                } else {
+                  // Check every 100ms instead of 500ms, but only if not resolved
+                  setTimeout(checkResolved, 100);
+                }
+              };
+
+              checkResolved();
+            });
+
+            const driverAccepted = await driverResponsePromise;
+
+            if (driverAccepted) {
+              await this.redis.del(acceptanceKey);
+              return true; // Driver accepted
+            }
+
+            // Driver didn't respond in time
+            await this.redis.del(acceptanceKey);
             await this.rideNotificationService.notifyRideRequestTimeout(
               bookingId,
               pilot.userId,
             );
 
-            // Booking is still pending, continue to the next driver
+            // Continue to next driver
             continue;
           }
         }
@@ -758,33 +827,43 @@ export class RideService {
         this.logger.log(`driverAccepted: ${driverAccepted}`, this.context);
 
         if (!driverAccepted) {
+          // Check if booking is still pending (single query instead of polling)
           const updatedBooking = await this.prisma.booking.findUnique({
             where: { id: bookingId },
-            select: {
-              status: true,
-            },
+            select: { status: true },
           });
-          if (updatedBooking.status !== BookingStatus.PENDING) {
+
+          if (updatedBooking?.status !== BookingStatus.PENDING) {
             break; // Exit if booking is no longer pending
           }
+
           radius += 500; // Expand radius
         }
       }
 
+      // Cleanup subscription
+      if (messageHandler) {
+        this.redis.offMessage(messageHandler);
+        await this.redis.unsubscribe(bookingStatusChannel);
+      }
+
       if (!driverAccepted) {
         this.logger.log(`No driver accepted, ${driverAccepted}`, this.context);
-        this.prisma.$transaction(async (tx) => {
+
+        // Use a single transaction for all cancellation operations
+        await this.prisma.$transaction(async (tx) => {
+          // Update booking status
           await tx.booking.update({
             where: { id: bookingId },
             data: { status: BookingStatus.NOT_FOUND },
           });
 
-          const alreadyCancelled = await tx.cancellationReason.findUnique({
-            where: {
-              bookingId,
-            },
+          // Check if already cancelled to avoid duplicate entries
+          const existingCancellation = await tx.cancellationReason.findUnique({
+            where: { bookingId },
           });
-          if (!alreadyCancelled) {
+
+          if (!existingCancellation) {
             await tx.cancellationReason.create({
               data: {
                 bookingId,
@@ -795,7 +874,14 @@ export class RideService {
           }
         });
 
-        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+        // Batch Redis operations
+        const pipeline = this.redis.pipeline();
+        pipeline.set(
+          RedisKeys.BOOKING_STATUS + bookingId,
+          BookingStatus.CANCELLED,
+        );
+        pipeline.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
+        await pipeline.exec();
 
         await this.rideNotificationService.notifyDriverNotFound(
           bookingId,
@@ -808,7 +894,7 @@ export class RideService {
     } catch (error) {
       this.logger.error(error, this.context);
 
-      // Handle error case by updating booking status
+      // Handle error case with single transaction
       try {
         await this.prisma.$transaction(async (tx) => {
           await tx.booking.update({
@@ -816,12 +902,11 @@ export class RideService {
             data: { status: BookingStatus.CANCELLED },
           });
 
-          const alreadyCancelled = await tx.cancellationReason.findUnique({
-            where: {
-              bookingId,
-            },
+          const existingCancellation = await tx.cancellationReason.findUnique({
+            where: { bookingId },
           });
-          if (!alreadyCancelled) {
+
+          if (!existingCancellation) {
             await tx.cancellationReason.create({
               data: {
                 bookingId,
@@ -833,7 +918,10 @@ export class RideService {
         });
 
         // Update Redis cache
-        await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+        await this.redis.set(
+          RedisKeys.BOOKING_STATUS + bookingId,
+          BookingStatus.CANCELLED,
+        );
 
         // Notify user about the error
         await this.rideNotificationService.notifyDriverNotFound(

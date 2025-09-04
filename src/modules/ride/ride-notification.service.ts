@@ -221,7 +221,7 @@ export class RideNotificationService {
     payload: PilotRideResponse,
   ) {
     // Send push notification for ride edit location
-    this.sendPushNotification(
+    await this.sendPushNotification(
       pilotUserId,
       'Ride Edit Location',
       'You have a new edit location request',

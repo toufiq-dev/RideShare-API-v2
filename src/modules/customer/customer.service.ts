@@ -18,7 +18,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { RideType, PilotStatus } from '@prisma/client';
+import { RideType, PilotStatus, BookingStatus } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 
@@ -55,6 +55,7 @@ export class CustomerService {
           activeBooking: true,
         },
       });
+      console.log('helloooooooooo11111', data);
 
       if (!data) {
         throw new NotFoundException('Customer not found.');
@@ -64,7 +65,12 @@ export class CustomerService {
         data.coupon.discount = Number(data.coupon.discount);
       }
 
-      if (data.activeBookingId) {
+      if (
+        data?.activeBookingId &&
+        (data?.activeBooking?.status === BookingStatus.ACCEPTED ||
+          data?.activeBooking?.status === BookingStatus.ARRIVED ||
+          data?.activeBooking?.status === BookingStatus.ONGOING)
+      ) {
         const pilot = await this.prisma.pilot.findUnique({
           where: {
             id: data.activeBooking.pilotId,
@@ -145,6 +151,8 @@ export class CustomerService {
         };
 
         data.activeBooking = payload;
+      } else {
+        data.activeBooking = null;
       }
 
       const { user: nestedUser, ...customerData } = data;

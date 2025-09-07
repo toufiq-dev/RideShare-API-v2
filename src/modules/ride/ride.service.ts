@@ -294,7 +294,7 @@ export class RideService {
     try {
       customer = await this.prisma.customer.findUnique({
         where: { userId },
-        include: { coupon: true },
+        include: { coupon: true, activeBooking: true },
       });
       if (!customer) {
         throw new NotFoundException('Customer not found');
@@ -308,7 +308,11 @@ export class RideService {
       }
 
       // Check active booking
-      const activeBooking = customer.activeBookingId;
+      const activeBooking =
+        customer.activeBookingId &&
+        (customer.activeBooking.status === BookingStatus.ACCEPTED ||
+          customer.activeBooking.status === BookingStatus.ARRIVED ||
+          customer.activeBooking.status === BookingStatus.ONGOING);
       if (activeBooking)
         throw new BadRequestException(
           'You already have an active ride request',
@@ -719,11 +723,11 @@ export class RideService {
             );
 
             // Set booking vehicle info
-            pipeline.set(
-              `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
-              pilot.vehicle.id,
-              25,
-            );
+            // pipeline.set(
+            //   `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilotUserId}`,
+            //   pilot.vehicle.id,
+            //   25
+            // );
 
             // Set acceptance tracking
             const acceptanceKey = `${RedisKeys.RIDE_ACCEPTED}${bookingId}`;
@@ -745,8 +749,10 @@ export class RideService {
               durationMin: Math.ceil(durationMin),
             };
 
-            // Notify driver ride request (this is async but we don't wait)
-            this.rideNotificationService.notifyRideRequest(notifyDriverPayload);
+            // Notify driver ride request
+            await this.rideNotificationService.notifyRideRequest(
+              notifyDriverPayload,
+            );
 
             // Set up real-time booking status monitoring (NO MORE POLLING!)
             if (!messageHandler) {
@@ -837,47 +843,71 @@ export class RideService {
         await this.redis.unsubscribe(bookingStatusChannel);
       }
 
+      // Only set NOT_FOUND if no driver accepted AND booking is still PENDING
       if (!driverAccepted) {
-        this.logger.log(`No driver accepted, ${driverAccepted}`, this.context);
-
-        // Use a single transaction for all cancellation operations
-        await this.prisma.$transaction(async (tx) => {
-          // Update booking status
-          await tx.booking.update({
-            where: { id: bookingId },
-            data: { status: BookingStatus.NOT_FOUND },
-          });
-
-          // Check if already cancelled to avoid duplicate entries
-          const existingCancellation = await tx.cancellationReason.findUnique({
-            where: { bookingId },
-          });
-
-          if (!existingCancellation) {
-            await tx.cancellationReason.create({
-              data: {
-                bookingId,
-                reason: 'Driver not found',
-                cancelledBy: CancelledBy.SYSTEM,
-              },
-            });
-          }
+        // Double-check booking status before setting NOT_FOUND
+        const finalBookingStatus = await this.prisma.booking.findUnique({
+          where: { id: bookingId },
+          select: { status: true },
         });
 
-        // Batch Redis operations
-        const pipeline = this.redis.pipeline();
-        pipeline.set(
-          RedisKeys.BOOKING_STATUS + bookingId,
-          BookingStatus.CANCELLED,
-        );
-        pipeline.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
-        await pipeline.exec();
+        if (finalBookingStatus?.status === BookingStatus.PENDING) {
+          this.logger.log(
+            `No driver accepted, setting NOT_FOUND`,
+            this.context,
+          );
 
-        await this.rideNotificationService.notifyDriverNotFound(
-          bookingId,
-          BookingStatus.NOT_FOUND,
-          userId,
-        );
+          // Use a single transaction for all cancellation operations
+          await this.prisma.$transaction(async (tx) => {
+            // Update booking status
+            await tx.booking.update({
+              where: { id: bookingId },
+              data: { status: BookingStatus.NOT_FOUND },
+            });
+
+            // Check if already cancelled to avoid duplicate entries
+            const existingCancellation = await tx.cancellationReason.findUnique(
+              {
+                where: { bookingId },
+              },
+            );
+
+            if (!existingCancellation) {
+              await tx.cancellationReason.create({
+                data: {
+                  bookingId,
+                  reason: 'Driver not found',
+                  cancelledBy: CancelledBy.SYSTEM,
+                },
+              });
+            }
+          });
+
+          // Batch Redis operations
+          const pipeline = this.redis.pipeline();
+          pipeline.set(
+            RedisKeys.BOOKING_STATUS + bookingId,
+            BookingStatus.CANCELLED,
+          );
+          pipeline.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
+          await pipeline.exec();
+
+          await this.redis.publish(
+            `booking:${bookingId}:status`,
+            JSON.stringify(BookingStatus.NOT_FOUND),
+          );
+
+          await this.rideNotificationService.notifyDriverNotFound(
+            bookingId,
+            BookingStatus.NOT_FOUND,
+            userId,
+          );
+        } else {
+          this.logger.log(
+            `Booking status changed to ${finalBookingStatus?.status}, not setting NOT_FOUND`,
+            this.context,
+          );
+        }
       }
 
       return { success: true, message: 'Ride request processed' };
@@ -906,6 +936,11 @@ export class RideService {
             });
           }
         });
+
+        await this.redis.publish(
+          `booking:${bookingId}:status`,
+          JSON.stringify(BookingStatus.CANCELLED),
+        );
 
         // Update Redis cache
         await this.redis.set(
@@ -940,7 +975,23 @@ export class RideService {
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: { userId },
-        include: { drivingLicense: true, vehicle: true },
+        select: {
+          id: true,
+          userId: true,
+          selfieUrl: true,
+          phone: true,
+          averageRating: true,
+          drivingLicense: { select: { id: true, nameOnLicense: true } },
+          vehicle: {
+            select: {
+              id: true,
+              regNo: true,
+              model: true,
+              colour: true,
+              vehicleTypeBD: { select: { name: true } },
+            },
+          },
+        },
       });
       if (!pilot) throw new NotFoundException('Pilot not found.');
 
@@ -1015,15 +1066,15 @@ export class RideService {
         pickupInMinutes = Math.ceil(durationMin);
       }
 
-      const vehicleId = await this.redis.get(
-        `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilot.userId}`,
-      );
-      const vehicle = vehicleId
-        ? await this.prisma.vehicle.findUnique({
-            where: { id: vehicleId },
-            include: { vehicleTypeBD: true },
-          })
-        : null;
+      // const vehicleId = await this.redis.get(
+      //   `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilot.userId}`,
+      // );
+      // const vehicle = vehicleId
+      //   ? await this.prisma.vehicle.findUnique({
+      //       where: { id: vehicleId },
+      //       include: { vehicleTypeBD: true },
+      //     })
+      //   : null;
 
       await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
       await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
@@ -1033,6 +1084,11 @@ export class RideService {
         pilot.userId,
         result.updated.id,
         result.updated.customer.userId,
+      );
+
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.ACCEPTED),
       );
 
       let couponForPayload = null;
@@ -1061,10 +1117,10 @@ export class RideService {
             lat: pilotLocation[0],
             lng: pilotLocation[1],
           },
-          vehicleNumber: vehicle.regNo,
-          model: vehicle.model,
-          colour: vehicle.colour,
-          vehicleType: vehicle.vehicleTypeBD.name,
+          vehicleNumber: pilot.vehicle.regNo,
+          model: pilot.vehicle.model,
+          colour: pilot.vehicle.colour,
+          vehicleType: pilot.vehicle.vehicleTypeBD.name,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1151,6 +1207,11 @@ export class RideService {
           arrivedAt: moment.utc().toDate(),
         },
       });
+
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.ARRIVED),
+      );
 
       // Emit reachedPickupPoint event to customer
       await this.rideNotificationService.notifyReachedPickupPoint(
@@ -1252,6 +1313,11 @@ export class RideService {
 
         return { updated };
       });
+
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.ONGOING),
+      );
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.ONGOING);
 
@@ -1501,6 +1567,11 @@ export class RideService {
 
       await this.redis.setBookingStatus(bookingId, BookingStatus.COMPLETED);
 
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.COMPLETED),
+      );
+
       /// *** Auto recharge logic ***
       // Check balance for auto recharge
       const updatedWallet = await this.prisma.pilotWallet.findUnique({
@@ -1702,6 +1773,11 @@ export class RideService {
 
       // Cache booking status in Redis
       await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
+
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.CANCELLED),
+      );
 
       // Clear Redis cache for the pilot's active ride and notify the other party
       if (booking.pilotId) {

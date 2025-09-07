@@ -5,7 +5,7 @@ export const RedisKeys = {
   BOOKING_STATUS: 'bookingStatus:',
   NOTIFIED: 'notified-',
   RIDE_ACCEPTED: 'rideAccept:',
-  BOOKING_VEHICLE: 'bookingVehicle:',
+  // BOOKING_VEHICLE: 'bookingVehicle:',
   ACCESS_TOKEN: 'accessToken:',
   REFRESH_TOKEN: 'refreshToken:',
   EMAIL_VERIFICATION_OTP: 'emailVerificationotp:',

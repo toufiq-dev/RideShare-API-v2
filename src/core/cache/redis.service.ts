@@ -8,7 +8,8 @@ import { RedisKeys } from './redis-keys';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly client: Redis;
-  private readonly pubSubClient: Redis; // Separate client for pub/sub operations
+  private readonly publisherClient: Redis;
+  private readonly subscriberClient: Redis;
   private readonly context = 'RedisService';
 
   constructor(
@@ -26,8 +27,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     // Main client for regular operations
     this.client = new Redis(redisUrl, options);
 
-    // Separate client for pub/sub operations
-    this.pubSubClient = new Redis(redisUrl, options);
+    this.publisherClient = new Redis(redisUrl, options);
+
+    this.subscriberClient = new Redis(redisUrl, options);
 
     this.setupEventListeners();
   }
@@ -55,27 +57,41 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Event listeners for pub/sub client
-    this.pubSubClient.on('connect', () => {
-      this.logger.log('Redis pub/sub client connected', this.context);
+    this.publisherClient.on('connect', () => {
+      this.logger.log('Redis publisher client connected', this.context);
+    });
+    this.subscriberClient.on('connect', () => {
+      this.logger.log('Redis subscriber client connected', this.context);
     });
 
-    this.pubSubClient.on('error', (error: Error) => {
+    this.publisherClient.on('error', (error: Error) => {
       this.logger.error(
-        `Redis pub/sub client error: ${error.message}`,
+        `Redis publisher client error: ${error.message}`,
+        error.stack,
+        this.context,
+      );
+    });
+    this.subscriberClient.on('error', (error: Error) => {
+      this.logger.error(
+        `Redis subscriber client error: ${error.message}`,
         error.stack,
         this.context,
       );
     });
 
-    this.pubSubClient.on('reconnecting', () => {
-      this.logger.warn('Redis pub/sub client reconnecting', this.context);
+    this.publisherClient.on('reconnecting', () => {
+      this.logger.warn('Redis publisher client reconnecting', this.context);
+    });
+    this.subscriberClient.on('reconnecting', () => {
+      this.logger.warn('Redis subscriber client reconnecting', this.context);
     });
   }
 
   async onModuleInit(): Promise<void> {
     try {
       await this.client.ping();
-      await this.pubSubClient.ping();
+      await this.publisherClient.ping();
+      await this.subscriberClient.ping();
       this.logger.log('Redis service initialized successfully', this.context);
     } catch (error) {
       this.logger.error(
@@ -90,7 +106,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     try {
       await this.client.quit();
-      await this.pubSubClient.quit();
+      await this.publisherClient.quit();
+      await this.subscriberClient.quit();
       this.logger.log('Redis connection closed', this.context);
     } catch (error) {
       this.logger.error(
@@ -365,7 +382,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async subscribe(channel: string): Promise<void> {
     try {
-      await this.pubSubClient.subscribe(channel);
+      await this.subscriberClient.subscribe(channel);
       this.logger.log(`Subscribed to channel: ${channel}`, this.context);
     } catch (error) {
       this.logger.error(
@@ -379,7 +396,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async unsubscribe(channel: string): Promise<void> {
     try {
-      await this.pubSubClient.unsubscribe(channel);
+      await this.subscriberClient.unsubscribe(channel);
       this.logger.log(`Unsubscribed from channel: ${channel}`, this.context);
     } catch (error) {
       this.logger.error(
@@ -393,7 +410,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async publish(channel: string, message: string): Promise<number> {
     try {
-      const result = await this.pubSubClient.publish(channel, message);
+      const result = await this.publisherClient.publish(channel, message);
       this.logger.log(`Published message to channel: ${channel}`, this.context);
       return result;
     } catch (error) {
@@ -407,11 +424,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   onMessage(callback: (channel: string, message: string) => void): void {
-    this.pubSubClient.on('message', callback);
+    this.subscriberClient.on('message', callback);
   }
 
   offMessage(callback: (channel: string, message: string) => void): void {
-    this.pubSubClient.off('message', callback);
+    this.subscriberClient.off('message', callback);
   }
 
   async exists(key: string): Promise<boolean> {

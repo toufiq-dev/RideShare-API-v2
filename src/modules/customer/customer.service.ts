@@ -55,7 +55,6 @@ export class CustomerService {
           activeBooking: true,
         },
       });
-      console.log('helloooooooooo11111', data);
 
       if (!data) {
         throw new NotFoundException('Customer not found.');

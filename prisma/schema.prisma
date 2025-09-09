@@ -339,6 +339,7 @@ model VehicleTypeBD {
   minFare           Decimal?          @db.Decimal(10, 2)
   insuranceFee      Decimal?          @db.Decimal(10, 2)
   vehicle           Vehicle[]
+  tariffs           Tariff[]
 }
 
 model VehicleClassificationCache {
@@ -355,6 +356,29 @@ model VehicleClassificationCache {
   createdAt       DateTime @default(now()) @db.Timestamptz
 
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
+}
+
+model Tariff {
+  id              String        @id @default(uuid())
+  city            String
+  intercity       Boolean       @default(false)
+  vehicleTypeBDId String
+  baseFare        Decimal       @db.Decimal(10, 2)
+  perKmRate       Decimal       @db.Decimal(10, 2)
+  perMinRate      Decimal       @db.Decimal(10, 2)
+  minFare         Decimal       @db.Decimal(10, 2)
+  insuranceFee    Decimal       @db.Decimal(10, 2)
+  pickupFee       Decimal?      @db.Decimal(10, 2)
+  pickupActive    Boolean       @default(false)
+  version         Int           @default(1)
+  effectiveFrom   DateTime      @db.Timestamptz
+  effectiveTo     DateTime?     @db.Timestamptz
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+  vehicleTypeBD   VehicleTypeBD @relation(fields: [vehicleTypeBDId], references: [id])
+
+  @@index([city, intercity, vehicleTypeBDId, isActive])
 }
 
 model Subscription {

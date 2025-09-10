@@ -39,7 +39,6 @@ import {
 import { RideNotificationService } from './ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
 import { FareService } from '../fare/fare.service';
-import { LocationDto } from 'src/common/dto/common.dto';
 import { UserRole } from '@prisma/client';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';

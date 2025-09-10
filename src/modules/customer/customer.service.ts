@@ -18,18 +18,40 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { RideType, PilotStatus, BookingStatus } from '@prisma/client';
+import {
+  RideType,
+  PilotStatus,
+  BookingStatus,
+  VehicleTypeNameBD,
+} from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { TariffService } from '../pricing/tariff.service';
+import { MultiplierService } from '../pricing/multiplier.service';
+import { TelemetryService } from '../pricing/telemetry.service';
+import { h3Cell } from 'src/core/utils/h3.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CustomerService {
+  private readonly CITY: string;
+  private readonly MU_MIN: number;
+  private readonly MU_MAX: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly otpService: OTPService,
     private readonly fareService: FareService,
-  ) {}
+    private readonly tariffService: TariffService,
+    private readonly multService: MultiplierService,
+    private readonly telemetry: TelemetryService,
+    private readonly configService: ConfigService,
+  ) {
+    this.CITY = this.configService.get<string>('pricing.city');
+    this.MU_MIN = this.configService.get<number>('pricing.MU_MIN');
+    this.MU_MAX = this.configService.get<number>('pricing.MU_MAX');
+  }
 
   async getCustomer(userId: string) {
     try {
@@ -490,88 +512,87 @@ export class CustomerService {
         ),
       ]);
 
-      const { distanceKm, durationMin } = distanceData;
+      const { distanceKm, durationMin, routePolyline } = distanceData;
+      const h3 = h3Cell(pickupLocation.lat, pickupLocation.lng, 8);
+      const hour = new Date().getHours();
 
-      const vehicleData = [];
+      // Increment demand ONCE per request
+      await this.telemetry.incrementDemand(h3);
 
-      for (const item of vehicleTypes) {
-        const originalPrice = this.fareService.estimateFare(
+      // Compute detour ratio
+      const detourRatio = await this.computeDetourRatio(
+        routePolyline,
+        pickupLocation,
+        dropLocation,
+      );
+
+      // Get base μ (same for all services at pickup H3/hour), will be adjusted per service
+      const muBase = await this.multService.getMu(this.CITY, h3, hour);
+
+      const nearbyPilots = await this.redis.geoRadius(
+        RedisKeys.PILOT_LOCATION,
+        pickupLocation.lng,
+        pickupLocation.lat,
+        2000,
+        'm',
+        { withDist: true, sort: 'ASC' },
+      );
+
+      const vehicles = [];
+      for (const vt of vehicleTypes) {
+        const serviceName = vt.name as unknown as VehicleTypeNameBD;
+        const intercity = false; // or derive from your request dto if you support it
+
+        // Baseline
+        const tariff = await this.tariffService.getActiveTariff(
+          this.CITY,
+          serviceName,
+          intercity,
+        );
+        const baseline = this.tariffService.computeB(
+          this.tariffService.toBaseline(tariff),
           distanceKm,
           durationMin,
-          Number(item.baseFare),
-          Number(item.perMinRate),
-          Number(item.minFare),
-          item.name,
-          Number(item.perKmRate),
         );
 
-        let discountedPrice =
-          customer?.coupon?.discount && originalPrice > customer.coupon.discount
-            ? originalPrice - Number(customer.coupon.discount)
-            : originalPrice;
+        // μ with adjustments (slab + detour)
+        let muEff = this.multService.applyAdjustments(
+          muBase,
+          serviceName,
+          distanceKm,
+          detourRatio,
+        );
+        muEff = Math.min(this.MU_MAX, Math.max(this.MU_MIN, muEff));
 
-        const price = Math.max(discountedPrice, Number(item.minFare));
+        // Raw price (round)
+        const rawPrice = Math.round(baseline * muEff);
 
-        const nearbyPilots = await this.redis.geoRadius(
-          RedisKeys.PILOT_LOCATION,
-          pickupLocation.lng,
-          pickupLocation.lat,
-          2000,
-          'm',
-          { withDist: true, sort: 'ASC' },
+        // Coupon (fixed amount discount in your schema) and enforce min fare
+        const discounted =
+          customer?.coupon?.discount &&
+          rawPrice > Number(customer.coupon.discount)
+            ? rawPrice - Number(customer.coupon.discount)
+            : rawPrice;
+
+        const finalPrice = Math.max(discounted, Number(tariff.minFare));
+
+        // time away (reuses your logic, but only first available driver of this type)
+        const minsAway = await this.estimateTimeAwayForType(
+          nearbyPilots,
+          vt.id,
+          pickupLocation,
         );
 
-        let minsAway = null;
-        for (const [pilotUserId, distance] of nearbyPilots as any) {
-          const pilot = await this.prisma.pilot.findFirst({
-            where: {
-              userId: pilotUserId,
-              onlineStatus: PilotStatus.AVAILABLE,
-              activeBookingId: null,
-            },
-            select: {
-              vehicle: {
-                select: {
-                  vehicleTypeBD: {
-                    select: { id: true },
-                  },
-                },
-              },
-            },
-          });
-
-          if (
-            pilot &&
-            pilot.vehicle &&
-            pilot.vehicle.vehicleTypeBD &&
-            pilot.vehicle.vehicleTypeBD.id === item.id
-          ) {
-            const pilotLocation = await this.redis.geoPos(
-              RedisKeys.PILOT_LOCATION,
-              pilotUserId,
-            );
-            if (pilotLocation && pilotLocation[0] && pilotLocation[1]) {
-              const { durationMin } =
-                await this.fareService.calculateDistanceAndDuration(
-                  { lat: pilotLocation[0], lng: pilotLocation[1] },
-                  pickupLocation,
-                );
-              minsAway = Math.ceil(durationMin);
-            }
-            break;
-          }
-        }
-
-        vehicleData.push({
-          id: item.id,
-          vehicleType: item.name,
-          airCondition: item.airCondition,
-          isFaster: item.isFaster,
-          passengerCapacity: item.passengerCapacity,
-          originalPrice: Math.ceil(Number(originalPrice)),
-          price: Math.ceil(Number(price)),
+        vehicles.push({
+          id: vt.id,
+          vehicleType: vt.name,
+          airCondition: vt.airCondition,
+          isFaster: vt.isFaster,
+          passengerCapacity: vt.passengerCapacity,
+          originalPrice: rawPrice,
+          price: finalPrice,
           tolls: 0.0,
-          timeAway: `${minsAway ? minsAway : randomInt(1, 5)} min away`,
+          timeAway: `${minsAway ?? randomInt(1, 5)} min away`,
         });
       }
 
@@ -584,10 +605,7 @@ export class CustomerService {
       return {
         success: true,
         message: 'Vehicle categories fetched successfully.',
-        data: {
-          vehicles: vehicleData,
-          coupon: customer.coupon || null,
-        },
+        data: { vehicles, coupon: customer.coupon || null },
       };
     } catch (error) {
       console.error(error);
@@ -610,5 +628,57 @@ export class CustomerService {
     await this.redis.del(`referralCode:${phone}`);
 
     return { languageId, referralCode };
+  }
+
+  private async estimateTimeAwayForType(
+    nearbyPilots: any[],
+    vtId: string,
+    pickup: { lat: number; lng: number },
+  ) {
+    for (const [pilotUserId, _distance] of nearbyPilots as any) {
+      const pilot = await this.prisma.pilot.findFirst({
+        where: {
+          userId: pilotUserId,
+          onlineStatus: PilotStatus.AVAILABLE,
+          activeBookingId: null,
+        },
+        select: {
+          vehicle: { select: { vehicleTypeBD: { select: { id: true } } } },
+        },
+      });
+
+      if (pilot?.vehicle?.vehicleTypeBD?.id === vtId) {
+        const pos = await this.redis.geoPos(
+          RedisKeys.PILOT_LOCATION,
+          pilotUserId,
+        );
+        if (pos && pos[0] && pos[1]) {
+          const { durationMin } =
+            await this.fareService.calculateDistanceAndDuration(
+              { lat: pos[0], lng: pos[1] },
+              pickup,
+            );
+          return Math.ceil(durationMin);
+        }
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
+  private async computeDetourRatio(
+    poly: string | undefined,
+    pickup: any,
+    drop: any,
+  ): Promise<number | undefined> {
+    try {
+      if (!poly) return undefined;
+      // If your distance provider already gives routeDistanceKm, just do:
+      // const geo = haversine(pickup, drop);
+      // return routeDistanceKm / Math.max(geo, 0.001);
+      return undefined; // keep as is if not available now
+    } catch {
+      return undefined;
+    }
   }
 }

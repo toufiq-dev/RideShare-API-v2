@@ -53,7 +53,11 @@ export class FareService {
   async calculateDistanceAndDuration(
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number },
-  ): Promise<{ distanceKm: number; durationMin: number }> {
+  ): Promise<{
+    distanceKm: number;
+    durationMin: number;
+    routePolyline: string;
+  }> {
     const request: DirectionsRequest = {
       params: {
         origin,
@@ -72,13 +76,18 @@ export class FareService {
         );
       }
 
-      const leg = response.data.routes[0].legs[0];
+      const route = response.data.routes[0];
+      const leg = route.legs[0];
       const distanceMeters = leg.distance.value; // in meters
       const durationSeconds = leg.duration.value; // in seconds
+
+      // Get the encoded polyline
+      const routePolyline = route.overview_polyline.points;
 
       return {
         distanceKm: distanceMeters / 1000, // Convert to km
         durationMin: durationSeconds / 60, // Convert to minutes
+        routePolyline,
       };
     } catch (error) {
       console.error(error);

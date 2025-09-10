@@ -1,12 +1,9 @@
-import { cellToChildren, gridDisk, latLngToCell } from 'h3-js';
+import * as h3 from 'h3-js';
 
-export const H3_RES = parseInt(process.env.H3_RES || '8', 10);
-
-export function h3Cell(lat: number, lng: number, res = H3_RES): string {
-  return latLngToCell(lat, lng, res);
+export function h3Cell(lat: number, lng: number, res = 8): string {
+  return h3.latLngToCell(lat, lng, res);
 }
 
-export function neighbors(cell: string): string[] {
-  // ring-1 neighbors, excluding center
-  return gridDisk(cell, 1).filter((c) => c !== cell);
+export function neighbors(h3Index: string): string[] {
+  return h3.gridDisk(h3Index, 1).filter((x) => x !== h3Index);
 }

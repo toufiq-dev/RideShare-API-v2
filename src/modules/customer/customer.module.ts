@@ -5,9 +5,10 @@ import { RideModule } from '../ride/ride.module';
 import { OTPService } from 'src/core/utils/otp.util';
 import { FareModule } from '../fare/fare.module';
 import { BullModule } from '@nestjs/bullmq';
+import { PricingModule } from '../pricing/pricing.module';
 
 @Module({
-  imports: [RideModule, FareModule],
+  imports: [RideModule, FareModule, PricingModule],
   controllers: [CustomerController],
   providers: [CustomerService, OTPService],
 })

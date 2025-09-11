@@ -497,4 +497,40 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
   }
+
+  async incr(key: string): Promise<number> {
+    try {
+      const result = await this.client.incr(key);
+      this.logger.log(
+        `Incremented key: ${key}, new value: ${result}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async expire(key: string, ttl: number): Promise<boolean> {
+    try {
+      const result = await this.client.expire(key, ttl);
+      this.logger.log(
+        `Set expiration for key: ${key}, TTL: ${ttl} seconds`,
+        this.context,
+      );
+      return result === 1;
+    } catch (error) {
+      this.logger.error(
+        `Failed to set expiration for key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
 }

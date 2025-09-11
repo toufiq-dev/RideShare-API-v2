@@ -7,7 +7,7 @@ import {
   NotifyDriverPayload,
   CustomerRidePayload,
   PilotRideResponse,
-} from './dto/ride.interface';
+} from '../dto/ride.interface';
 import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';

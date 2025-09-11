@@ -4,8 +4,9 @@ import { RideGateway } from './ride.gateway';
 import { FareModule } from '../fare/fare.module';
 import { SocketModule } from 'src/core/socket/socket.module';
 import { RideController } from './ride.controller';
-import { RideNotificationService } from './ride-notification.service';
+import { RideNotificationService } from './services/ride-notification.service';
 import { FirebaseModule } from 'src/core/firebase/firebase.module';
+import { DriverSearchService } from './services/driver-search.service';
 
 @Module({
   imports: [SocketModule, FareModule, FirebaseModule],
@@ -19,8 +20,9 @@ import { FirebaseModule } from 'src/core/firebase/firebase.module';
       useClass: RideGateway,
     },
     RideNotificationService,
+    DriverSearchService,
   ],
-  exports: [RideGateway, RideService],
+  exports: [RideGateway, RideService, DriverSearchService],
   controllers: [RideController],
 })
 export class RideModule {}

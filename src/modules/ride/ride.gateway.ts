@@ -13,7 +13,7 @@ import { WsJwtAuthGuard } from 'src/common/guards/ws-jwt.guard';
 import { forwardRef, Inject, UseGuards } from '@nestjs/common';
 import { SocketService } from 'src/core/socket/socket.service';
 import { BookingStatus } from '@prisma/client';
-import { RideNotificationService } from './ride-notification.service';
+import { RideNotificationService } from './services/ride-notification.service';
 import { RideEvents } from 'src/core/socket/socket-events';
 
 @WebSocketGateway({

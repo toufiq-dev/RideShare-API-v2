@@ -9,4 +9,10 @@ export const RedisKeys = {
   ACCESS_TOKEN: 'accessToken:',
   REFRESH_TOKEN: 'refreshToken:',
   EMAIL_VERIFICATION_OTP: 'emailVerificationotp:',
+
+  // multi iteration search
+  SEARCH_SESSION: 'searchSession:',
+  ITERATION_STATUS: 'iterationStatus:',
+  DRIVER_NOTIFICATION_COUNT: 'driverNotificationCount:',
+  SEARCH_TIMEOUT: 'searchTimeout:',
 } as const;

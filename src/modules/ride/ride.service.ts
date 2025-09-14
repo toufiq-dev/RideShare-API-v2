@@ -225,6 +225,8 @@ export class RideService {
         bookingStatus: booking.status,
         estimatedDuration: booking.estimatedDuration,
         tripStart: booking.tripStart,
+        vehicleType: booking.vehicle.vehicleTypeBD.name,
+        vehicleTypeId: booking.vehicle.vehicleTypeBD.id,
         pilot: booking.pilot
           ? {
               pilotId: booking.pilot.id,
@@ -300,6 +302,19 @@ export class RideService {
 
       const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
         where: { id: vehicleTypeId },
+        select: {
+          id: true,
+          name: true,
+          baseFare: true,
+          perMinRate: true,
+          minFare: true,
+          perKmRate: true,
+          vehicle: {
+            select: {
+              id: true,
+            },
+          },
+        },
       });
       if (!vehicleType) {
         throw new NotFoundException('Vehicle type not found');
@@ -374,12 +389,14 @@ export class RideService {
                 : otherPassengerInfo?.name,
             status: BookingStatus.PENDING,
             rideType: rideFor,
+            vehicleId: vehicleType.vehicle[0].id,
             estimatedFare: Math.ceil(originalPrice),
             discountedFare: Math.ceil(price),
             pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
             dropLocation: JSON.parse(JSON.stringify(dropLocation)),
             estimatedDistance: Math.ceil(distanceKm).toString(),
             estimatedDuration: Math.ceil(durationMin),
+            vehicleTypeIdBD: vehicleType.id
           },
         });
 
@@ -414,6 +431,8 @@ export class RideService {
         bookingStatus: booking.status,
         estimatedDuration: booking.estimatedDuration,
         tripStart: booking.tripStart,
+        vehicleType: vehicleType.name,
+        vehicleTypeId: vehicleType.id,
         pilot: null,
         passenger: {
           passengerId: customer.userId,
@@ -613,7 +632,9 @@ export class RideService {
         bookingStatus: newBooking.status, // PENDING
         estimatedDuration: newBooking.estimatedDuration,
         tripStart: newBooking.tripStart, // null for new bookings
-        pilot: null, // No pilot assigned yet for PENDING bookings
+        vehicleType: vehicle.vehicleTypeBD.name,
+        vehicleTypeId: vehicle.vehicleTypeBD.id,
+        pilot: null,
         passenger: {
           passengerId: booking.customer.userId,
           name: booking.customer.name,
@@ -667,6 +688,8 @@ export class RideService {
           userId: true,
           selfieUrl: true,
           phone: true,
+          onlineStatus: true,
+          activeBookingId: true,
           averageRating: true,
           drivingLicense: { select: { id: true, nameOnLicense: true } },
           vehicle: {
@@ -681,19 +704,54 @@ export class RideService {
         },
       });
       if (!pilot) throw new NotFoundException('Pilot not found.');
+      if (pilot.onlineStatus !== PilotStatus.AVAILABLE) {
+        throw new BadRequestException('Pilot is not available.');
+      }
+
+      if (pilot.activeBookingId) {
+        throw new BadRequestException('Pilot already has an active booking.');
+      }
+
+      const cachedStatus = await this.redis.get(
+        `${RedisKeys.BOOKING_STATUS}${bookingId}`,
+      );
+      if (cachedStatus && cachedStatus !== BookingStatus.PENDING) {
+        throw new BadRequestException('Booking is no longer available.');
+      }
+
+      // const lockKey = `lock:accept:${bookingId}`;
+      // const lockAcquired = await this.redis.set(lockKey, 'locked', 'EX', 10, 'NX');
+
+      // if (!lockAcquired) {
+      //   throw new BadRequestException('Another pilot is accepting this ride.');
+      // }
 
       const result = await this.prisma.$transaction(async (tx) => {
+        const booking = await tx.booking.findFirst({
+          where: {
+            id: bookingId,
+            status: BookingStatus.PENDING,
+          },
+          select: {
+            id: true,
+            customerId: true,
+            status: true,
+          },
+        });
+
+        if (!booking) {
+          throw new BadRequestException(
+            'Booking not found or no longer pending.',
+          );
+        }
+
         await tx.pilot.update({
           where: { userId },
           data: {
             activeBookingId: bookingId,
+            onlineStatus: PilotStatus.ON_TRIP,
           },
         });
-
-        const booking = await tx.booking.findFirst({
-          where: { id: bookingId, status: BookingStatus.PENDING },
-        });
-        if (!booking) throw new BadRequestException('Booking not found.');
 
         const updated = await tx.booking.update({
           where: { id: booking.id },
@@ -725,6 +783,16 @@ export class RideService {
                 coupon: true,
               },
             },
+            vehicle: {
+              select: {
+                vehicleTypeBD: {
+                  select: {
+                    name: true,
+                    id: true,
+                  },
+                },
+              },
+            },
           },
         });
 
@@ -736,15 +804,27 @@ export class RideService {
         return { updated };
       });
 
+      await this.redis.setBookingStatus(bookingId, BookingStatus.ACCEPTED);
+      await this.redis.publish(
+        `booking:${bookingId}:status`,
+        JSON.stringify(BookingStatus.ACCEPTED),
+      );
+
+      await this.driverSearchService.stopSearchSession(bookingId);
+
       const pilotLocation = await this.redis.geoPos(
         RedisKeys.PILOT_LOCATION,
         pilot.userId,
       );
 
       let pickupInMinutes: number | null = null;
+      let pilotLat: number | null = null;
+      let pilotLng: number | null = null;
 
-      if (pilotLocation) {
+      if (pilotLocation && pilotLocation.length >= 2) {
         const [lat, lng] = pilotLocation;
+        pilotLat = lat;
+        pilotLng = lng;
         const { durationMin } =
           await this.fareService.calculateDistanceAndDuration(
             { lat, lng },
@@ -752,16 +832,6 @@ export class RideService {
           );
         pickupInMinutes = Math.ceil(durationMin);
       }
-
-      // const vehicleId = await this.redis.get(
-      //   `${RedisKeys.BOOKING_VEHICLE}${bookingId}:${pilot.userId}`,
-      // );
-      // const vehicle = vehicleId
-      //   ? await this.prisma.vehicle.findUnique({
-      //       where: { id: vehicleId },
-      //       include: { vehicleTypeBD: true },
-      //     })
-      //   : null;
 
       await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
       await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
@@ -771,11 +841,6 @@ export class RideService {
         pilot.userId,
         result.updated.id,
         result.updated.customer.userId,
-      );
-
-      await this.redis.publish(
-        `booking:${bookingId}:status`,
-        JSON.stringify(BookingStatus.ACCEPTED),
       );
 
       let couponForPayload = null;
@@ -794,16 +859,21 @@ export class RideService {
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: null,
+        vehicleType: result.updated.vehicle.vehicleTypeBD.name,
+        vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
         pilot: {
           pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
-          pilotLocation: {
-            lat: pilotLocation[0],
-            lng: pilotLocation[1],
-          },
+          pilotLocation:
+            pilotLat && pilotLng
+              ? {
+                  lat: pilotLat,
+                  lng: pilotLng,
+                }
+              : null,
           vehicleNumber: pilot.vehicle.regNo,
           model: pilot.vehicle.model,
           colour: pilot.vehicle.colour,
@@ -968,6 +1038,16 @@ export class RideService {
             estimatedFare: true,
             discountedFare: true,
             tripStart: true,
+            vehicle: {
+              select: {
+                vehicleTypeBD: {
+                  select: {
+                    name: true,
+                    id: true,
+                  },
+                },
+              },
+            },
             customer: {
               select: {
                 userId: true,
@@ -990,7 +1070,7 @@ export class RideService {
                     regNo: true,
                     model: true,
                     colour: true,
-                    vehicleTypeBD: { select: { name: true } },
+                    vehicleTypeBD: { select: { name: true, id: true } },
                   },
                 },
               },
@@ -1019,6 +1099,8 @@ export class RideService {
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: result.updated.tripStart,
+        vehicleType: result.updated.vehicle.vehicleTypeBD.name,
+        vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1298,6 +1380,8 @@ export class RideService {
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: result.updated.tripStart,
+        vehicleType: result.updated.vehicle.vehicleTypeBD.name,
+        vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1457,6 +1541,8 @@ export class RideService {
           });
         }
       });
+
+      await this.driverSearchService.stopSearchSession(bookingId);
 
       // Cache booking status in Redis
       await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
@@ -1635,6 +1721,7 @@ export class RideService {
         Number(pilot?.vehicle?.vehicleTypeBD.minFare),
       );
 
+      // ✅ FIXED: Include vehicle relation in the update query
       const updatedBooking = await this.prisma.booking.update({
         where: { id: booking.id },
         data: {
@@ -1646,6 +1733,18 @@ export class RideService {
           estimatedDuration: Math.ceil(durationMin),
           estimatedFare: originalPrice,
           discountedFare: price,
+        },
+        include: {
+          vehicle: {
+            include: {
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -1684,16 +1783,22 @@ export class RideService {
         bookingStatus: updatedBooking.status,
         estimatedDuration: updatedBooking.estimatedDuration,
         tripStart: updatedBooking.tripStart,
+        vehicleTypeId: updatedBooking.vehicle.vehicleTypeBD.id,
+        vehicleType:
+          updatedBooking.vehicle?.vehicleTypeBD?.name ||
+          pilot.vehicle.vehicleTypeBD.name,
         pilot: {
           pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
           profilePicture: pilot.selfieUrl,
           pilotPhone: pilot.phone,
           rating: pilot.averageRating,
-          pilotLocation: {
-            lat: pilotLocation[0],
-            lng: pilotLocation[1],
-          },
+          pilotLocation: pilotLocation
+            ? {
+                lat: pilotLocation[0],
+                lng: pilotLocation[1],
+              }
+            : null, // ✅ FIXED: Handle null pilot location
           vehicleNumber: pilot.vehicle.regNo,
           model: pilot.vehicle.model,
           colour: pilot.vehicle.colour,

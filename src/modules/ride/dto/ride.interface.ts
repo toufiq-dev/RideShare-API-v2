@@ -50,6 +50,8 @@ export interface CustomerRidePayload {
   bookingStatus: BookingStatus;
   estimatedDuration: number;
   tripStart: Date | null;
+  vehicleType: VehicleTypeNameBD;
+  vehicleTypeId: string;
   pilot: {
     pilotId: string;
     pilotName: string;

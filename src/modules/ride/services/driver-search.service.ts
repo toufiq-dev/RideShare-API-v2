@@ -78,9 +78,13 @@ export class DriverSearchService {
       // Create search session
       const searchSession = await this.createSearchSession(bookingId, config);
 
+      const bookingStatus = {
+        isResolved: false,
+        status: BookingStatus.PENDING,
+      };
+
       // Set up Redis subscription for real-time booking status updates
       const bookingStatusChannel = `booking:${bookingId}:status`;
-      let isBookingResolved = false;
       let messageHandler: ((channel: string, message: string) => void) | null =
         null;
 
@@ -88,8 +92,10 @@ export class DriverSearchService {
       messageHandler = (channel: string, message: string) => {
         if (channel === bookingStatusChannel) {
           const status = JSON.parse(message);
+          bookingStatus.status = status;
           if (status !== BookingStatus.PENDING) {
-            isBookingResolved = true;
+            bookingStatus.isResolved = true;
+            console.log('Booking status changed to', status);
           }
         }
       };
@@ -99,7 +105,7 @@ export class DriverSearchService {
 
       // Set total search timeout
       const searchTimeoutId = setTimeout(async () => {
-        if (!isBookingResolved) {
+        if (!bookingStatus.isResolved) {
           await this.handleSearchTimeout(bookingId, searchSession, userId);
         }
       }, config.totalSearchTimeout);
@@ -114,7 +120,7 @@ export class DriverSearchService {
         discountedFare,
         distanceKm,
         durationMin,
-        isBookingResolved,
+        bookingStatus,
         messageHandler,
         bookingStatusChannel,
         config,
@@ -180,7 +186,7 @@ export class DriverSearchService {
     discountedFare: number,
     distanceKm: number,
     durationMin: number,
-    isBookingResolved: boolean,
+    bookingStatus: { isResolved: boolean; status: BookingStatus },
     messageHandler: any,
     bookingStatusChannel: string,
     config: SearchConfiguration,
@@ -191,7 +197,7 @@ export class DriverSearchService {
       iteration <= searchSession.totalIterations;
       iteration++
     ) {
-      if (isBookingResolved) {
+      if (bookingStatus.isResolved) {
         this.logger.log(
           `Booking resolved before iteration ${iteration}`,
           this.context,
@@ -228,7 +234,7 @@ export class DriverSearchService {
         discountedFare,
         distanceKm,
         durationMin,
-        isBookingResolved,
+        bookingStatus,
         messageHandler,
         bookingStatusChannel,
         config,
@@ -251,7 +257,10 @@ export class DriverSearchService {
       }
 
       // Wait between iterations (optional - can be removed for faster search)
-      if (iteration < searchSession.totalIterations && !isBookingResolved) {
+      if (
+        iteration < searchSession.totalIterations &&
+        !bookingStatus.isResolved
+      ) {
         await this.delay(config.iterationDelay);
       }
     }
@@ -277,7 +286,7 @@ export class DriverSearchService {
     discountedFare: number,
     distanceKm: number,
     durationMin: number,
-    isBookingResolved: boolean,
+    bookingStatus: { isResolved: boolean; status: BookingStatus },
     messageHandler: any,
     bookingStatusChannel: string,
     config: SearchConfiguration,
@@ -285,7 +294,7 @@ export class DriverSearchService {
     let radius = config.radiusIncrement;
     const maxRadius = iterationRecord.maxRadius;
 
-    while (radius <= maxRadius && !isBookingResolved) {
+    while (radius <= maxRadius && !bookingStatus.isResolved) {
       const driverAccepted = await this.searchAndNotifyDriversInRadius(
         bookingId,
         iterationRecord,
@@ -296,7 +305,7 @@ export class DriverSearchService {
         distanceKm,
         durationMin,
         radius,
-        isBookingResolved,
+        bookingStatus,
         messageHandler,
         bookingStatusChannel,
         config,
@@ -306,13 +315,11 @@ export class DriverSearchService {
         return true;
       }
 
-      // Check if booking is still pending
-      const updatedBooking = await this.prisma.booking.findUnique({
-        where: { id: bookingId },
-        select: { status: true },
-      });
-
-      if (updatedBooking?.status !== BookingStatus.PENDING) {
+      if (bookingStatus.isResolved) {
+        this.logger.log(
+          `Booking ${bookingId} resolved during iteration, stopping radius search`,
+          this.context,
+        );
         break;
       }
 
@@ -335,11 +342,15 @@ export class DriverSearchService {
     distanceKm: number,
     durationMin: number,
     radius: number,
-    isBookingResolved: boolean,
+    bookingStatus: { isResolved: boolean; status: BookingStatus },
     messageHandler: any,
     bookingStatusChannel: string,
     config: SearchConfiguration,
   ): Promise<boolean> {
+    if (bookingStatus.isResolved) {
+      return false;
+    }
+
     // Fetch all nearby pilots in the current radius
     const nearbyPilots = await this.redis.geoRadius(
       RedisKeys.PILOT_LOCATION,
@@ -420,7 +431,7 @@ export class DriverSearchService {
 
     // Process pilots in order of distance
     for (const [pilotUserId, distance] of nearbyPilots as any) {
-      if (isBookingResolved) break;
+      if (bookingStatus.isResolved) break;
 
       const pilot = pilotMap.get(pilotUserId);
       if (!pilot) continue;
@@ -434,20 +445,12 @@ export class DriverSearchService {
         walletBalance > fare &&
         notificationCount < config.maxNotificationsPerDriver
       ) {
-        this.logger.log(
-          `Notifying pilot ${pilot.phone} (iteration ${iterationRecord.iterationNumber}, notification ${notificationCount + 1})`,
-          this.context,
-        );
+        if (bookingStatus.isResolved) break;
 
         // Increment notification count
-        await this.redis.incr(
+        await this.redis.incrWithExpire(
           `${RedisKeys.DRIVER_NOTIFICATION_COUNT}${bookingId}:${pilotUserId}`,
-        );
-
-        // Set expiration for notification count (cleanup after 1 hour)
-        await this.redis.expire(
-          `${RedisKeys.DRIVER_NOTIFICATION_COUNT}${bookingId}:${pilotUserId}`,
-          3600,
+          3600, // 1 hour TTL
         );
 
         // Track in iteration record
@@ -480,7 +483,7 @@ export class DriverSearchService {
         const driverAccepted = await this.waitForDriverResponse(
           bookingId,
           pilot.userId,
-          isBookingResolved,
+          bookingStatus,
           messageHandler,
           bookingStatusChannel,
           config.driverTimeout,
@@ -509,7 +512,7 @@ export class DriverSearchService {
   private async waitForDriverResponse(
     bookingId: string,
     pilotUserId: string,
-    isBookingResolved: boolean,
+    bookingStatus: { isResolved: boolean; status: BookingStatus },
     messageHandler: any,
     bookingStatusChannel: string,
     timeout: number,
@@ -520,7 +523,7 @@ export class DriverSearchService {
       }, timeout);
 
       const checkResolved = () => {
-        if (isBookingResolved) {
+        if (bookingStatus.isResolved) {
           clearTimeout(timeoutId);
           resolve(true);
         } else {
@@ -646,7 +649,7 @@ export class DriverSearchService {
   private async handleSearchError(
     bookingId: string,
     error: any,
-    userId: string, // ✅ Add this parameter
+    userId: string,
   ): Promise<void> {
     this.logger.error(
       `Search error for booking ${bookingId}: ${error.message}`,
@@ -672,7 +675,7 @@ export class DriverSearchService {
         JSON.stringify(BookingStatus.CANCELLED),
       );
 
-      // ✅ FIXED: Notify customer about the error
+      // Notify customer about the error
       await this.rideNotificationService.notifyDriverNotFound(
         bookingId,
         BookingStatus.CANCELLED,
@@ -723,6 +726,50 @@ export class DriverSearchService {
       `${RedisKeys.SEARCH_SESSION}${bookingId}`,
     );
     return sessionData ? JSON.parse(sessionData) : null;
+  }
+
+  async stopSearchSession(bookingId: string): Promise<void> {
+    try {
+      // Update search session status
+      const sessionData = await this.redis.get(
+        `${RedisKeys.SEARCH_SESSION}${bookingId}`,
+      );
+      if (sessionData) {
+        const searchSession: DriverSearchSession = JSON.parse(sessionData);
+        searchSession.status = 'CANCELLED';
+        searchSession.completedAt = new Date();
+
+        await this.redis.set(
+          `${RedisKeys.SEARCH_SESSION}${bookingId}`,
+          JSON.stringify(searchSession),
+          300,
+        );
+      }
+
+      // Cleanup search-related Redis keys
+      const pipeline = this.redis.pipeline();
+      pipeline.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
+      pipeline.del(`${RedisKeys.SEARCH_SESSION}${bookingId}`);
+
+      // Clean up notification count keys for this booking
+      const pattern = `${RedisKeys.DRIVER_NOTIFICATION_COUNT}${bookingId}:*`;
+      const keys = await this.redis.keys(pattern);
+      if (keys.length > 0) {
+        pipeline.del(...keys);
+      }
+
+      await pipeline.exec();
+
+      this.logger.log(
+        `Stopped search session for booking ${bookingId}`,
+        this.context,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error stopping search session for booking ${bookingId}: ${error.message}`,
+        this.context,
+      );
+    }
   }
 
   /**

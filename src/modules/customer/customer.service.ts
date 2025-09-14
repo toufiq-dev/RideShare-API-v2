@@ -74,7 +74,16 @@ export class CustomerService {
           },
           coupon: true,
           language: true,
-          activeBooking: true,
+          activeBooking: {
+            include: {
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                  id: true,
+                },
+              }
+            }
+          },
         },
       });
 
@@ -137,6 +146,8 @@ export class CustomerService {
           bookingStatus: data.activeBooking.status,
           estimatedDuration: data.activeBooking.estimatedDuration,
           tripStart: data.activeBooking.tripStart,
+          vehicleType: data.activeBooking?.vehicleTypeBD?.name,
+          vehicleTypeId: data.activeBooking?.vehicleTypeIdBD,
           pilot: pilot
             ? {
                 pilotId: pilot.id,

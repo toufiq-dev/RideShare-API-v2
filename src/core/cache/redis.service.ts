@@ -533,4 +533,44 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
   }
+
+  async keys(pattern: string): Promise<string[]> {
+    try {
+      const result = await this.client.keys(pattern);
+      this.logger.log(
+        `Retrieved keys for pattern: ${pattern}, count: ${result.length}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to retrieve keys for pattern: ${pattern}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incrWithExpire(key: string, ttl: number): Promise<number> {
+    try {
+      const pipeline = this.client.pipeline();
+      pipeline.incr(key);
+      pipeline.expire(key, ttl);
+      const results = await pipeline.exec();
+      const newValue = results[0][1] as number;
+      this.logger.log(
+        `Incremented key: ${key} to ${newValue} with TTL: ${ttl}`,
+        this.context,
+      );
+      return newValue;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key with expire: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
 }

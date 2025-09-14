@@ -88,7 +88,8 @@ export class CustomerService {
 
       if (
         data?.activeBookingId &&
-        (data?.activeBooking?.status === BookingStatus.ACCEPTED ||
+        (data?.activeBooking?.status === BookingStatus.PENDING ||
+          data?.activeBooking?.status === BookingStatus.ACCEPTED ||
           data?.activeBooking?.status === BookingStatus.ARRIVED ||
           data?.activeBooking?.status === BookingStatus.ONGOING)
       ) {

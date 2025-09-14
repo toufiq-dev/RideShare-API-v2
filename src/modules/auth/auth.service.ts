@@ -583,6 +583,34 @@ export class AuthService {
     };
   }
 
+  async getSiteSettings() {
+    try {
+      const config = await this.prisma.systemConfig.findUnique({
+        where: { key: 'drivingCityList' },
+      });
+
+      if (!config) {
+        // Return default cities if not configured
+        return {
+          message: 'Driving cities fetched successfully.',
+          data: {
+            drivingCityList: ['Dhaka', 'Chattogram'],
+          },
+        };
+      }
+
+      return {
+        message: 'Driving cities fetched successfully.',
+        data: {
+          drivingCityList: config.value as string[],
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   private async validateOtpRedis(phone: string, otp: string) {
     const storedOtp = await this.redis.get(`otp:${phone}`);
 

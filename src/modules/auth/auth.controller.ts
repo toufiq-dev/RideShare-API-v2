@@ -112,4 +112,11 @@ export class AuthController {
   async getVehicleRegistrationPoints() {
     return await this.authService.getVehicleRegistrationPoints();
   }
+
+  @Get('site-settings')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get site settings' })
+  async getSiteSettings() {
+    return await this.authService.getSiteSettings();
+  }
 }

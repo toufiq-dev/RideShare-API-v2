@@ -340,6 +340,7 @@ model VehicleTypeBD {
   insuranceFee      Decimal?          @db.Decimal(10, 2)
   vehicle           Vehicle[]
   tariffs           Tariff[]
+  bookings          Booking[]
 }
 
 model VehicleClassificationCache {
@@ -457,6 +458,7 @@ model Booking {
   status             BookingStatus
   rideType           RideType
   vehicleId          String?
+  vehicleTypeIdBD    String?
   estimatedFare      Decimal             @db.Decimal(10, 2)
   discountedFare     Decimal             @db.Decimal(10, 2)
   tripEndFare        Decimal?            @db.Decimal(10, 2)
@@ -478,6 +480,7 @@ model Booking {
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
   vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])
+  vehicleTypeBD      VehicleTypeBD?      @relation(fields: [vehicleTypeIdBD], references: [id])
   activePilot        Pilot?              @relation("PilotActiveBooking")
   activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?

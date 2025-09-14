@@ -15,15 +15,6 @@ export interface Location {
   address?: string;
 }
 
-export interface CustomerCreateRideResponse {
-  bookingId: string;
-  location: [Location, Location];
-  originalPrice: number;
-  discountedPrice: number;
-  coupon: Coupon | null;
-  otherPassengerInfo: OtherPassengerInfo | null;
-}
-
 export interface RideRequestPayload {
   userId: string;
   bookingId: string;
@@ -70,7 +61,7 @@ export interface CustomerRidePayload {
     model: string;
     colour: string;
     vehicleType: VehicleTypeNameBD;
-  };
+  } | null;
   passenger: {
     passengerId: string;
     name: string;

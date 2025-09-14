@@ -86,48 +86,50 @@ export class CustomerService {
         data.coupon.discount = Number(data.coupon.discount);
       }
 
+      console.log('data.activeBooking', data.activeBooking);
+
       if (
-        data?.activeBookingId &&
-        (data?.activeBooking?.status === BookingStatus.PENDING ||
-          data?.activeBooking?.status === BookingStatus.ACCEPTED ||
-          data?.activeBooking?.status === BookingStatus.ARRIVED ||
-          data?.activeBooking?.status === BookingStatus.ONGOING)
+        data?.activeBooking?.status === BookingStatus.PENDING ||
+        data?.activeBooking?.status === BookingStatus.ACCEPTED ||
+        data?.activeBooking?.status === BookingStatus.ARRIVED ||
+        data?.activeBooking?.status === BookingStatus.ONGOING
       ) {
-        const pilot = await this.prisma.pilot.findUnique({
-          where: {
-            id: data.activeBooking.pilotId,
-          },
-          select: {
-            id: true,
-            userId: true,
-            selfieUrl: true,
-            phone: true,
-            averageRating: true,
-            currentLocation: true,
-            drivingLicense: {
-              select: {
-                nameOnLicense: true,
-              },
+        let pilot = null;
+        if (data.activeBooking?.pilotId) {
+          pilot = await this.prisma.pilot.findUnique({
+            where: {
+              id: data.activeBooking.pilotId,
             },
-            vehicle: {
-              select: {
-                regNo: true,
-                model: true,
-                colour: true,
-                vehicleTypeBD: {
-                  select: {
-                    name: true,
+            select: {
+              id: true,
+              userId: true,
+              selfieUrl: true,
+              phone: true,
+              averageRating: true,
+              currentLocation: true,
+              drivingLicense: {
+                select: {
+                  nameOnLicense: true,
+                },
+              },
+              vehicle: {
+                select: {
+                  regNo: true,
+                  model: true,
+                  colour: true,
+                  vehicleTypeBD: {
+                    select: {
+                      name: true,
+                    },
                   },
                 },
               },
             },
-          },
-        });
-
-        const pilotLocation = await this.redis.geoPos(
-          RedisKeys.PILOT_LOCATION,
-          pilot.userId,
-        );
+          });
+        }
+        const pilotLocation = pilot
+          ? await this.redis.geoPos(RedisKeys.PILOT_LOCATION, pilot.userId)
+          : [null, null];
 
         const payload: CustomerRidePayload = {
           bookingCode: data.activeBooking.bookingCode,
@@ -135,21 +137,23 @@ export class CustomerService {
           bookingStatus: data.activeBooking.status,
           estimatedDuration: data.activeBooking.estimatedDuration,
           tripStart: data.activeBooking.tripStart,
-          pilot: {
-            pilotId: pilot.id,
-            pilotName: pilot.drivingLicense.nameOnLicense,
-            profilePicture: pilot.selfieUrl,
-            pilotPhone: pilot.phone,
-            rating: pilot.averageRating,
-            pilotLocation: {
-              lat: pilotLocation[0],
-              lng: pilotLocation[1],
-            },
-            vehicleNumber: pilot.vehicle.regNo,
-            model: pilot.vehicle.model,
-            colour: pilot.vehicle.colour,
-            vehicleType: pilot.vehicle.vehicleTypeBD.name,
-          },
+          pilot: pilot
+            ? {
+                pilotId: pilot.id,
+                pilotName: pilot.drivingLicense.nameOnLicense,
+                profilePicture: pilot.selfieUrl,
+                pilotPhone: pilot.phone,
+                rating: pilot.averageRating,
+                pilotLocation: {
+                  lat: pilotLocation[0],
+                  lng: pilotLocation[1],
+                },
+                vehicleNumber: pilot.vehicle.regNo,
+                model: pilot.vehicle.model,
+                colour: pilot.vehicle.colour,
+                vehicleType: pilot.vehicle.vehicleTypeBD.name,
+              }
+            : null,
           passenger: {
             passengerId: data.userId,
             name: data.name,

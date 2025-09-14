@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RideNotificationService } from './ride-notification.service';
@@ -571,23 +571,37 @@ export class DriverSearchService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const booking = await tx.booking.findUnique({
+          where: { id: bookingId },
+          select: { customerId: true },
+        });
+        if (!booking) {
+          throw new NotFoundException('Booking not found for this customer');
+        }
         await tx.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.NOT_FOUND },
         });
 
-        const existingCancellation = await tx.cancellationReason.findUnique({
-          where: { bookingId },
-        });
-
-        if (!existingCancellation) {
-          await tx.cancellationReason.create({
-            data: {
-              bookingId,
-              reason: 'Driver not found after multiple search attempts',
-              cancelledBy: CancelledBy.SYSTEM,
-            },
+        if (booking) {
+          await tx.customer.update({
+            where: { id: booking.customerId },
+            data: { activeBookingId: null },
           });
+
+          const existingCancellation = await tx.cancellationReason.findUnique({
+            where: { bookingId },
+          });
+
+          if (!existingCancellation) {
+            await tx.cancellationReason.create({
+              data: {
+                bookingId,
+                reason: 'Driver not found after multiple search attempts',
+                cancelledBy: CancelledBy.SYSTEM,
+              },
+            });
+          }
         }
       });
 

@@ -499,7 +499,17 @@ export class RideService {
           pickupLocation: true,
           dropLocation: true,
           name: true,
-          vehicleId: true,
+          vehicleTypeIdBD: true,
+          vehicleTypeBD: {
+            select: {
+              id: true,
+              name: true,
+              baseFare: true,
+              perKmRate: true,
+              perMinRate: true,
+              minFare: true,
+            },
+          },
           customer: {
             select: {
               id: true,
@@ -515,27 +525,6 @@ export class RideService {
       if (!booking) {
         throw new NotFoundException('Booking not found.');
       }
-      if (!booking.vehicleId) {
-        throw new BadRequestException(
-          'Cannot book again from a ride that was never accepted by a pilot. Please create a new ride request.',
-        );
-      }
-
-      const vehicle = await this.prisma.vehicle.findUnique({
-        where: { id: booking.vehicleId },
-        select: {
-          vehicleTypeBD: {
-            select: {
-              id: true,
-              name: true,
-              baseFare: true,
-              perKmRate: true,
-              perMinRate: true,
-              minFare: true,
-            },
-          },
-        },
-      });
 
       const activeBooking =
         customer.activeBookingId &&
@@ -565,11 +554,11 @@ export class RideService {
       const originalPrice = this.fareService.estimateFare(
         distanceKm,
         durationMin,
-        Number(vehicle.vehicleTypeBD.baseFare),
-        Number(vehicle.vehicleTypeBD.perMinRate),
-        Number(vehicle.vehicleTypeBD.minFare),
-        vehicle.vehicleTypeBD.name,
-        Number(vehicle.vehicleTypeBD.perKmRate),
+        Number(booking.vehicleTypeBD.baseFare),
+        Number(booking.vehicleTypeBD.perMinRate),
+        Number(booking.vehicleTypeBD.minFare),
+        booking.vehicleTypeBD.name,
+        Number(booking.vehicleTypeBD.perKmRate),
       );
 
       const coupon = booking.customer.coupon;
@@ -589,7 +578,7 @@ export class RideService {
 
       const price = Math.max(
         discountedPrice,
-        Number(vehicle.vehicleTypeBD.minFare),
+        Number(booking.vehicleTypeBD.minFare),
       );
 
       const result = await this.prisma.$transaction(async (tx) => {
@@ -604,7 +593,7 @@ export class RideService {
                 : booking.name,
             status: BookingStatus.PENDING,
             rideType: booking.rideType,
-            vehicleTypeIdBD: vehicle.vehicleTypeBD.id,
+            vehicleTypeIdBD: booking.vehicleTypeBD.id,
             estimatedFare: Math.ceil(originalPrice),
             discountedFare: Math.ceil(price),
             pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
@@ -630,7 +619,7 @@ export class RideService {
         bookingId: newBooking.id,
         estimatedFare: newBooking.estimatedFare,
         discountedFare: newBooking.discountedFare,
-        vehicleTypeId: vehicle.vehicleTypeBD.id,
+        vehicleTypeId: booking.vehicleTypeBD.id,
         distanceKm: Number(newBooking.estimatedDistance),
         durationMin: Number(newBooking.estimatedDuration),
         pickupLocation: booking.pickupLocation,
@@ -639,15 +628,16 @@ export class RideService {
 
       this.handleRideRequest(payload);
 
-      // Create CustomerRidePayload for consistent response structure
+      coupon.discount = Number(coupon.discount);
+
       const data: CustomerRidePayload = {
         bookingCode: newBooking.bookingCode,
         bookingId: newBooking.id,
         bookingStatus: newBooking.status, // PENDING
         estimatedDuration: newBooking.estimatedDuration,
         tripStart: newBooking.tripStart, // null for new bookings
-        vehicleType: vehicle.vehicleTypeBD.name,
-        vehicleTypeId: vehicle.vehicleTypeBD.id,
+        vehicleType: booking.vehicleTypeBD.name,
+        vehicleTypeId: booking.vehicleTypeBD.id,
         pilot: null,
         passenger: {
           passengerId: booking.customer.userId,
@@ -759,14 +749,6 @@ export class RideService {
           );
         }
 
-        await tx.pilot.update({
-          where: { userId },
-          data: {
-            activeBookingId: bookingId,
-            onlineStatus: PilotStatus.ON_TRIP,
-          },
-        });
-
         const updated = await tx.booking.update({
           where: { id: booking.id },
           data: {
@@ -813,6 +795,14 @@ export class RideService {
         await tx.customer.update({
           where: { id: booking.customerId },
           data: { activeBookingId: booking.id },
+        });
+
+        await tx.pilot.update({
+          where: { userId },
+          data: {
+            activeBookingId: bookingId,
+            onlineStatus: PilotStatus.ON_TRIP,
+          },
         });
 
         return { updated };
@@ -1205,17 +1195,12 @@ export class RideService {
       const result = await this.prisma.$transaction(async (tx) => {
         const tripCount = pilot.totalTrips ? pilot.totalTrips + 1 : 1;
 
-        const updatedPilot = await tx.pilot.update({
+        await tx.pilot.update({
           where: { id: pilot.id },
           data: {
             activeBookingId: null,
             totalTrips: tripCount,
             onlineStatus: PilotStatus.AVAILABLE,
-          },
-          select: {
-            wallet: {
-              select: { id: true, todaysEarning: true, date: true },
-            },
           },
         });
 
@@ -1244,6 +1229,12 @@ export class RideService {
             tripStart: true,
             pickupLocation: true,
             dropLocation: true,
+            vehicleTypeBD: {
+              select: {
+                name: true,
+                id: true,
+              },
+            },
             customer: {
               select: {
                 userId: true,
@@ -1265,11 +1256,6 @@ export class RideService {
                     regNo: true,
                     model: true,
                     colour: true,
-                    vehicleTypeBD: {
-                      select: {
-                        name: true,
-                      },
-                    },
                   },
                 },
                 wallet: {
@@ -1394,8 +1380,8 @@ export class RideService {
         bookingStatus: result.updated.status,
         estimatedDuration: result.updated.estimatedDuration,
         tripStart: result.updated.tripStart,
-        vehicleType: result.updated.vehicle.vehicleTypeBD.name,
-        vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
+        vehicleType: result.updated.vehicleTypeBD.name,
+        vehicleTypeId: result.updated.vehicleTypeBD.id,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1406,7 +1392,7 @@ export class RideService {
           vehicleNumber: result.updated.pilot.vehicle.regNo,
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
-          vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
+          vehicleType: result.updated.vehicleTypeBD.name,
         },
         passenger: {
           passengerId: result.updated.customer.userId,

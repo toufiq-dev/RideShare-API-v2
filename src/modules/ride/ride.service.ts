@@ -157,6 +157,12 @@ export class RideService {
           discountedFare: true,
           pickupLocation: true,
           dropLocation: true,
+          vehicleTypeBD: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           customer: {
             select: {
               userId: true,
@@ -185,11 +191,6 @@ export class RideService {
                   regNo: true,
                   model: true,
                   colour: true,
-                  vehicleTypeBD: {
-                    select: {
-                      name: true,
-                    },
-                  },
                 },
               },
               averageRating: true,
@@ -225,8 +226,8 @@ export class RideService {
         bookingStatus: booking.status,
         estimatedDuration: booking.estimatedDuration,
         tripStart: booking.tripStart,
-        vehicleType: booking.vehicle.vehicleTypeBD.name,
-        vehicleTypeId: booking.vehicle.vehicleTypeBD.id,
+        vehicleType: booking.vehicleTypeBD?.name,
+        vehicleTypeId: booking.vehicleTypeBD?.id,
         pilot: booking.pilot
           ? {
               pilotId: booking.pilot.id,
@@ -241,7 +242,7 @@ export class RideService {
               vehicleNumber: booking.pilot.vehicle.regNo,
               model: booking.pilot.vehicle.model,
               colour: booking.pilot.vehicle.colour,
-              vehicleType: booking.pilot.vehicle.vehicleTypeBD.name,
+              vehicleType: booking.vehicleTypeBD?.name,
             }
           : null,
         passenger: {
@@ -298,6 +299,9 @@ export class RideService {
       });
       if (!customer) {
         throw new NotFoundException('Customer not found');
+      }
+      if (customer.activeBooking) {
+        throw new BadRequestException('You already have an active booking');
       }
 
       const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
@@ -389,14 +393,13 @@ export class RideService {
                 : otherPassengerInfo?.name,
             status: BookingStatus.PENDING,
             rideType: rideFor,
-            vehicleId: vehicleType.vehicle[0].id,
             estimatedFare: Math.ceil(originalPrice),
             discountedFare: Math.ceil(price),
             pickupLocation: JSON.parse(JSON.stringify(pickupLocation)),
             dropLocation: JSON.parse(JSON.stringify(dropLocation)),
             estimatedDistance: Math.ceil(distanceKm).toString(),
             estimatedDuration: Math.ceil(durationMin),
-            vehicleTypeIdBD: vehicleType.id
+            vehicleTypeIdBD: vehicleType.id,
           },
         });
 
@@ -424,6 +427,8 @@ export class RideService {
       };
 
       this.handleRideRequest(payload);
+
+      customer.coupon.discount = Number(customer.coupon.discount);
 
       const data: CustomerRidePayload = {
         bookingCode: booking.bookingCode,
@@ -474,10 +479,13 @@ export class RideService {
     try {
       const customer = await this.prisma.customer.findUnique({
         where: { userId },
-        select: { id: true },
+        include: { coupon: true, activeBooking: true },
       });
       if (!customer) {
         throw new NotFoundException('Customer not found');
+      }
+      if (customer.activeBooking) {
+        throw new BadRequestException('You already have an active booking');
       }
 
       const booking: any = await this.prisma.booking.findUnique({
@@ -529,19 +537,11 @@ export class RideService {
         },
       });
 
-      // Check active booking
-      const activeBooking = await this.prisma.booking.findFirst({
-        where: {
-          customerId: booking.customer.id,
-          status: {
-            in: [
-              BookingStatus.ACCEPTED,
-              BookingStatus.ARRIVED,
-              BookingStatus.ONGOING,
-            ],
-          },
-        },
-      });
+      const activeBooking =
+        customer.activeBookingId &&
+        (customer.activeBooking.status === BookingStatus.ACCEPTED ||
+          customer.activeBooking.status === BookingStatus.ARRIVED ||
+          customer.activeBooking.status === BookingStatus.ONGOING);
       if (activeBooking)
         throw new BadRequestException(
           'You already have an active ride request',
@@ -592,24 +592,38 @@ export class RideService {
         Number(vehicle.vehicleTypeBD.minFare),
       );
 
-      const newBooking = await this.prisma.booking.create({
-        data: {
-          bookingCode: randomInt(1000, 10000).toString(),
-          customerId: booking.customer.id,
-          name:
-            booking.rideType === RideType.SELF
-              ? booking.customer.name
-              : booking.name,
-          status: BookingStatus.PENDING,
-          rideType: booking.rideType,
-          estimatedFare: Math.ceil(originalPrice),
-          discountedFare: Math.ceil(price),
-          pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
-          dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
-          estimatedDistance: Math.ceil(distanceKm).toString(),
-          estimatedDuration: Math.ceil(durationMin),
-        },
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Create the new booking
+        const newBooking = await tx.booking.create({
+          data: {
+            bookingCode: randomInt(1000, 10000).toString(),
+            customerId: booking.customer.id,
+            name:
+              booking.rideType === RideType.SELF
+                ? booking.customer.name
+                : booking.name,
+            status: BookingStatus.PENDING,
+            rideType: booking.rideType,
+            vehicleTypeIdBD: vehicle.vehicleTypeBD.id,
+            estimatedFare: Math.ceil(originalPrice),
+            discountedFare: Math.ceil(price),
+            pickupLocation: JSON.parse(JSON.stringify(booking.pickupLocation)),
+            dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
+            estimatedDistance: Math.ceil(distanceKm).toString(),
+            estimatedDuration: Math.ceil(durationMin),
+          },
+        });
+
+        // Update customer's activeBookingId
+        await tx.customer.update({
+          where: { id: booking.customer.id },
+          data: { activeBookingId: newBooking.id },
+        });
+
+        return newBooking;
       });
+
+      const newBooking = result;
 
       const payload: RideRequestPayload = {
         userId: booking.customer.userId,

@@ -81,8 +81,8 @@ export class CustomerService {
                   name: true,
                   id: true,
                 },
-              }
-            }
+              },
+            },
           },
         },
       });

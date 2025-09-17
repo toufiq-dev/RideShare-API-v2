@@ -44,6 +44,8 @@ import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
+import { TelemetryService } from '../pricing/telemetry.service';
+import { h3Cell } from 'src/core/utils/h3.util';
 
 @Injectable()
 export class PilotService {
@@ -55,6 +57,7 @@ export class PilotService {
     private readonly verificationService: VerificationService,
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
+    private readonly telemetryService: TelemetryService,
   ) {
     this.flexiPack = this.configService.get<string>('subscription.flexiPack');
   }
@@ -927,10 +930,16 @@ export class PilotService {
           Number(currentLocation.lng),
           pilot.userId,
         );
+
+        const h3 = h3Cell(currentLocation.lat, currentLocation.lng, 8);
+        await this.telemetryService.setSupply(h3, 1);
       }
 
       if (!onlineStatus) {
         await this.redis.zRem(RedisKeys.PILOT_LOCATION, pilot.userId);
+
+        const h3 = h3Cell(currentLocation.lat, currentLocation.lng, 8);
+        await this.telemetryService.setSupply(h3, -1);
       }
 
       await this.prisma.pilot.update({

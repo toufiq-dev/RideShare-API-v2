@@ -573,4 +573,48 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
   }
+
+  async incrby(key: string, increment: number): Promise<number> {
+    try {
+      const result = await this.client.incrby(key, increment);
+      this.logger.log(
+        `Incremented key: ${key} by ${increment}, new value: ${result}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key: ${key} by ${increment}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incrbyWithExpire(
+    key: string,
+    increment: number,
+    ttl: number,
+  ): Promise<number> {
+    try {
+      const pipeline = this.client.pipeline();
+      pipeline.incrby(key, increment);
+      pipeline.expire(key, ttl);
+      const results = await pipeline.exec();
+      const newValue = results[0][1] as number;
+      this.logger.log(
+        `Incremented key: ${key} by ${increment} to ${newValue} with TTL: ${ttl}`,
+        this.context,
+      );
+      return newValue;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key with expire: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
 }

@@ -15,6 +15,7 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
+  VehicleTypeNameBD,
 } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { RedisService } from 'src/core/cache/redis.service';
@@ -347,39 +348,18 @@ export class RideService {
           'You already have an active ride request',
         );
 
-      const origin = { lat: pickupLocation.lat, lng: pickupLocation.lng };
-      const destination = { lat: dropLocation.lat, lng: dropLocation.lng };
+      const fareCalculation = await this.fareService.calculateTariffBasedFare({
+        pickupLocation,
+        dropLocation,
+        vehicleTypeName: vehicleType.name as VehicleTypeNameBD,
+        customerCoupon: customer.coupon,
+        intercity: false,
+      });
 
-      const distanceDuration =
-        await this.fareService.calculateDistanceAndDuration(
-          origin,
-          destination,
-        );
-
-      distanceKm = distanceDuration.distanceKm;
-      durationMin = distanceDuration.durationMin;
-
-      originalPrice = this.fareService.estimateFare(
-        distanceKm,
-        durationMin,
-        Number(vehicleType.baseFare),
-        Number(vehicleType.perMinRate),
-        Number(vehicleType.minFare),
-        vehicleType.name,
-        Number(vehicleType.perKmRate),
-      );
-
-      let discount: number = Number(customer.coupon?.discount || 0);
-      if (!discount) {
-        discount = 0;
-      }
-
-      const discountedPrice =
-        discount && originalPrice > discount
-          ? originalPrice - discount
-          : originalPrice;
-
-      const price = Math.max(discountedPrice, Number(vehicleType.minFare));
+      originalPrice = fareCalculation.originalPrice;
+      distanceKm = fareCalculation.distanceKm;
+      durationMin = fareCalculation.durationMin;
+      const price = fareCalculation.finalPrice;
 
       const result = await this.prisma.$transaction(async (tx) => {
         // Create the booking
@@ -425,6 +405,11 @@ export class RideService {
         pickupLocation,
         dropLocation,
       };
+
+      this.logger.log(
+        `[RIDE_REQUEST_INITIATED] Customer ${customer.phone} initiated ride request with vehicle type ${vehicleType.name}`,
+        this.context,
+      );
 
       this.handleRideRequest(payload);
 
@@ -536,50 +521,18 @@ export class RideService {
           'You already have an active ride request',
         );
 
-      const origin = {
-        lat: booking.pickupLocation.lat,
-        lng: booking.pickupLocation.lng,
-      };
-      const destination = {
-        lat: booking.dropLocation.lat,
-        lng: booking.dropLocation.lng,
-      };
+      const fareCalculation = await this.fareService.calculateTariffBasedFare({
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
+        vehicleTypeName: booking.vehicleTypeBD.name as VehicleTypeNameBD,
+        customerCoupon: booking.customer.coupon || null,
+        intercity: false,
+      });
 
-      const { distanceKm, durationMin } =
-        await this.fareService.calculateDistanceAndDuration(
-          origin,
-          destination,
-        );
-
-      const originalPrice = this.fareService.estimateFare(
-        distanceKm,
-        durationMin,
-        Number(booking.vehicleTypeBD.baseFare),
-        Number(booking.vehicleTypeBD.perMinRate),
-        Number(booking.vehicleTypeBD.minFare),
-        booking.vehicleTypeBD.name,
-        Number(booking.vehicleTypeBD.perKmRate),
-      );
-
-      const coupon = booking.customer.coupon;
-      if (coupon && isNaN(Number(coupon.discount))) {
-        throw new BadRequestException('Invalid coupon discount');
-      }
-
-      let discount: number = Number(coupon.discount);
-      if (!discount) {
-        discount = 0;
-      }
-
-      const discountedPrice =
-        discount && originalPrice > discount
-          ? originalPrice - discount
-          : originalPrice;
-
-      const price = Math.max(
-        discountedPrice,
-        Number(booking.vehicleTypeBD.minFare),
-      );
+      const originalPrice = fareCalculation.originalPrice;
+      const distanceKm = fareCalculation.distanceKm;
+      const durationMin = fareCalculation.durationMin;
+      const price = fareCalculation.finalPrice;
 
       const result = await this.prisma.$transaction(async (tx) => {
         // Create the new booking
@@ -628,7 +581,8 @@ export class RideService {
 
       this.handleRideRequest(payload);
 
-      coupon.discount = Number(coupon.discount);
+      booking.customer.coupon.discount =
+        Number(booking.customer.coupon?.discount) || 0;
 
       const data: CustomerRidePayload = {
         bookingCode: newBooking.bookingCode,
@@ -651,7 +605,7 @@ export class RideService {
         fairDetails: {
           originalFare: Math.ceil(Number(newBooking.estimatedFare)),
           discountedFare: Math.ceil(Number(newBooking.discountedFare)),
-          coupon: coupon || null,
+          coupon: booking.customer.coupon || null,
         },
         otherPassengerInfo:
           newBooking.rideType === RideType.OTHERS

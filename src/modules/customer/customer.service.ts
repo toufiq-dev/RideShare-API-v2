@@ -516,101 +516,30 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
-      const [vehicleTypes, distanceData] = await Promise.all([
-        this.prisma.vehicleTypeBD.findMany({
-          orderBy: {
-            serialNumber: 'asc',
-          },
-        }),
-        this.fareService.calculateDistanceAndDuration(
-          pickupLocation,
-          dropLocation,
-        ),
-      ]);
+      const vehicleTypes = await this.prisma.vehicleTypeBD.findMany({
+        orderBy: {
+          serialNumber: 'asc',
+        },
+      });
 
-      const { distanceKm, durationMin, routePolyline } = distanceData;
-      const h3 = h3Cell(pickupLocation.lat, pickupLocation.lng, 8);
-      const hour = new Date().getHours();
-
-      // Increment demand ONCE per request
-      await this.telemetry.incrementDemand(h3);
-
-      // Compute detour ratio
-      const detourRatio = await this.computeDetourRatio(
-        routePolyline,
+      // Use centralized fare calculation for all vehicle types
+      const vehicles = await this.fareService.calculateMultipleVehicleFares({
         pickupLocation,
         dropLocation,
-      );
-
-      // Get base μ (same for all services at pickup H3/hour), will be adjusted per service
-      const muBase = await this.multService.getMu(this.CITY, h3, hour);
-
-      const nearbyPilots = await this.redis.geoRadius(
-        RedisKeys.PILOT_LOCATION,
-        pickupLocation.lng,
-        pickupLocation.lat,
-        2000,
-        'm',
-        { withDist: true, sort: 'ASC' },
-      );
-
-      const vehicles = [];
-      for (const vt of vehicleTypes) {
-        const serviceName = vt.name as unknown as VehicleTypeNameBD;
-        const intercity = false; // or derive from your request dto if you support it
-
-        // Baseline
-        const tariff = await this.tariffService.getActiveTariff(
-          this.CITY,
-          serviceName,
-          intercity,
-        );
-        const baseline = this.tariffService.computeB(
-          this.tariffService.toBaseline(tariff),
-          distanceKm,
-          durationMin,
-        );
-
-        // μ with adjustments (slab + detour)
-        let muEff = this.multService.applyAdjustments(
-          muBase,
-          serviceName,
-          distanceKm,
-          detourRatio,
-        );
-        muEff = Math.min(this.MU_MAX, Math.max(this.MU_MIN, muEff));
-
-        // Raw price (round)
-        const rawPrice = Math.round(baseline * muEff);
-
-        // Coupon (fixed amount discount in your schema) and enforce min fare
-        const discounted =
-          customer?.coupon?.discount &&
-          rawPrice > Number(customer.coupon.discount)
-            ? rawPrice - Number(customer.coupon.discount)
-            : rawPrice;
-
-        const finalPrice = Math.max(discounted, Number(tariff.minFare));
-
-        // time away (reuses your logic, but only first available driver of this type)
-        const minsAway = await this.estimateTimeAwayForType(
-          nearbyPilots,
-          vt.id,
-          pickupLocation,
-        );
-
-        vehicles.push({
+        vehicleTypes: vehicleTypes.map((vt) => ({
           id: vt.id,
-          vehicleType: vt.name,
+          name: vt.name as VehicleTypeNameBD,
           airCondition: vt.airCondition,
           isFaster: vt.isFaster,
           passengerCapacity: vt.passengerCapacity,
-          originalPrice: rawPrice,
-          price: finalPrice,
-          tolls: 0.0,
-          timeAway: `${minsAway ?? randomInt(1, 5)} min away`,
-        });
-      }
+        })),
+        customerCoupon: customer.coupon,
+        intercity: false,
+      });
+
+      // Increment demand (keep existing telemetry logic)
+      const h3 = h3Cell(pickupLocation.lat, pickupLocation.lng, 8);
+      await this.telemetry.incrementDemand(h3);
 
       if (customer.coupon) {
         customer.coupon.discount = customer.coupon.discount
@@ -680,21 +609,5 @@ export class CustomerService {
       }
     }
     return undefined;
-  }
-
-  private async computeDetourRatio(
-    poly: string | undefined,
-    pickup: any,
-    drop: any,
-  ): Promise<number | undefined> {
-    try {
-      if (!poly) return undefined;
-      // If your distance provider already gives routeDistanceKm, just do:
-      // const geo = haversine(pickup, drop);
-      // return routeDistanceKm / Math.max(geo, 0.001);
-      return undefined; // keep as is if not available now
-    } catch {
-      return undefined;
-    }
   }
 }

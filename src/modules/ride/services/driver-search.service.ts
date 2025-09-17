@@ -134,6 +134,18 @@ export class DriverSearchService {
         await this.redis.unsubscribe(bookingStatusChannel);
       }
 
+      if (searchResult) {
+        this.logger.log(
+          `[DRIVER_FOUND] Driver found and accepted for booking ${bookingId}`,
+          this.context,
+        );
+      } else {
+        this.logger.log(
+          `[NO_DRIVER_FOUND] No driver found after ${config.totalIterations} iterations for booking ${bookingId}`,
+          this.context,
+        );
+      }
+
       return searchResult;
     } catch (error) {
       this.logger.error(
@@ -247,7 +259,7 @@ export class DriverSearchService {
 
       if (iterationResult) {
         this.logger.log(
-          `Driver accepted in iteration ${iteration}`,
+          `[DRIVER_ACCEPTED] Driver accepted in iteration ${iteration} for booking ${bookingId}`,
           this.context,
         );
         searchSession.status = 'COMPLETED';
@@ -360,7 +372,15 @@ export class DriverSearchService {
       'm',
       { withDist: true, sort: 'ASC' },
     );
-
+    const pilots = await this.prisma.pilot.findMany({
+      where: {
+        userId: { in: nearbyPilots.map(([pilotUserId]) => pilotUserId) },
+      },
+    });
+    this.logger.log(
+      `[PILOTS_FOUND] Found ${pilots.length} pilots ${pilots.map((pilot) => pilot.phone)} in ${radius}m radius for booking ${bookingId}`,
+      this.context,
+    );
     if (!nearbyPilots.length) {
       return false;
     }
@@ -479,6 +499,14 @@ export class DriverSearchService {
           notifyDriverPayload,
         );
 
+        const notifiedPilot = await this.prisma.pilot.findUnique({
+          where: { userId: pilotUserId },
+        });
+        this.logger.log(
+          `[DRIVER_NOTIFICATION] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}`,
+          this.context,
+        );
+
         // Wait for driver response
         const driverAccepted = await this.waitForDriverResponse(
           bookingId,
@@ -499,6 +527,10 @@ export class DriverSearchService {
         await this.rideNotificationService.notifyRideRequestTimeout(
           bookingId,
           pilot.userId,
+        );
+        this.logger.log(
+          `[DRIVER_NOTIFICATION_TIMEOUT] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}`,
+          this.context,
         );
       }
     }

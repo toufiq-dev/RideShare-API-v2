@@ -19,7 +19,7 @@ export class TariffService {
 
   async getActiveTariff(
     city: string,
-    serviceName: VehicleTypeNameBD, // FAIR_BIKE, FAIR_PLUS, ...
+    serviceName: VehicleTypeNameBD, // FAIR_BIKE, FAIR_PLUS
     intercity: boolean,
     when: Date = new Date(),
   ): Promise<Tariff> {
@@ -43,27 +43,8 @@ export class TariffService {
     });
 
     if (!t) {
-      // Optional: fall back to VehicleTypeBD as a last resort
-      return {
-        id: 'fallback',
-        city,
-        intercity,
-        vehicleTypeBDId: vt.id,
-        baseFare: vt.baseFare,
-        perKmRate: vt.perKmRate,
-        perMinRate: vt.perMinRate,
-        minFare: vt.minFare,
-        insuranceFee: vt.insuranceFee,
-        pickupFee: null,
-        pickupActive: false,
-        version: 1,
-        effectiveFrom: when,
-        effectiveTo: null,
-        isActive: true,
-        createdAt: when,
-        updatedAt: when,
-        vehicleTypeBD: null as any, // ignored
-      } as unknown as Tariff;
+      // STRONG OPTION: hard fail so you notice missing tariff
+      throw new Error(`No active Tariff for ${city}/${serviceName}}`);
     }
 
     return t;
@@ -89,5 +70,121 @@ export class TariffService {
       b.insuranceFee +
       b.pickupFee;
     return Math.max(b.minFare, naive);
+  }
+
+  async computeDetourRatio(
+    poly: string | undefined,
+    pickup: any,
+    drop: any,
+  ): Promise<number | undefined> {
+    try {
+      if (!poly) return undefined;
+
+      // Calculate straight-line distance (Haversine formula)
+      const straightLineDistance = this.calculateHaversineDistance(
+        pickup.lat,
+        pickup.lng,
+        drop.lat,
+        drop.lng,
+      );
+
+      // Calculate route distance from polyline
+      const routeDistance = this.calculatePolylineDistance(poly);
+
+      // Avoid division by zero
+      if (straightLineDistance < 0.001) return undefined;
+
+      // Return detour ratio (route distance / straight line distance)
+      const detourRatio = routeDistance / straightLineDistance;
+
+      // Return undefined if ratio is invalid (too high or too low)
+      if (detourRatio < 1.0 || detourRatio > 3.0) return undefined;
+
+      return detourRatio;
+    } catch (error) {
+      console.error('Error calculating detour ratio:', error);
+      return undefined;
+    }
+  }
+
+  private calculateHaversineDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private calculatePolylineDistance(polyline: string): number {
+    // Decode polyline and calculate total distance
+    const points = this.decodePolyline(polyline);
+    let totalDistance = 0;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      totalDistance += this.calculateHaversineDistance(
+        points[i].lat,
+        points[i].lng,
+        points[i + 1].lat,
+        points[i + 1].lng,
+      );
+    }
+
+    return totalDistance;
+  }
+
+  private decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+    const points = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < encoded.length) {
+      let b,
+        shift = 0,
+        result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lng += dlng;
+
+      points.push({
+        lat: lat / 1e5,
+        lng: lng / 1e5,
+      });
+    }
+
+    return points;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 }

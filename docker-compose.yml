@@ -17,7 +17,7 @@ services:
     networks:
       - fairdrive-network
 
-  # Production Legacy API (Port 3000) - Root domain
+  # Production Legacy API (Port 3000)
   fairdrive-api-legacy:
     build:
       context: .
@@ -44,18 +44,18 @@ services:
       start_period: 60s
     networks:
       - fairdrive-network
-    command: ["node", "dist/src/main"] 
+    command: ["node", "dist/src/main"]
 
   # Production Latest API (Port 3001)
   fairdrive-api-latest:
     build:
       context: .
-      dockerfile: Dockerfile.v1
+      dockerfile: Dockerfile
     container_name: fairdrive-api-latest
     ports:
       - "3001:3000"
     env_file:
-      - .env.production.v1
+      - .env.production
     depends_on:
       redis:
         condition: service_healthy
@@ -66,7 +66,7 @@ services:
           memory: 1G
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]  # FIXED: Use internal port 3000
       interval: 30s
       timeout: 10s
       retries: 3
@@ -82,7 +82,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: fairdrive-api-dev
     ports:
-      - "8080:3000"
+      - "8080:8080"
     env_file:
       - .env.development
     volumes:
@@ -128,7 +128,7 @@ services:
     image: grafana/grafana:latest
     container_name: fairdrive-grafana
     ports:
-      - "127.0.0.1:3003:3000" # 3003 is the port for grafana in the container
+      - "127.0.0.1:3003:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
     volumes:

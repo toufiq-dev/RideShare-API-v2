@@ -38,7 +38,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { AzureService } from 'src/core/utils/azure.util';
 import { EmailService } from '../email/email.service';
-import { SendOtpDto } from '../email/dto/email.dto';
+import { EmailSendOtpDto } from '../email/dto/email.dto';
 import { DocumentValidation } from './admin.constants';
 import { VerificationService } from 'src/core/utils/verification.util';
 import moment from 'moment-timezone';
@@ -297,7 +297,7 @@ export class AdminService {
         throw new UnauthorizedException('Invalid email');
       }
 
-      const emailOtpDto: SendOtpDto = { email };
+      const emailOtpDto: EmailSendOtpDto = { email };
 
       await this.emailService.sendOtpEmail(emailOtpDto);
 

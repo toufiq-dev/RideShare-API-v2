@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class SendOtpDto {
+export class EmailSendOtpDto {
   @ApiProperty({ description: 'Email' })
   @IsString()
   @IsNotEmpty()
   email: string;
 }
 
-export class VerifyEmailDto {
+export class EmailVerifyEmailDto {
   @ApiProperty({ description: 'Email' })
   @IsString()
   @IsNotEmpty()

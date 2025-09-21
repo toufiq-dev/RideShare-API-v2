@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { SendOtpDto, VerifyEmailDto } from './dto/email.dto';
+import { EmailSendOtpDto, EmailVerifyEmailDto } from './dto/email.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -36,7 +36,7 @@ export class EmailService {
     });
   }
 
-  async sendOtpEmail(sendOtpDto: SendOtpDto) {
+  async sendOtpEmail(sendOtpDto: EmailSendOtpDto) {
     const { email } = sendOtpDto;
 
     const otpSent = await this.redis.get(`otpSent:${email}`);
@@ -51,7 +51,7 @@ export class EmailService {
     return { message: 'OTP will be sent shortly' };
   }
 
-  async _sendOtpEmail(sendOtpDto: SendOtpDto) {
+  async _sendOtpEmail(sendOtpDto: EmailSendOtpDto) {
     try {
       const { email } = sendOtpDto;
       const otp = randomInt(1000, 10000).toString();
@@ -97,7 +97,7 @@ export class EmailService {
     }
   }
 
-  async verifyOtpCustomer(verifyOtpDto: VerifyEmailDto, userId: string) {
+  async verifyOtpCustomer(verifyOtpDto: EmailVerifyEmailDto, userId: string) {
     const { email, otp } = verifyOtpDto;
 
     const storedOtp = await this.redis.get(`emailVerificationotp:${email}`);

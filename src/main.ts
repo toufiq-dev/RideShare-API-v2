@@ -24,7 +24,27 @@ async function bootstrap() {
 
   app.useLogger(logger);
 
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'https://dashboard.fairdrive.com.bd',
+      'https://api.fairdriveindia.com',
+      'https://www.fairdrive.com.bd',
+      // Add other allowed origins as needed
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Cache-Control',
+      'Pragma',
+    ],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new TransformResponseInterceptor());

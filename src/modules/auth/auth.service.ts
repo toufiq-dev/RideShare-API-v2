@@ -92,13 +92,13 @@ export class AuthService {
       const otpSent = await this.redis.get(`otpSent:${phone}`);
       if (otpSent) {
         throw new BadRequestException(
-          'OTP already sent. Please wait for 2 minutes.',
+          'OTP already sent. Please wait for 1 minute.',
         );
       }
 
       const otp = randomInt(1000, 10000).toString();
       // Disable this one when we are using OTP service
-      await this.redis.set(`otp:${phone}`, otp, 120);
+      await this.redis.set(`otp:${phone}`, otp, 60);
       await this.redis.set(`countryCode:${phone}`, countryCode, 180);
       await this.redis.set(`languageId:${phone}`, Language.id, 180);
       await this.redis.set(`referralCode:${phone}`, referralCode, 180);
@@ -130,7 +130,7 @@ export class AuthService {
           throw new BadRequestException('Failed to send OTP.');
         }
 
-        await this.redis.set(`otpSent:${phone}`, 'true', 180);
+        await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
         return {
           message: 'OTP sent to your phone successfully.',
@@ -216,11 +216,13 @@ export class AuthService {
           throw new NotFoundException('User not found.');
         }
 
-        await this.prisma.deviceToken.upsert({
-          where: { userId: user.id },
-          update: { fcmToken: fcmToken },
-          create: { userId: user.id, fcmToken: fcmToken },
-        });
+        if (fcmToken) {
+          await this.prisma.deviceToken.upsert({
+            where: { userId: user.id },
+            update: { fcmToken: fcmToken },
+            create: { userId: user.id, fcmToken: fcmToken },
+          });
+        }
 
         const tokens = await this.generateTokens(user.id, user.role);
 
@@ -307,14 +309,14 @@ export class AuthService {
         where: { userId: user.id },
       });
 
-      if (!device) {
+      if (!device && fcmToken) {
         await this.prisma.deviceToken.create({
           data: {
             userId: user.id,
             fcmToken,
           },
         });
-      } else if (device.fcmToken !== fcmToken) {
+      } else if (device && fcmToken && device.fcmToken !== fcmToken) {
         await this.prisma.deviceToken.update({
           where: { userId: user.id },
           data: {
@@ -579,6 +581,34 @@ export class AuthService {
       message: 'Vehicle data fetched successfully.',
       data,
     };
+  }
+
+  async getSiteSettings() {
+    try {
+      const config = await this.prisma.systemConfig.findUnique({
+        where: { key: 'drivingCityList' },
+      });
+
+      if (!config) {
+        // Return default cities if not configured
+        return {
+          message: 'Driving cities fetched successfully.',
+          data: {
+            drivingCityList: ['Dhaka', 'Chattogram'],
+          },
+        };
+      }
+
+      return {
+        message: 'Driving cities fetched successfully.',
+        data: {
+          drivingCityList: config.value as string[],
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   private async validateOtpRedis(phone: string, otp: string) {

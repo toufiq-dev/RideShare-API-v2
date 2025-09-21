@@ -7,6 +7,7 @@ import {
   IsIn,
   IsISO8601,
   IsNotEmpty,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -85,9 +86,9 @@ export class BDRCDto {
   vehicleColour: string;
 
   @ApiProperty({ description: 'Model' })
-  @IsNotEmpty({ message: 'Model is required' })
-  @IsString()
-  model: string;
+  // @IsNotEmpty({ message: 'Model is required' })
+  @IsOptional()
+  model: any;
 
   @ApiProperty({ description: 'Seat capacity' })
   @IsNotEmpty({ message: 'Seat capacity is required' })
@@ -170,4 +171,16 @@ export enum BDNidType {
 export class BDNidTypeDto {
   @IsEnum(BDNidType, { message: 'type must be either pilot or vehicleOwner' })
   type: BDNidType;
+}
+
+export class UpdateDriverDetailsDto {
+  @ApiProperty({ description: 'Name of driver' })
+  @IsNotEmpty({ message: 'Driver details is required' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'city of driver' })
+  @IsNotEmpty({ message: 'City is required' })
+  @IsString()
+  city: string;
 }

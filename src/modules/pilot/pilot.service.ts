@@ -21,6 +21,7 @@ import {
   NumberPlateDto,
   FreeRechargeDto,
   BDNidType,
+  UpdateDriverDetailsDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -43,6 +44,8 @@ import { PilotRideResponse } from '../ride/dto/ride.interface';
 import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
+import { TelemetryService } from '../pricing/telemetry.service';
+import { h3Cell } from 'src/core/utils/h3.util';
 
 @Injectable()
 export class PilotService {
@@ -50,10 +53,11 @@ export class PilotService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly azureServicce: AzureService,
+    private readonly azureService: AzureService,
     private readonly verificationService: VerificationService,
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
+    private readonly telemetryService: TelemetryService,
   ) {
     this.flexiPack = this.configService.get<string>('subscription.flexiPack');
   }
@@ -686,6 +690,8 @@ export class PilotService {
             walletId: wallet.id,
             type: TransactionType.ONBOARDING_OFFER,
             status: TransactionStatus.SUCCESSFUL,
+            balanceBefore: 0,
+            balanceAfter: subscription.coins,
           },
         });
 
@@ -833,7 +839,7 @@ export class PilotService {
 
       const whereClause = {
         pilotId: pilot.id,
-        type: TransactionType.SUBSCRIPTION_PURCHASE,
+        // type: TransactionType.SUBSCRIPTION_PURCHASE,
         createdAt: {
           gte: start.toDate(),
           lte: end.toDate(),
@@ -924,10 +930,16 @@ export class PilotService {
           Number(currentLocation.lng),
           pilot.userId,
         );
+
+        const h3 = h3Cell(currentLocation.lat, currentLocation.lng, 8);
+        await this.telemetryService.setSupply(h3, 1);
       }
 
       if (!onlineStatus) {
         await this.redis.zRem(RedisKeys.PILOT_LOCATION, pilot.userId);
+
+        const h3 = h3Cell(currentLocation.lat, currentLocation.lng, 8);
+        await this.telemetryService.setSupply(h3, -1);
       }
 
       await this.prisma.pilot.update({
@@ -963,7 +975,7 @@ export class PilotService {
       const previousBackUrl = pilot.dlBackSideUrl;
 
       const frontSideBuffer = files.front[0].buffer;
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
@@ -973,7 +985,7 @@ export class PilotService {
       let backSideUrl = null;
       if (files.back) {
         const backSideBuffer = files.back[0].buffer;
-        backSideUrl = await this.azureServicce.uploadFile(
+        backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
           userId,
@@ -1134,14 +1146,14 @@ export class PilotService {
       const frontSideBuffer = files.front[0].buffer;
       const backSideBuffer = files.back[0].buffer;
 
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
         files.front[0].mimetype,
       );
 
-      const backSideUrl = await this.azureServicce.uploadFile(
+      const backSideUrl = await this.azureService.uploadFile(
         backSideBuffer,
         files.back[0].originalname,
         userId,
@@ -1325,7 +1337,7 @@ export class PilotService {
       console.time(`imageToBlob_${pilot.phone}`);
 
       const frontSideBuffer = files.front[0].buffer;
-      const frontSideUrl = await this.azureServicce.uploadFile(
+      const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
         userId,
@@ -1335,7 +1347,7 @@ export class PilotService {
       let backSideUrl = null;
       if (files.back) {
         const backSideBuffer = files.back[0].buffer;
-        backSideUrl = await this.azureServicce.uploadFile(
+        backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
           userId,
@@ -1507,7 +1519,7 @@ export class PilotService {
 
       const numberPlateBuffer = file.buffer;
 
-      const numberPlateUrl = await this.azureServicce.uploadFile(
+      const numberPlateUrl = await this.azureService.uploadFile(
         numberPlateBuffer,
         file.originalname,
         userId,
@@ -1613,20 +1625,12 @@ export class PilotService {
 
       const taxTokenBuffer = file.buffer;
 
-      const taxTokenUrl = await this.azureServicce.uploadFile(
+      const taxTokenUrl = await this.azureService.uploadFile(
         taxTokenBuffer,
         file.originalname,
         userId,
         file.mimetype,
       );
-
-      const updatedPilot = await this.prisma.pilot.update({
-        where: { userId },
-        data: {
-          taxTokenUrl,
-          isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
-        },
-      });
 
       const verificationResponse =
         await this.verificationService.extractTaxTokenData(taxTokenBuffer);
@@ -1641,12 +1645,47 @@ export class PilotService {
         );
       }
 
+      const updatedPilot = await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          taxTokenUrl,
+          isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
+        },
+      });
+
       await this.deletePreviousFiles(previousTaxTokenUrl);
 
       await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
       return {
         message: 'Tax token uploaded successfully.',
         data: verificationResponse,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async updateDriverDetails(
+    updateDriverDetailsDto: UpdateDriverDetailsDto,
+    userId: string,
+  ) {
+    const { name, city } = updateDriverDetailsDto;
+
+    try {
+      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { name, city },
+      });
+
+      return {
+        message: 'Driver details updated successfully.',
+        data: { name, city },
       };
     } catch (error) {
       console.error(error);
@@ -1683,7 +1722,7 @@ export class PilotService {
   }
 
   private async getOcrResult(buffer: any) {
-    const ocrResult = await this.azureServicce.extractTextFromImage(buffer);
+    const ocrResult = await this.azureService.extractTextFromImage(buffer);
 
     if (!ocrResult?.analyzeResult?.readResults?.[0]?.lines) {
       throw new BadRequestException('Unable to process the image.');
@@ -1895,11 +1934,11 @@ export class PilotService {
       const deletePromises: Promise<void>[] = [];
 
       if (frontUrl) {
-        deletePromises.push(this.azureServicce.deleteFile(frontUrl));
+        deletePromises.push(this.azureService.deleteFile(frontUrl));
       }
 
       if (backUrl) {
-        deletePromises.push(this.azureServicce.deleteFile(backUrl));
+        deletePromises.push(this.azureService.deleteFile(backUrl));
       }
 
       if (deletePromises.length > 0) {
@@ -1921,7 +1960,7 @@ export class PilotService {
     }
   }
 
-  private async updateUserStatusAfterDocumentUpload(pilotId: string) {
+  public async updateUserStatusAfterDocumentUpload(pilotId: string) {
     const pilot = await this.prisma.pilot.findUnique({
       where: { id: pilotId },
       select: {

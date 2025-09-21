@@ -12,6 +12,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { AzureEmailService } from './azure-email.service';
 
 @Injectable()
 export class EmailService {
@@ -22,6 +23,7 @@ export class EmailService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     @InjectQueue('otp-email') private readonly otpQueue: Queue,
+    private readonly azureEmailService: AzureEmailService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
@@ -40,7 +42,7 @@ export class EmailService {
     const otpSent = await this.redis.get(`otpSent:${email}`);
     if (otpSent) {
       throw new BadRequestException(
-        'OTP already sent. Please wait for 3 minutes.',
+        'OTP already sent. Please wait for 1 minute.',
       );
     }
 
@@ -57,29 +59,35 @@ export class EmailService {
       await this.redis.set(
         `${RedisKeys.EMAIL_VERIFICATION_OTP}${email}`,
         otp,
-        180,
+        60,
       );
 
-      const mailOptions = {
-        from: this.configService.get<string>('EMAIL_FROM'),
-        to: email,
-        subject: 'Fairdrive OTP',
-        html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Fairdrive Email Verification</h2>
-          <p>Your One-Time Password (OTP) is:</p>
-          <h3 style="color: #2c3e50;">${otp}</h3>
-          <p>This OTP is valid for 3 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        </div>
-      `,
-      };
+      let sentMail = false;
+      try {
+        sentMail = await this.azureEmailService.sendOtpEmail(email, otp);
+      } catch (azureError) {
+        const mailOptions = {
+          from: this.configService.get<string>('EMAIL_FROM'),
+          to: email,
+          subject: 'Fairdrive OTP',
+          html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Fairdrive Email Verification</h2>
+            <p>Your One-Time Password (OTP) is:</p>
+            <h3 style="color: #2c3e50;">${otp}</h3>
+            <p>This OTP is valid for 1 minute.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+          </div>
+        `,
+        };
 
-      const sentMail = await this.transporter.sendMail(mailOptions);
+        sentMail = await this.transporter.sendMail(mailOptions);
+      }
+
       if (!sentMail) {
         throw new BadRequestException('Failed to send OTP');
       } else {
-        await this.redis.set(`otpSent:${email}`, 'true', 180);
+        await this.redis.set(`otpSent:${email}`, 'true', 60);
       }
 
       return { message: 'OTP sent to your email successfully' };
@@ -105,12 +113,6 @@ export class EmailService {
         where: { userId },
         data: {
           isEmailVerified: true,
-        },
-      });
-
-      await this.prisma.customer.update({
-        where: { userId },
-        data: {
           email,
         },
       });

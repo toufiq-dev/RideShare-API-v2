@@ -18,18 +18,40 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import { FareService } from '../fare/fare.service';
-import { RideType, UserStatus, PilotStatus } from '@prisma/client';
+import {
+  RideType,
+  PilotStatus,
+  BookingStatus,
+  VehicleTypeNameBD,
+} from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { TariffService } from '../pricing/tariff.service';
+import { MultiplierService } from '../pricing/multiplier.service';
+import { TelemetryService } from '../pricing/telemetry.service';
+import { h3Cell } from 'src/core/utils/h3.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CustomerService {
+  private readonly CITY: string;
+  private readonly MU_MIN: number;
+  private readonly MU_MAX: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly otpService: OTPService,
     private readonly fareService: FareService,
-  ) {}
+    private readonly tariffService: TariffService,
+    private readonly multService: MultiplierService,
+    private readonly telemetry: TelemetryService,
+    private readonly configService: ConfigService,
+  ) {
+    this.CITY = this.configService.get<string>('pricing.city');
+    this.MU_MIN = this.configService.get<number>('pricing.MU_MIN');
+    this.MU_MAX = this.configService.get<number>('pricing.MU_MAX');
+  }
 
   async getCustomer(userId: string) {
     try {
@@ -52,7 +74,16 @@ export class CustomerService {
           },
           coupon: true,
           language: true,
-          activeBooking: true,
+          activeBooking: {
+            include: {
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -64,42 +95,50 @@ export class CustomerService {
         data.coupon.discount = Number(data.coupon.discount);
       }
 
-      if (data.activeBookingId) {
-        const pilot = await this.prisma.pilot.findUnique({
-          where: {
-            id: data.activeBooking.pilotId,
-          },
-          select: {
-            id: true,
-            userId: true,
-            selfieUrl: true,
-            phone: true,
-            averageRating: true,
-            currentLocation: true,
-            drivingLicense: {
-              select: {
-                nameOnLicense: true,
-              },
+      console.log('data.activeBooking', data.activeBooking);
+
+      if (
+        data?.activeBooking?.status === BookingStatus.PENDING ||
+        data?.activeBooking?.status === BookingStatus.ACCEPTED ||
+        data?.activeBooking?.status === BookingStatus.ARRIVED ||
+        data?.activeBooking?.status === BookingStatus.ONGOING
+      ) {
+        let pilot = null;
+        if (data.activeBooking?.pilotId) {
+          pilot = await this.prisma.pilot.findUnique({
+            where: {
+              id: data.activeBooking.pilotId,
             },
-            vehicle: {
-              select: {
-                regNo: true,
-                model: true,
-                colour: true,
-                vehicleTypeBD: {
-                  select: {
-                    name: true,
+            select: {
+              id: true,
+              userId: true,
+              selfieUrl: true,
+              phone: true,
+              averageRating: true,
+              currentLocation: true,
+              drivingLicense: {
+                select: {
+                  nameOnLicense: true,
+                },
+              },
+              vehicle: {
+                select: {
+                  regNo: true,
+                  model: true,
+                  colour: true,
+                  vehicleTypeBD: {
+                    select: {
+                      name: true,
+                    },
                   },
                 },
               },
             },
-          },
-        });
-
-        const pilotLocation = await this.redis.geoPos(
-          RedisKeys.PILOT_LOCATION,
-          pilot.userId,
-        );
+          });
+        }
+        const pilotLocation = pilot
+          ? await this.redis.geoPos(RedisKeys.PILOT_LOCATION, pilot.userId)
+          : [null, null];
 
         const payload: CustomerRidePayload = {
           bookingCode: data.activeBooking.bookingCode,
@@ -107,21 +146,25 @@ export class CustomerService {
           bookingStatus: data.activeBooking.status,
           estimatedDuration: data.activeBooking.estimatedDuration,
           tripStart: data.activeBooking.tripStart,
-          pilot: {
-            pilotId: pilot.id,
-            pilotName: pilot.drivingLicense.nameOnLicense,
-            profilePicture: pilot.selfieUrl,
-            pilotPhone: pilot.phone,
-            rating: pilot.averageRating,
-            pilotLocation: {
-              lat: pilotLocation[0],
-              lng: pilotLocation[1],
-            },
-            vehicleNumber: pilot.vehicle.regNo,
-            model: pilot.vehicle.model,
-            colour: pilot.vehicle.colour,
-            vehicleType: pilot.vehicle.vehicleTypeBD.name,
-          },
+          vehicleType: data.activeBooking?.vehicleTypeBD?.name,
+          vehicleTypeId: data.activeBooking?.vehicleTypeIdBD,
+          pilot: pilot
+            ? {
+                pilotId: pilot.id,
+                pilotName: pilot.drivingLicense.nameOnLicense,
+                profilePicture: pilot.selfieUrl,
+                pilotPhone: pilot.phone,
+                rating: pilot.averageRating,
+                pilotLocation: {
+                  lat: pilotLocation[0],
+                  lng: pilotLocation[1],
+                },
+                vehicleNumber: pilot.vehicle.regNo,
+                model: pilot.vehicle.model,
+                colour: pilot.vehicle.colour,
+                vehicleType: pilot.vehicle.vehicleTypeBD.name,
+              }
+            : null,
           passenger: {
             passengerId: data.userId,
             name: data.name,
@@ -145,6 +188,8 @@ export class CustomerService {
         };
 
         data.activeBooking = payload;
+      } else {
+        data.activeBooking = null;
       }
 
       const { user: nestedUser, ...customerData } = data;
@@ -272,7 +317,10 @@ export class CustomerService {
       if (!storedOtp || storedOtp !== otp) {
         throw new UnauthorizedException('Invalid or expired OTP.');
       }
-      await this.redis.del(`otp:${userId}`);
+      const cachedOtp: any = await this.redis.del(`otp:${userId}`);
+      if (!cachedOtp) {
+        throw new UnauthorizedException('Invalid or expired OTP.');
+      }
 
       const data = await this.prisma.customer.update({
         where: {
@@ -468,102 +516,30 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
-      const [vehicleTypes, distanceData] = await Promise.all([
-        this.prisma.vehicleTypeBD.findMany({
-          orderBy: {
-            serialNumber: 'asc',
-          },
-        }),
-        this.fareService.calculateDistanceAndDuration(
-          pickupLocation,
-          dropLocation,
-        ),
-      ]);
+      const vehicleTypes = await this.prisma.vehicleTypeBD.findMany({
+        orderBy: {
+          serialNumber: 'asc',
+        },
+      });
 
-      const { distanceKm, durationMin } = distanceData;
+      // Use centralized fare calculation for all vehicle types
+      const vehicles = await this.fareService.calculateMultipleVehicleFares({
+        pickupLocation,
+        dropLocation,
+        vehicleTypes: vehicleTypes.map((vt) => ({
+          id: vt.id,
+          name: vt.name as VehicleTypeNameBD,
+          airCondition: vt.airCondition,
+          isFaster: vt.isFaster,
+          passengerCapacity: vt.passengerCapacity,
+        })),
+        customerCoupon: customer.coupon,
+        intercity: false,
+      });
 
-      const vehicleData = [];
-
-      for (const item of vehicleTypes) {
-        const originalPrice = this.fareService.estimateFare(
-          distanceKm,
-          durationMin,
-          Number(item.baseFare),
-          Number(item.perMinRate),
-          Number(item.minFare),
-          item.name,
-          Number(item.perKmRate),
-        );
-
-        let discountedPrice =
-          customer?.coupon?.discount && originalPrice > customer.coupon.discount
-            ? originalPrice - Number(customer.coupon.discount)
-            : originalPrice;
-
-        const price = Math.max(discountedPrice, Number(item.minFare));
-
-        const nearbyPilots = await this.redis.geoRadius(
-          RedisKeys.PILOT_LOCATION,
-          pickupLocation.lng,
-          pickupLocation.lat,
-          2000,
-          'm',
-          { withDist: true, sort: 'ASC' },
-        );
-
-        let minsAway = null;
-        for (const [pilotUserId, distance] of nearbyPilots as any) {
-          const pilot = await this.prisma.pilot.findFirst({
-            where: {
-              userId: pilotUserId,
-              onlineStatus: PilotStatus.AVAILABLE,
-              activeBookingId: null,
-            },
-            select: {
-              vehicle: {
-                select: {
-                  vehicleTypeBD: {
-                    select: { id: true },
-                  },
-                },
-              },
-            },
-          });
-
-          if (
-            pilot &&
-            pilot.vehicle &&
-            pilot.vehicle.vehicleTypeBD &&
-            pilot.vehicle.vehicleTypeBD.id === item.id
-          ) {
-            const pilotLocation = await this.redis.geoPos(
-              RedisKeys.PILOT_LOCATION,
-              pilotUserId,
-            );
-            if (pilotLocation && pilotLocation[0] && pilotLocation[1]) {
-              const { durationMin } =
-                await this.fareService.calculateDistanceAndDuration(
-                  { lat: pilotLocation[0], lng: pilotLocation[1] },
-                  pickupLocation,
-                );
-              minsAway = Math.ceil(durationMin);
-            }
-            break;
-          }
-        }
-
-        vehicleData.push({
-          id: item.id,
-          vehicleType: item.name,
-          airCondition: item.airCondition,
-          isFaster: item.isFaster,
-          passengerCapacity: item.passengerCapacity,
-          originalPrice: Math.ceil(Number(originalPrice)),
-          price: Math.ceil(Number(price)),
-          tolls: 0.0,
-          timeAway: `${minsAway ? minsAway : randomInt(1, 5)} min away`,
-        });
-      }
+      // Increment demand (keep existing telemetry logic)
+      const h3 = h3Cell(pickupLocation.lat, pickupLocation.lng, 8);
+      await this.telemetry.incrementDemand(h3);
 
       if (customer.coupon) {
         customer.coupon.discount = customer.coupon.discount
@@ -574,10 +550,7 @@ export class CustomerService {
       return {
         success: true,
         message: 'Vehicle categories fetched successfully.',
-        data: {
-          vehicles: vehicleData,
-          coupon: customer.coupon || null,
-        },
+        data: { vehicles, coupon: customer.coupon || null },
       };
     } catch (error) {
       console.error(error);
@@ -600,5 +573,41 @@ export class CustomerService {
     await this.redis.del(`referralCode:${phone}`);
 
     return { languageId, referralCode };
+  }
+
+  private async estimateTimeAwayForType(
+    nearbyPilots: any[],
+    vtId: string,
+    pickup: { lat: number; lng: number },
+  ) {
+    for (const [pilotUserId, _distance] of nearbyPilots as any) {
+      const pilot = await this.prisma.pilot.findFirst({
+        where: {
+          userId: pilotUserId,
+          onlineStatus: PilotStatus.AVAILABLE,
+          activeBookingId: null,
+        },
+        select: {
+          vehicle: { select: { vehicleTypeBD: { select: { id: true } } } },
+        },
+      });
+
+      if (pilot?.vehicle?.vehicleTypeBD?.id === vtId) {
+        const pos = await this.redis.geoPos(
+          RedisKeys.PILOT_LOCATION,
+          pilotUserId,
+        );
+        if (pos && pos[0] && pos[1]) {
+          const { durationMin } =
+            await this.fareService.calculateDistanceAndDuration(
+              { lat: pos[0], lng: pos[1] },
+              pickup,
+            );
+          return Math.ceil(durationMin);
+        }
+        return undefined;
+      }
+    }
+    return undefined;
   }
 }

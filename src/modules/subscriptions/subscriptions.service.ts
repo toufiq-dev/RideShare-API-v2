@@ -110,6 +110,7 @@ export class SubscriptionsService {
             amount: subscription.coins,
             type: TransactionType.ONBOARDING_OFFER,
             status: TransactionStatus.SUCCESSFUL,
+            walletId: data.id,
           },
         });
       });

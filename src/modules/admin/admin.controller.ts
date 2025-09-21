@@ -14,6 +14,8 @@ import {
   UploadedFiles,
   UseInterceptors,
   Delete,
+  ParseUUIDPipe,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -302,7 +304,8 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async getDriverDocument(
     @Param('driverId') driverId: string,
-    @Query('documentType') documentType: DocumentType,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
   ) {
     return await this.adminService.getDriverDocument(driverId, documentType);
   }
@@ -325,7 +328,8 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async verifyDriver(
     @Param('driverId') driverId: string,
-    @Query('documentType') documentType: DocumentType,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
     @Body() verifyDriverDto: VerifyDriverDto,
     @CurrentUser('userId') userId: string,
   ) {
@@ -340,7 +344,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Get('nid')
-  @ApiOperation({ summary: 'NID documents' })
+  @ApiOperation({ summary: 'Driver NID documents' })
   async getNid() {
     return await this.adminService.getNid();
   }
@@ -349,6 +353,29 @@ export class AdminController {
   @ApiOperation({ summary: 'Driving Lincese documents' })
   async getNumberPlate() {
     return await this.adminService.getNumberPlates();
+  }
+
+  @Post('document-upload/:driverId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Upload Document of driver' })
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ]),
+  )
+  async driverDocumentsUpload(
+    @UploadedFiles()
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    @Param('driverId', ParseUUIDPipe) driverId: string,
+    @Query('documentType', new ParseEnumPipe(DocumentType))
+    documentType: DocumentType,
+  ) {
+    return await this.adminService.driverDocumentsUpload(
+      files,
+      driverId,
+      documentType,
+    );
   }
 
   @Post('app-version')
@@ -413,7 +440,7 @@ export class AdminController {
       { name: 'nidPhoto', maxCount: 1 },
     ]),
   )
-  async uploadDocuments(
+  async promoterDocumentsUpload(
     @UploadedFiles()
     files: {
       livePhoto: Express.Multer.File[];
@@ -423,7 +450,11 @@ export class AdminController {
     @Body() promoterData: PromoterDetailsDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.adminService.uploadDocuments(files, promoterData, userId);
+    return this.adminService.promoterDocumentsUpload(
+      files,
+      promoterData,
+      userId,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

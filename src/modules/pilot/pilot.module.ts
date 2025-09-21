@@ -6,9 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { VerificationService } from 'src/core/utils/verification.util';
 import { RideModule } from '../ride/ride.module';
 import { OTPService } from 'src/core/utils/otp.util';
+import { PricingModule } from '../pricing/pricing.module';
 
 @Module({
-  imports: [RideModule],
+  imports: [RideModule, PricingModule],
   controllers: [PilotController],
   providers: [
     PilotService,
@@ -18,5 +19,6 @@ import { OTPService } from 'src/core/utils/otp.util';
     VerificationService,
     OTPService,
   ],
+  exports: [PilotService],
 })
 export class PilotModule {}

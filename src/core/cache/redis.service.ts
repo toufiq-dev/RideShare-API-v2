@@ -8,6 +8,8 @@ import { RedisKeys } from './redis-keys';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly client: Redis;
+  private readonly publisherClient: Redis;
+  private readonly subscriberClient: Redis;
   private readonly context = 'RedisService';
 
   constructor(
@@ -21,11 +23,23 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       retryStrategy: (times: number) => Math.min(times * 50, 2000),
       maxRetriesPerRequest: 3,
     };
+
+    // Main client for regular operations
     this.client = new Redis(redisUrl, options);
+
+    this.publisherClient = new Redis(redisUrl, options);
+
+    this.subscriberClient = new Redis(redisUrl, options);
+
     this.setupEventListeners();
   }
 
+  pipeline(): any {
+    return this.client.pipeline();
+  }
+
   private setupEventListeners(): void {
+    // Event listeners for main client
     this.client.on('connect', () => {
       this.logger.log('Redis client connected', this.context);
     });
@@ -41,11 +55,43 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client.on('reconnecting', () => {
       this.logger.warn('Redis client reconnecting', this.context);
     });
+
+    // Event listeners for pub/sub client
+    this.publisherClient.on('connect', () => {
+      this.logger.log('Redis publisher client connected', this.context);
+    });
+    this.subscriberClient.on('connect', () => {
+      this.logger.log('Redis subscriber client connected', this.context);
+    });
+
+    this.publisherClient.on('error', (error: Error) => {
+      this.logger.error(
+        `Redis publisher client error: ${error.message}`,
+        error.stack,
+        this.context,
+      );
+    });
+    this.subscriberClient.on('error', (error: Error) => {
+      this.logger.error(
+        `Redis subscriber client error: ${error.message}`,
+        error.stack,
+        this.context,
+      );
+    });
+
+    this.publisherClient.on('reconnecting', () => {
+      this.logger.warn('Redis publisher client reconnecting', this.context);
+    });
+    this.subscriberClient.on('reconnecting', () => {
+      this.logger.warn('Redis subscriber client reconnecting', this.context);
+    });
   }
 
   async onModuleInit(): Promise<void> {
     try {
       await this.client.ping();
+      await this.publisherClient.ping();
+      await this.subscriberClient.ping();
       this.logger.log('Redis service initialized successfully', this.context);
     } catch (error) {
       this.logger.error(
@@ -60,6 +106,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     try {
       await this.client.quit();
+      await this.publisherClient.quit();
+      await this.subscriberClient.quit();
       this.logger.log('Redis connection closed', this.context);
     } catch (error) {
       this.logger.error(
@@ -299,5 +347,274 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       `Removed cached booking status for ${bookingId}`,
       this.context,
     );
+  }
+
+  async mget(...keys: string[]): Promise<(string | null)[]> {
+    try {
+      if (keys.length === 0) return [];
+
+      const values = await this.client.mget(...keys);
+      this.logger.log(`Retrieved ${keys.length} keys using mget`, this.context);
+      return values;
+    } catch (error) {
+      this.logger.error(`Failed to mget keys`, error.stack, this.context);
+      throw error;
+    }
+  }
+
+  async mset(keyValuePairs: Record<string, string>): Promise<void> {
+    try {
+      const args: string[] = [];
+      Object.entries(keyValuePairs).forEach(([key, value]) => {
+        args.push(key, value);
+      });
+
+      await this.client.mset(...args);
+      this.logger.log(
+        `Set ${Object.keys(keyValuePairs).length} keys using mset`,
+        this.context,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to mset keys`, error.stack, this.context);
+      throw error;
+    }
+  }
+
+  async subscribe(channel: string): Promise<void> {
+    try {
+      await this.subscriberClient.subscribe(channel);
+      this.logger.log(`Subscribed to channel: ${channel}`, this.context);
+    } catch (error) {
+      this.logger.error(
+        `Failed to subscribe to channel: ${channel}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async unsubscribe(channel: string): Promise<void> {
+    try {
+      await this.subscriberClient.unsubscribe(channel);
+      this.logger.log(`Unsubscribed from channel: ${channel}`, this.context);
+    } catch (error) {
+      this.logger.error(
+        `Failed to unsubscribe from channel: ${channel}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async publish(channel: string, message: string): Promise<number> {
+    try {
+      const result = await this.publisherClient.publish(channel, message);
+      this.logger.log(`Published message to channel: ${channel}`, this.context);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to publish to channel: ${channel}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  onMessage(callback: (channel: string, message: string) => void): void {
+    this.subscriberClient.on('message', callback);
+  }
+
+  offMessage(callback: (channel: string, message: string) => void): void {
+    this.subscriberClient.off('message', callback);
+  }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      const result = await this.client.exists(key);
+      return result === 1;
+    } catch (error) {
+      this.logger.error(
+        `Failed to check existence of key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async setnx(key: string, value: string, ttl?: number): Promise<boolean> {
+    try {
+      let result: string;
+      if (ttl) {
+        result = await this.client.set(key, value, 'EX', ttl, 'NX');
+      } else {
+        result = await this.client.set(key, value, 'NX');
+      }
+      return result === 'OK';
+    } catch (error) {
+      this.logger.error(
+        `Failed to setnx key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async mgetWithTTL(
+    keys: string[],
+  ): Promise<Array<{ value: string | null; ttl: number }>> {
+    try {
+      const pipeline = this.client.pipeline();
+      keys.forEach((key) => {
+        pipeline.get(key);
+        pipeline.ttl(key);
+      });
+
+      const results = await pipeline.exec();
+      const response: Array<{ value: string | null; ttl: number }> = [];
+
+      for (let i = 0; i < keys.length; i++) {
+        const valueResult = results[i * 2];
+        const ttlResult = results[i * 2 + 1];
+
+        response.push({
+          value: valueResult[1] as string | null,
+          ttl: ttlResult[1] as number,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Failed to mgetWithTTL for keys`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incr(key: string): Promise<number> {
+    try {
+      const result = await this.client.incr(key);
+      this.logger.log(
+        `Incremented key: ${key}, new value: ${result}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async expire(key: string, ttl: number): Promise<boolean> {
+    try {
+      const result = await this.client.expire(key, ttl);
+      this.logger.log(
+        `Set expiration for key: ${key}, TTL: ${ttl} seconds`,
+        this.context,
+      );
+      return result === 1;
+    } catch (error) {
+      this.logger.error(
+        `Failed to set expiration for key: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    try {
+      const result = await this.client.keys(pattern);
+      this.logger.log(
+        `Retrieved keys for pattern: ${pattern}, count: ${result.length}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to retrieve keys for pattern: ${pattern}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incrWithExpire(key: string, ttl: number): Promise<number> {
+    try {
+      const pipeline = this.client.pipeline();
+      pipeline.incr(key);
+      pipeline.expire(key, ttl);
+      const results = await pipeline.exec();
+      const newValue = results[0][1] as number;
+      this.logger.log(
+        `Incremented key: ${key} to ${newValue} with TTL: ${ttl}`,
+        this.context,
+      );
+      return newValue;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key with expire: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incrby(key: string, increment: number): Promise<number> {
+    try {
+      const result = await this.client.incrby(key, increment);
+      this.logger.log(
+        `Incremented key: ${key} by ${increment}, new value: ${result}`,
+        this.context,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key: ${key} by ${increment}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
+  }
+
+  async incrbyWithExpire(
+    key: string,
+    increment: number,
+    ttl: number,
+  ): Promise<number> {
+    try {
+      const pipeline = this.client.pipeline();
+      pipeline.incrby(key, increment);
+      pipeline.expire(key, ttl);
+      const results = await pipeline.exec();
+      const newValue = results[0][1] as number;
+      this.logger.log(
+        `Incremented key: ${key} by ${increment} to ${newValue} with TTL: ${ttl}`,
+        this.context,
+      );
+      return newValue;
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment key with expire: ${key}`,
+        error.stack,
+        this.context,
+      );
+      throw error;
+    }
   }
 }

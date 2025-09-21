@@ -7,7 +7,7 @@ import {
   NotifyDriverPayload,
   CustomerRidePayload,
   PilotRideResponse,
-} from './dto/ride.interface';
+} from '../dto/ride.interface';
 import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -183,13 +183,17 @@ export class RideNotificationService {
     this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);
   }
 
-  async notifyReachedPickupPoint(customerUserId: string, bookingId: string) {
+  async notifyReachedPickupPoint(
+    customerUserId: string,
+    bookingId: string,
+    bookingStatus: BookingStatus,
+  ) {
     // Send push notification for reached pickup point
     await this.sendPushNotification(
       customerUserId,
       'Reached Pickup Point',
       'You have reached the pickup point',
-      { bookingId },
+      { bookingId, bookingStatus },
     );
 
     // Socket for reached pickup point
@@ -217,7 +221,7 @@ export class RideNotificationService {
     payload: PilotRideResponse,
   ) {
     // Send push notification for ride edit location
-    this.sendPushNotification(
+    await this.sendPushNotification(
       pilotUserId,
       'Ride Edit Location',
       'You have a new edit location request',

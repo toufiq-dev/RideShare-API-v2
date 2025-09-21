@@ -23,6 +23,7 @@ import { FareModule } from './modules/fare/fare.module';
 import { GeofencingModule } from './core/geofencing/geofencing.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './core/firebase/firebase.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -57,6 +58,7 @@ import { HealthModule } from './modules/health/health.module';
     GeofencingModule,
     ChatModule,
     FirebaseModule,
+    PricingModule,
     HealthModule,
   ],
   providers: [GlobalExceptionFilter],

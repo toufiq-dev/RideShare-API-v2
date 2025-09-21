@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
   HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -40,7 +41,7 @@ export class CustomerController {
   }
 
   @Post('onboarding')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete Customer Onboarding' })
   @ApiBody({ type: CompleteCustomerOnboardingDto })
@@ -55,7 +56,7 @@ export class CustomerController {
   }
 
   @Patch('name')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update name' })
   async updateName(
@@ -66,7 +67,7 @@ export class CustomerController {
   }
 
   @Post('phone/otp')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
   async updatePhone(@CurrentUser('userId') userId: string) {
@@ -74,7 +75,7 @@ export class CustomerController {
   }
 
   @Post('phone/verify')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
   async verifyPhone(
@@ -135,7 +136,7 @@ export class CustomerController {
   }
 
   @Post('vehicle-category')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get vehicle category' })
   @ApiBody({ type: VehicleCategoryDto })

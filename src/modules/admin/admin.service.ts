@@ -28,6 +28,7 @@ import {
   AppPlatform,
   UserRole,
   UserStatus,
+  VehicleTypeNameBD,
   VerificationStatus,
 } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -39,6 +40,9 @@ import { AzureService } from 'src/core/utils/azure.util';
 import { EmailService } from '../email/email.service';
 import { SendOtpDto } from '../email/dto/email.dto';
 import { DocumentValidation } from './admin.constants';
+import { VerificationService } from 'src/core/utils/verification.util';
+import moment from 'moment-timezone';
+import { PilotService } from '../pilot/pilot.service';
 
 @Injectable()
 export class AdminService {
@@ -74,6 +78,8 @@ export class AdminService {
     private readonly redis: RedisService,
     private readonly azureService: AzureService,
     private readonly emailService: EmailService,
+    private readonly verificationService: VerificationService,
+    private readonly pilotService: PilotService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -548,7 +554,7 @@ export class AdminService {
       await this.prisma.user.update({
         where: { id: support.userId },
         data: {
-          status: UserStatus.INACTIVE,
+          status: UserStatus.DELETED,
         },
       });
 
@@ -1773,7 +1779,520 @@ export class AdminService {
     }
   }
 
-  async uploadDocuments(
+  async driverDocumentsUpload(
+    files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    driverId: string,
+    documentType: DocumentType,
+  ) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id: driverId },
+        select: {
+          id: true,
+          isDLVerified: true,
+          dlFrontSideUrl: true,
+          dlBackSideUrl: true,
+          isRCVerified: true,
+          rcFrontSideUrl: true,
+          rcBackSideUrl: true,
+          isNidVerified: true,
+          nidFrontSideUrl: true,
+          nidBackSideUrl: true,
+          isVehicleOwnersNidVerified: true,
+          vehicleOwnersNidFrontSideUrl: true,
+          vehicleOwnersNidBackSideUrl: true,
+          isNumberPlateVerified: true,
+          numberPlateUrl: true,
+          isTaxTokenVerified: true,
+          taxTokenUrl: true,
+          isSelfieVerified: true,
+          selfieUrl: true,
+        },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Driver not found');
+      }
+
+      const updateData: any = {};
+
+      if (
+        documentType === DocumentType.DRIVING_LICENSE &&
+        pilot.isDLVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const dlFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.dlFrontSideUrl = dlFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const dlBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.dlBackSideUrl = dlBackSideUrl;
+        }
+
+        if (pilot.dlFrontSideUrl || pilot.dlBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.dlFrontSideUrl,
+            pilot.dlBackSideUrl,
+          );
+        }
+
+        let verificationResponse = await this.verificationService.extractDLData(
+          files.front[0].buffer,
+        );
+
+        if (!verificationResponse) {
+          throw new BadRequestException(
+            'Failed to extract driving license data.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+        const formattedLicenseExpiryDate = moment(
+          verificationResponse?.licenseExpiryDate,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        verificationResponse = {
+          ...verificationResponse,
+          dateOfBirth: formattedDateOfBirth,
+          licenseExpiryDate: formattedLicenseExpiryDate,
+        };
+
+        const data = await this.prisma.drivingLicense.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            licenseNumber: verificationResponse.licenseNumber,
+            dateOfBirth: formattedDateOfBirth,
+            validUntill: formattedLicenseExpiryDate,
+            nameOnLicense: verificationResponse.name,
+          },
+          create: {
+            licenseNumber: verificationResponse.licenseNumber,
+            dateOfBirth: formattedDateOfBirth,
+            validUntill: formattedLicenseExpiryDate,
+            nameOnLicense: verificationResponse.name,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isDLVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.REGISTRATION_CERTIFICATE &&
+        pilot.isRCVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const rcFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.rcFrontSideUrl = rcFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const rcBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.rcBackSideUrl = rcBackSideUrl;
+        }
+
+        if (pilot.rcFrontSideUrl || pilot.rcBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.rcFrontSideUrl,
+            pilot.rcBackSideUrl,
+          );
+        }
+
+        let verificationResponse = await this.verificationService.extractRCData(
+          files.front[0].buffer,
+        );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract RC data.');
+        }
+
+        if (
+          !verificationResponse.registrationPoint &&
+          !verificationResponse.series &&
+          !verificationResponse.seriesEnglish &&
+          !verificationResponse.number &&
+          !verificationResponse.vehicleType &&
+          !verificationResponse.registrationDate &&
+          !verificationResponse.vehicleColour &&
+          !verificationResponse.model &&
+          !verificationResponse.seatCapacity
+        ) {
+          throw new BadRequestException(
+            'This RC card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedRegistrationDate = moment(
+          verificationResponse?.registrationDate,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        const vehicleTypeBD = await this.verificationService.mapVehicleType(
+          verificationResponse.vehicleType,
+        );
+        if (
+          !vehicleTypeBD ||
+          !Object.values(VehicleTypeNameBD).includes(vehicleTypeBD)
+        ) {
+          throw new BadRequestException('Invalid vehicle type');
+        }
+        const vehicleTypeBDId = await this.prisma.vehicleTypeBD.findUnique({
+          where: { name: vehicleTypeBD },
+          select: { id: true },
+        });
+
+        await this.prisma.vehicle.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            regNo: verificationResponse.number,
+            colour: verificationResponse.vehicleColour,
+            model: verificationResponse.model,
+            seatCapacity: verificationResponse.seatCapacity,
+            vehicleTypeIdBD: vehicleTypeBDId.id,
+            registrationDate: formattedRegistrationDate,
+          },
+          create: {
+            regNo: verificationResponse.number,
+            colour: verificationResponse.vehicleColour,
+            model: verificationResponse.model,
+            seatCapacity: verificationResponse.seatCapacity,
+            vehicleTypeIdBD: vehicleTypeBDId.id,
+            registrationDate: formattedRegistrationDate,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isRCVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.NID &&
+        pilot.isNidVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const nidFrontSideUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.nidFrontSideUrl = nidFrontSideUrl;
+        }
+
+        if (files?.back?.[0]) {
+          const nidBackSideUrl = await this.azureService.uploadFile(
+            files.back[0].buffer,
+            files.back[0].originalname,
+            driverId,
+            files.back[0].mimetype,
+          );
+          updateData.nidBackSideUrl = nidBackSideUrl;
+        }
+
+        if (pilot.nidFrontSideUrl || pilot.nidBackSideUrl) {
+          await this.deletePreviousFiles(
+            pilot.nidFrontSideUrl,
+            pilot.nidBackSideUrl,
+          );
+        }
+
+        const verificationResponse =
+          await this.verificationService.extractNidData(files.front[0].buffer);
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract NID data.');
+        }
+        if (
+          !verificationResponse.nidNumber &&
+          !verificationResponse.name &&
+          !verificationResponse.dateOfBirth
+        ) {
+          throw new BadRequestException(
+            'This NID card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            nidNumber: verificationResponse.nidNumber,
+            name: verificationResponse.name,
+            dateOfBirth: formattedDateOfBirth,
+          },
+          create: {
+            nidNumber: verificationResponse.nidNumber,
+            name: verificationResponse.name,
+            dateOfBirth: formattedDateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.VEHICLE_OWNERS_NID &&
+        pilot.isVehicleOwnersNidVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const vehicleOwnersNidFrontSideUrl =
+            await this.azureService.uploadFile(
+              files.front[0].buffer,
+              files.front[0].originalname,
+              driverId,
+              files.front[0].mimetype,
+            );
+          updateData.vehicleOwnersNidFrontSideUrl =
+            vehicleOwnersNidFrontSideUrl;
+        }
+        if (files?.back?.[0]) {
+          const vehicleOwnersNidBackSideUrl =
+            await this.azureService.uploadFile(
+              files.back[0].buffer,
+              files.back[0].originalname,
+              driverId,
+              files.back[0].mimetype,
+            );
+          updateData.vehicleOwnersNidBackSideUrl = vehicleOwnersNidBackSideUrl;
+        }
+
+        if (
+          pilot.vehicleOwnersNidFrontSideUrl ||
+          pilot.vehicleOwnersNidBackSideUrl
+        ) {
+          await this.deletePreviousFiles(
+            pilot.vehicleOwnersNidFrontSideUrl,
+            pilot.vehicleOwnersNidBackSideUrl,
+          );
+        }
+
+        const verificationResponse =
+          await this.verificationService.extractNidData(files.front[0].buffer);
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract NID data.');
+        }
+        if (
+          !verificationResponse.nidNumber &&
+          !verificationResponse.name &&
+          !verificationResponse.dateOfBirth
+        ) {
+          throw new BadRequestException(
+            'This NID card is either non-existing or invalid.',
+          );
+        }
+
+        const formattedDateOfBirth = moment(
+          verificationResponse?.dateOfBirth,
+          'DD MMM YYYY',
+        )
+          .startOf('day')
+          .toISOString();
+
+        await this.prisma.nid.upsert({
+          where: { pilotId: pilot.id },
+          update: {
+            vehicleOwnerNidNumber: verificationResponse.nidNumber,
+            vehicleOwnerNidName: verificationResponse.name,
+            vehicleOwnerNidDateOfBirth: formattedDateOfBirth,
+          },
+          create: {
+            vehicleOwnerNidNumber: verificationResponse.nidNumber,
+            vehicleOwnerNidName: verificationResponse.name,
+            vehicleOwnerNidDateOfBirth: formattedDateOfBirth,
+            pilotId: pilot.id,
+          },
+        });
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.NUMBER_PLATE &&
+        pilot.isNumberPlateVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const numberPlateUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.numberPlateUrl = numberPlateUrl;
+        }
+
+        if (pilot.numberPlateUrl) {
+          await this.deletePreviousFiles(pilot.numberPlateUrl);
+        }
+
+        const verificationResponse =
+          await this.verificationService.extractNumberPlateData(
+            files.front[0].buffer,
+          );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract number plate data.');
+        }
+
+        if (!verificationResponse.numberPlate) {
+          throw new BadRequestException(
+            'Number plate is not valid or not readable.',
+          );
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.TAX_TOKEN &&
+        pilot.isTaxTokenVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const taxTokenUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.taxTokenUrl = taxTokenUrl;
+        }
+
+        if (pilot.taxTokenUrl) {
+          await this.deletePreviousFiles(pilot.taxTokenUrl);
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        const verificationResponse =
+          await this.verificationService.extractTaxTokenData(
+            files.front[0].buffer,
+          );
+
+        if (!verificationResponse) {
+          throw new BadRequestException('Failed to extract tax token data.');
+        }
+
+        if (!verificationResponse.name) {
+          throw new BadRequestException(
+            'Tax token is not valid or not readable.',
+          );
+        }
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else if (
+        documentType === DocumentType.SELFIE &&
+        pilot.isSelfieVerified !== VerificationStatus.APPROVED
+      ) {
+        if (files?.front?.[0]) {
+          const selfieUrl = await this.azureService.uploadFile(
+            files.front[0].buffer,
+            files.front[0].originalname,
+            driverId,
+            files.front[0].mimetype,
+          );
+          updateData.selfieUrl = selfieUrl;
+        }
+
+        if (pilot.selfieUrl) {
+          await this.deletePreviousFiles(pilot.selfieUrl);
+        }
+
+        await this.prisma.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            isSelfieVerified: VerificationStatus.IN_PROGRESS,
+          },
+        });
+
+        await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
+      } else {
+        throw new BadRequestException(
+          'Document type is already approved or invalid document type',
+        );
+      }
+
+      const updatedPilot = await this.prisma.pilot.update({
+        where: { id: driverId },
+        data: updateData,
+      });
+
+      return {
+        message: 'Documents uploaded successfully',
+        data: updatedPilot,
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async promoterDocumentsUpload(
     files: {
       livePhoto?: Express.Multer.File[];
       idPhoto?: Express.Multer.File[];
@@ -2115,6 +2634,26 @@ export class AdminService {
       default:
         // No additional fields to update for other document types
         break;
+    }
+  }
+
+  private async deletePreviousFiles(frontUrl: string, backUrl?: string) {
+    try {
+      const deletePromises: Promise<void>[] = [];
+
+      if (frontUrl) {
+        deletePromises.push(this.azureService.deleteFile(frontUrl));
+      }
+
+      if (backUrl) {
+        deletePromises.push(this.azureService.deleteFile(backUrl));
+      }
+
+      if (deletePromises.length > 0) {
+        await Promise.allSettled(deletePromises);
+      }
+    } catch (error) {
+      console.error('Error cleaning up previous files', error);
     }
   }
 }

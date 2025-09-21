@@ -13,6 +13,11 @@ export default () => ({
     accessTokenTTL: process.env.REDIS_ACCESS_TOKEN_TTL || 60 * 60 * 24 * 1,
     refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },
+  pricing: {
+    city: process.env.CITY || 'dhaka',
+    MU_MIN: parseFloat(process.env.MU_MIN) || 0.8,
+    MU_MAX: parseFloat(process.env.MU_MAX) || 1.23,
+  },
   msg91: {
     baseUrl: process.env.MSG91_BASE_URL,
     authKey: process.env.MSG91_AUTH_KEY,
@@ -42,6 +47,10 @@ export default () => ({
       apiKey: process.env.AZURE_OPENAI_KEY,
       model: process.env.AZURE_MODEL_NAME,
       apiVersion: process.env.AZURE_API_VERSION,
+    },
+    communication: {
+      connectionString: process.env.AZURE_COMMUNICATION_CONNECTION_STRING,
+      senderAddress: process.env.AZURE_COMMUNICATION_SENDER_ADDRESS,
     },
   },
   file: {
@@ -96,9 +105,9 @@ export default () => ({
   systemConfig: {
     bonusRechargeThreshold: 'bonusRechargeThreshold',
   },
-  pricing: {
-    aPlus: 924, // a is the “height” of the initial per_km_fare above the flat rate,
-    bPlus: 2.06, // b controls how quickly it drops as distance increases, Decay rate
-    cPlus: 22.0, // c is the flat rate that per_km_fare approaches for long distances
-  },
+  // pricing: {
+  //   aPlus: 924, // a is the “height” of the initial per_km_fare above the flat rate,
+  //   bPlus: 2.06, // b controls how quickly it drops as distance increases, Decay rate
+  //   cPlus: 22.0, // c is the flat rate that per_km_fare approaches for long distances
+  // },
 });

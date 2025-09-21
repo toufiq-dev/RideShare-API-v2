@@ -25,23 +25,24 @@ model SystemConfig {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  role           UserRole
-  email          String?         @unique
-  status         UserStatus      @default(ACTIVE)
-  country        Country?
-  metadata       Json?
-  lastLogin      DateTime?
-  createdAt      DateTime        @default(now()) @db.Timestamptz
-  updatedAt      DateTime        @updatedAt @db.Timestamptz
-  admin          Admin?
-  customer       Customer?
-  deviceTokens   DeviceToken[]
-  pilot          Pilot?
-  support        Support?
-  supportTickets SupportTicket[]
-  superAdmin     SuperAdmin?
-  promoter       Promoter?
+  id                     String                 @id @default(uuid())
+  role                   UserRole
+  email                  String?                @unique
+  status                 UserStatus             @default(ACTIVE)
+  country                Country?
+  metadata               Json?
+  lastLogin              DateTime?
+  createdAt              DateTime               @default(now()) @db.Timestamptz
+  updatedAt              DateTime               @updatedAt @db.Timestamptz
+  admin                  Admin?
+  customer               Customer?
+  deviceTokens           DeviceToken[]
+  pilot                  Pilot?
+  support                Support?
+  superAdmin             SuperAdmin?
+  promoter               Promoter?
+  announcementDeliveries AnnouncementDelivery[]
+  supportTickets         SupportTicket[]
 }
 
 model DeviceToken {
@@ -98,6 +99,7 @@ model Support {
   user               User                 @relation(fields: [userId], references: [id])
   CancellationReason CancellationReason[]
   supportRole        SupportRole?         @relation(fields: [supportRoleId], references: [id])
+  supportTickets     SupportTicket[]
 }
 
 model SupportPermission {
@@ -157,7 +159,7 @@ model Customer {
 model Coupon {
   id         String     @id @default(uuid())
   name       String     @unique
-  discount   Decimal    @db.Decimal(10, 2)
+  discount   Decimal    @default(0.00) @db.Decimal(10, 2)
   validUntil DateTime?  @db.Timestamptz
   createdAt  DateTime   @default(now()) @db.Timestamptz
   customers  Customer[]
@@ -179,6 +181,8 @@ model Pilot {
   id                              String             @id @default(uuid())
   phone                           String             @unique
   userId                          String             @unique
+  name                            String?
+  city                            String?
   selfieUrl                       String?
   dlFrontSideUrl                  String?
   dlBackSideUrl                   String?
@@ -247,6 +251,7 @@ model Pilot {
 model PilotCoupon {
   id             String        @id @default(uuid())
   name           String        @unique
+  discount       Decimal       @default(0.00) @db.Decimal(10, 2)
   description    String?
   subscriptionId String?
   validUntil     DateTime?     @db.Timestamptz
@@ -334,6 +339,8 @@ model VehicleTypeBD {
   minFare           Decimal?          @db.Decimal(10, 2)
   insuranceFee      Decimal?          @db.Decimal(10, 2)
   vehicle           Vehicle[]
+  tariffs           Tariff[]
+  bookings          Booking[]
 }
 
 model VehicleClassificationCache {
@@ -350,6 +357,29 @@ model VehicleClassificationCache {
   createdAt       DateTime @default(now()) @db.Timestamptz
 
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
+}
+
+model Tariff {
+  id              String        @id @default(uuid())
+  city            String
+  intercity       Boolean       @default(false)
+  vehicleTypeBDId String
+  baseFare        Decimal       @db.Decimal(10, 2)
+  perKmRate       Decimal       @db.Decimal(10, 2)
+  perMinRate      Decimal       @db.Decimal(10, 2)
+  minFare         Decimal       @db.Decimal(10, 2)
+  insuranceFee    Decimal       @db.Decimal(10, 2)
+  pickupFee       Decimal?      @db.Decimal(10, 2)
+  pickupActive    Boolean       @default(false)
+  version         Int           @default(1)
+  effectiveFrom   DateTime      @db.Timestamptz
+  effectiveTo     DateTime?     @db.Timestamptz
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+  vehicleTypeBD   VehicleTypeBD @relation(fields: [vehicleTypeBDId], references: [id])
+
+  @@index([city, intercity, vehicleTypeBDId, isActive])
 }
 
 model Subscription {
@@ -428,6 +458,7 @@ model Booking {
   status             BookingStatus
   rideType           RideType
   vehicleId          String?
+  vehicleTypeIdBD    String?
   estimatedFare      Decimal             @db.Decimal(10, 2)
   discountedFare     Decimal             @db.Decimal(10, 2)
   tripEndFare        Decimal?            @db.Decimal(10, 2)
@@ -449,11 +480,12 @@ model Booking {
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
   vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])
+  vehicleTypeBD      VehicleTypeBD?      @relation(fields: [vehicleTypeIdBD], references: [id])
   activePilot        Pilot?              @relation("PilotActiveBooking")
   activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?
   pilotRating        PilotRating?
-  supportTicket      SupportTicket?
+  supportTicket      SupportTicket[]
   message            Message[]
 
   @@index([customerId, status])
@@ -519,17 +551,24 @@ model PilotRating {
 }
 
 model SupportTicket {
-  id          String         @id @default(uuid())
-  userId      String
-  bookingId   String?        @unique
-  type        SupportType
-  channel     SupportChannel
-  status      SupportStatus  @default(OPEN)
-  description String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  booking     Booking?       @relation(fields: [bookingId], references: [id])
-  user        User           @relation(fields: [userId], references: [id])
+  id            String         @id @default(uuid())
+  supportId     String?
+  userId        String
+  bookingId     String
+  type          SupportType
+  channel       SupportChannel @default(CHAT)
+  status        SupportStatus  @default(OPEN)
+  description   String
+  evidenceUrl   String[]
+  notes         Json?
+  whatsAppPhone String?
+  assignedAt    DateTime?      @db.Timestamptz
+  resolvedAt    DateTime?      @db.Timestamptz
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  booking       Booking        @relation(fields: [bookingId], references: [id])
+  support       Support?       @relation(fields: [supportId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
 }
 
 model Languages {
@@ -581,6 +620,34 @@ model VideoProgress {
   video     VideoTutorial @relation(fields: [videoId], references: [id])
 
   @@unique([pilotId, videoId])
+}
+
+model Announcement {
+  id          String                 @id @default(uuid())
+  title       String
+  message     String
+  audience    AnnouncementAudience
+  schedule    DateTime?              @db.Timestamptz
+  bannerUrl   String?
+  impressions Int                    @default(0)
+  createdBy   String // Link to Admin/SuperAdmin userId
+  status      AnnouncementStatus     @default(DRAFT)
+  createdAt   DateTime               @default(now()) @db.Timestamptz
+  updatedAt   DateTime               @updatedAt @db.Timestamptz
+  deliveries  AnnouncementDelivery[] // Relation to track which users received this announcement
+}
+
+model AnnouncementDelivery {
+  id             String             @id @default(uuid())
+  announcementId String
+  userId         String
+  sentAt         DateTime           @db.Timestamptz
+  viewedAt       DateTime?          @db.Timestamptz // For in-app banners
+  status         AnnouncementStatus @default(SCHEDULED)
+  createdAt      DateTime           @default(now()) @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @db.Timestamptz
+  announcement   Announcement       @relation(fields: [announcementId], references: [id])
+  user           User               @relation(fields: [userId], references: [id])
 }
 
 enum Country {
@@ -707,4 +774,18 @@ enum SupportStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum AnnouncementAudience {
+  ALL
+  CUSTOM
+  DRIVERS
+  CUSTOMERS
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
 }

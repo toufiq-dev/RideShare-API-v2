@@ -5,6 +5,7 @@ import {
   Param,
   UseGuards,
   HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
@@ -23,7 +24,7 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('create-order')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create order for buying subcsription' })
   @ApiBody({ type: CreateOrderDto })
@@ -35,7 +36,7 @@ export class PaymentController {
   }
 
   @Post('verify/:orderId')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify payment' })
   async verifyPayment(

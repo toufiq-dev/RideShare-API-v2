@@ -302,14 +302,12 @@ async function main() {
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
     { role: UserRole.PILOT },
-    { role: UserRole.PILOT },
   ];
 
   const pilots = [
     { phone: '+8801412345673' },
     { phone: '+8801412345674' },
     { phone: '+8801412345675' },
-    { phone: '+919999999999' },
     { phone: '+8801412345670' },
     { phone: '+8801412345671' },
     { phone: '+8801412345672' },
@@ -434,7 +432,6 @@ async function main() {
   const customers = [
     { phone: '+8801412345673' },
     { phone: '+8801412345674' },
-    { phone: '+919999999999' },
     { phone: '+8801412345670' },
     { phone: '+8801412345671' },
     { phone: '+8801412345672' },

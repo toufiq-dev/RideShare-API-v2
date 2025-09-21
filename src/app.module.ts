@@ -24,6 +24,7 @@ import { GeofencingModule } from './core/geofencing/geofencing.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './core/firebase/firebase.module';
 import { PricingModule } from './modules/pricing/pricing.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
     ChatModule,
     FirebaseModule,
     PricingModule,
+    HealthModule,
   ],
   providers: [GlobalExceptionFilter],
   exports: [JwtModule],

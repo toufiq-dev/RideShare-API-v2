@@ -24,7 +24,7 @@ services:
       dockerfile: Dockerfile
     container_name: fairdrive-api-legacy
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env.production
     depends_on:
@@ -53,7 +53,7 @@ services:
       dockerfile: Dockerfile
     container_name: fairdrive-api-latest
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     env_file:
       - .env.production
     depends_on:
@@ -66,7 +66,7 @@ services:
           memory: 1G
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]  # FIXED: Use internal port 3000
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -82,13 +82,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: fairdrive-api-dev
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     env_file:
       - .env.development
     volumes:
       - ./src:/app/src:ro
       - ./logs:/app/logs
-      - /app/node_modules
     depends_on:
       redis:
         condition: service_healthy

@@ -42,7 +42,6 @@ import moment from 'moment-timezone';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from 'src/core/logging/logger.service';
-import { RideGateway } from './ride.gateway';
 import { DriverSearchService } from './services/driver-search.service';
 
 @Injectable()
@@ -57,8 +56,6 @@ export class RideService {
     private readonly fareService: FareService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
-    @Inject(forwardRef(() => RideGateway))
-    private readonly rideGateway: RideGateway,
     private readonly driverSearchService: DriverSearchService,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(

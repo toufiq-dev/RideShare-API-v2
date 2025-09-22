@@ -25,6 +25,8 @@ import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './core/firebase/firebase.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { HealthModule } from './modules/health/health.module';
+import { SocketModule } from './core/socket/socket.module';
+import { MainGateway } from './core/socket/main.gateway';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { HealthModule } from './modules/health/health.module';
     PrismaModule,
     RedisModule,
     LoggerModule,
+    SocketModule,
     AuthModule,
     PilotModule,
     LanguagesModule,
@@ -61,7 +64,7 @@ import { HealthModule } from './modules/health/health.module';
     PricingModule,
     HealthModule,
   ],
-  providers: [GlobalExceptionFilter],
+  providers: [GlobalExceptionFilter, MainGateway],
   exports: [JwtModule],
 })
 export class AppModule {

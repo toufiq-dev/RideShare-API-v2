@@ -147,7 +147,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const value = await this.client.get(key);
       if (!value) {
-        this.logger.log(`Cache miss for key: ${key}`, this.context);
+        // this.logger.log(`Cache miss for key: ${key}`, this.context);
       }
       return value;
     } catch (error) {
@@ -354,7 +354,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (keys.length === 0) return [];
 
       const values = await this.client.mget(...keys);
-      this.logger.log(`Retrieved ${keys.length} keys using mget`, this.context);
+      // this.logger.log(`Retrieved ${keys.length} keys using mget`, this.context);
       return values;
     } catch (error) {
       this.logger.error(`Failed to mget keys`, error.stack, this.context);

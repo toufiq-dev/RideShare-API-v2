@@ -40,11 +40,23 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   onModuleInit() {
     this.socketService.setServer(this.server);
+    console.log('🚀 WebSocket Gateway initialized with namespace: /socket');
   }
 
   async handleConnection(client: Socket) {
+    console.log('�� New connection attempt:');
+    console.log('  - Client ID:', client.id);
+    console.log('  - Namespace:', client.nsp.name);
+    console.log('  - Transport:', client.conn.transport.name);
+    console.log('  - Handshake URL:', client.handshake.url);
+    console.log('  - Handshake Headers:', client.handshake.headers);
+    console.log('  - Handshake Query:', client.handshake.query);
+    console.log('  - Handshake Auth:', client.handshake.auth);
+
     try {
       await this.socketService.handleConnection(client);
+
+      console.log('✅ Client connected successfully:', client.id);
     } catch (error) {
       console.error(error);
       client.emit('error', {

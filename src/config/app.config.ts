@@ -1,15 +1,14 @@
 export default () => ({
   app: {
-    port:
-      process.env.NODE_ENV === 'development'
-        ? parseInt(process.env.PORT, 10) || 3000
-        : parseInt(process.env.PORT, 10) || 8080,
+    port: parseInt(process.env.PORT, 10) || 3000,
+    version: process.env.API_VERSION || 'v1',
+    environment: process.env.NODE_ENV || 'production',
   },
   database: {
     url: process.env.DATABASE_URL,
   },
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL || 'redis://redis:6379',
     accessTokenTTL: process.env.REDIS_ACCESS_TOKEN_TTL || 60 * 60 * 24 * 1,
     refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },

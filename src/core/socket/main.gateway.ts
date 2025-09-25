@@ -57,7 +57,6 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketService.handleDisconnect(client);
   }
 
-  // ===== CHAT EVENTS =====
   @SubscribeMessage(ChatEvents.SEND_MESSAGE)
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
@@ -85,7 +84,6 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // ===== RIDE EVENTS =====
   @SubscribeMessage(RideEvents.UPDATE_PILOT_LOCATION)
   async updateLocation(
     @ConnectedSocket() client: Socket,

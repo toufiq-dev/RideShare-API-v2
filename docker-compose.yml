@@ -1,12 +1,12 @@
 services:
-  # Redis for all instances
-  redis:
+  # Production Redis (shared between V1 and V2)
+  redis-prod:
     image: redis:latest
-    container_name: fairdrive-redis
+    container_name: fairdrive-redis-prod
     ports:
       - '127.0.0.1:6379:6379'
     volumes:
-      - redis-data:/data
+      - redis-data-prod:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
     healthcheck:
@@ -17,18 +17,36 @@ services:
     networks:
       - fairdrive-network
 
-  # Production Legacy API (Port 3000)
-  fairdrive-api-legacy:
+  # Development Redis (separate for dev environment)
+  redis-dev:
+    image: redis:latest
+    container_name: fairdrive-redis-dev
+    ports:
+      - '127.0.0.1:6380:6379'
+    volumes:
+      - redis-data-dev:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fairdrive-network
+
+  # Production V1 API (api.fairdriveindia.com)
+  fairdrive-api-v1:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fairdrive-api-legacy
+    container_name: fairdrive-api-v1
     ports:
       - "127.0.0.1:3000:3000"
     env_file:
       - .env.production
     depends_on:
-      redis:
+      redis-prod:
         condition: service_healthy
     restart: unless-stopped
     deploy:
@@ -46,18 +64,18 @@ services:
       - fairdrive-network
     command: ["node", "dist/src/main"]
 
-  # Production Latest API (Port 3001)
-  fairdrive-api-latest:
+  # Production V2 API (api.fairdriveindia.com/v2)
+  fairdrive-api-v2:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fairdrive-api-latest
+    container_name: fairdrive-api-v2
     ports:
       - "127.0.0.1:3001:3000"
     env_file:
-      - .env.production
+      - .env.production.v2
     depends_on:
-      redis:
+      redis-prod:
         condition: service_healthy
     restart: unless-stopped
     deploy:
@@ -75,7 +93,7 @@ services:
       - fairdrive-network
     command: ["node", "dist/src/main"]
 
-  # Development API (Port 8080)
+  # Development API (api.fairdriveindia.com/dev)
   fairdrive-api-dev:
     build:
       context: .
@@ -89,7 +107,7 @@ services:
       - ./src:/app/src:ro
       - ./logs:/app/logs
     depends_on:
-      redis:
+      redis-dev:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -139,7 +157,9 @@ services:
       - fairdrive-network
 
 volumes:
-  redis-data:
+  redis-data-prod:
+    driver: local
+  redis-data-dev:
     driver: local
   prometheus-data:
     driver: local

@@ -6,9 +6,9 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './core/logging/winston.config';
+import { SocketIOAdapter } from './core/socket/socket.adapter';
 
 async function bootstrap() {
   process.env.TZ = 'UTC';
@@ -23,6 +23,9 @@ async function bootstrap() {
   const port = configService.get<number>('app.port');
 
   app.useLogger(logger);
+
+  // Use IoAdapter for Socket.IO
+  app.useWebSocketAdapter(new SocketIOAdapter(app));
 
   app.enableCors({
     origin: [
@@ -56,9 +59,6 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-
-  // Use IoAdapter for Socket.IO
-  app.useWebSocketAdapter(new IoAdapter(app));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('FairDrive API')

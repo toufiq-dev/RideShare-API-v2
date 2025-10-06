@@ -66,6 +66,19 @@
   },
   {
     "city": "dhaka",
+    "service_name": "CNG",
+    "intercity": false,
+    "baseFare": 100.0,
+    "perKmRate": 20.0,
+    "perMinRate": 1.0,
+    "minFare": 250.0,
+    "insuranceFee": 20.0,
+    "pickupActive": false,
+    "pickupFee": 0.0,
+    "effectiveFromEpoch": 1753614480
+  },
+  {
+    "city": "dhaka",
     "service_name": "Max Intercity",
     "intercity": true,
     "baseFare": 530.54,

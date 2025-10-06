@@ -8,7 +8,7 @@ export default () => ({
     url: process.env.DATABASE_URL,
   },
   redis: {
-    url: process.env.REDIS_URL || 'redis://redis:6379',
+    url: process.env.REDIS_URL,
     accessTokenTTL: process.env.REDIS_ACCESS_TOKEN_TTL || 60 * 60 * 24 * 1,
     refreshTokenTTL: process.env.REDIS_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 7,
   },

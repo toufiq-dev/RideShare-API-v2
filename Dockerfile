@@ -1,16 +1,47 @@
-# Build stage
-FROM node:22-alpine AS builder
+# Multi-stage Dockerfile for production optimization
+FROM node:24-alpine AS base
 
-RUN npm i -g pnpm
+# Install pnpm and create app user
+RUN npm i -g pnpm && addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# Copy package files
+COPY package*.json pnpm-lock.yaml ./
 
+# Install dependencies
+FROM base AS deps
+RUN pnpm install --frozen-lockfile --prod
+
+# Build stage
+FROM base AS builder
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm prisma generate
 RUN pnpm run build
+
+# Production stage
+FROM node:24-alpine AS production
+
+# Install pnpm and create app user
+RUN npm i -g pnpm && addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+WORKDIR /app
+
+# Copy built application
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/static ./static
+
+# Switch to non-root user
+USER nestjs
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 CMD ["node", "dist/src/main"]

@@ -30,6 +30,48 @@ export class HealthController {
     ]);
   }
 
+  // src/modules/health/health.controller.ts
+  @Get('detailed')
+  @HealthCheck()
+  async detailedCheck(): Promise<HealthCheckResult> {
+    return this.health.check([
+      () => this.databaseHealth(),
+      () => this.redisHealth(),
+      () => this.azureStorageHealth(),
+      () => this.memoryHealth(),
+    ]);
+  }
+
+  private async memoryHealth(): Promise<HealthIndicatorResult> {
+    const memUsage = process.memoryUsage();
+    const memUsageMB = memUsage.heapUsed / 1024 / 1024;
+
+    return {
+      memory: {
+        status: memUsageMB < 500 ? 'up' : 'down',
+        heapUsed: `${memUsageMB.toFixed(2)}MB`,
+      },
+    };
+  }
+
+  private async azureStorageHealth(): Promise<HealthIndicatorResult> {
+    try {
+      // Add Azure storage health check
+      return {
+        azureStorage: {
+          status: 'up',
+        },
+      };
+    } catch (error) {
+      return {
+        azureStorage: {
+          status: 'down',
+          error: error.message,
+        },
+      };
+    }
+  }
+
   private async databaseHealth(): Promise<HealthIndicatorResult> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;

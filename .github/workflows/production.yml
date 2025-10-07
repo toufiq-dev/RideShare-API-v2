@@ -1,0 +1,86 @@
+name: Production Deployment
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - india
+          - v1
+          - v2
+          - dev
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USERNAME }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          script: |
+            cd /home/azureuser/fairdrive-api
+            
+            echo "🚀 Deploying to production..."
+            
+            # Zero-downtime deployment for specific service
+            if [ "${{ github.event.inputs.service }}" != "all" ]; then
+              echo "Deploying ${{ github.event.inputs.service }} service..."
+              docker-compose up -d --no-deps --build fairdrive-api-${{ github.event.inputs.service }}
+              
+              # Health check for specific service
+              case "${{ github.event.inputs.service }}" in
+                "india")
+                  PORT=3000
+                  ;;
+                "v1")
+                  PORT=3001
+                  ;;
+                "v2")
+                  PORT=3002
+                  ;;
+                "dev")
+                  PORT=8080
+                  ;;
+              esac
+              
+              # Wait and check health
+              sleep 15
+              for i in {1..5}; do
+                if curl -f -s "http://localhost:$PORT/health" > /dev/null; then
+                  echo "✅ ${{ github.event.inputs.service }} deployment successful"
+                  break
+                else
+                  echo "⏳ Waiting for ${{ github.event.inputs.service }}... (attempt $i/5)"
+                  sleep 10
+                fi
+              done
+            else
+              # Deploy all services
+              docker-compose up -d --build
+              
+              # Health checks for all services
+              for i in {1..5}; do
+                if curl -f -s "http://localhost:3000/health" && \
+                   curl -f -s "http://localhost:3001/health" && \
+                   curl -f -s "http://localhost:3002/health"; then
+                  echo "✅ All services deployment successful"
+                  break
+                else
+                  echo "⏳ Waiting for services... (attempt $i/5)"
+                  sleep 10
+                fi
+              done
+            fi

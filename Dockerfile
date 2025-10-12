@@ -34,6 +34,10 @@ COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/static ./static
+COPY --from=builder --chown=nestjs:nodejs /app/artifacts ./artifacts
+
+# Create required directories with proper permissions BEFORE switching to nestjs user
+RUN mkdir -p /app/logs /app/uploads/temp && chown -R nestjs:nodejs /app/logs /app/uploads
 
 # Switch to non-root user
 USER nestjs

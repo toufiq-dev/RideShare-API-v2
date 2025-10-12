@@ -6,8 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-import { WinstonModule } from 'nest-winston';
-import { winstonConfig } from './core/logging/winston.config';
+// import { WinstonModule } from 'nest-winston';
+// import { winstonConfig } from './core/logging/winston.config';
 import { SocketIOAdapter } from './core/socket/socket.adapter';
 
 async function bootstrap() {
@@ -15,7 +15,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {
     abortOnError: false,
-    logger: WinstonModule.createLogger(winstonConfig),
+    // logger: WinstonModule.createLogger(winstonConfig),
   });
 
   const logger = app.get(LoggerService);

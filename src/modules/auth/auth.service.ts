@@ -130,6 +130,8 @@ export class AuthService {
           throw new BadRequestException('Failed to send OTP.');
         }
 
+        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+
         await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
         return {

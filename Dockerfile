@@ -4,6 +4,9 @@ FROM node:24-alpine AS base
 # Install pnpm and create app user
 RUN npm i -g pnpm && addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 
+# Install PostgreSQL client tools
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 # Copy package files
@@ -25,6 +28,9 @@ FROM node:24-alpine AS production
 
 # Install pnpm and create app user
 RUN npm i -g pnpm && addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+# Install PostgreSQL client tools
+RUN apk add --no-cache postgresql-client
 
 WORKDIR /app
 

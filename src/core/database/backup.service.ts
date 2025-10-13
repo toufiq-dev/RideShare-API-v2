@@ -22,9 +22,20 @@ export class DatabaseBackupService {
     this.containerName = this.configService.get<string>(
       'azure.containerNameDb',
     );
-    this.databaseUrl = this.configService.get<string>('db.url');
+    this.databaseUrl = this.configService.get<string>('database.url');
+
+    // Debug logging
+    this.logger.log(`DATABASE_URL from env: ${process.env.DATABASE_URL}`);
+    this.logger.log(
+      `DATABASE_URL from config: ${this.configService.get<string>('db.url')}`,
+    );
+    this.logger.log(`DATABASE_URL final: ${this.databaseUrl}`);
+
     if (!connectionString) {
       throw new Error('Azure Storage connection string is not configured');
+    }
+    if (!this.databaseUrl) {
+      throw new Error('Database URL is not configured');
     }
 
     this.blobServiceClient =
@@ -44,7 +55,7 @@ export class DatabaseBackupService {
       this.logger.log(`Starting backup: ${backupFileName}`);
 
       // Create database backup using pg_dump
-      const databaseUrl = this.databaseUrl;
+      const databaseUrl = this.databaseUrl.replace(/\?.*$/, '');
       const pgDumpCommand = `pg_dump "${databaseUrl}" > "${localBackupPath}"`;
 
       await execAsync(pgDumpCommand);
@@ -60,8 +71,10 @@ export class DatabaseBackupService {
       await this.uploadToAzureBlob(localBackupPath, backupFileName);
 
       // Clean up local file
-      fs.unlinkSync(localBackupPath);
-      this.logger.log('Local backup file cleaned up');
+      if (fs.existsSync(localBackupPath)) {
+        fs.unlinkSync(localBackupPath);
+        this.logger.log('Local backup file cleaned up');
+      }
     } catch (error) {
       this.logger.error(`Backup failed: ${error.message}`);
 

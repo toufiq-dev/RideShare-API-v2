@@ -54,10 +54,13 @@ export class DatabaseBackupService {
     try {
       this.logger.log(`Starting backup: ${backupFileName}`);
 
+      // Delete previous backup from Azure Blob Storage
+      await this.deletePreviousBackup();
+
       // Create database backup using pg_dump
       const databaseUrl = this.databaseUrl.replace(/\?.*$/, '');
       const pgDumpCommand = `pg_dump "${databaseUrl}" > "${localBackupPath}"`;
-
+      this.logger.log('***databaseUrl***', databaseUrl);
       await execAsync(pgDumpCommand);
 
       // Check if backup file was created
@@ -84,6 +87,49 @@ export class DatabaseBackupService {
       }
 
       throw error;
+    }
+  }
+
+  private async deletePreviousBackup(): Promise<void> {
+    try {
+      this.logger.log('Deleting previous backup from Azure Blob Storage...');
+
+      const containerClient = this.blobServiceClient.getContainerClient(
+        this.containerName,
+      );
+
+      // List all blobs in the container
+      const blobs = containerClient.listBlobsFlat();
+      const blobNames: string[] = [];
+
+      for await (const blob of blobs) {
+        if (blob.name.startsWith('fairdrive-api_backup_')) {
+          blobNames.push(blob.name);
+        }
+      }
+
+      // Sort by name (which includes timestamp) to get the oldest first
+      blobNames.sort();
+
+      // Delete all previous backups (keep only the most recent one)
+      for (let i = 0; i < blobNames.length; i++) {
+        const blobName = blobNames[i];
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+        try {
+          await blockBlobClient.deleteIfExists();
+          this.logger.log(`Deleted previous backup: ${blobName}`);
+        } catch (deleteError) {
+          this.logger.warn(
+            `Failed to delete ${blobName}: ${deleteError.message}`,
+          );
+        }
+      }
+
+      this.logger.log(`Deleted ${blobNames.length} previous backup(s)`);
+    } catch (error) {
+      this.logger.error(`Failed to delete previous backups: ${error.message}`);
+      // Don't throw error here - we still want to create the new backup
     }
   }
 

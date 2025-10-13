@@ -37,6 +37,7 @@ export default () => ({
   azure: {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME,
+    containerNameDb: process.env.AZURE_STORAGE_CONTAINER_NAME_DB,
     cognitiveServices: {
       endpoint: process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT,
       apiKey: process.env.AZURE_COGNITIVE_SERVICES_API_KEY,

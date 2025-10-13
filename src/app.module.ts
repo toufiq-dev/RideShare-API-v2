@@ -5,7 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { getBullConfig } from './core/queue/bull.config';
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PrismaModule } from './core/database/prisma.module';
+import { DatabaseModule } from './core/database/database.module';
 import { RedisModule } from './core/cache/redis.module';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerModule } from './core/logging/logger.module';
@@ -27,6 +27,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
 import { HealthModule } from './modules/health/health.module';
 import { SocketModule } from './core/socket/socket.module';
 import { MainGateway } from './core/socket/main.gateway';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MainGateway } from './core/socket/main.gateway';
       isGlobal: true,
       load: [configuration],
     }),
+    ScheduleModule.forRoot(),
     JwtModule.registerAsync({
       global: true,
       useFactory: getJwtConfig,
@@ -44,7 +46,7 @@ import { MainGateway } from './core/socket/main.gateway';
       inject: [ConfigService],
       useFactory: getBullConfig,
     }),
-    PrismaModule,
+    DatabaseModule,
     RedisModule,
     LoggerModule,
     SocketModule,

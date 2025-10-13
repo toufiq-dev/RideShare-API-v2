@@ -6,7 +6,7 @@ import {
 } from '@googlemaps/google-maps-services-js';
 import { ConfigService } from '@nestjs/config';
 import { UpdateFareDto } from './dto/fare.dto';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { VehicleTypeNameBD } from '@prisma/client';
 import { MultiplierService } from '../pricing/multiplier.service';
 import { TariffService } from '../pricing/tariff.service';

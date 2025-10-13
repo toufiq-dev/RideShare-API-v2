@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 
 @Injectable()
 export class QueryTokenGuard implements CanActivate {

@@ -5,7 +5,7 @@ import formatDate from 'src/common/functions/formatDate';
 import { VerificationResponseVehicle } from 'src/modules/pilot/interfaces/pilot.interface';
 import moment from 'moment-timezone';
 import { AzureOpenAI } from 'openai';
-import { PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/database.service';
 import { VehicleTypeName, VehicleTypeNameBD } from '@prisma/client';
 
 @Injectable()

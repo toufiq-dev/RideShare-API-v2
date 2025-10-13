@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { AzureService } from 'src/core/utils/azure.util';
 import { VerificationService } from 'src/core/utils/verification.util';
 import {

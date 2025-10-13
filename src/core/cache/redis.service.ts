@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import Redis, { RedisOptions } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../../core/logging/logger.service';
-import { PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/database.service';
 import { RedisKeys } from './redis-keys';
 
 @Injectable()

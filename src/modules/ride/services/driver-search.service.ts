@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RideNotificationService } from './ride-notification.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';

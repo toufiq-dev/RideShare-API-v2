@@ -6,7 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
 import { JwtService } from '@nestjs/jwt';

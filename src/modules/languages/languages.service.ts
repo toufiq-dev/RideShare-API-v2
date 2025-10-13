@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../core/database/prisma.service';
+import { PrismaService } from '../../core/database/database.service';
 import { UpdateLanguageDto } from './dto/languages.dto';
 import { UserRole } from '@prisma/client';
 

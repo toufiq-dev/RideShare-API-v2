@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Tariff, VehicleTypeNameBD } from '@prisma/client';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 
 type Baseline = {
   baseFare: number;

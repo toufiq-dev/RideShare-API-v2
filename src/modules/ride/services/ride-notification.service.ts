@@ -10,7 +10,7 @@ import {
 } from '../dto/ride.interface';
 import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 
 @Injectable()

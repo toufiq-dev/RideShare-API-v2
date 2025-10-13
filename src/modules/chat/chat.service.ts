@@ -1,5 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { BookingStatus } from '@prisma/client';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Message } from '@prisma/client';

@@ -7,7 +7,7 @@ import {
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { EmailSendOtpDto, EmailVerifyEmailDto } from './dto/email.dto';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';

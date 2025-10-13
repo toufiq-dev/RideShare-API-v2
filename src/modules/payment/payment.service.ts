@@ -1,6 +1,6 @@
 import { NotFoundException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import axios from 'axios';
 import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 import { RedisService } from 'src/core/cache/redis.service';

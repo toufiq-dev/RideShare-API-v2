@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
-import { PrismaService } from 'src/core/database/prisma.service';
+import { PrismaService } from 'src/core/database/database.service';
 import {
   CreateSavedPlaceDto,
   UpdateSavedPlaceDto,

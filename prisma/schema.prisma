@@ -418,7 +418,7 @@ model PilotWallet {
   todaysEarning            Decimal?      @default(0.00) @db.Decimal(10, 2)
   lastTripEarning          Decimal?      @default(0.00) @db.Decimal(10, 2)
   subscriptionId           String
-  autoRechargeEnabled      Boolean?      @default(true)
+  autoRechargeEnabled      Boolean?      @default(false)
   autoRechargeEnabledUntil DateTime?     @db.Timestamptz
   autoRechargeAmount       Decimal?      @default(0.00) @db.Decimal(10, 2)
   autoRechargeDate         DateTime?     @db.Timestamptz

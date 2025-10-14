@@ -726,6 +726,11 @@ export class PilotService {
       if (!wallet) {
         throw new NotFoundException('Pilot wallet not found.');
       }
+      if (!wallet.autoRechargeEnabled) {
+        throw new BadRequestException(
+          'Pilot does not have auto recharge enabled.',
+        );
+      }
 
       const pilotCoupon = await this.prisma.pilotCoupon.findUnique({
         where: {

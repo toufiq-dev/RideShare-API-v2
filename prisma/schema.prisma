@@ -178,9 +178,9 @@ model SavedPlace {
 }
 
 model Pilot {
-  id                              String             @id @default(uuid())
-  phone                           String             @unique
-  userId                          String             @unique
+  id                              String                   @id @default(uuid())
+  phone                           String                   @unique
+  userId                          String                   @unique
   name                            String?
   city                            String?
   selfieUrl                       String?
@@ -196,56 +196,69 @@ model Pilot {
   taxTokenUrl                     String?
   languageId                      String
   referralCode                    String?
-  onlineStatus                    PilotStatus        @default(OFFLINE)
-  activeBookingId                 String?            @unique
-  isAlreadyRegistered             Boolean            @default(false)
-  averageRating                   Float              @default(5.0)
-  totalTrips                      Int                @default(0)
+  onlineStatus                    PilotStatus              @default(OFFLINE)
+  activeBookingId                 String?                  @unique
+  isAlreadyRegistered             Boolean                  @default(false)
+  averageRating                   Float                    @default(5.0)
+  totalTrips                      Int                      @default(0)
   pilotProgramId                  String?
-  acceptedTerms                   Boolean            @default(true)
-  isSelfieVerified                VerificationStatus @default(PENDING)
+  acceptedTerms                   Boolean                  @default(true)
+  isSelfieVerified                VerificationStatus       @default(PENDING)
   selfieRejectionReason           String?
-  isNidVerified                   VerificationStatus @default(PENDING)
+  isNidVerified                   VerificationStatus       @default(PENDING)
   nidRejectionReason              String?
-  isVehicleOwnersNidVerified      VerificationStatus @default(PENDING)
+  isVehicleOwnersNidVerified      VerificationStatus       @default(PENDING)
   vehicleOwnersNidRejectionReason String?
-  isDLVerified                    VerificationStatus @default(PENDING)
+  isDLVerified                    VerificationStatus       @default(PENDING)
   dlRejectionReason               String?
-  isRCVerified                    VerificationStatus @default(PENDING)
+  isRCVerified                    VerificationStatus       @default(PENDING)
   rcRejectionReason               String?
-  isNumberPlateVerified           VerificationStatus @default(PENDING)
+  isNumberPlateVerified           VerificationStatus       @default(PENDING)
   numberPlateRejectionReason      String?
-  isTaxTokenVerified              VerificationStatus @default(PENDING)
+  isTaxTokenVerified              VerificationStatus       @default(PENDING)
   taxTokenRejectionReason         String?
-  isPanCardVerified               VerificationStatus @default(PENDING)
-  isAadhaarVerified               VerificationStatus @default(PENDING)
-  isFairCoinAvailed               Boolean            @default(false)
+  isPanCardVerified               VerificationStatus       @default(PENDING)
+  isAadhaarVerified               VerificationStatus       @default(PENDING)
+  isFairCoinAvailed               Boolean                  @default(false)
   currentLocation                 Json?
   panCardName                     String?
   aadhaarName                     String?
-  panCardNumber                   String?            @unique
-  aadhaarCardNumber               String?            @unique
+  panCardNumber                   String?                  @unique
+  aadhaarCardNumber               String?                  @unique
   aadhaarCardAddress              String?
   pilotCouponId                   String?
   promoterId                      String?
-  createdAt                       DateTime           @default(now()) @db.Timestamptz
-  updatedAt                       DateTime           @updatedAt @db.Timestamptz
+  pilotType                       PilotType?               @default(REGULAR)
+  superPilotSince                 DateTime?
+  starPilotSince                  DateTime?
+  totalLifetimeEarnings           Decimal                  @default(0) @db.Decimal(10, 2)
+  totalLifetimeRides              Int                      @default(0)
+  weeklyEarnings                  Decimal                  @default(0) @db.Decimal(10, 2)
+  monthlyEarnings                 Decimal                  @default(0) @db.Decimal(10, 2)
+  currentRank                     Int?
+  lastRankUpdate                  DateTime?
+  primaryVehicleTypeId            String?
+  createdAt                       DateTime                 @default(now()) @db.Timestamptz
+  updatedAt                       DateTime                 @updatedAt @db.Timestamptz
   drivingLicense                  DrivingLicense?
   bookings                        Booking[]
-  language                        Languages          @relation(fields: [languageId], references: [id])
-  pilotProgram                    PilotProgram?      @relation(fields: [pilotProgramId], references: [id])
-  user                            User               @relation(fields: [userId], references: [id])
-  activeBooking                   Booking?           @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
+  language                        Languages                @relation(fields: [languageId], references: [id])
+  pilotProgram                    PilotProgram?            @relation(fields: [pilotProgramId], references: [id])
+  user                            User                     @relation(fields: [userId], references: [id])
+  activeBooking                   Booking?                 @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
   pilotTrips                      PilotTrips[]
   transaction                     Transaction[]
-  ranking                         PilotRanking?
   ratings                         PilotRating[]
   wallet                          PilotWallet?
-  vehicle                         Vehicle?           @relation("PilotVehicle")
-  nid                             Nid?               @relation("PilotNid")
+  vehicle                         Vehicle?                 @relation("PilotVehicle")
+  nid                             Nid?                     @relation("PilotNid")
   videoProgress                   VideoProgress?
-  pilotCoupon                     PilotCoupon?       @relation(fields: [pilotCouponId], references: [id])
-  promoter                        Promoter?          @relation(fields: [promoterId], references: [id])
+  pilotCoupon                     PilotCoupon?             @relation(fields: [pilotCouponId], references: [id])
+  promoter                        Promoter?                @relation(fields: [promoterId], references: [id])
+  primaryVehicleType              VehicleTypeBD?           @relation(fields: [primaryVehicleTypeId], references: [id])
+  pilotRankings                   PilotRanking[]
+  pilotAchievements               PilotAchievement[]
+  pilotProgramEnrollments         PilotProgramEnrollment[]
 }
 
 model PilotCoupon {
@@ -341,6 +354,8 @@ model VehicleTypeBD {
   vehicle           Vehicle[]
   tariffs           Tariff[]
   bookings          Booking[]
+  pilots            Pilot[]
+  pilotRankings     PilotRanking[]
 }
 
 model VehicleClassificationCache {
@@ -418,7 +433,7 @@ model PilotWallet {
   todaysEarning            Decimal?      @default(0.00) @db.Decimal(10, 2)
   lastTripEarning          Decimal?      @default(0.00) @db.Decimal(10, 2)
   subscriptionId           String
-  autoRechargeEnabled      Boolean?      @default(false)
+  autoRechargeEnabled      Boolean?      @default(true)
   autoRechargeEnabledUntil DateTime?     @db.Timestamptz
   autoRechargeAmount       Decimal?      @default(0.00) @db.Decimal(10, 2)
   autoRechargeDate         DateTime?     @db.Timestamptz
@@ -526,17 +541,80 @@ model CustomerRating {
 }
 
 model PilotProgram {
-  id          String  @id @default(uuid())
-  name        String  @unique
+  id          String                   @id @default(uuid())
+  name        String                   @unique
   description String?
+  programType ProgramType
+  isActive    Boolean                  @default(true)
+  criteria    Json // Dynamic criteria (e.g., {"minEarnings": 500000, "minRides": 500})
+  rewardType  String? // e.g., "FairCoinExemption", "BonusFairCoins"
+  rewardValue String? // e.g., "true" for exemption, "1000" for FairCoins
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
   pilot       Pilot[]
+  enrollments PilotProgramEnrollment[]
+}
+
+model PilotProgramEnrollment {
+  id                String       @id @default(uuid())
+  pilotId           String
+  programId         String
+  enrolledAt        DateTime     @default(now())
+  achievedAt        DateTime? // When pilot met criteria
+  isCurrentlyActive Boolean      @default(false)
+  pilot             Pilot        @relation(fields: [pilotId], references: [id])
+  program           PilotProgram @relation(fields: [programId], references: [id])
+
+  @@unique([pilotId, programId])
 }
 
 model PilotRanking {
-  id      String @id @default(uuid())
-  pilotId String @unique
-  ranking Int    @default(0)
-  pilot   Pilot  @relation(fields: [pilotId], references: [id])
+  id            String        @id @default(uuid())
+  pilotId       String
+  rank          Int           @default(0)
+  earnings      Decimal       @db.Decimal(10, 2)
+  rides         Int
+  totalPilots   Int
+  rankingPeriod RankingPeriod
+  vehicleTypeId String // Null for global, specific for segmented
+  calculatedAt  DateTime      @default(now())
+  vehicleType   VehicleTypeBD @relation(fields: [vehicleTypeId], references: [id])
+  pilot         Pilot         @relation(fields: [pilotId], references: [id])
+
+  @@unique([pilotId, rankingPeriod, calculatedAt, vehicleTypeId])
+  @@index([rank])
+  @@index([rankingPeriod, calculatedAt])
+  @@index([vehicleTypeId, rankingPeriod, calculatedAt, rank])
+}
+
+model Achievement {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String?
+  category    AchievementCategory
+  rarity      AchievementRarity
+  criteria    Json // Dynamic criteria
+  rewardType  String? // e.g., "FairCoins", "Badge"
+  rewardValue String? // e.g., "100" for FairCoins
+  iconUrl     String? // Badge icon
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  pilotAchievements PilotAchievement[]
+}
+
+model PilotAchievement {
+  id            String      @id @default(uuid())
+  pilotId       String
+  achievementId String
+  earnedAt      DateTime    @default(now())
+  pilot         Pilot       @relation(fields: [pilotId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([pilotId, achievementId])
 }
 
 model PilotRating {
@@ -788,4 +866,39 @@ enum AnnouncementStatus {
   SCHEDULED
   PUBLISHED
   ARCHIVED
+}
+
+enum PilotType {
+  REGULAR
+  SUPER_PILOT
+  STAR_PILOT
+}
+
+enum RankingPeriod {
+  OVERALL // Main leaderboard
+  WEEKLY // Weekly resets
+  MONTHLY // Monthly resets
+  DAILY // Daily competitions
+}
+
+enum ProgramType {
+  SUPER_PILOT
+  STAR_PILOT
+  ACHIEVEMENT_PROGRAM
+  TRAINING_PROGRAM
+}
+
+enum AchievementCategory {
+  EARNINGS
+  RIDES
+  RATING
+  STREAK
+  SPECIAL
+}
+
+enum AchievementRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
 }

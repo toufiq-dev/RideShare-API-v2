@@ -5,9 +5,10 @@ import { RideController } from './ride.controller';
 import { RideNotificationService } from './services/ride-notification.service';
 import { FirebaseModule } from 'src/core/firebase/firebase.module';
 import { DriverSearchService } from './services/driver-search.service';
+import { ProgramModule } from '../program/program.module';
 
 @Module({
-  imports: [FareModule, FirebaseModule],
+  imports: [FareModule, FirebaseModule, ProgramModule],
   providers: [
     {
       provide: RideService,

@@ -12,6 +12,9 @@ import { PrismaService } from 'src/core/database/database.service';
 import {
   BookingStatus,
   CancelledBy,
+  PilotType,
+  ProgramType,
+  RankingPeriod,
   RideType,
   TransactionStatus,
   TransactionType,
@@ -43,6 +46,7 @@ import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from 'src/core/logging/logger.service';
 import { DriverSearchService } from './services/driver-search.service';
+import { ProgramService } from '../program/program.service';
 
 @Injectable()
 export class RideService {
@@ -57,6 +61,7 @@ export class RideService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
     private readonly driverSearchService: DriverSearchService,
+    private readonly programService: ProgramService,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(
       'systemConfig.bonusRechargeThreshold',
@@ -1152,6 +1157,12 @@ export class RideService {
             activeBookingId: null,
             totalTrips: tripCount,
             onlineStatus: PilotStatus.AVAILABLE,
+            totalLifetimeRides: {
+              increment: 1,
+            },
+            totalLifetimeEarnings: {
+              increment: Number(booking.discountedFare),
+            },
           },
         });
 
@@ -1258,11 +1269,13 @@ export class RideService {
           select: { id: true, balance: true },
         });
 
+        const shouldDeductFairCoin = pilot.pilotType === PilotType.REGULAR;
+
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
             balance: {
-              decrement: tripAmount,
+              decrement: shouldDeductFairCoin ? tripAmount : 0,
             },
             todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
@@ -1273,12 +1286,14 @@ export class RideService {
         await tx.transaction.create({
           data: {
             pilotId: pilot.id,
-            amount: tripAmount,
+            amount: shouldDeductFairCoin ? tripAmount : 0,
             walletId: wallet.id,
             type: TransactionType.TRIP_DEDUCTION,
             status: TransactionStatus.SUCCESSFUL,
             balanceBefore: Math.ceil(Number(wallet.balance)),
-            balanceAfter: Math.ceil(Number(wallet.balance) - tripAmount),
+            balanceAfter: Math.ceil(
+              Number(wallet.balance) - (shouldDeductFairCoin ? tripAmount : 0),
+            ),
           },
         });
 
@@ -1290,6 +1305,15 @@ export class RideService {
       await this.redis.publish(
         `booking:${bookingId}:status`,
         JSON.stringify(BookingStatus.COMPLETED),
+      );
+
+      // Check for Super Pilot promotion
+      await this.checkSuperPilotPromotion(pilot.id);
+
+      // Trigger ranking recalculation (async, non-blocking)
+      await this.programService.calculateAndStoreRankings(
+        RankingPeriod.OVERALL,
+        pilot.primaryVehicleTypeId,
       );
 
       /// *** Auto recharge logic ***
@@ -2112,4 +2136,89 @@ export class RideService {
 
   //   return { distanceKm, durationMin };
   // }
+
+  async test() {
+    // return await this.checkSuperPilotPromotion();
+  }
+
+  /**
+   * Check if pilot should be promoted to Super Pilot
+   */
+  private async checkSuperPilotPromotion(pilotId: string): Promise<void> {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { id: pilotId },
+        select: {
+          id: true,
+          pilotType: true,
+          totalLifetimeEarnings: true,
+          totalLifetimeRides: true,
+          averageRating: true,
+          pilotProgramEnrollments: {
+            where: {
+              program: { programType: ProgramType.SUPER_PILOT },
+            },
+            include: {
+              program: {
+                select: {
+                  criteria: true,
+                  isActive: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!pilot || pilot.pilotType === PilotType.SUPER_PILOT) {
+        return; // Already Super Pilot or pilot not found
+      }
+
+      const superPilotProgram = pilot.pilotProgramEnrollments[0]?.program;
+      if (!superPilotProgram || !superPilotProgram.isActive) {
+        return; // No active Super Pilot program
+      }
+
+      const criteria = superPilotProgram.criteria as any;
+      const meetsCriteria =
+        Number(pilot.totalLifetimeEarnings) >= Number(criteria.minEarnings);
+
+      if (meetsCriteria) {
+        await this.promoteToSuperPilot(pilotId);
+      }
+    } catch (error) {
+      console.error('Error checking Super Pilot promotion:', error);
+    }
+  }
+
+  /**
+   * Promote pilot to Super Pilot
+   */
+  private async promoteToSuperPilot(pilotId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Update pilot type
+      await tx.pilot.update({
+        where: { id: pilotId },
+        data: {
+          pilotType: PilotType.SUPER_PILOT,
+          superPilotSince: new Date(),
+          lastRankUpdate: new Date(),
+        },
+      });
+
+      // Update program enrollment
+      await tx.pilotProgramEnrollment.updateMany({
+        where: {
+          pilotId,
+          program: { programType: ProgramType.SUPER_PILOT },
+        },
+        data: {
+          achievedAt: new Date(),
+          isCurrentlyActive: true,
+        },
+      });
+    });
+
+    console.log(`Pilot ${pilotId} promoted to Super Pilot`);
+  }
 }

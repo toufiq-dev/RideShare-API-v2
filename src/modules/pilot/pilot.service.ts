@@ -1491,6 +1491,13 @@ export class PilotService {
         },
       });
 
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: {
+          primaryVehicleTypeId: vehicleTypeBDId.id,
+        },
+      });
+
       const transformedData = {
         vehicleNumber: data.regNo,
         vehicleType: data.model,

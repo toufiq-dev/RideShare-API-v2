@@ -28,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
 import { SocketModule } from './core/socket/socket.module';
 import { MainGateway } from './core/socket/main.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ProgramModule } from './modules/program/program.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     FirebaseModule,
     PricingModule,
     HealthModule,
+    ProgramModule,
   ],
   providers: [GlobalExceptionFilter, MainGateway],
   exports: [JwtModule],

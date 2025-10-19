@@ -876,8 +876,6 @@ enum PilotType {
 
 enum RankingPeriod {
   OVERALL // Main leaderboard
-  WEEKLY // Weekly resets
-  MONTHLY // Monthly resets
   DAILY // Daily competitions
 }
 

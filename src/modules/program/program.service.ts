@@ -238,7 +238,11 @@ export class ProgramService {
     });
 
     // Get total pilots in OVERALL ranking context
-    const totalPilots = await this.prisma.pilot.count();
+    const totalPilots = await this.prisma.pilot.count({
+      where: {
+        primaryVehicleTypeId: pilot.primaryVehicleTypeId,
+      },
+    });
 
     return {
       pilotId: pilot.id,
@@ -288,10 +292,14 @@ export class ProgramService {
           totalLifetimeEarnings: true,
           totalLifetimeRides: true,
           primaryVehicleTypeId: true,
+          averageRating: true,
+          createdAt: true,
         },
-        orderBy: {
-          totalLifetimeEarnings: 'desc',
-        },
+        orderBy: [
+          { totalLifetimeEarnings: 'desc' },
+          { averageRating: 'desc' },
+          { createdAt: 'desc' },
+        ],
       });
     } else if (period === RankingPeriod.DAILY) {
       // DAILY: Aggregate from PilotTrips for today
@@ -329,6 +337,8 @@ export class ProgramService {
           totalLifetimeEarnings: true,
           totalLifetimeRides: true,
           primaryVehicleTypeId: true,
+          averageRating: true,
+          createdAt: true,
         },
       });
 
@@ -345,13 +355,26 @@ export class ProgramService {
             totalLifetimeEarnings: pilot.totalLifetimeEarnings,
             totalLifetimeRides: pilot.totalLifetimeRides,
             primaryVehicleTypeId: pilot.primaryVehicleTypeId,
+            averageRating: pilot.averageRating ?? 0,
+            createdAt: pilot.createdAt,
             dailyEarnings: Number(trip._sum.amount || 0),
-            // 🔧 CHANGE 2: Fixed the rides field - use _count instead of _sum.rides
-            dailyRides: trip._count.pilotId || 0, // ✅ Count of trips for the day
+            dailyRides: trip._count?.pilotId || 0,
           };
         })
         .filter(Boolean)
-        .sort((a, b) => Number(b.dailyEarnings) - Number(a.dailyEarnings));
+        .sort((a, b) => {
+          // 1) higher daily earnings first
+          const earnCmp = Number(b.dailyEarnings) - Number(a.dailyEarnings);
+          if (earnCmp !== 0) return earnCmp;
+          // 2) higher average rating next
+          const ratingCmp =
+            Number(b.averageRating ?? 0) - Number(a.averageRating ?? 0);
+          if (ratingCmp !== 0) return ratingCmp;
+          // 3) earlier createdAt wins
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        });
     }
 
     this.logger.log(`Found ${pilots.length} pilots for ranking calculation`);

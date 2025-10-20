@@ -209,9 +209,4 @@ export class RideController {
   async getRideDetails(@Param('bookingId') bookingId: string) {
     return await this.rideService.getRideDetails(bookingId);
   }
-
-  @Get('test')
-  async test() {
-    return await this.rideService.test();
-  }
 }

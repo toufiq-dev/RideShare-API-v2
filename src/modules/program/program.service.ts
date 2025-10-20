@@ -1,6 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
-import { RankingPeriod, VehicleTypeNameBD } from '@prisma/client';
+import {
+  PilotType,
+  ProgramType,
+  RankingPeriod,
+  VehicleTypeNameBD,
+} from '@prisma/client';
 
 @Injectable()
 export class ProgramService {
@@ -9,7 +14,7 @@ export class ProgramService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Get leaderboard - SIMPLE VERSION (Following Images)
+   * Get leaderboard - Enhanced with business logic
    */
   async getLeaderboard(
     userId: string,
@@ -36,7 +41,32 @@ export class ProgramService {
       throw new NotFoundException('Pilot not found');
     }
 
-    // Find the most recent calculatedAt for the given rankingPeriod and vehicleTypeId
+    // Get Super Pilot program criteria
+    const superPilotProgram = await this.prisma.pilotProgram.findFirst({
+      where: {
+        programType: ProgramType.SUPER_PILOT,
+        isActive: true,
+      },
+      select: {
+        criteria: true,
+      },
+    });
+
+    const minEarnings = superPilotProgram
+      ? Number((superPilotProgram.criteria as any).minEarnings) || 10000
+      : 10000;
+
+    // Check if pilot meets minimum earnings requirement
+    if (Number(pilot.totalLifetimeEarnings) < minEarnings) {
+      const remainingEarnings =
+        minEarnings - Number(pilot.totalLifetimeEarnings);
+      return {
+        message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock the Super Pilot reward`,
+        data: {},
+      };
+    }
+
+    // Continue with normal leaderboard logic...
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
@@ -97,7 +127,7 @@ export class ProgramService {
         },
       },
     });
-    console.log(leaderboardData);
+
     // Find current user's ranking
     const userRanking = leaderboardData.find(
       (entry) => entry.pilotId === pilot.id,
@@ -144,6 +174,8 @@ export class ProgramService {
           hasNextPage,
           hasPrevPage,
         },
+        eligibilityStatus: 'ELIGIBLE',
+        minEarningsRequired: minEarnings,
       },
     };
   }
@@ -152,11 +184,11 @@ export class ProgramService {
    * Get pilot progress and ranking information (Following Images)
    */
   async getPilotProgress(
-    pilotId: string,
+    userId: string,
     vehicleType?: VehicleTypeNameBD,
   ): Promise<any> {
     const pilot = await this.prisma.pilot.findUnique({
-      where: { id: pilotId },
+      where: { userId },
       select: {
         id: true,
         name: true,
@@ -192,7 +224,7 @@ export class ProgramService {
     // Get DAILY rank (Today's Rank from images)
     const dailyRanking = await this.prisma.pilotRanking.findFirst({
       where: {
-        pilotId: pilotId,
+        pilotId: pilot.id,
         rankingPeriod: RankingPeriod.DAILY,
         vehicleTypeId: vehicleTypeId,
       },
@@ -206,28 +238,12 @@ export class ProgramService {
     });
 
     // Get total pilots in OVERALL ranking context
-    const totalPilots = await this.prisma.pilotRanking.count({
-      where: {
-        rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: vehicleTypeId,
-        calculatedAt: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-        },
-      },
-    });
+    const totalPilots = await this.prisma.pilot.count();
 
     return {
       pilotId: pilot.id,
-      name: pilot.name || 'Unknown Pilot',
-      profilePicture: pilot.selfieUrl,
-      pilotType: pilot.pilotType,
       currentRank: pilot.currentRank, // OVERALL rank
-      todayRank: dailyRanking?.rank || null, // DAILY rank (Today's Rank)
       totalPilots,
-      totalLifetimeEarnings: Number(pilot.totalLifetimeEarnings),
-      totalLifetimeRides: pilot.totalLifetimeRides,
-      lastRankUpdate: pilot.lastRankUpdate,
-      vehicleType: pilot.primaryVehicleType?.name || 'Unknown',
     };
   }
 
@@ -242,6 +258,21 @@ export class ProgramService {
       `Calculating rankings for period: ${period}, vehicleType: ${vehicleTypeId || 'all'}`,
     );
 
+    // Get Super Pilot program criteria for minimum earnings
+    const superPilotProgram = await this.prisma.pilotProgram.findFirst({
+      where: {
+        programType: ProgramType.SUPER_PILOT,
+        isActive: true,
+      },
+      select: {
+        criteria: true,
+      },
+    });
+
+    const minEarnings = superPilotProgram
+      ? Number((superPilotProgram.criteria as any).minEarnings) || 10000
+      : 10000;
+
     let pilots: any[] = [];
 
     if (period === RankingPeriod.OVERALL) {
@@ -249,7 +280,7 @@ export class ProgramService {
       pilots = await this.prisma.pilot.findMany({
         where: {
           totalLifetimeEarnings: {
-            gte: 10000, // Only pilots with minimum 10,000 earnings
+            gte: minEarnings, // Dynamic minimum earnings from Super Pilot program
           },
         },
         select: {
@@ -269,6 +300,7 @@ export class ProgramService {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      // 🔧 CHANGE 1: Added _count to count trips per pilot
       const dailyTrips = await this.prisma.pilotTrips.groupBy({
         by: ['pilotId'],
         where: {
@@ -281,38 +313,48 @@ export class ProgramService {
           amount: true,
         },
         _count: {
-          id: true,
+          pilotId: true, // ✅ Count number of trips per pilot
         },
       });
 
-      // Get pilot details for daily trips
-      const pilotIds = dailyTrips.map((trip) => trip.pilotId);
-      const pilotDetails = await this.prisma.pilot.findMany({
+      // Filter pilots with minimum lifetime earnings
+      const pilotsWithMinEarnings = await this.prisma.pilot.findMany({
         where: {
-          id: { in: pilotIds },
-          onlineStatus: { not: 'OFFLINE' },
+          totalLifetimeEarnings: {
+            gte: minEarnings,
+          },
         },
         select: {
           id: true,
+          totalLifetimeEarnings: true,
+          totalLifetimeRides: true,
           primaryVehicleTypeId: true,
         },
       });
 
+      // Map daily trips to pilots
       pilots = dailyTrips
         .map((trip) => {
-          const pilot = pilotDetails.find((p) => p.id === trip.pilotId);
+          const pilot = pilotsWithMinEarnings.find(
+            (p) => p.id === trip.pilotId,
+          );
+          if (!pilot) return null;
+
           return {
-            id: trip.pilotId,
-            totalLifetimeEarnings: trip._sum.amount || 0,
-            totalLifetimeRides: trip._count.id || 0,
-            primaryVehicleTypeId: pilot?.primaryVehicleTypeId,
+            id: pilot.id,
+            totalLifetimeEarnings: pilot.totalLifetimeEarnings,
+            totalLifetimeRides: pilot.totalLifetimeRides,
+            primaryVehicleTypeId: pilot.primaryVehicleTypeId,
+            dailyEarnings: Number(trip._sum.amount || 0),
+            // 🔧 CHANGE 2: Fixed the rides field - use _count instead of _sum.rides
+            dailyRides: trip._count.pilotId || 0, // ✅ Count of trips for the day
           };
         })
-        .sort(
-          (a, b) =>
-            Number(b.totalLifetimeEarnings) - Number(a.totalLifetimeEarnings),
-        );
+        .filter(Boolean)
+        .sort((a, b) => Number(b.dailyEarnings) - Number(a.dailyEarnings));
     }
+
+    this.logger.log(`Found ${pilots.length} pilots for ranking calculation`);
 
     // Filter by vehicle type if specified
     const filteredPilots = vehicleTypeId
@@ -342,26 +384,31 @@ export class ProgramService {
       return entry;
     });
 
-    // Store rankings
+    if (rankingEntries.length === 0) {
+      this.logger.log('No pilots to rank');
+      return;
+    }
+
+    // Store rankings in database
     await this.prisma.pilotRanking.createMany({
       data: rankingEntries,
       skipDuplicates: true,
     });
 
-    // Update currentRank in Pilot model for quick access (only for OVERALL)
-    if (period === RankingPeriod.OVERALL) {
-      for (const entry of rankingEntries) {
-        await this.prisma.pilot.update({
-          where: { id: entry.pilotId },
-          data: {
-            currentRank: entry.rank,
-            lastRankUpdate: calculatedAt,
-          },
-        });
-      }
+    // Update pilot's current rank
+    for (const entry of rankingEntries) {
+      await this.prisma.pilot.update({
+        where: { id: entry.pilotId },
+        data: {
+          currentRank: entry.rank,
+          lastRankUpdate: calculatedAt,
+        },
+      });
     }
 
-    this.logger.log(`Rankings calculated and stored for ${totalPilots} pilots`);
+    this.logger.log(
+      `Successfully calculated and stored ${rankingEntries.length} rankings for ${period} period`,
+    );
   }
 
   /**
@@ -376,6 +423,212 @@ export class ProgramService {
     } catch (error) {
       this.logger.error('Error fetching vehicle types:', error);
       return []; // Return empty array on error
+    }
+  }
+
+  /**
+   * Check Super Pilot promotion within a transaction
+   */
+  async checkSuperPilotPromotionInTransaction(
+    pilotId: string,
+    tx: any, // Prisma transaction
+  ): Promise<void> {
+    try {
+      // Get pilot data within transaction
+      const pilot = await tx.pilot.findUnique({
+        where: { id: pilotId },
+        select: {
+          id: true,
+          pilotType: true,
+          totalLifetimeEarnings: true,
+          totalLifetimeRides: true,
+          averageRating: true,
+        },
+      });
+
+      if (!pilot || pilot.pilotType === PilotType.SUPER_PILOT) {
+        return; // Already Super Pilot or pilot not found
+      }
+
+      // Get Super Pilot program criteria
+      const superPilotProgram = await tx.pilotProgram.findFirst({
+        where: {
+          programType: ProgramType.SUPER_PILOT,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          criteria: true,
+          name: true,
+        },
+      });
+
+      if (!superPilotProgram) {
+        console.log('No active Super Pilot program found');
+        return;
+      }
+
+      // Parse criteria and check if pilot meets requirements
+      const criteria = superPilotProgram.criteria as any;
+      const minEarnings = Number(criteria.minEarnings) || 10000;
+
+      const meetsCriteria = Number(pilot.totalLifetimeEarnings) >= minEarnings;
+
+      if (meetsCriteria) {
+        await this.promoteToSuperPilotInTransaction(
+          pilotId,
+          superPilotProgram.id,
+          tx,
+        );
+        console.log(
+          `🎉 Pilot ${pilotId} promoted to Super Pilot! Earnings: ${pilot.totalLifetimeEarnings}`,
+        );
+      } else {
+        console.log(
+          `⏳ Pilot ${pilotId} needs ${minEarnings - Number(pilot.totalLifetimeEarnings)} more earnings to become Super Pilot`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Error checking Super Pilot promotion in transaction:',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Promote pilot to Super Pilot within a transaction
+   */
+  private async promoteToSuperPilotInTransaction(
+    pilotId: string,
+    programId: string,
+    tx: any,
+  ): Promise<void> {
+    // Update pilot type
+    await tx.pilot.update({
+      where: { id: pilotId },
+      data: {
+        pilotType: PilotType.SUPER_PILOT,
+        superPilotSince: new Date(),
+        lastRankUpdate: new Date(),
+      },
+    });
+
+    // Create or update program enrollment
+    await tx.pilotProgramEnrollment.upsert({
+      where: {
+        pilotId_programId: {
+          pilotId,
+          programId,
+        },
+      },
+      create: {
+        pilotId,
+        programId,
+        enrolledAt: new Date(),
+        achievedAt: new Date(),
+        isCurrentlyActive: true,
+      },
+      update: {
+        achievedAt: new Date(),
+        isCurrentlyActive: true,
+      },
+    });
+
+    console.log(
+      `✅ Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
+    );
+  }
+
+  /**
+   * Update rankings within a transaction (simplified version)
+   */
+  async updateRankingsInTransaction(
+    vehicleTypeId: string | null,
+    tx: any,
+  ): Promise<void> {
+    try {
+      // Get Super Pilot program criteria
+      const superPilotProgram = await tx.pilotProgram.findFirst({
+        where: {
+          programType: ProgramType.SUPER_PILOT,
+          isActive: true,
+        },
+        select: {
+          criteria: true,
+        },
+      });
+
+      const minEarnings = superPilotProgram
+        ? Number((superPilotProgram.criteria as any).minEarnings) || 10000
+        : 10000;
+
+      // Get eligible pilots
+      const pilots = await tx.pilot.findMany({
+        where: {
+          totalLifetimeEarnings: {
+            gte: minEarnings,
+          },
+          ...(vehicleTypeId && { primaryVehicleTypeId: vehicleTypeId }),
+        },
+        select: {
+          id: true,
+          totalLifetimeEarnings: true,
+          totalLifetimeRides: true,
+          primaryVehicleTypeId: true,
+        },
+        orderBy: {
+          totalLifetimeEarnings: 'desc',
+        },
+      });
+
+      if (pilots.length === 0) {
+        return;
+      }
+
+      const calculatedAt = new Date();
+
+      // Create ranking entries
+      const rankingEntries = pilots.map((pilot: any, index: number) => {
+        const entry: any = {
+          pilotId: pilot.id,
+          rank: index + 1,
+          earnings: pilot.totalLifetimeEarnings,
+          rides: pilot.totalLifetimeRides,
+          totalPilots: pilots.length,
+          rankingPeriod: RankingPeriod.OVERALL,
+          calculatedAt: calculatedAt,
+        };
+
+        if (vehicleTypeId) {
+          entry.vehicleTypeId = vehicleTypeId;
+        }
+
+        return entry;
+      });
+
+      // Store rankings
+      await tx.pilotRanking.createMany({
+        data: rankingEntries,
+        skipDuplicates: true,
+      });
+
+      // Update pilot ranks
+      for (const entry of rankingEntries) {
+        await tx.pilot.update({
+          where: { id: entry.pilotId },
+          data: {
+            currentRank: entry.rank,
+            lastRankUpdate: calculatedAt,
+          },
+        });
+      }
+
+      console.log(
+        `✅ Updated ${rankingEntries.length} rankings in transaction for vehicle type: ${vehicleTypeId || 'all'}`,
+      );
+    } catch (error) {
+      console.error('Error updating rankings in transaction:', error);
     }
   }
 }

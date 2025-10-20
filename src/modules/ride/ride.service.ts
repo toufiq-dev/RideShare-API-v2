@@ -1297,6 +1297,15 @@ export class RideService {
           },
         });
 
+        await this.programService.checkSuperPilotPromotionInTransaction(
+          pilot.id,
+          tx,
+        );
+        await this.programService.updateRankingsInTransaction(
+          pilot.primaryVehicleTypeId,
+          tx,
+        );
+
         return { updated };
       });
 
@@ -1305,15 +1314,6 @@ export class RideService {
       await this.redis.publish(
         `booking:${bookingId}:status`,
         JSON.stringify(BookingStatus.COMPLETED),
-      );
-
-      // Check for Super Pilot promotion
-      await this.checkSuperPilotPromotion(pilot.id);
-
-      // Trigger ranking recalculation (async, non-blocking)
-      await this.programService.calculateAndStoreRankings(
-        RankingPeriod.OVERALL,
-        pilot.primaryVehicleTypeId,
       );
 
       /// *** Auto recharge logic ***
@@ -2136,89 +2136,4 @@ export class RideService {
 
   //   return { distanceKm, durationMin };
   // }
-
-  async test() {
-    // return await this.checkSuperPilotPromotion();
-  }
-
-  /**
-   * Check if pilot should be promoted to Super Pilot
-   */
-  private async checkSuperPilotPromotion(pilotId: string): Promise<void> {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { id: pilotId },
-        select: {
-          id: true,
-          pilotType: true,
-          totalLifetimeEarnings: true,
-          totalLifetimeRides: true,
-          averageRating: true,
-          pilotProgramEnrollments: {
-            where: {
-              program: { programType: ProgramType.SUPER_PILOT },
-            },
-            include: {
-              program: {
-                select: {
-                  criteria: true,
-                  isActive: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!pilot || pilot.pilotType === PilotType.SUPER_PILOT) {
-        return; // Already Super Pilot or pilot not found
-      }
-
-      const superPilotProgram = pilot.pilotProgramEnrollments[0]?.program;
-      if (!superPilotProgram || !superPilotProgram.isActive) {
-        return; // No active Super Pilot program
-      }
-
-      const criteria = superPilotProgram.criteria as any;
-      const meetsCriteria =
-        Number(pilot.totalLifetimeEarnings) >= Number(criteria.minEarnings);
-
-      if (meetsCriteria) {
-        await this.promoteToSuperPilot(pilotId);
-      }
-    } catch (error) {
-      console.error('Error checking Super Pilot promotion:', error);
-    }
-  }
-
-  /**
-   * Promote pilot to Super Pilot
-   */
-  private async promoteToSuperPilot(pilotId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      // Update pilot type
-      await tx.pilot.update({
-        where: { id: pilotId },
-        data: {
-          pilotType: PilotType.SUPER_PILOT,
-          superPilotSince: new Date(),
-          lastRankUpdate: new Date(),
-        },
-      });
-
-      // Update program enrollment
-      await tx.pilotProgramEnrollment.updateMany({
-        where: {
-          pilotId,
-          program: { programType: ProgramType.SUPER_PILOT },
-        },
-        data: {
-          achievedAt: new Date(),
-          isCurrentlyActive: true,
-        },
-      });
-    });
-
-    console.log(`Pilot ${pilotId} promoted to Super Pilot`);
-  }
 }

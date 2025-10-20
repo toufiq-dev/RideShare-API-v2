@@ -53,17 +53,7 @@ export class ProgramController {
     description: "Get current pilot's ranking and progress information",
   })
   async getMyProgress(@CurrentUser('userId') userId: string): Promise<any> {
-    // Get pilot ID from user ID
-    const pilot = await this.prisma.pilot.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-
-    if (!pilot) {
-      throw new NotFoundException('Pilot profile not found');
-    }
-
-    return this.programService.getPilotProgress(pilot.id);
+    return this.programService.getPilotProgress(userId);
   }
 
   @Get('pilot/:pilotId/progress')

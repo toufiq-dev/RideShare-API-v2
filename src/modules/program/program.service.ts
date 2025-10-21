@@ -34,6 +34,11 @@ export class ProgramService {
         primaryVehicleType: {
           select: { name: true },
         },
+        drivingLicense: {
+          select: {
+            nameOnLicense: true,
+          },
+        },
       },
     });
 
@@ -118,6 +123,11 @@ export class ProgramService {
             name: true,
             selfieUrl: true,
             pilotType: true,
+            drivingLicense: {
+              select: {
+                nameOnLicense: true,
+              },
+            },
           },
         },
         vehicleType: {
@@ -137,7 +147,7 @@ export class ProgramService {
     // Transform to leaderboard entries
     const entries = leaderboardData.map((entry) => ({
       pilotId: entry.pilot.id,
-      name: entry.pilot.name || 'Unknown Pilot',
+      name: entry.pilot.drivingLicense?.nameOnLicense || 'Unknown Pilot',
       profilePicture: entry.pilot.selfieUrl,
       totalRides: entry.rides,
       totalEarnings: Number(entry.earnings),
@@ -145,6 +155,8 @@ export class ProgramService {
       vehicleType: entry.vehicleType?.name || 'Unknown',
       pilotType: entry.pilot.pilotType || 'REGULAR',
     }));
+
+    console.log('entries', leaderboardData);
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -157,7 +169,7 @@ export class ProgramService {
         leaderboard: entries,
         personalRanking: {
           pilotId: pilot.id,
-          name: pilot.name || 'Unknown Pilot',
+          name: pilot.drivingLicense?.nameOnLicense || 'Unknown Pilot',
           profilePicture: pilot.selfieUrl,
           rank: userRank,
           totalRides: pilot.totalLifetimeRides,
@@ -209,6 +221,16 @@ export class ProgramService {
       throw new NotFoundException('Pilot not found');
     }
 
+    if (Number(pilot.totalLifetimeEarnings) < 10000) {
+      return {
+        message: 'You need to earn more to be eligible for the program.',
+        data: {
+          eligibilityStatus: 'NOT_ELIGIBLE',
+          minEarningsRequired: 10000,
+        },
+      };
+    }
+
     // Get vehicle type ID for ranking context
     let vehicleTypeId: string | null = null;
     if (vehicleType) {
@@ -245,9 +267,12 @@ export class ProgramService {
     });
 
     return {
-      pilotId: pilot.id,
-      currentRank: pilot.currentRank, // OVERALL rank
-      totalPilots,
+      message: 'Pilot progress fetched successfully.',
+      data: {
+        pilotId: pilot.id,
+        currentRank: pilot.currentRank, // OVERALL rank
+        totalPilots,
+      },
     };
   }
 

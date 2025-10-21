@@ -12,10 +12,12 @@ export class RankingCronService {
   /**
    * Update overall rankings every hour
    */
-  @Cron('*/2 * * * *', {
+  // @Cron('*/2 * * * *', {
+  //   timeZone: 'Asia/Dhaka',
+  // })
+  @Cron(CronExpression.EVERY_12_HOURS, {
     timeZone: 'Asia/Dhaka',
   })
-  // @Cron(CronExpression.EVERY_HOUR)
   async updateOverallRankings() {
     this.logger.log('Starting overall rankings update (every 2 minutes)...');
 

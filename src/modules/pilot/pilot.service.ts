@@ -149,6 +149,8 @@ export class PilotService {
         data.activeBooking = payload;
       }
 
+      data.totalLifetimeEarnings = Number(data.totalLifetimeEarnings);
+
       return {
         message: 'Pilot fetched successfully.',
         data,

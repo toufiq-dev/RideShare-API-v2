@@ -23,6 +23,7 @@ export class FirebaseService {
     title: string,
     body: string,
     data: any,
+    sound: string = 'default',
   ) {
     try {
       const message: admin.messaging.Message = {
@@ -31,6 +32,17 @@ export class FirebaseService {
         data,
         android: {
           priority: 'high',
+          notification: {
+            sound: sound,
+            channelId: 'default',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: sound,
+            },
+          },
         },
       };
 

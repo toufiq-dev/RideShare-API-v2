@@ -119,7 +119,7 @@ export class RideNotificationService {
       `The ride has been cancelled by the ${
         cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
       }`,
-      { bookingId, bookingStatus },
+      { bookingId, bookingStatus, sound: 'ride_cancelled.wav' },
     );
 
     // Socket for ride cancelled
@@ -171,16 +171,40 @@ export class RideNotificationService {
     payload: CustomerRidePayload,
   ) {
     // Send push notification for ride status update
-    await this.sendPushNotification(
-      customerUserId,
-      `Ride ${payload.bookingStatus.toLowerCase()}`,
-      `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
-      {
-        bookingId: payload.bookingId,
-        bookingStatus: payload.bookingStatus,
-        url: `/trip/${payload.bookingId}`,
-      },
-    );
+    if (payload.bookingStatus === BookingStatus.ARRIVED) {
+      await this.sendPushNotification(
+        customerUserId,
+        'Ride Arrived',
+        'Your ride has arrived at the pickup point',
+        {
+          bookingId: payload.bookingId,
+          bookingStatus: payload.bookingStatus,
+          sound: 'reach_pickup.wav',
+        },
+      );
+    } else if (payload.bookingStatus === BookingStatus.ACCEPTED) {
+      await this.sendPushNotification(
+        customerUserId,
+        'Ride Accepted',
+        'Your ride has been accepted',
+        {
+          bookingId: payload.bookingId,
+          bookingStatus: payload.bookingStatus,
+          sound: 'ride_accepted.wav',
+        },
+      );
+    } else {
+      await this.sendPushNotification(
+        customerUserId,
+        `Ride ${payload.bookingStatus.toLowerCase()}`,
+        `Your ride status has been ${payload.bookingStatus.toLowerCase()}`,
+        {
+          bookingId: payload.bookingId,
+          bookingStatus: payload.bookingStatus,
+          url: `/trip/${payload.bookingId}`,
+        },
+      );
+    }
 
     // Socket for ride status update
     this.server.to(customerUserId).emit(RideEvents.RIDE_STATUS_UPDATE, payload);

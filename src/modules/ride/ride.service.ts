@@ -1538,6 +1538,7 @@ export class RideService {
 
         await this.rideNotificationService.notifyRideCancelled(
           bookingId,
+          booking.status as BookingStatus,
           recipientUserId,
           cancelledBy,
         );
@@ -1688,6 +1689,7 @@ export class RideService {
       // Notify pilot if pilot exists
       if (pilot) {
         const payload: PilotRideResponse = {
+          bookingStatus: updatedBooking.status as BookingStatus,
           bookingId: updatedBooking.id,
           fare: Math.ceil(price),
           customerName:

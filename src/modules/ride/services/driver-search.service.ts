@@ -481,6 +481,7 @@ export class DriverSearchService {
         await this.redis.set(acceptanceKey, 'pending', 15);
 
         const notifyDriverPayload: NotifyDriverPayload = {
+          bookingStatus: BookingStatus.PENDING,
           pilotUserId: pilot.userId,
           bookingId,
           vehicleTypeId,

@@ -56,6 +56,7 @@ export class RideNotificationService {
     const {
       pilotUserId,
       bookingId,
+      bookingStatus,
       vehicleTypeId,
       pickupLocation,
       dropLocation,
@@ -80,6 +81,7 @@ export class RideNotificationService {
 
     const fcmPayload = {
       bookingId,
+      bookingStatus,
       vehicleTypeId: vehicleTypeId,
       pickupLocation: JSON.stringify(pickupLocation),
       dropLocation: JSON.stringify(dropLocation),
@@ -106,6 +108,7 @@ export class RideNotificationService {
 
   async notifyRideCancelled(
     bookingId: string,
+    bookingStatus: BookingStatus,
     recipientUserId: string,
     cancelledBy: CancelledBy,
   ) {
@@ -116,7 +119,7 @@ export class RideNotificationService {
       `The ride has been cancelled by the ${
         cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
       }`,
-      { bookingId },
+      { bookingId, bookingStatus },
     );
 
     // Socket for ride cancelled
@@ -227,6 +230,7 @@ export class RideNotificationService {
       'You have a new edit location request',
       {
         bookingId: payload.bookingId,
+        bookingStatus: payload.bookingStatus,
         fare: payload.fare.toString(),
         url: `/trip/${payload.bookingId}`,
       },

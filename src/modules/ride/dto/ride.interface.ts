@@ -28,6 +28,7 @@ export interface RideRequestPayload {
 }
 
 export interface NotifyDriverPayload {
+  bookingStatus: BookingStatus;
   pilotUserId: string;
   bookingId: string;
   vehicleTypeId: string;
@@ -82,6 +83,7 @@ export interface CustomerRidePayload {
 }
 
 export interface PilotRideResponse {
+  bookingStatus?: BookingStatus;
   customerName: string;
   customerPhone: string;
   averageRating: number;

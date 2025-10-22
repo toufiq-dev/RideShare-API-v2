@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
 import {
+  Booking,
   BookingStatus,
   CancelledBy,
   PilotType,
@@ -1473,8 +1474,9 @@ export class RideService {
           ? CancelledBy.CUSTOMER
           : CancelledBy.PILOT;
 
+      let updatedBooking: Booking | null = null;
       await this.prisma.$transaction(async (tx) => {
-        await tx.booking.update({
+        updatedBooking = await tx.booking.update({
           where: {
             id: bookingId,
           },
@@ -1515,6 +1517,8 @@ export class RideService {
             data: { activeBookingId: null },
           });
         }
+
+        return { updatedBooking };
       });
 
       await this.driverSearchService.stopSearchSession(bookingId);
@@ -1538,7 +1542,7 @@ export class RideService {
 
         await this.rideNotificationService.notifyRideCancelled(
           bookingId,
-          booking.status as BookingStatus,
+          updatedBooking.status as BookingStatus,
           recipientUserId,
           cancelledBy,
         );

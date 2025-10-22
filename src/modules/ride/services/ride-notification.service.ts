@@ -46,6 +46,7 @@ export class RideNotificationService {
         title,
         body,
         data,
+        data.sound || 'default',
       );
     } catch (error) {
       console.error(error);
@@ -170,19 +171,7 @@ export class RideNotificationService {
     customerUserId: string,
     payload: CustomerRidePayload,
   ) {
-    // Send push notification for ride status update
-    if (payload.bookingStatus === BookingStatus.ARRIVED) {
-      await this.sendPushNotification(
-        customerUserId,
-        'Ride Arrived',
-        'Your ride has arrived at the pickup point',
-        {
-          bookingId: payload.bookingId,
-          bookingStatus: payload.bookingStatus,
-          sound: 'reach_pickup.wav',
-        },
-      );
-    } else if (payload.bookingStatus === BookingStatus.ACCEPTED) {
+    if (payload.bookingStatus === BookingStatus.ACCEPTED) {
       await this.sendPushNotification(
         customerUserId,
         'Ride Accepted',
@@ -219,8 +208,8 @@ export class RideNotificationService {
     await this.sendPushNotification(
       customerUserId,
       'Reached Pickup Point',
-      'You have reached the pickup point',
-      { bookingId, bookingStatus },
+      'Pilot has reached the pickup point',
+      { bookingId, bookingStatus, sound: 'reach_pickup.wav' },
     );
 
     // Socket for reached pickup point

@@ -18,6 +18,45 @@ export class FirebaseService {
     }
   }
 
+  // async sendNotification(
+  //   token: string,
+  //   title: string,
+  //   body: string,
+  //   data: any,
+  //   sound: string = 'default',
+  // ) {
+  //   try {
+  //     const message: admin.messaging.Message = {
+  //       token,
+  //       notification: { title, body },
+  //       data,
+  //       android: {
+  //         priority: 'high',
+  //         notification: {
+  //           sound: sound,
+  //           channelId: 'default',
+  //         },
+  //       },
+  //       apns: {
+  //         payload: {
+  //           aps: {
+  //             sound: sound + '.wav',
+  //           },
+  //         },
+  //       },
+  //     };
+
+  //     console.log('***Push***', message)
+
+  //     const response = await admin.messaging().send(message);
+  //     console.log('Successfully sent message:', response);
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Error sending message:', error);
+  //     throw error;
+  //   }
+  // }
+
   async sendNotification(
     token: string,
     title: string,
@@ -28,24 +67,24 @@ export class FirebaseService {
     try {
       const message: admin.messaging.Message = {
         token,
-        notification: { title, body },
-        data,
+        data: {
+          title,
+          body,
+          sound,
+          ...data, // merge your custom data (like type, rideId, etc.)
+        },
         android: {
           priority: 'high',
-          notification: {
-            sound: sound,
-            channelId: 'default',
-          },
         },
         apns: {
           payload: {
             aps: {
-              sound: sound,
+              sound: `${sound}.wav`,
             },
           },
         },
       };
-
+      console.log('***Push***', message);
       const response = await admin.messaging().send(message);
       console.log('Successfully sent message:', response);
       return response;

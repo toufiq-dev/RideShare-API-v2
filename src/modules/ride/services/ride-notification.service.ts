@@ -120,7 +120,7 @@ export class RideNotificationService {
       `The ride has been cancelled by the ${
         cancelledBy === CancelledBy.CUSTOMER ? 'customer' : 'pilot'
       }`,
-      { bookingId, bookingStatus, sound: 'ride_cancelled.wav' },
+      { bookingId, bookingStatus, sound: 'ride_cancelled' },
     );
 
     // Socket for ride cancelled
@@ -179,7 +179,7 @@ export class RideNotificationService {
         {
           bookingId: payload.bookingId,
           bookingStatus: payload.bookingStatus,
-          sound: 'ride_accepted.wav',
+          sound: 'ride_accepted',
         },
       );
     } else {
@@ -209,7 +209,7 @@ export class RideNotificationService {
       customerUserId,
       'Reached Pickup Point',
       'Pilot has reached the pickup point',
-      { bookingId, bookingStatus, sound: 'reach_pickup.wav' },
+      { bookingId, bookingStatus, sound: 'reach_pickup' },
     );
 
     // Socket for reached pickup point

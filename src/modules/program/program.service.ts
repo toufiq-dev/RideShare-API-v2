@@ -221,12 +221,29 @@ export class ProgramService {
       throw new NotFoundException('Pilot not found');
     }
 
-    if (Number(pilot.totalLifetimeEarnings) < 10000) {
+    // Get Super Pilot program criteria
+    const superPilotProgram = await this.prisma.pilotProgram.findFirst({
+      where: {
+        programType: ProgramType.SUPER_PILOT,
+        isActive: true,
+      },
+      select: {
+        criteria: true,
+      },
+    });
+
+    const minEarnings = superPilotProgram
+      ? Number((superPilotProgram.criteria as any).minEarnings) || 10000
+      : 10000;
+
+    if (Number(pilot.totalLifetimeEarnings) < minEarnings) {
+      const remainingEarnings =
+        minEarnings - Number(pilot.totalLifetimeEarnings);
       return {
-        message: 'You need to earn more to be eligible for the program.',
+        message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock the Super Pilot reward`,
         data: {
           eligibilityStatus: 'NOT_ELIGIBLE',
-          minEarningsRequired: 10000,
+          minEarningsRequired: minEarnings,
         },
       };
     }

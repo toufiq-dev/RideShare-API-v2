@@ -90,6 +90,8 @@ export class FirebaseService {
         },
       };
 
+      // await new Promise(resolve => setTimeout(resolve, 10000));
+
       const response = await admin.messaging().send(message);
       console.log('Successfully sent message:', response);
 

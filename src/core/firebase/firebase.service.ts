@@ -79,14 +79,20 @@ export class FirebaseService {
         apns: {
           payload: {
             aps: {
+              'mutable-content': 1,
+              alert: {
+                title,
+                body,
+              },
               sound: `${sound}.wav`,
             },
           },
         },
       };
-      console.log('***Push***', message);
+
       const response = await admin.messaging().send(message);
       console.log('Successfully sent message:', response);
+
       return response;
     } catch (error) {
       console.error('Error sending message:', error);

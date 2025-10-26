@@ -66,4 +66,15 @@ export class ProgramController {
   async getPilotProgress(@Param('pilotId') pilotId: string): Promise<any> {
     return this.programService.getPilotProgress(pilotId);
   }
+
+  @Get('tutorial-list')
+  @Roles(UserRole.PILOT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get tutorial list',
+    description: 'Get list of tutorials',
+  })
+  async getTutorialList(): Promise<any> {
+    return this.programService.getTutorialList();
+  }
 }

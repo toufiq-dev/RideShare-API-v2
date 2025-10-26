@@ -679,4 +679,26 @@ export class ProgramService {
       console.error('Error updating rankings in transaction:', error);
     }
   }
+
+  /**
+   * Get tutorial list
+   */
+  async getTutorialList(): Promise<any> {
+    const tutorials = await this.prisma.videoTutorial.findMany({
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        videoUrl: true,
+        duration: true,
+        order: true,
+        isRequired: true,
+      },
+    });
+
+    return {
+      message: 'Tutorial list fetched successfully.',
+      data: tutorials,
+    };
+  }
 }

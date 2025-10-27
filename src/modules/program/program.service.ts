@@ -340,7 +340,7 @@ export class ProgramService {
         orderBy: [
           { totalLifetimeEarnings: 'desc' },
           { averageRating: 'desc' },
-          { createdAt: 'desc' },
+          { createdAt: 'asc' },
         ],
       });
     } else if (period === RankingPeriod.DAILY) {
@@ -599,50 +599,6 @@ export class ProgramService {
   }
 
   /**
-   * Promote pilot to Super Pilot within a transaction
-   */
-  private async promoteToSuperPilotInTransaction(
-    pilotId: string,
-    programId: string,
-    tx: any,
-  ): Promise<void> {
-    // Update pilot type
-    await tx.pilot.update({
-      where: { id: pilotId },
-      data: {
-        pilotType: PilotType.SUPER_PILOT,
-        superPilotSince: new Date(),
-        lastRankUpdate: new Date(),
-      },
-    });
-
-    // Create or update program enrollment
-    await tx.pilotProgramEnrollment.upsert({
-      where: {
-        pilotId_programId: {
-          pilotId,
-          programId,
-        },
-      },
-      create: {
-        pilotId,
-        programId,
-        enrolledAt: new Date(),
-        achievedAt: new Date(),
-        isCurrentlyActive: true,
-      },
-      update: {
-        achievedAt: new Date(),
-        isCurrentlyActive: true,
-      },
-    });
-
-    console.log(
-      `✅ Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
-    );
-  }
-
-  /**
    * Update rankings within a transaction (simplified version)
    */
   async updateRankingsInTransaction(
@@ -664,6 +620,10 @@ export class ProgramService {
       const minEarnings = superPilotProgram
         ? Number((superPilotProgram.criteria as any).minEarnings) || 10000
         : 10000;
+
+      const maxSuperPilots = superPilotProgram
+        ? Number((superPilotProgram.criteria as any).maxSuperPilots) || 1000
+        : 1000;
 
       // Get eligible pilots
       const pilots = await tx.pilot.findMany({
@@ -727,7 +687,14 @@ export class ProgramService {
       }
 
       console.log(
-        `✅ Updated ${rankingEntries.length} rankings in transaction for vehicle type: ${vehicleTypeId || 'all'}`,
+        `Updated ${rankingEntries.length} rankings in transaction for vehicle type: ${vehicleTypeId || 'all'}`,
+      );
+
+      // Check and demote Super Pilots who fell out of top rankings
+      await this.demoteSuperPilotsOutOfTopInTransaction(
+        vehicleTypeId,
+        maxSuperPilots,
+        tx,
       );
     } catch (error) {
       console.error('Error updating rankings in transaction:', error);
@@ -754,5 +721,125 @@ export class ProgramService {
       message: 'Tutorial list fetched successfully.',
       data: tutorials,
     };
+  }
+
+  /**
+   * Promote pilot to Super Pilot within a transaction
+   */
+  private async promoteToSuperPilotInTransaction(
+    pilotId: string,
+    programId: string,
+    tx: any,
+  ): Promise<void> {
+    // Update pilot type
+    await tx.pilot.update({
+      where: { id: pilotId },
+      data: {
+        pilotType: PilotType.SUPER_PILOT,
+        superPilotSince: new Date(),
+        lastRankUpdate: new Date(),
+      },
+    });
+
+    // Create or update program enrollment
+    await tx.pilotProgramEnrollment.upsert({
+      where: {
+        pilotId_programId: {
+          pilotId,
+          programId,
+        },
+      },
+      create: {
+        pilotId,
+        programId,
+        enrolledAt: new Date(),
+        achievedAt: new Date(),
+        isCurrentlyActive: true,
+      },
+      update: {
+        achievedAt: new Date(),
+        isCurrentlyActive: true,
+      },
+    });
+
+    console.log(
+      `✅ Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
+    );
+  }
+
+  /**
+   * Demote Super Pilots who fell out of top maxSuperPilots
+   */
+  private async demoteSuperPilotsOutOfTopInTransaction(
+    vehicleTypeId: string | null,
+    maxSuperPilots: number,
+    tx: any,
+  ): Promise<void> {
+    try {
+      // Get program ID
+      const superPilotProgram = await tx.pilotProgram.findFirst({
+        where: {
+          programType: ProgramType.SUPER_PILOT,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (!superPilotProgram) return;
+
+      // Get all Super Pilots (filter by vehicle type if specified)
+      const superPilots = await tx.pilot.findMany({
+        where: {
+          pilotType: PilotType.SUPER_PILOT,
+          ...(vehicleTypeId && { primaryVehicleTypeId: vehicleTypeId }),
+        },
+        select: {
+          id: true,
+          currentRank: true,
+        },
+      });
+
+      // Demote pilots outside top maxSuperPilots
+      const pilotsToDemote = superPilots.filter(
+        (pilot) => !pilot.currentRank || pilot.currentRank > maxSuperPilots,
+      );
+
+      if (pilotsToDemote.length === 0) {
+        return; // No demotions needed
+      }
+
+      console.log(
+        `Demoting ${pilotsToDemote.length} Super Pilots who fell out of top ${maxSuperPilots}`,
+      );
+
+      // Demote each pilot
+      for (const pilot of pilotsToDemote) {
+        // Update pilot type to REGULAR
+        await tx.pilot.update({
+          where: { id: pilot.id },
+          data: {
+            pilotType: PilotType.REGULAR,
+            superPilotSince: null,
+          },
+        });
+
+        // Update enrollment status to inactive
+        await tx.pilotProgramEnrollment.updateMany({
+          where: {
+            pilotId: pilot.id,
+            programId: superPilotProgram.id,
+          },
+          data: {
+            isCurrentlyActive: false,
+          },
+        });
+
+        console.log(
+          `Demoted pilot ${pilot.id} from Super Pilot (rank: ${pilot.currentRank})`,
+        );
+      }
+    } catch (error) {
+      console.error('Error demoting Super Pilots:', error);
+    }
   }
 }

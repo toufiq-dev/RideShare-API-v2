@@ -10,7 +10,7 @@ async function seedSuperPilotProgram() {
     const superPilotProgram = await prisma.pilotProgram.upsert({
       where: { name: 'Super Pilot Program' },
       update: {
-        criteria: { minEarnings: 10000 },
+        criteria: { minEarnings: 10000, maxSuperPilots: 1000 },
         isActive: true,
       },
       create: {
@@ -18,7 +18,7 @@ async function seedSuperPilotProgram() {
         description: 'Earn 10,000+ to become a Super Pilot and get FairCoin exemption',
         programType: ProgramType.SUPER_PILOT,
         isActive: true,
-        criteria: { minEarnings: 10000 },
+        criteria: { minEarnings: 10000, maxSuperPilots: 1000 },
         rewardType: 'FairCoinExemption',
         rewardValue: 'true',
         startDate: new Date(),

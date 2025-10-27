@@ -1131,7 +1131,20 @@ export class RideService {
     const { bookingId } = endRideDto;
 
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: {
+          id: true,
+          userId: true,
+          totalTrips: true,
+          onlineStatus: true,
+          totalLifetimeRides: true,
+          totalLifetimeEarnings: true,
+          pilotType: true,
+          primaryVehicleTypeId: true,
+          currentRank: true,
+        },
+      });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
@@ -1298,12 +1311,12 @@ export class RideService {
           },
         });
 
-        await this.programService.checkSuperPilotPromotionInTransaction(
-          pilot.id,
-          tx,
-        );
         await this.programService.updateRankingsInTransaction(
           pilot.primaryVehicleTypeId,
+          tx,
+        );
+        await this.programService.checkSuperPilotPromotionInTransaction(
+          pilot.id,
           tx,
         );
 

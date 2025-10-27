@@ -496,10 +496,10 @@ export class ProgramService {
    */
   async checkSuperPilotPromotionInTransaction(
     pilotId: string,
-    tx: any, // Prisma transaction
+    tx: any,
   ): Promise<void> {
     try {
-      // Get pilot data within transaction
+      // Get pilot data within transaction - ADD currentRank and primaryVehicleTypeId
       const pilot = await tx.pilot.findUnique({
         where: { id: pilotId },
         select: {
@@ -508,6 +508,8 @@ export class ProgramService {
           totalLifetimeEarnings: true,
           totalLifetimeRides: true,
           averageRating: true,
+          currentRank: true,
+          primaryVehicleTypeId: true,
         },
       });
 
@@ -533,11 +535,34 @@ export class ProgramService {
         return;
       }
 
-      // Parse criteria and check if pilot meets requirements
+      // Parse criteria
       const criteria = superPilotProgram.criteria as any;
       const minEarnings = Number(criteria.minEarnings) || 10000;
+      const maxSuperPilots = Number(criteria.maxSuperPilots) || 1000;
 
-      const meetsCriteria = Number(pilot.totalLifetimeEarnings) >= minEarnings;
+      if (!pilot.currentRank) {
+        console.log(
+          `Pilot ${pilotId} has no current rank yet (not eligible for promotion)`,
+        );
+        return;
+      }
+
+      // Check earnings requirement
+      const meetsEarningsCriteria =
+        Number(pilot.totalLifetimeEarnings) >= minEarnings;
+
+      const meetsRankCriteria = pilot.currentRank <= maxSuperPilots;
+
+      const currentSuperPilotsCount = await tx.pilot.count({
+        where: {
+          pilotType: PilotType.SUPER_PILOT,
+        },
+      });
+
+      const hasCapacityForMore = currentSuperPilotsCount < maxSuperPilots;
+
+      const meetsCriteria =
+        meetsEarningsCriteria && meetsRankCriteria && hasCapacityForMore;
 
       if (meetsCriteria) {
         await this.promoteToSuperPilotInTransaction(
@@ -546,12 +571,24 @@ export class ProgramService {
           tx,
         );
         console.log(
-          `🎉 Pilot ${pilotId} promoted to Super Pilot! Earnings: ${pilot.totalLifetimeEarnings}`,
+          `Pilot ${pilotId} promoted to Super Pilot! Earnings: ${pilot.totalLifetimeEarnings}, Rank: ${pilot.currentRank}`,
         );
       } else {
-        console.log(
-          `⏳ Pilot ${pilotId} needs ${minEarnings - Number(pilot.totalLifetimeEarnings)} more earnings to become Super Pilot`,
-        );
+        if (!meetsEarningsCriteria) {
+          console.log(
+            `Pilot ${pilotId} needs ${minEarnings - Number(pilot.totalLifetimeEarnings)} more earnings`,
+          );
+        }
+        if (!meetsRankCriteria) {
+          console.log(
+            `Pilot ${pilotId} rank ${pilot.currentRank} is outside top ${maxSuperPilots}`,
+          );
+        }
+        if (!hasCapacityForMore) {
+          console.log(
+            `Already at max capacity of ${maxSuperPilots} Super Pilots (current: ${currentSuperPilotsCount})`,
+          );
+        }
       }
     } catch (error) {
       console.error(

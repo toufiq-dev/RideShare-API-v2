@@ -1956,6 +1956,21 @@ export class RideService {
 
       const skip = (page - 1) * pageSize;
 
+      // Calculate total earnings from ALL completed trips in the date range
+      const completedTrips = await this.prisma.booking.findMany({
+        where: {
+          ...whereClause,
+          status: BookingStatus.COMPLETED,
+        },
+        select: {
+          discountedFare: true,
+        },
+      });
+
+      const totalEarning = completedTrips.reduce((sum, trip) => {
+        return sum + Math.ceil(Number(trip.discountedFare));
+      }, 0);
+
       const [bookings, total]: any = await Promise.all([
         this.prisma.booking.findMany({
           where: whereClause,
@@ -1985,17 +2000,13 @@ export class RideService {
         }),
       ]);
 
-      let totalEarning: number = 0;
+      // Map bookings and calculate trip duration for display only
       let tripDurationInMinutes: number;
       bookings.map((booking) => {
         booking.estimatedDistance = Math.ceil(
           Number(booking.estimatedDistance),
         );
         booking.discountedFare = Math.ceil(Number(booking.discountedFare));
-
-        if (booking.status === BookingStatus.COMPLETED) {
-          totalEarning += booking.discountedFare;
-        }
 
         const start = moment.utc(booking.tripStart);
         const end = moment.utc(booking.tripEnd);
@@ -2006,8 +2017,6 @@ export class RideService {
       const totalPages = Math.ceil(total / pageSize);
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
-
-      this.logger.log(`totalEarning ${totalEarning}`, this.context);
 
       return {
         message: 'Ride history fetched successfully',

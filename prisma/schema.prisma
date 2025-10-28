@@ -20,8 +20,8 @@ model SystemConfig {
   key         String   @unique
   value       Json
   description String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model User {
@@ -32,24 +32,24 @@ model User {
   country                Country?
   metadata               Json?
   lastLogin              DateTime?
-  createdAt              DateTime               @default(now()) @db.Timestamptz
-  updatedAt              DateTime               @updatedAt @db.Timestamptz
+  createdAt              DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime               @updatedAt @db.Timestamptz(6)
   admin                  Admin?
-  customer               Customer?
-  deviceTokens           DeviceToken[]
-  pilot                  Pilot?
-  support                Support?
-  superAdmin             SuperAdmin?
-  promoter               Promoter?
   announcementDeliveries AnnouncementDelivery[]
+  customer               Customer?
+  deviceTokens           DeviceToken?
+  pilot                  Pilot?
+  promoter               Promoter?
+  superAdmin             SuperAdmin?
+  support                Support?
   supportTickets         SupportTicket[]
 }
 
 model DeviceToken {
   userId          String   @id @unique
   fcmToken        String
-  createdAt       DateTime @default(now()) @db.Timestamptz
-  updatedAt       DateTime @updatedAt @db.Timestamptz
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
   dateTime        String?
   platform        String?
   platformVersion String?
@@ -71,8 +71,8 @@ model Admin {
   name      String
   userId    String   @unique
   password  String
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -80,10 +80,10 @@ model SupportRole {
   id                 String              @id @default(uuid())
   name               String              @unique
   description        String?
-  createdAt          DateTime            @default(now()) @db.Timestamptz
-  updatedAt          DateTime            @updatedAt @db.Timestamptz
+  createdAt          DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
   support            Support[]
-  supportPermissions SupportPermission[]
+  supportPermissions SupportPermission[] @relation("SupportPermissionToSupportRole")
 }
 
 model Support {
@@ -94,11 +94,11 @@ model Support {
   phone              String?
   referralCode       String?              @unique
   supportRoleId      String
-  createdAt          DateTime             @default(now()) @db.Timestamptz
-  updatedAt          DateTime             @updatedAt @db.Timestamptz
-  user               User                 @relation(fields: [userId], references: [id])
+  createdAt          DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(6)
   CancellationReason CancellationReason[]
-  supportRole        SupportRole?         @relation(fields: [supportRoleId], references: [id])
+  supportRole        SupportRole          @relation(fields: [supportRoleId], references: [id])
+  user               User                 @relation(fields: [userId], references: [id])
   supportTickets     SupportTicket[]
 }
 
@@ -106,9 +106,9 @@ model SupportPermission {
   id          String        @id @default(uuid())
   menuKey     String        @unique
   isVisible   Boolean       @default(true)
-  createdAt   DateTime      @default(now()) @db.Timestamptz
-  updatedAt   DateTime      @updatedAt @db.Timestamptz
-  supportRole SupportRole[]
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(6)
+  supportRole SupportRole[] @relation("SupportPermissionToSupportRole")
 }
 
 model Promoter {
@@ -125,10 +125,10 @@ model Promoter {
   isAlreadyRegistered   Boolean  @default(false)
   isApproved            Boolean  @default(false)
   totalDriversOnboarded Int      @default(0)
-  createdAt             DateTime @default(now()) @db.Timestamptz
-  updatedAt             DateTime @updatedAt @db.Timestamptz
-  user                  User     @relation(fields: [userId], references: [id])
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
   onboardedPilots       Pilot[]
+  user                  User     @relation(fields: [userId], references: [id])
 }
 
 model Customer {
@@ -142,15 +142,15 @@ model Customer {
   name                  String?
   avatar                String?
   averageRating         Float            @default(5.0)
-  createdAt             DateTime         @default(now()) @db.Timestamptz
-  updatedAt             DateTime         @updatedAt @db.Timestamptz
+  createdAt             DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime         @updatedAt @db.Timestamptz(6)
   languageId            String
   couponId              String?
   activeBookingId       String?          @unique
-  activeBooking         Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
   bookings              Booking[]
-  language              Languages        @relation(fields: [languageId], references: [id])
+  activeBooking         Booking?         @relation("CustomerActiveBooking", fields: [activeBookingId], references: [id])
   coupon                Coupon?          @relation(fields: [couponId], references: [id])
+  language              Languages        @relation(fields: [languageId], references: [id])
   user                  User             @relation(fields: [userId], references: [id])
   ratings               CustomerRating[]
   savedPlaces           SavedPlace[]
@@ -160,8 +160,8 @@ model Coupon {
   id         String     @id @default(uuid())
   name       String     @unique
   discount   Decimal    @default(0.00) @db.Decimal(10, 2)
-  validUntil DateTime?  @db.Timestamptz
-  createdAt  DateTime   @default(now()) @db.Timestamptz
+  validUntil DateTime?  @db.Timestamptz(6)
+  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
   customers  Customer[]
 }
 
@@ -181,8 +181,6 @@ model Pilot {
   id                              String                   @id @default(uuid())
   phone                           String                   @unique
   userId                          String                   @unique
-  name                            String?
-  city                            String?
   selfieUrl                       String?
   dlFrontSideUrl                  String?
   dlBackSideUrl                   String?
@@ -228,49 +226,51 @@ model Pilot {
   aadhaarCardAddress              String?
   pilotCouponId                   String?
   promoterId                      String?
+  createdAt                       DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt                       DateTime                 @updatedAt @db.Timestamptz(6)
+  city                            String?
+  name                            String?
+  currentRank                     Int?
+  lastRankUpdate                  DateTime?
+  monthlyEarnings                 Decimal                  @default(0) @db.Decimal(10, 2)
   pilotType                       PilotType?               @default(REGULAR)
-  superPilotSince                 DateTime?
+  primaryVehicleTypeId            String?
   starPilotSince                  DateTime?
+  superPilotSince                 DateTime?
   totalLifetimeEarnings           Decimal                  @default(0) @db.Decimal(10, 2)
   totalLifetimeRides              Int                      @default(0)
   weeklyEarnings                  Decimal                  @default(0) @db.Decimal(10, 2)
-  monthlyEarnings                 Decimal                  @default(0) @db.Decimal(10, 2)
-  currentRank                     Int?
-  lastRankUpdate                  DateTime?
-  primaryVehicleTypeId            String?
-  createdAt                       DateTime                 @default(now()) @db.Timestamptz
-  updatedAt                       DateTime                 @updatedAt @db.Timestamptz
-  drivingLicense                  DrivingLicense?
   bookings                        Booking[]
-  language                        Languages                @relation(fields: [languageId], references: [id])
-  pilotProgram                    PilotProgram?            @relation(fields: [pilotProgramId], references: [id])
-  user                            User                     @relation(fields: [userId], references: [id])
-  activeBooking                   Booking?                 @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
-  pilotTrips                      PilotTrips[]
-  transaction                     Transaction[]
-  ratings                         PilotRating[]
-  wallet                          PilotWallet?
-  vehicle                         Vehicle?                 @relation("PilotVehicle")
+  drivingLicense                  DrivingLicense?
   nid                             Nid?                     @relation("PilotNid")
-  videoProgress                   VideoProgress?
+  activeBooking                   Booking?                 @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
+  language                        Languages                @relation(fields: [languageId], references: [id])
   pilotCoupon                     PilotCoupon?             @relation(fields: [pilotCouponId], references: [id])
-  promoter                        Promoter?                @relation(fields: [promoterId], references: [id])
+  pilotProgram                    PilotProgram?            @relation(fields: [pilotProgramId], references: [id])
   primaryVehicleType              VehicleTypeBD?           @relation(fields: [primaryVehicleTypeId], references: [id])
-  pilotRankings                   PilotRanking[]
+  promoter                        Promoter?                @relation(fields: [promoterId], references: [id])
+  user                            User                     @relation(fields: [userId], references: [id])
   pilotAchievements               PilotAchievement[]
   pilotProgramEnrollments         PilotProgramEnrollment[]
+  pilotRankings                   PilotRanking[]
+  ratings                         PilotRating[]
+  pilotTrips                      PilotTrips[]
+  wallet                          PilotWallet?
+  transaction                     Transaction[]
+  vehicle                         Vehicle?                 @relation("PilotVehicle")
+  videoProgress                   VideoProgress?
 }
 
 model PilotCoupon {
   id             String        @id @default(uuid())
   name           String        @unique
-  discount       Decimal       @default(0.00) @db.Decimal(10, 2)
   description    String?
   subscriptionId String?
-  validUntil     DateTime?     @db.Timestamptz
-  createdAt      DateTime      @default(now()) @db.Timestamptz
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  validUntil     DateTime?     @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  discount       Decimal       @default(0.00) @db.Decimal(10, 2)
   pilots         Pilot[]
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
 }
 
 model Nid {
@@ -321,10 +321,10 @@ model Vehicle {
   vehicleTypeIdBD  String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-  pilot            Pilot          @relation("PilotVehicle", fields: [pilotId], references: [id])
-  vehicleType      VehicleType?   @relation(fields: [vehicleTypeId], references: [id])
-  vehicleTypeBD    VehicleTypeBD? @relation(fields: [vehicleTypeIdBD], references: [id])
   bookings         Booking[]
+  pilot            Pilot          @relation("PilotVehicle", fields: [pilotId], references: [id])
+  vehicleTypeBD    VehicleTypeBD? @relation(fields: [vehicleTypeIdBD], references: [id])
+  vehicleType      VehicleType?   @relation(fields: [vehicleTypeId], references: [id])
 }
 
 model VehicleType {
@@ -351,11 +351,11 @@ model VehicleTypeBD {
   perMinRate        Decimal?          @db.Decimal(10, 2)
   minFare           Decimal?          @db.Decimal(10, 2)
   insuranceFee      Decimal?          @db.Decimal(10, 2)
-  vehicle           Vehicle[]
-  tariffs           Tariff[]
   bookings          Booking[]
   pilots            Pilot[]
   pilotRankings     PilotRanking[]
+  tariffs           Tariff[]
+  vehicle           Vehicle[]
 }
 
 model VehicleClassificationCache {
@@ -369,7 +369,7 @@ model VehicleClassificationCache {
   seatCapacity    String?
   permitType      String?
   isCommercial    Boolean
-  createdAt       DateTime @default(now()) @db.Timestamptz
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
 
   @@unique([class, manufacturer, model, bodyType, vehicleCategory, seatCapacity, permitType, isCommercial])
 }
@@ -387,11 +387,11 @@ model Tariff {
   pickupFee       Decimal?      @db.Decimal(10, 2)
   pickupActive    Boolean       @default(false)
   version         Int           @default(1)
-  effectiveFrom   DateTime      @db.Timestamptz
-  effectiveTo     DateTime?     @db.Timestamptz
+  effectiveFrom   DateTime      @db.Timestamptz(6)
+  effectiveTo     DateTime?     @db.Timestamptz(6)
   isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now()) @db.Timestamptz
-  updatedAt       DateTime      @updatedAt @db.Timestamptz
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
   vehicleTypeBD   VehicleTypeBD @relation(fields: [vehicleTypeBDId], references: [id])
 
   @@index([city, intercity, vehicleTypeBDId, isActive])
@@ -406,20 +406,20 @@ model Subscription {
   price               Decimal       @db.Decimal(10, 2)
   priceBeforeDiscount Decimal?      @db.Decimal(10, 2)
   tag                 String?
-  createdAt           DateTime      @default(now()) @db.Timestamptz
-  transactions        Transaction[]
-  wallets             PilotWallet[]
+  createdAt           DateTime      @default(now()) @db.Timestamptz(6)
   pilotCoupons        PilotCoupon[]
+  wallets             PilotWallet[]
+  transactions        Transaction[]
 }
 
 model PilotTrips {
   id        String   @id @default(uuid())
   pilotId   String
   bookingId String
-  date      DateTime @db.Timestamptz
+  date      DateTime @db.Timestamptz(6)
   amount    Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
   pilot     Pilot    @relation(fields: [pilotId], references: [id])
 
   @@index([pilotId, date])
@@ -434,12 +434,12 @@ model PilotWallet {
   lastTripEarning          Decimal?      @default(0.00) @db.Decimal(10, 2)
   subscriptionId           String
   autoRechargeEnabled      Boolean?      @default(true)
-  autoRechargeEnabledUntil DateTime?     @db.Timestamptz
+  autoRechargeEnabledUntil DateTime?     @db.Timestamptz(6)
   autoRechargeAmount       Decimal?      @default(0.00) @db.Decimal(10, 2)
-  autoRechargeDate         DateTime?     @db.Timestamptz
-  date                     DateTime?     @db.Timestamptz
-  createdAt                DateTime      @default(now()) @db.Timestamptz
-  updatedAt                DateTime      @updatedAt @db.Timestamptz
+  autoRechargeDate         DateTime?     @db.Timestamptz(6)
+  date                     DateTime?     @db.Timestamptz(6)
+  createdAt                DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime      @updatedAt @db.Timestamptz(6)
   pilot                    Pilot         @relation(fields: [pilotId], references: [id])
   subscription             Subscription  @relation(fields: [subscriptionId], references: [id])
   transactions             Transaction[]
@@ -456,11 +456,11 @@ model Transaction {
   balanceBefore  Decimal?          @db.Decimal(10, 2)
   balanceAfter   Decimal?          @db.Decimal(10, 2)
   metadata       Json?
-  createdAt      DateTime          @default(now()) @db.Timestamptz
-  updatedAt      DateTime          @updatedAt @db.Timestamptz
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(6)
   subscriptionId String?
-  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
   pilot          Pilot             @relation(fields: [pilotId], references: [id])
+  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
   pilotWallet    PilotWallet?      @relation(fields: [walletId], references: [id])
 }
 
@@ -469,11 +469,10 @@ model Booking {
   bookingCode        String
   customerId         String
   pilotId            String?
-  name               String // name when rideType is for others
+  name               String
   status             BookingStatus
   rideType           RideType
   vehicleId          String?
-  vehicleTypeIdBD    String?
   estimatedFare      Decimal             @db.Decimal(10, 2)
   discountedFare     Decimal             @db.Decimal(10, 2)
   tripEndFare        Decimal?            @db.Decimal(10, 2)
@@ -483,25 +482,26 @@ model Booking {
   distance           String?
   estimatedDuration  Int
   duration           String?
-  acceptedAt         DateTime?           @db.Timestamptz
-  arrivedAt          DateTime?           @db.Timestamptz
-  tripStart          DateTime?           @db.Timestamptz
-  tripEnd            DateTime?           @db.Timestamptz
+  acceptedAt         DateTime?           @db.Timestamptz(6)
+  arrivedAt          DateTime?           @db.Timestamptz(6)
+  tripStart          DateTime?           @db.Timestamptz(6)
+  tripEnd            DateTime?           @db.Timestamptz(6)
   surgeMultiplier    Decimal?            @default(1.0) @db.Decimal(10, 2)
   notes              String?
-  createdAt          DateTime            @default(now()) @db.Timestamptz
-  updatedAt          DateTime            @updatedAt @db.Timestamptz
-  cancellationReason CancellationReason?
+  createdAt          DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
+  vehicleTypeIdBD    String?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
   vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])
   vehicleTypeBD      VehicleTypeBD?      @relation(fields: [vehicleTypeIdBD], references: [id])
-  activePilot        Pilot?              @relation("PilotActiveBooking")
+  cancellationReason CancellationReason?
   activeCustomer     Customer?           @relation("CustomerActiveBooking")
   customerRating     CustomerRating?
+  message            Message[]
+  activePilot        Pilot?              @relation("PilotActiveBooking")
   pilotRating        PilotRating?
   supportTicket      SupportTicket[]
-  message            Message[]
 
   @@index([customerId, status])
   @@index([pilotId, status])
@@ -544,14 +544,14 @@ model PilotProgram {
   id          String                   @id @default(uuid())
   name        String                   @unique
   description String?
-  programType ProgramType
-  isActive    Boolean                  @default(true)
-  criteria    Json // Dynamic criteria (e.g., {"minEarnings": 500000, "minRides": 500})
-  rewardType  String? // e.g., "FairCoinExemption", "BonusFairCoins"
-  rewardValue String? // e.g., "true" for exemption, "1000" for FairCoins
-  startDate   DateTime
-  endDate     DateTime?
   createdAt   DateTime                 @default(now())
+  criteria    Json
+  endDate     DateTime?
+  isActive    Boolean                  @default(true)
+  programType ProgramType
+  rewardType  String?
+  rewardValue String?
+  startDate   DateTime
   updatedAt   DateTime                 @updatedAt
   pilot       Pilot[]
   enrollments PilotProgramEnrollment[]
@@ -562,7 +562,7 @@ model PilotProgramEnrollment {
   pilotId           String
   programId         String
   enrolledAt        DateTime     @default(now())
-  achievedAt        DateTime? // When pilot met criteria
+  achievedAt        DateTime?
   isCurrentlyActive Boolean      @default(false)
   pilot             Pilot        @relation(fields: [pilotId], references: [id])
   program           PilotProgram @relation(fields: [programId], references: [id])
@@ -573,15 +573,15 @@ model PilotProgramEnrollment {
 model PilotRanking {
   id            String        @id @default(uuid())
   pilotId       String
-  rank          Int           @default(0)
+  calculatedAt  DateTime      @default(now())
   earnings      Decimal       @db.Decimal(10, 2)
+  rank          Int           @default(0)
+  rankingPeriod RankingPeriod
   rides         Int
   totalPilots   Int
-  rankingPeriod RankingPeriod
-  vehicleTypeId String // Null for global, specific for segmented
-  calculatedAt  DateTime      @default(now())
-  vehicleType   VehicleTypeBD @relation(fields: [vehicleTypeId], references: [id])
+  vehicleTypeId String
   pilot         Pilot         @relation(fields: [pilotId], references: [id])
+  vehicleType   VehicleTypeBD @relation(fields: [vehicleTypeId], references: [id])
 
   @@unique([pilotId, rankingPeriod, calculatedAt, vehicleTypeId])
   @@index([rank])
@@ -590,19 +590,18 @@ model PilotRanking {
 }
 
 model Achievement {
-  id          String              @id @default(uuid())
-  name        String              @unique
-  description String?
-  category    AchievementCategory
-  rarity      AchievementRarity
-  criteria    Json // Dynamic criteria
-  rewardType  String? // e.g., "FairCoins", "Badge"
-  rewardValue String? // e.g., "100" for FairCoins
-  iconUrl     String? // Badge icon
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-
+  id                String              @id @default(uuid())
+  name              String              @unique
+  description       String?
+  category          AchievementCategory
+  rarity            AchievementRarity
+  criteria          Json
+  rewardType        String?
+  rewardValue       String?
+  iconUrl           String?
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   pilotAchievements PilotAchievement[]
 }
 
@@ -611,8 +610,8 @@ model PilotAchievement {
   pilotId       String
   achievementId String
   earnedAt      DateTime    @default(now())
-  pilot         Pilot       @relation(fields: [pilotId], references: [id])
   achievement   Achievement @relation(fields: [achievementId], references: [id])
+  pilot         Pilot       @relation(fields: [pilotId], references: [id])
 
   @@unique([pilotId, achievementId])
 }
@@ -630,20 +629,20 @@ model PilotRating {
 
 model SupportTicket {
   id            String         @id @default(uuid())
-  supportId     String?
   userId        String
   bookingId     String
   type          SupportType
   channel       SupportChannel @default(CHAT)
   status        SupportStatus  @default(OPEN)
   description   String
-  evidenceUrl   String[]
-  notes         Json?
-  whatsAppPhone String?
-  assignedAt    DateTime?      @db.Timestamptz
-  resolvedAt    DateTime?      @db.Timestamptz
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  assignedAt    DateTime?      @db.Timestamptz(6)
+  evidenceUrl   String[]
+  notes         Json?
+  resolvedAt    DateTime?      @db.Timestamptz(6)
+  supportId     String?
+  whatsAppPhone String?
   booking       Booking        @relation(fields: [bookingId], references: [id])
   support       Support?       @relation(fields: [supportId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
@@ -705,25 +704,25 @@ model Announcement {
   title       String
   message     String
   audience    AnnouncementAudience
-  schedule    DateTime?              @db.Timestamptz
+  schedule    DateTime?              @db.Timestamptz(6)
   bannerUrl   String?
   impressions Int                    @default(0)
-  createdBy   String // Link to Admin/SuperAdmin userId
+  createdBy   String
   status      AnnouncementStatus     @default(DRAFT)
-  createdAt   DateTime               @default(now()) @db.Timestamptz
-  updatedAt   DateTime               @updatedAt @db.Timestamptz
-  deliveries  AnnouncementDelivery[] // Relation to track which users received this announcement
+  createdAt   DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(6)
+  deliveries  AnnouncementDelivery[]
 }
 
 model AnnouncementDelivery {
   id             String             @id @default(uuid())
   announcementId String
   userId         String
-  sentAt         DateTime           @db.Timestamptz
-  viewedAt       DateTime?          @db.Timestamptz // For in-app banners
+  sentAt         DateTime           @db.Timestamptz(6)
+  viewedAt       DateTime?          @db.Timestamptz(6)
   status         AnnouncementStatus @default(SCHEDULED)
-  createdAt      DateTime           @default(now()) @db.Timestamptz
-  updatedAt      DateTime           @updatedAt @db.Timestamptz
+  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @db.Timestamptz(6)
   announcement   Announcement       @relation(fields: [announcementId], references: [id])
   user           User               @relation(fields: [userId], references: [id])
 }
@@ -751,10 +750,10 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   IN_REVIEW
-  ONBOARDING
   INACTIVE
   SUSPENDED
   DELETED
+  ONBOARDING
 }
 
 enum VerificationStatus {
@@ -791,6 +790,7 @@ enum TransactionType {
   TRIP_DEDUCTION
   ONBOARDING_OFFER
   AUTO_RECHARGE
+  NO_TRIP_DEDUCTION
 }
 
 enum SupportType {
@@ -875,8 +875,8 @@ enum PilotType {
 }
 
 enum RankingPeriod {
-  OVERALL // Main leaderboard
-  DAILY // Daily competitions
+  OVERALL
+  DAILY
 }
 
 enum ProgramType {

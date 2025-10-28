@@ -195,10 +195,7 @@ export class ProgramService {
   /**
    * Get pilot progress and ranking information (Following Images)
    */
-  async getPilotProgress(
-    userId: string,
-    vehicleType?: VehicleTypeNameBD,
-  ): Promise<any> {
+  async getPilotProgress(userId: string): Promise<any> {
     const pilot = await this.prisma.pilot.findUnique({
       where: { userId },
       select: {
@@ -248,16 +245,33 @@ export class ProgramService {
       };
     }
 
-    // Get vehicle type ID for ranking context
-    let vehicleTypeId: string | null = null;
-    if (vehicleType) {
-      const vehicleTypeRecord = await this.prisma.vehicleTypeBD.findUnique({
-        where: { name: vehicleType },
-        select: { id: true },
+    const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
+      where: {
+        rankingPeriod: RankingPeriod.OVERALL,
+        vehicleTypeId: pilot.primaryVehicleTypeId,
+      },
+      orderBy: {
+        calculatedAt: 'desc',
+      },
+      select: {
+        calculatedAt: true,
+      },
+    });
+
+    let overallRank = pilot.currentRank; // Fallback
+    if (latestRankingEntry) {
+      const overallRanking = await this.prisma.pilotRanking.findFirst({
+        where: {
+          pilotId: pilot.id,
+          rankingPeriod: RankingPeriod.OVERALL,
+          vehicleTypeId: pilot.primaryVehicleTypeId,
+          calculatedAt: latestRankingEntry.calculatedAt,
+        },
+        select: {
+          rank: true,
+        },
       });
-      vehicleTypeId = vehicleTypeRecord?.id;
-    } else if (pilot.primaryVehicleType) {
-      vehicleTypeId = pilot.primaryVehicleTypeId;
+      overallRank = overallRanking?.rank || pilot.currentRank;
     }
 
     // Get DAILY rank (Today's Rank from images)
@@ -265,7 +279,7 @@ export class ProgramService {
       where: {
         pilotId: pilot.id,
         rankingPeriod: RankingPeriod.DAILY,
-        vehicleTypeId: vehicleTypeId,
+        vehicleTypeId: pilot.primaryVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -287,12 +301,11 @@ export class ProgramService {
       message: 'Pilot progress fetched successfully.',
       data: {
         pilotId: pilot.id,
-        currentRank: pilot.currentRank, // OVERALL rank
+        currentRank: overallRank,
         totalPilots,
       },
     };
   }
-
   /**
    * Calculate and store rankings (CORE METHOD - OVERALL and DAILY RANKING)
    */
@@ -638,10 +651,14 @@ export class ProgramService {
           totalLifetimeEarnings: true,
           totalLifetimeRides: true,
           primaryVehicleTypeId: true,
+          averageRating: true,
+          createdAt: true,
         },
-        orderBy: {
-          totalLifetimeEarnings: 'desc',
-        },
+        orderBy: [
+          { totalLifetimeEarnings: 'desc' },
+          { averageRating: 'desc' },
+          { createdAt: 'asc' },
+        ],
       });
 
       if (pilots.length === 0) {

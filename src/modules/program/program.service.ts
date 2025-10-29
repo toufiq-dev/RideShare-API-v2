@@ -1,17 +1,32 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/core/database/database.service';
 import {
-  PilotType,
-  ProgramType,
-  RankingPeriod,
-  VehicleTypeNameBD,
-} from '@prisma/client';
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/core/database/database.service';
+import { PilotType, ProgramType, RankingPeriod } from '@prisma/client';
+import { AzureService } from 'src/core/utils/azure.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProgramService {
   private readonly logger = new Logger(ProgramService.name);
+  private readonly allowedMimeTypes: string[];
+  private readonly maxFileSize: number;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly azureService: AzureService,
+    private readonly configService: ConfigService,
+  ) {
+    this.allowedMimeTypes = this.configService.get<string[]>(
+      'file.allowedMimeTypes',
+    );
+    this.maxFileSize =
+      this.configService.get<number>('file.maxVideoSize') || 100 * 1024 * 1024;
+  }
 
   /**
    * Get leaderboard - Enhanced with business logic
@@ -738,6 +753,84 @@ export class ProgramService {
       message: 'Tutorial list fetched successfully.',
       data: tutorials,
     };
+  }
+
+  async uploadSuperPilotVideo(
+    userId: string,
+    videoFile: Express.Multer.File,
+  ): Promise<any> {
+    try {
+      // Verify pilot exists
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: {
+          id: true,
+          pilotType: true,
+          superPilotSince: true,
+          superPilotVideoUrl: true,
+          name: true,
+        },
+      });
+
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found');
+      }
+
+      // Verify pilot is a Super Pilot
+      if (pilot.pilotType !== PilotType.SUPER_PILOT) {
+        throw new ForbiddenException(
+          'Only Super Pilots can upload this videos.',
+        );
+      }
+
+      if (pilot.superPilotVideoUrl) {
+        throw new BadRequestException(
+          'Super Pilot video has already been uploaded. Contact support to update.',
+        );
+      }
+
+      if (!this.allowedMimeTypes.includes(videoFile.mimetype)) {
+        throw new BadRequestException('Invalid video file type.');
+      }
+
+      if (videoFile.size > this.maxFileSize) {
+        throw new BadRequestException('Video file size exceeds the limit.');
+      }
+
+      // Get video buffer
+      const videoBuffer = videoFile.buffer;
+
+      // Upload to Azure Blob Storage using AzureService
+      const videoUrl = await this.azureService.uploadFile(
+        videoBuffer,
+        videoFile.originalname,
+        userId,
+        videoFile.mimetype,
+      );
+
+      // Save video URL to database
+      await this.prisma.pilot.update({
+        where: { id: pilot.id },
+        data: {
+          superPilotVideoUrl: videoUrl,
+          superPilotVideoUploadedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Super Pilot ranking video uploaded successfully',
+        data: {
+          videoUrl,
+          uploadedAt: new Date(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error uploading super pilot video for user ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
   }
 
   /**

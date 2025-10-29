@@ -6,9 +6,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  NotFoundException,
   ParseIntPipe,
   DefaultValuePipe,
+  Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -18,6 +20,7 @@ import { UserRole } from '@prisma/client';
 import { ProgramService } from './program.service';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { PrismaService } from 'src/core/database/database.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Pilot Program')
 @Controller('program')
@@ -76,5 +79,20 @@ export class ProgramController {
   })
   async getTutorialList(): Promise<any> {
     return this.programService.getTutorialList();
+  }
+
+  @Post('reaction-video')
+  @Roles(UserRole.PILOT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Upload reaction video',
+    description: 'Upload reaction video',
+  })
+  @UseInterceptors(FileInterceptor('video'))
+  async uploadSuperPilotVideo(
+    @UploadedFile() videoFile: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.programService.uploadSuperPilotVideo(userId, videoFile);
   }
 }

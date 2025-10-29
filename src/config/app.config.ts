@@ -54,8 +54,20 @@ export default () => ({
     },
   },
   file: {
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
+    allowedMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'image/webp',
+      'video/mp4',
+      'video/webm',
+      'video/mov',
+      'video/avi',
+      'video/quicktime',
+      'video/x-msvideo',
+    ],
     maxFileSize: 3 * 1024 * 1024,
+    maxVideoSize: 100 * 1024 * 1024,
     tempUploadDir: './uploads/temp',
   },
   signzy: {

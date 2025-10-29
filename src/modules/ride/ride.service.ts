@@ -1283,7 +1283,30 @@ export class RideService {
           select: { id: true, balance: true },
         });
 
-        const shouldDeductFairCoin = pilot.pilotType === PilotType.REGULAR;
+        const currentRank = await tx.pilotRanking.findFirst({
+          where: {
+            pilotId: pilot.id,
+            rankingPeriod: RankingPeriod.OVERALL,
+            vehicleTypeId: pilot.primaryVehicleTypeId,
+          },
+          select: {
+            rank: true,
+          },
+        });
+
+        const superPilotProgram = await tx.pilotProgram.findFirst({
+          where: {
+            programType: ProgramType.SUPER_PILOT,
+            isActive: true,
+          },
+          select: {
+            criteria: true,
+          },
+        });
+
+        const shouldDeductFairCoin =
+          currentRank?.rank >
+          Number((superPilotProgram?.criteria as any).maxSuperPilots);
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
@@ -1302,7 +1325,9 @@ export class RideService {
             pilotId: pilot.id,
             amount: shouldDeductFairCoin ? tripAmount : 0,
             walletId: wallet.id,
-            type: TransactionType.TRIP_DEDUCTION,
+            type: shouldDeductFairCoin
+              ? TransactionType.TRIP_DEDUCTION
+              : TransactionType.NO_TRIP_DEDUCTION,
             status: TransactionStatus.SUCCESSFUL,
             balanceBefore: Math.ceil(Number(wallet.balance)),
             balanceAfter: Math.ceil(

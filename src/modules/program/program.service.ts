@@ -819,7 +819,7 @@ export class ProgramService {
 
       return {
         success: true,
-        message: 'Super Pilot ranking video uploaded successfully',
+        message: 'Your video has been uploaded successfully',
         data: {
           videoUrl,
           uploadedAt: new Date(),

@@ -77,14 +77,14 @@ export class ProgramService {
       : 10000;
 
     // Check if pilot meets minimum earnings requirement
-    if (Number(pilot.totalLifetimeEarnings) < minEarnings) {
-      const remainingEarnings =
-        minEarnings - Number(pilot.totalLifetimeEarnings);
-      return {
-        message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock the Super Pilot reward`,
-        data: {},
-      };
-    }
+    // if (Number(pilot.totalLifetimeEarnings) < minEarnings) {
+    //   const remainingEarnings =
+    //     minEarnings - Number(pilot.totalLifetimeEarnings);
+    //   return {
+    //     message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock the Super Pilot reward`,
+    //     data: {},
+    //   };
+    // }
 
     // Continue with normal leaderboard logic...
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
@@ -178,20 +178,24 @@ export class ProgramService {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
+    const isNotEligible = Number(pilot.totalLifetimeEarnings) < minEarnings;
+
     return {
       message: 'Leaderboard fetched successfully.',
       data: {
         leaderboard: entries,
-        personalRanking: {
-          pilotId: pilot.id,
-          name: pilot.drivingLicense?.nameOnLicense || 'Unknown Pilot',
-          profilePicture: pilot.selfieUrl,
-          rank: userRank,
-          totalRides: pilot.totalLifetimeRides,
-          totalEarnings: Number(pilot.totalLifetimeEarnings),
-          pilotType: pilot.pilotType || 'REGULAR',
-          vehicleType: pilot.primaryVehicleType?.name || 'Unknown',
-        },
+        personalRanking: isNotEligible
+          ? null
+          : {
+              pilotId: pilot.id,
+              name: pilot.drivingLicense?.nameOnLicense || 'Unknown Pilot',
+              profilePicture: pilot.selfieUrl,
+              rank: userRank,
+              totalRides: pilot.totalLifetimeRides,
+              totalEarnings: Number(pilot.totalLifetimeEarnings),
+              pilotType: pilot.pilotType || 'REGULAR',
+              vehicleType: pilot.primaryVehicleType?.name || 'Unknown',
+            },
         lastUpdated: latestRankingEntry.calculatedAt,
         pagination: {
           totalItems: totalCount,

@@ -14,24 +14,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - fairdrive-network
-
-  # Development Redis (separate for dev environment)
-  redis-dev:
-    image: redis:7.2-alpine
-    ports:
-      - '127.0.0.1:6380:6379'
-    volumes:
-      - redis-data-dev:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - fairdrive-network
+      - fairdrive-network-prod
 
   # Production API (api.fairdriveindia.com)
   fairdrive-api-india:
@@ -57,7 +40,7 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - fairdrive-network
+      - fairdrive-network-prod
 
   # Production V1 API (api.v1.fairdrive.com.bd)
   fairdrive-api-v1:
@@ -67,8 +50,8 @@ services:
     ports:
       - "127.0.0.1:3001:3000"
     volumes:
-    - ./logs:/app/logs
-    - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
     env_file:
       - .env.production
     environment:
@@ -88,7 +71,7 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - fairdrive-network
+      - fairdrive-network-prod
 
   # Production V2 API (api.v2.fairdrive.com.bd)
   fairdrive-api-v2:
@@ -116,37 +99,7 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - fairdrive-network
-
-  # Development API (dev.fairdrive.com.bd)
-  fairdrive-api-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    ports:
-      - "127.0.0.1:8080:3000"
-    env_file:
-      - .env.development
-    environment:
-      - API_VERSION=dev
-      - NODE_ENV=development
-      - PORT=3000
-      - REDIS_URL=redis://redis-dev:6379
-    depends_on:
-      redis-dev:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 0.5g
-    cpus: 0.5
-    healthcheck:
-      test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - fairdrive-network
-    command: ["pnpm", "run", "start:prod"]
+      - fairdrive-network-prod
 
   # Prometheus for monitoring
   prometheus:
@@ -165,7 +118,7 @@ services:
       - '--web.enable-lifecycle'
     restart: unless-stopped
     networks:
-      - fairdrive-network
+      - fairdrive-network-prod
 
   # Grafana for visualization
   grafana:
@@ -180,12 +133,10 @@ services:
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     restart: unless-stopped
     networks:
-      - fairdrive-network
+      - fairdrive-network-prod
 
 volumes:
   redis-data-prod:
-    driver: local
-  redis-data-dev:
     driver: local
   prometheus-data:
     driver: local
@@ -193,5 +144,5 @@ volumes:
     driver: local
 
 networks:
-  fairdrive-network:
+  fairdrive-network-prod:
     driver: bridge

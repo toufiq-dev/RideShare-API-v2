@@ -1,0 +1,55 @@
+services:
+  # Development Redis (separate for dev environment)
+  redis-dev:
+    image: redis:7.2-alpine
+    ports:
+      - '127.0.0.1:6380:6379'
+    volumes:
+      - redis-data-dev:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fairdrive-network-dev
+
+  # Development API (dev.fairdrive.com.bd)
+  fairdrive-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "127.0.0.1:8080:3000"
+    env_file:
+      - .env.development
+    environment:
+      - API_VERSION=dev
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis-dev:6379
+    depends_on:
+      redis-dev:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 0.5g
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - fairdrive-network-dev
+    command: ["pnpm", "run", "start:prod"]
+
+volumes:
+  redis-data-dev:
+    driver: local
+
+networks:
+  fairdrive-network-dev:
+    driver: bridge

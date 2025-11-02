@@ -257,9 +257,9 @@ export class ProgramService {
       const remainingEarnings =
         minEarnings - Number(pilot.totalLifetimeEarnings);
       return {
-        message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock the Super Pilot reward`,
+        message: `You're so close. Just complete ৳${remainingEarnings.toLocaleString()} to unlock into pilot program`,
         data: {
-          eligibilityStatus: 'NOT_ELIGIBLE',
+          eligibilityStatus: EligibilityStatus.NOT_ELIGIBLE,
           minEarningsRequired: minEarnings,
         },
       };

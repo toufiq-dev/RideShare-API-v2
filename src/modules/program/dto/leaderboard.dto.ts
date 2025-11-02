@@ -12,3 +12,8 @@ export class GetLeaderboardDto {
   @IsEnum(VehicleTypeNameBD)
   vehicleType: VehicleTypeNameBD;
 }
+
+export enum EligibilityStatus {
+  ELIGIBLE = 'ELIGIBLE',
+  NOT_ELIGIBLE = 'NOT_ELIGIBLE',
+}

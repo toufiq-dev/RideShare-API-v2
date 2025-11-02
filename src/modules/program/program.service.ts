@@ -9,6 +9,7 @@ import { PrismaService } from 'src/core/database/database.service';
 import { PilotType, ProgramType, RankingPeriod } from '@prisma/client';
 import { AzureService } from 'src/core/utils/azure.util';
 import { ConfigService } from '@nestjs/config';
+import { EligibilityStatus } from './dto/leaderboard.dto';
 
 @Injectable()
 export class ProgramService {
@@ -171,8 +172,6 @@ export class ProgramService {
       pilotType: entry.pilot.pilotType || 'REGULAR',
     }));
 
-    console.log('entries', leaderboardData);
-
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -205,7 +204,9 @@ export class ProgramService {
           hasNextPage,
           hasPrevPage,
         },
-        eligibilityStatus: 'ELIGIBLE',
+        eligibilityStatus: isNotEligible
+          ? EligibilityStatus.NOT_ELIGIBLE
+          : EligibilityStatus.ELIGIBLE,
         minEarningsRequired: minEarnings,
       },
     };

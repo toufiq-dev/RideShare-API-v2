@@ -1,79 +1,128 @@
-// // src/core/logging/winston.config.ts
-// import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
-// import * as winston from 'winston';
-// import * as fs from 'fs';
-// import * as path from 'path';
+import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
+import * as winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file'; // Changed this line
+import LokiTransport from 'winston-loki';
+import { ConfigService } from '@nestjs/config';
 
-// const logsDir = path.join(process.cwd(), 'logs');
-// let canUseFileLogging = false;
+export const createWinstonConfig = (configService: ConfigService): winston.LoggerOptions => {
+  const nodeEnv = configService.get<string>('app.environment') || 'development';
+  const logLevel = configService.get<string>('logging.level') || 'info';
+  const enableFileLogging = configService.get<boolean>('logging.enableFileLogging') ?? true;
+  const enableLoki = configService.get<boolean>('logging.enableLoki') ?? true;
+  const lokiUrl = configService.get<string>('logging.lokiUrl') || 'http://loki:3100';
 
-// // Try to create logs directory
-// if (!fs.existsSync(logsDir)) {
-//   try {
-//     fs.mkdirSync(logsDir, { recursive: true });
-//     canUseFileLogging = true;
-//   } catch (error) {
-//     console.warn('Could not create logs directory:', error.message);
-//     canUseFileLogging = false;
-//   }
-// } else {
-//   canUseFileLogging = true;
-// }
+  const transports: winston.transport[] = [];
 
-// // Check if we can write to the logs directory
-// if (canUseFileLogging) {
-//   try {
-//     const testFile = path.join(logsDir, 'test-write.tmp');
-//     fs.writeFileSync(testFile, 'test');
-//     fs.unlinkSync(testFile);
-//   } catch (error) {
-//     console.warn('Cannot write to logs directory:', error.message);
-//     canUseFileLogging = false;
-//   }
-// }
+  // Console transport - Always enabled with pretty format for development
+  transports.push(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+        winston.format.errors({ stack: true }),
+        nodeEnv === 'development'
+          ? winston.format.combine(
+              winston.format.colorize({ all: true }),
+              nestWinstonModuleUtilities.format.nestLike('FairDrive', {
+                prettyPrint: true,
+                colors: true,
+              }),
+            )
+          : winston.format.json(),
+      ),
+    }),
+  );
 
-// export const winstonConfig: winston.LoggerOptions = {
-//   level: process.env.LOG_LEVEL || 'info',
-//   format: winston.format.combine(
-//     winston.format.timestamp(),
-//     winston.format.errors({ stack: true }),
-//     winston.format.metadata(),
-//   ),
-//   transports: [
-//     // Console: Always enabled
-//     new winston.transports.Console({
-//       format: winston.format.combine(
-//         winston.format.colorize(),
-//         winston.format.timestamp(),
-//         nestWinstonModuleUtilities.format.nestLike('FairDrive', {
-//           prettyPrint: true,
-//         }),
-//       ),
-//     }),
+  // File transports - Rotated daily logs
+  if (enableFileLogging) {
+    const fileFormat = winston.format.combine(
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+      winston.format.errors({ stack: true }),
+      winston.format.json(),
+      winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'context'] }),
+    );
 
-//     // File transports: Only if we can use file logging
-//     ...(canUseFileLogging ? [
-//       new winston.transports.File({
-//         filename: 'logs/combined.log',
-//         level: 'info',
-//         format: winston.format.combine(
-//           winston.format.timestamp(),
-//           winston.format.json(),
-//         ),
-//         maxsize: 5242880, // 5MB
-//         maxFiles: 5,
-//       }),
+    // Combined logs (all levels)
+    transports.push(
+      new DailyRotateFile({
+        filename: 'logs/combined-%DATE%.log',
+        datePattern: 'YYYY-MM-DD',
+        zippedArchive: true,
+        maxSize: '20m',
+        maxFiles: '14d',
+        format: fileFormat,
+        level: 'info',
+      }),
+    );
 
-//       new winston.transports.File({
-//         filename: 'logs/error.log',
-//         level: 'error',
-//         format: winston.format.combine(
-//           winston.format.timestamp(),
-//           winston.format.json(),
-//         ),
-//         maxsize: 5242880, // 5MB
-//         maxFiles: 5,
-//       }),
-//     ] : []),
-//   ],
-// };
+    // Error logs only
+    transports.push(
+      new DailyRotateFile({
+        filename: 'logs/error-%DATE%.log',
+        datePattern: 'YYYY-MM-DD',
+        zippedArchive: true,
+        maxSize: '20m',
+        maxFiles: '30d',
+        format: fileFormat,
+        level: 'error',
+      }),
+    );
+
+    // HTTP access logs
+    transports.push(
+      new DailyRotateFile({
+        filename: 'logs/http-%DATE%.log',
+        datePattern: 'YYYY-MM-DD',
+        zippedArchive: true,
+        maxSize: '20m',
+        maxFiles: '14d',
+        format: fileFormat,
+        level: 'http',
+      }),
+    );
+  }
+
+  // Loki transport - Log aggregation for Grafana
+  if (enableLoki && nodeEnv === 'production') {
+    transports.push(
+      new LokiTransport({
+        host: lokiUrl,
+        json: true,
+        format: winston.format.json(),
+        labels: {
+          app: 'fairdrive-api',
+          environment: nodeEnv,
+          version: process.env.API_VERSION || 'v1',
+        },
+        onConnectionError: (err) => {
+          console.error('Loki connection error:', err);
+        },
+        gracefulShutdown: false,
+      }),
+    );
+  }
+
+  return {
+    level: logLevel,
+    format: winston.format.combine(
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+      winston.format.errors({ stack: true }),
+      winston.format.splat(),
+      winston.format.json(),
+      winston.format.metadata(),
+    ),
+    defaultMeta: {
+      service: 'fairdrive-api',
+      environment: nodeEnv,
+      version: process.env.API_VERSION || 'v1',
+    },
+    transports,
+    exceptionHandlers: [
+      new winston.transports.File({ filename: 'logs/exceptions.log' }),
+      new winston.transports.Console(),
+    ],
+    rejectionHandlers: [
+      new winston.transports.File({ filename: 'logs/rejections.log' }),
+      new winston.transports.Console(),
+    ],
+  };
+};

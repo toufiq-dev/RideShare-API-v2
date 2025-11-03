@@ -9,16 +9,21 @@ import { TransformResponseInterceptor } from './common/interceptors/transform-re
 // import { WinstonModule } from 'nest-winston';
 // import { winstonConfig } from './core/logging/winston.config';
 import { SocketIOAdapter } from './core/socket/socket.adapter';
+import { MetricsService } from './core/metrics/metrics.service';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { HttpLoggingInterceptor } from './common/interceptors/http-logging.interceptor';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 
 async function bootstrap() {
   process.env.TZ = 'UTC';
 
   const app = await NestFactory.create(AppModule, {
     abortOnError: false,
-    // logger: WinstonModule.createLogger(winstonConfig),
+    bufferLogs: true,
   });
 
   const logger = app.get(LoggerService);
+  const metricsService = app.get(MetricsService);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port');
 
@@ -26,6 +31,11 @@ async function bootstrap() {
 
   // Use IoAdapter for Socket.IO
   app.useWebSocketAdapter(new SocketIOAdapter(app));
+
+  // Add correlation ID middleware (before other middleware)
+  app.use(
+    new CorrelationIdMiddleware().use.bind(new CorrelationIdMiddleware()),
+  );
 
   app.enableCors({
     origin: [
@@ -49,8 +59,12 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
-  app.useGlobalInterceptors(new TransformResponseInterceptor());
+  app.useGlobalFilters(new GlobalExceptionFilter(logger, metricsService));
+  app.useGlobalInterceptors(
+    new TransformResponseInterceptor(),
+    new HttpLoggingInterceptor(logger),
+    new MetricsInterceptor(metricsService),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -75,5 +89,7 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
   logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Metrics endpoint: http://localhost:${port}/metrics`);
+  logger.log(`Swagger docs: http://localhost:${port}/api-docs`);
 }
 bootstrap();

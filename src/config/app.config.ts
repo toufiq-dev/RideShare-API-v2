@@ -7,6 +7,12 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
   },
+  logging: {
+    level: process.env.LOG_LEVEL || 'info',
+    enableFileLogging: process.env.ENABLE_FILE_LOGGING !== 'false',
+    enableLoki: process.env.ENABLE_LOKI === 'true',
+    lokiUrl: process.env.LOKI_URL || 'http://loki:3100',
+  },
   redis: {
     url: process.env.REDIS_URL,
     accessTokenTTL: process.env.REDIS_ACCESS_TOKEN_TTL || 60 * 60 * 24 * 1,

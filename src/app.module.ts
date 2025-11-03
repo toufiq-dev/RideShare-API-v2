@@ -29,6 +29,8 @@ import { SocketModule } from './core/socket/socket.module';
 import { MainGateway } from './core/socket/main.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ProgramModule } from './modules/program/program.module';
+import { MetricsModule } from './core/metrics/metrics.module';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { ProgramModule } from './modules/program/program.module';
     DatabaseModule,
     RedisModule,
     LoggerModule,
+    MetricsModule,
     SocketModule,
     AuthModule,
     PilotModule,
@@ -73,6 +76,7 @@ import { ProgramModule } from './modules/program/program.module';
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
     consumer.apply(ErrorLoggingMiddleware).forRoutes('*');
   }
 }

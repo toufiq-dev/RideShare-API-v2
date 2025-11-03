@@ -1,0 +1,57 @@
+groups:
+  - name: fairdrive_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(fairdrive_http_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec for the last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(fairdrive_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: HighMemoryUsage
+        expr: (fairdrive_process_resident_memory_bytes / 1024 / 1024) > 2048
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}MB"
+
+      - alert: NoRidesCompleted
+        expr: rate(fairdrive_ride_completions_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No rides completed in the last hour"
+          description: "Business metric shows no rides completed"
+
+      - alert: HighRideCancellationRate
+        expr: rate(fairdrive_ride_cancellations_total[5m]) / rate(fairdrive_ride_bookings_total[5m]) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High ride cancellation rate"
+          description: "Cancellation rate is {{ $value | humanizePercentage }}"
+
+      - alert: LowPilotAvailability
+        expr: sum(fairdrive_pilot_online_status) < 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low pilot availability"
+          description: "Only {{ $value }} pilots are online"

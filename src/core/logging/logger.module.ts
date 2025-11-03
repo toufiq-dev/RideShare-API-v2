@@ -9,7 +9,8 @@ import { createWinstonConfig } from './winston.config';
   imports: [
     WinstonModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => createWinstonConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        createWinstonConfig(configService),
       inject: [ConfigService],
     }),
   ],

@@ -68,7 +68,11 @@ export class LoggerService extends WinstonLogger implements NestLoggerService {
     });
   }
 
-  logPerformance(operation: string, duration: number, metadata?: Record<string, any>) {
+  logPerformance(
+    operation: string,
+    duration: number,
+    metadata?: Record<string, any>,
+  ) {
     this.winstonLogger.info(`[PERFORMANCE] ${operation}`, {
       operation,
       duration,

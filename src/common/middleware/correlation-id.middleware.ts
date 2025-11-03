@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 export class RequestContext {
   constructor(
     public readonly requestId: string,
-    public readonly userId?: string,
+    public userId?: string,
     public readonly startTime: number = Date.now(),
   ) {}
 

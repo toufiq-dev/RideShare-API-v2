@@ -4,12 +4,16 @@ import DailyRotateFile from 'winston-daily-rotate-file'; // Changed this line
 import LokiTransport from 'winston-loki';
 import { ConfigService } from '@nestjs/config';
 
-export const createWinstonConfig = (configService: ConfigService): winston.LoggerOptions => {
+export const createWinstonConfig = (
+  configService: ConfigService,
+): winston.LoggerOptions => {
   const nodeEnv = configService.get<string>('app.environment') || 'development';
   const logLevel = configService.get<string>('logging.level') || 'info';
-  const enableFileLogging = configService.get<boolean>('logging.enableFileLogging') ?? true;
+  const enableFileLogging =
+    configService.get<boolean>('logging.enableFileLogging') ?? true;
   const enableLoki = configService.get<boolean>('logging.enableLoki') ?? true;
-  const lokiUrl = configService.get<string>('logging.lokiUrl') || 'http://loki:3100';
+  const lokiUrl =
+    configService.get<string>('logging.lokiUrl') || 'http://loki:3100';
 
   const transports: winston.transport[] = [];
 
@@ -38,7 +42,9 @@ export const createWinstonConfig = (configService: ConfigService): winston.Logge
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
       winston.format.errors({ stack: true }),
       winston.format.json(),
-      winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'context'] }),
+      winston.format.metadata({
+        fillExcept: ['message', 'level', 'timestamp', 'context'],
+      }),
     );
 
     // Combined logs (all levels)

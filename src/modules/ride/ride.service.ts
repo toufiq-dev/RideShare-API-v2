@@ -48,6 +48,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from 'src/core/logging/logger.service';
 import { DriverSearchService } from './services/driver-search.service';
 import { ProgramService } from '../program/program.service';
+import { MetricsService } from 'src/core/metrics/metrics.service';
 
 @Injectable()
 export class RideService {
@@ -60,9 +61,10 @@ export class RideService {
     private readonly rideNotificationService: RideNotificationService,
     private readonly fareService: FareService,
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
     private readonly driverSearchService: DriverSearchService,
     private readonly programService: ProgramService,
+    private readonly metrics: MetricsService,
+    private readonly logger: LoggerService,
   ) {
     this.bonusRechargeThreshold = this.configService.get<string>(
       'systemConfig.bonusRechargeThreshold',
@@ -281,6 +283,8 @@ export class RideService {
     createRideRequestDto: CreateRideRequestDto,
     userId: string,
   ) {
+    const startTime = Date.now();
+
     const {
       vehicleTypeId,
       pickupLocation,
@@ -447,14 +451,34 @@ export class RideService {
             : null,
       };
 
+      this.metrics.rideBookings.inc({
+        vehicle_type: vehicleType.name,
+        city: 'dhaka', // Extract from location
+        version: process.env.API_VERSION || 'v1',
+      });
+
+      // Log business event
+      this.logger.logBusinessEvent('RIDE_BOOKING_CREATED', {
+        bookingId: booking.id,
+        customerId: customer.id,
+        vehicleType: vehicleType.name,
+        estimatedFare: booking.estimatedFare,
+      });
+
       return {
         success: true,
         message: 'Ride request created successfully.',
         data,
       };
     } catch (error) {
-      console.error(error);
+      const duration = Date.now() - startTime;
+      this.logger.logError(error, 'RideService', {
+        operation: 'createRideRequest',
+      });
       throw error;
+    } finally {
+      const duration = Date.now() - startTime;
+      this.logger.logPerformance('createRideRequest', duration, { userId });
     }
   }
 
@@ -1448,6 +1472,13 @@ export class RideService {
             ? { name: result.updated.name }
             : null,
       };
+
+      // Record business metric
+      this.metrics.rideCompletions.inc({
+        vehicle_type: result.updated.vehicleTypeBD.name,
+        city: 'dhaka', // Extract from location
+        version: process.env.API_VERSION || 'v1',
+      });
 
       return {
         message: 'Ride ended successfully.',

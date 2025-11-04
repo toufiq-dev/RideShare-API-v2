@@ -1,0 +1,477 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "FairDrive API - System Metrics",
+      "tags": ["fairdrive", "system", "cpu", "memory", "database"],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 0,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "rate(fairdrive_process_cpu_user_seconds_total[5m]) * 100",
+              "legendFormat": "User",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(fairdrive_process_cpu_system_seconds_total[5m]) * 100",
+              "legendFormat": "System",
+              "refId": "B"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "CPU Usage",
+              "show": true,
+              "max": 100,
+              "min": 0
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 2,
+          "title": "Memory Usage",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "fairdrive_process_resident_memory_bytes / 1024 / 1024",
+              "legendFormat": "Resident Memory",
+              "refId": "A"
+            },
+            {
+              "expr": "fairdrive_process_heap_bytes_used / 1024 / 1024",
+              "legendFormat": "Heap Used",
+              "refId": "B"
+            },
+            {
+              "expr": "fairdrive_process_heap_bytes_total / 1024 / 1024",
+              "legendFormat": "Heap Total",
+              "refId": "C"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "mbytes",
+              "label": "Memory (MB)",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          },
+          "alert": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [2048],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A", "5m", "now"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ],
+            "executionErrorState": "alerting",
+            "for": "5m",
+            "frequency": "10s",
+            "handler": 1,
+            "name": "High Memory Usage",
+            "noDataState": "no_data",
+            "notifications": []
+          }
+        },
+        {
+          "id": 3,
+          "title": "Active Connections",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "fairdrive_active_connections",
+              "legendFormat": "{{type}}",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "Connections",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 4,
+          "title": "Database Query Duration",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(fairdrive_database_query_duration_seconds_bucket[5m]))",
+              "legendFormat": "p50 - {{operation}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(fairdrive_database_query_duration_seconds_bucket[5m]))",
+              "legendFormat": "p95 - {{operation}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(fairdrive_database_query_duration_seconds_bucket[5m]))",
+              "legendFormat": "p99 - {{operation}}",
+              "refId": "C"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Query Duration",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 5,
+          "title": "Redis Operation Duration",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(fairdrive_redis_operation_duration_seconds_bucket[5m]))",
+              "legendFormat": "p50 - {{operation}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(fairdrive_redis_operation_duration_seconds_bucket[5m]))",
+              "legendFormat": "p95 - {{operation}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(fairdrive_redis_operation_duration_seconds_bucket[5m]))",
+              "legendFormat": "p99 - {{operation}}",
+              "refId": "C"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Operation Duration",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 6,
+          "title": "Database Operations by Status",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "rate(fairdrive_database_query_duration_seconds_count[5m])",
+              "legendFormat": "{{operation}} - {{table}} ({{status}})",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Queries/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 7,
+          "title": "Event Loop Lag",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "rate(fairdrive_nodejs_eventloop_lag_seconds[5m])",
+              "legendFormat": "Event Loop Lag",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Lag (seconds)",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true
+          },
+          "lines": true,
+          "tooltip": {
+            "shared": true
+          },
+          "alert": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [0.1],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A", "5m", "now"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ],
+            "executionErrorState": "alerting",
+            "for": "2m",
+            "frequency": "10s",
+            "handler": 1,
+            "name": "High Event Loop Lag",
+            "noDataState": "no_data",
+            "notifications": []
+          }
+        },
+        {
+          "id": 8,
+          "title": "Node.js Heap Usage",
+          "type": "gauge",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "(fairdrive_process_heap_bytes_used / fairdrive_process_heap_bytes_total) * 100",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "min": 0,
+            "max": 100,
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 1
+            }
+          }
+        }
+      ],
+      "annotations": {
+        "list": []
+      },
+      "links": []
+    }
+  }

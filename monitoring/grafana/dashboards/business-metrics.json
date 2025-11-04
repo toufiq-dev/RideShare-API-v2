@@ -1,0 +1,509 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "FairDrive API - Business Metrics",
+      "tags": ["fairdrive", "business", "rides", "revenue"],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 0,
+      "refresh": "1m",
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Total Ride Bookings",
+          "type": "stat",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(fairdrive_ride_bookings_total[24h]))",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Total Ride Completions",
+          "type": "stat",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(fairdrive_ride_completions_total[24h]))",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 3,
+          "title": "Total Cancellations",
+          "type": "stat",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(fairdrive_ride_cancellations_total[24h]))",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 100
+                  },
+                  {
+                    "color": "red",
+                    "value": 500
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Cancellation Rate",
+          "type": "stat",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "(sum(rate(fairdrive_ride_cancellations_total[5m])) / sum(rate(fairdrive_ride_bookings_total[5m]))) * 100",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto",
+            "unit": "percent"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 10
+                  },
+                  {
+                    "color": "red",
+                    "value": 30
+                  }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 2
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Ride Bookings Over Time",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 6
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_ride_bookings_total[5m])) by (vehicle_type)",
+              "legendFormat": "{{vehicle_type}}",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Bookings/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 6,
+          "title": "Ride Completions Over Time",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 6
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_ride_completions_total[5m])) by (vehicle_type)",
+              "legendFormat": "{{vehicle_type}}",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Completions/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 7,
+          "title": "Cancellations by Type",
+          "type": "piechart",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 14
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_ride_cancellations_total[5m])) by (cancelled_by)",
+              "legendFormat": "{{cancelled_by}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "pieType": "pie",
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "visible",
+              "placement": "right"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Pilot Online Status",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 14
+          },
+          "targets": [
+            {
+              "expr": "sum(fairdrive_pilot_online_status) by (vehicle_type)",
+              "legendFormat": "{{vehicle_type}}",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "Online Pilots",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 9,
+          "title": "Driver Search Duration",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 14
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(fairdrive_driver_search_duration_seconds_bucket[5m]))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(fairdrive_driver_search_duration_seconds_bucket[5m]))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(fairdrive_driver_search_duration_seconds_bucket[5m]))",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Duration",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 10,
+          "title": "Payment Transactions",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 22
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_payment_transactions_total[5m])) by (type, status)",
+              "legendFormat": "{{type}} - {{status}}",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Transactions/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 11,
+          "title": "Bookings by Vehicle Type (Last 24h)",
+          "type": "bargauge",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 22
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(fairdrive_ride_bookings_total[24h])) by (vehicle_type)",
+              "legendFormat": "{{vehicle_type}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          }
+        }
+      ],
+      "annotations": {
+        "list": []
+      },
+      "links": []
+    }
+  }

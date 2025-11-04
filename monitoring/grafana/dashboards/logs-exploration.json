@@ -1,0 +1,346 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "FairDrive API - Logs Exploration",
+      "tags": ["fairdrive", "logs", "loki", "debugging"],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 0,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Error Logs",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} |= \"error\" | json",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "source": "message"
+              }
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "HTTP Request Logs",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} |= \"HTTP\" | json | statusCode >= 400",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          }
+        },
+        {
+          "id": 3,
+          "title": "Business Events",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} |= \"BUSINESS_EVENT\" | json",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          }
+        },
+        {
+          "id": 4,
+          "title": "Logs by Level",
+          "type": "piechart",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "sum(count_over_time({job=\"fairdrive-api\"}[5m])) by (level)",
+              "legendFormat": "{{level}}",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "pieType": "pie",
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "visible",
+              "placement": "right"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Error Rate Over Time",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "sum(rate({job=\"fairdrive-api\"} |= \"error\" [5m]))",
+              "legendFormat": "Error Rate",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "Errors/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 6,
+          "title": "Search Logs by Request ID",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} | json | requestId=\"$requestId\"",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Ascending",
+            "wrapLogMessage": false
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Performance Logs",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 44
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} |= \"PERFORMANCE\" | json | durationMs > 1000",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "durationMs": "Duration (ms)",
+                  "operation": "Operation"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Security Events",
+          "type": "logs",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 56
+          },
+          "targets": [
+            {
+              "expr": "{job=\"fairdrive-api\"} |= \"SECURITY\" | json",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              }
+            }
+          ],
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          }
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "requestId",
+            "type": "textbox",
+            "label": "Request ID",
+            "query": "",
+            "current": {
+              "selected": false,
+              "text": "",
+              "value": ""
+            },
+            "options": [],
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            }
+          }
+        ]
+      },
+      "annotations": {
+        "list": []
+      },
+      "links": []
+    }
+  }

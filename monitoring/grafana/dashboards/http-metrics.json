@@ -1,0 +1,393 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "FairDrive API - HTTP Metrics & Performance",
+      "tags": ["fairdrive", "http", "api", "performance"],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 0,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "HTTP Requests Rate (per second)",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "rate(fairdrive_http_requests_total[5m])",
+              "legendFormat": "{{method}} {{route}} ({{status_code}})",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "reqps",
+              "label": "Requests/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true,
+            "min": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "points": false,
+          "pointradius": 5,
+          "steppedLine": false,
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          }
+        },
+        {
+          "id": 2,
+          "title": "HTTP Request Duration (Percentiles)",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(fairdrive_http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(fairdrive_http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(fairdrive_http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "p99",
+              "refId": "C"
+            },
+            {
+              "expr": "histogram_quantile(0.999, rate(fairdrive_http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "p99.9",
+              "refId": "D"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Duration",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true,
+            "avg": true,
+            "max": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "nullPointMode": "null",
+          "points": false,
+          "tooltip": {
+            "shared": true,
+            "sort": 0
+          },
+          "alert": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [2],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A", "5m", "now"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ],
+            "executionErrorState": "alerting",
+            "for": "5m",
+            "frequency": "10s",
+            "handler": 1,
+            "name": "High Response Time Alert",
+            "noDataState": "no_data",
+            "notifications": []
+          }
+        },
+        {
+          "id": 3,
+          "title": "HTTP Errors by Status Code",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "rate(fairdrive_http_errors_total[5m])",
+              "legendFormat": "{{method}} {{route}} - {{status_code}} ({{error_type}})",
+              "refId": "A"
+            }
+          ],
+          "xaxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Errors/sec",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "legend": {
+            "show": true,
+            "values": true,
+            "current": true
+          },
+          "lines": true,
+          "fill": 3,
+          "linewidth": 1,
+          "tooltip": {
+            "shared": true
+          }
+        },
+        {
+          "id": 4,
+          "title": "Error Rate Percentage",
+          "type": "stat",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "(sum(rate(fairdrive_http_errors_total[5m])) / sum(rate(fairdrive_http_requests_total[5m]))) * 100",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "textMode": "auto",
+            "unit": "percent"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 2
+            }
+          },
+          "pluginVersion": "8.0.0"
+        },
+        {
+          "id": 5,
+          "title": "Requests by Method",
+          "type": "piechart",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_http_requests_total[5m])) by (method)",
+              "legendFormat": "{{method}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            },
+            "pieType": "pie",
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "visible",
+              "placement": "right"
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Requests by Route (Top 10)",
+          "type": "table",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "topk(10, sum(rate(fairdrive_http_requests_total[5m])) by (route))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "route": "Route",
+                  "Value": "Requests/sec"
+                }
+              }
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Requests/sec",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "title": "Request Duration Heatmap",
+          "type": "heatmap",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(fairdrive_http_request_duration_seconds_bucket[5m])) by (le, route)",
+              "format": "heatmap",
+              "legendFormat": "{{route}}",
+              "refId": "A"
+            }
+          ],
+          "dataFormat": "tsbuckets",
+          "heatmap": {
+            "yAxis": {
+              "unit": "s",
+              "reverse": false
+            }
+          },
+          "yAxis": {
+            "format": "s",
+            "logBase": 1,
+            "splitFactor": null,
+            "max": null,
+            "min": null
+          },
+          "xAxis": {
+            "show": true,
+            "mode": "time"
+          },
+          "yBucketBound": "auto",
+          "reverseYBuckets": false
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "name": "Deployments",
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "tags": ["deployment"],
+            "type": "dashboard"
+          }
+        ]
+      },
+      "links": []
+    }
+  }

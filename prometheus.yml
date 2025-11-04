@@ -1,9 +1,12 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    cluster: 'fairdrive-production'
+    environment: 'production'
 
 rule_files:
-  - "alert_rules.yml"
+  - "monitoring/prometheus/alert_rules.yml"  # Fixed path
 
 alerting:
   alertmanagers:
@@ -16,26 +19,27 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'fairdrive-api-latest'
+  # Fixed: Match your actual Docker Compose service names
+  - job_name: 'fairdrive-api-v1'
     static_configs:
-      - targets: ['fairdrive-api-latest:3000']
+      - targets: ['fairdrive-api-v1:3000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: 'fairdrive-api-legacy'
+  - job_name: 'fairdrive-api-v2'
     static_configs:
-      - targets: ['fairdrive-api-legacy:3000']
+      - targets: ['fairdrive-api-v2:3000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: 'fairdrive-api-dev'
+  - job_name: 'fairdrive-api-india'
     static_configs:
-      - targets: ['fairdrive-api-dev:3000']
+      - targets: ['fairdrive-api-india:3000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  # Redis exporter (if you have one)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #   scrape_interval: 30s

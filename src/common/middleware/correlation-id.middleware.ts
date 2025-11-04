@@ -21,7 +21,8 @@ const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
 export class CorrelationIdMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const requestId = (req.headers['x-request-id'] as string) || uuidv4();
-    const context = new RequestContext(requestId);
+    const userId = req.user ? (req.user as any).userId : undefined;
+    const context = new RequestContext(requestId, userId);
 
     // Store in AsyncLocalStorage for request lifecycle
     asyncLocalStorage.run(context, () => {
@@ -31,11 +32,6 @@ export class CorrelationIdMiddleware implements NestMiddleware {
 
       // Add to response headers
       res.setHeader('X-Request-ID', requestId);
-
-      // Log correlation ID for tracing
-      if (req.user) {
-        context.userId = (req.user as any).userId;
-      }
 
       next();
     });

@@ -43,6 +43,7 @@ import { DocumentValidation } from './admin.constants';
 import { VerificationService } from 'src/core/utils/verification.util';
 import moment from 'moment-timezone';
 import { PilotService } from '../pilot/pilot.service';
+import { FilterDriverDto, FilterDriverSortOptions, FilterDriverSortOrderOptions } from './dto/admin-rider-filter.dto';
 
 @Injectable()
 export class AdminService {
@@ -1211,6 +1212,194 @@ export class AdminService {
           activePilots: activeCount,
           pendingPilots: pendingCount,
           suspendedPilots: suspendedCount,
+          pagination: {
+            totalItems: totalCount,
+            totalPages,
+            currentPage: page,
+            pageSize,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+
+  async getDriverListV2(query: FilterDriverDto) {
+    try {
+      const {
+        page = 1,
+        pageSize = 10,
+        search,
+        status,
+        sortBy = FilterDriverSortOptions.CREATED_AT as any,
+        sortOrder = FilterDriverSortOrderOptions.DESC as any,
+        vehicleId,
+        fields = [],
+        startDate,
+        endDate,
+      } = query;
+
+      const skip = (page - 1) * pageSize;
+
+      const whereClause: any = {};
+
+      if (status) {
+        whereClause.user = {
+          status: status as UserStatus,
+        };
+      }
+
+      if (search && search.trim()) {
+        whereClause.OR = [
+          { name: { contains: search.trim(), mode: 'insensitive' } },
+          { phone: { contains: search.trim(), mode: 'insensitive' } },
+        ];
+      }
+
+      if (startDate || endDate) {
+        whereClause.createdAt = {};
+        if (startDate) {
+          whereClause.createdAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+          whereClause.createdAt.lte = new Date(endDate);
+        }
+      }
+
+      if (vehicleId) {
+        whereClause.vehicle = {
+          id: vehicleId,
+        };
+      }
+
+      // Build dynamic select object
+      const buildSelectObject = (fieldPaths: string[]): any => {
+        if (fieldPaths.length === 0) {
+          return undefined;
+        }
+
+        const select: any = {};
+
+        for (const fieldPath of fieldPaths) {
+          const parts = fieldPath.split('.');
+          let current = select;
+
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = i === parts.length - 1;
+
+            if (isLast) {
+              current[part] = true;
+            } else {
+              if (!current[part]) {
+                current[part] = {};
+              }
+              current = current[part];
+            }
+          }
+        }
+
+        return select;
+      };
+
+      const selectObject = buildSelectObject(fields);
+
+      let orderByClause: any = {};
+
+      if (
+        sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
+        sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
+      ) {
+        // orderByClause = { createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc' };
+        orderByClause = {
+          // _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
+
+        }
+      } else if (sortBy === FilterDriverSortOptions.UPDATED_AT) {
+        orderByClause = {
+          updatedAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
+        };
+      } else if (sortBy === FilterDriverSortOptions.CREATED_AT) {
+        orderByClause = {
+          createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
+        };
+      } else if (sortBy === FilterDriverSortOptions.NAME) {
+        orderByClause = {
+          name: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
+        };
+      } else {
+        orderByClause = { createdAt: 'desc' };
+      }
+
+      const totalCount = await this.prisma.pilot.count({
+        where: whereClause,
+      });
+
+      let pilots = await this.prisma.pilot.findMany({
+        where: whereClause,
+        orderBy: orderByClause,
+        select: selectObject,
+        skip,
+        take: pageSize,
+      });
+
+      // Handle document count sorting if needed
+      if (
+        sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
+        sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
+      ) {
+        // Calculate document count for each pilot
+        const pilotsWithDocCount = pilots.map((pilot: any) => {
+          const documentFields = [
+            'nidFrontSideUrl',
+            'nidBackSideUrl',
+            'vehicleOwnersNidFrontSideUrl',
+            'vehicleOwnersNidBackSideUrl',
+            'rcFrontSideUrl',
+            'rcBackSideUrl',
+            'numberPlateUrl',
+            'taxTokenUrl',
+            'dlFrontSideUrl',
+            'dlBackSideUrl',
+            'selfieUrl',
+          ];
+
+          let docCount = 0;
+          for (const field of documentFields) {
+            if (pilot[field] && pilot[field] !== null) {
+              docCount++;
+            }
+          }
+
+          return {
+            ...pilot,
+            _documentCount: docCount,
+          };
+        });
+
+        // Sort by document count
+        pilotsWithDocCount.sort((a, b) => {
+          if (sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED) {
+            return b._documentCount - a._documentCount;
+          } else {
+            return a._documentCount - b._documentCount;
+          }
+        });
+        pilots = pilotsWithDocCount.map(({ _documentCount, ...pilot }) => pilot);
+      }
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Driver list fetched successfully.',
+        data: {
+          pilots,
           pagination: {
             totalItems: totalCount,
             totalPages,

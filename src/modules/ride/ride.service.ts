@@ -1167,6 +1167,15 @@ export class RideService {
           pilotType: true,
           primaryVehicleTypeId: true,
           currentRank: true,
+          vehicle: {
+            select: {
+              vehicleTypeBD: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
       if (!pilot) {
@@ -1307,16 +1316,18 @@ export class RideService {
           select: { id: true, balance: true },
         });
 
-        const currentRank = await tx.pilotRanking.findFirst({
-          where: {
-            pilotId: pilot.id,
-            rankingPeriod: RankingPeriod.OVERALL,
-            vehicleTypeId: pilot.primaryVehicleTypeId,
-          },
-          select: {
-            rank: true,
-          },
-        });
+        const currentRank = pilot.vehicle?.vehicleTypeBD?.id
+          ? await tx.pilotRanking.findFirst({
+              where: {
+                pilotId: pilot.id,
+                rankingPeriod: RankingPeriod.OVERALL,
+                vehicleTypeId: pilot.vehicle.vehicleTypeBD.id,
+              },
+              select: {
+                rank: true,
+              },
+            })
+          : null;
 
         const superPilotProgram = await tx.pilotProgram.findFirst({
           where: {
@@ -1329,8 +1340,9 @@ export class RideService {
         });
 
         const shouldDeductFairCoin =
+          pilot.pilotType !== PilotType.SUPER_PILOT &&
           currentRank?.rank >
-          Number((superPilotProgram?.criteria as any).maxSuperPilots);
+            Number((superPilotProgram?.criteria as any).maxSuperPilots);
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },

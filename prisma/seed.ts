@@ -366,6 +366,7 @@ async function main() {
         isTaxTokenVerified: VerificationStatus.APPROVED,
         isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true,
+        primaryVehicleTypeId: vehicleTypeIds[randromNumber],
       },
     });
 

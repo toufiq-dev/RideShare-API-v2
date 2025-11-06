@@ -53,7 +53,7 @@ services:
       start_period: 60s
     networks:
       - fairdrive-network-dev
-    command: ["pnpm", "run", "start:dev"]
+    command: ["pnpm", "run", "start:dev", "--watch", "--watchOptions.poll=1000"]
 
 volumes:
   redis-data-dev:

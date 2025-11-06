@@ -1316,18 +1316,19 @@ export class RideService {
           select: { id: true, balance: true },
         });
 
-        const currentRank = pilot.vehicle?.vehicleTypeBD?.id
-          ? await tx.pilotRanking.findFirst({
-              where: {
-                pilotId: pilot.id,
-                rankingPeriod: RankingPeriod.OVERALL,
-                vehicleTypeId: pilot.vehicle.vehicleTypeBD.id,
-              },
-              select: {
-                rank: true,
-              },
-            })
-          : null;
+        let currentRank: { rank: number } | undefined = undefined;
+        if (pilot.currentRank) {
+          currentRank = { rank: pilot.currentRank };
+        } else {
+          currentRank = await tx.pilotRanking.findFirst({
+            where: {
+              pilotId: pilot.id,
+              rankingPeriod: RankingPeriod.OVERALL,
+              vehicleTypeId:
+                pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+            },
+          });
+        }
 
         const superPilotProgram = await tx.pilotProgram.findFirst({
           where: {

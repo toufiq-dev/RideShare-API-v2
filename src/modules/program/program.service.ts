@@ -47,8 +47,18 @@ export class ProgramService {
         pilotType: true,
         totalLifetimeEarnings: true,
         totalLifetimeRides: true,
+        currentRank: true,
         primaryVehicleType: {
           select: { name: true },
+        },
+        vehicle: {
+          select: {
+            vehicleTypeBD: {
+              select: {
+                id: true,
+              },
+            },
+          },
         },
         drivingLicense: {
           select: {
@@ -87,11 +97,14 @@ export class ProgramService {
     //   };
     // }
 
+    const vehicleTypeId =
+      pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId;
+
     // Continue with normal leaderboard logic...
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: pilot.primaryVehicleTypeId,
+        vehicleTypeId: vehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -105,7 +118,7 @@ export class ProgramService {
       // If no rankings exist, calculate them on-the-fly
       await this.calculateAndStoreRankings(
         RankingPeriod.OVERALL,
-        pilot.primaryVehicleTypeId,
+        vehicleTypeId,
       );
       return this.getLeaderboard(userId, page, pageSize); // Recursive call after calculation
     }
@@ -115,7 +128,7 @@ export class ProgramService {
     const totalCount = await this.prisma.pilotRanking.count({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: pilot.primaryVehicleTypeId,
+        vehicleTypeId: vehicleTypeId,
         calculatedAt: latestRankingEntry.calculatedAt,
       },
     });
@@ -124,7 +137,7 @@ export class ProgramService {
     const leaderboardData = await this.prisma.pilotRanking.findMany({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: pilot.primaryVehicleTypeId,
+        vehicleTypeId: vehicleTypeId,
         calculatedAt: latestRankingEntry.calculatedAt,
       },
       orderBy: {
@@ -231,6 +244,15 @@ export class ProgramService {
         primaryVehicleType: {
           select: { name: true },
         },
+        vehicle: {
+          select: {
+            vehicleTypeBD: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -268,7 +290,8 @@ export class ProgramService {
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: pilot.primaryVehicleTypeId,
+        vehicleTypeId:
+          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -284,7 +307,8 @@ export class ProgramService {
         where: {
           pilotId: pilot.id,
           rankingPeriod: RankingPeriod.OVERALL,
-          vehicleTypeId: pilot.primaryVehicleTypeId,
+          vehicleTypeId:
+            pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
           calculatedAt: latestRankingEntry.calculatedAt,
         },
         select: {
@@ -299,7 +323,8 @@ export class ProgramService {
       where: {
         pilotId: pilot.id,
         rankingPeriod: RankingPeriod.DAILY,
-        vehicleTypeId: pilot.primaryVehicleTypeId,
+        vehicleTypeId:
+          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -313,7 +338,8 @@ export class ProgramService {
     // Get total pilots in OVERALL ranking context
     const totalPilots = await this.prisma.pilot.count({
       where: {
-        primaryVehicleTypeId: pilot.primaryVehicleTypeId,
+        primaryVehicleTypeId:
+          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
       },
     });
 
@@ -369,6 +395,15 @@ export class ProgramService {
           primaryVehicleTypeId: true,
           averageRating: true,
           createdAt: true,
+          vehicle: {
+            select: {
+              vehicleTypeBD: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
         },
         orderBy: [
           { totalLifetimeEarnings: 'desc' },
@@ -414,6 +449,15 @@ export class ProgramService {
           primaryVehicleTypeId: true,
           averageRating: true,
           createdAt: true,
+          vehicle: {
+            select: {
+              vehicleTypeBD: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -429,7 +473,8 @@ export class ProgramService {
             id: pilot.id,
             totalLifetimeEarnings: pilot.totalLifetimeEarnings,
             totalLifetimeRides: pilot.totalLifetimeRides,
-            primaryVehicleTypeId: pilot.primaryVehicleTypeId,
+            primaryVehicleTypeId:
+              pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
             averageRating: pilot.averageRating ?? 0,
             createdAt: pilot.createdAt,
             dailyEarnings: Number(trip._sum.amount || 0),
@@ -456,7 +501,11 @@ export class ProgramService {
 
     // Filter by vehicle type if specified
     const filteredPilots = vehicleTypeId
-      ? pilots.filter((pilot) => pilot.primaryVehicleTypeId === vehicleTypeId)
+      ? pilots.filter(
+          (pilot) =>
+            pilot.vehicle?.vehicleTypeBD?.id ||
+            pilot.primaryVehicleTypeId === vehicleTypeId,
+        )
       : pilots;
 
     const totalPilots = filteredPilots.length;

@@ -366,7 +366,6 @@ async function main() {
         isTaxTokenVerified: VerificationStatus.APPROVED,
         isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
         isFairCoinAvailed: true,
-        primaryVehicleTypeId: vehicleTypeIds[randromNumber],
       },
     });
 
@@ -389,7 +388,7 @@ async function main() {
 
     // Create Vehicle
     const regNo = Date.now().toString() + i; // Ensure unique regNo
-    await prisma.vehicle.create({
+    const vehicle = await prisma.vehicle.create({
       data: {
         regNo,
         regUpto: new Date(),
@@ -424,6 +423,7 @@ async function main() {
       where: { id: newPilot.id },
       data: {
         isFairCoinAvailed: true,
+        primaryVehicleTypeId: vehicle.vehicleTypeIdBD,
       },
     });
 

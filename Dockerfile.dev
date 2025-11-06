@@ -15,9 +15,6 @@ RUN pnpm prisma generate
 COPY tsconfig.json ./
 COPY nest-cli.json ./
 
-# Build the application for development
-RUN pnpm run build:dev
-
 # Expose the port
 EXPOSE 3000
 

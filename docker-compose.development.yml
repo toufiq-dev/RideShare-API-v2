@@ -30,6 +30,15 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - REDIS_URL=redis://redis-dev:6379
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./static:/app/static
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./nest-cli.json:/app/nest-cli.json
+      - /app/node_modules
+      - /app/dist
     depends_on:
       redis-dev:
         condition: service_healthy
@@ -44,7 +53,7 @@ services:
       start_period: 60s
     networks:
       - fairdrive-network-dev
-    command: ["pnpm", "run", "start:prod"]
+    command: ["pnpm", "run", "start:dev"]
 
 volumes:
   redis-data-dev:

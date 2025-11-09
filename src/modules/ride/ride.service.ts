@@ -1317,6 +1317,15 @@ export class RideService {
         });
 
         let currentRank: { rank: number } | undefined = undefined;
+        const rawVehicleTypeId =
+          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId;
+
+        const normalizedVehicleTypeId = rawVehicleTypeId
+          ? await this.programService.normalizeVehicleTypeForLeaderboard(
+              rawVehicleTypeId,
+            )
+          : rawVehicleTypeId;
+
         if (pilot.currentRank) {
           currentRank = { rank: pilot.currentRank };
         } else {
@@ -1324,8 +1333,7 @@ export class RideService {
             where: {
               pilotId: pilot.id,
               rankingPeriod: RankingPeriod.OVERALL,
-              vehicleTypeId:
-                pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+              vehicleTypeId: normalizedVehicleTypeId,
             },
           });
         }
@@ -1374,7 +1382,7 @@ export class RideService {
         });
 
         await this.programService.updateRankingsInTransaction(
-          pilot.primaryVehicleTypeId,
+          normalizedVehicleTypeId,
           tx,
         );
         await this.programService.checkSuperPilotPromotionInTransaction(

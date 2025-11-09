@@ -30,44 +30,6 @@ export class ProgramService {
   }
 
   /**
-   * Normalize vehicle type ID for leaderboard grouping
-   * Car types (FAIR_PRIME, FAIR_PLUS, FAIR_MAX) are grouped together
-   * Other types (FAIR_BIKE, FAIR_CNG) remain separate
-   */
-  private async normalizeVehicleTypeForLeaderboard(
-    vehicleTypeId: string,
-  ): Promise<string> {
-    if (!vehicleTypeId) {
-      return vehicleTypeId;
-    }
-
-    // Get vehicle type name from database
-    const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
-      where: { id: vehicleTypeId },
-      select: { name: true },
-    });
-
-    if (!vehicleType) {
-      return vehicleTypeId; // Return original if not found
-    }
-
-    // Car types that should be grouped together
-    const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
-
-    // If it's a car type, get the ID of FAIR_PRIME (or first car type) as the normalized ID
-    if (carTypes.includes(vehicleType.name)) {
-      const normalizedCarType = await this.prisma.vehicleTypeBD.findFirst({
-        where: { name: 'FAIR_PRIME' },
-        select: { id: true },
-      });
-      return normalizedCarType?.id || vehicleTypeId;
-    }
-
-    // For non-car types, return the original ID
-    return vehicleTypeId;
-  }
-
-  /**
    * Get leaderboard - Enhanced with business logic
    */
   async getLeaderboard(
@@ -82,8 +44,6 @@ export class ProgramService {
         'Unable to calculate rankings. Please try again later.',
       );
     }
-    // Increment recursion depth
-    recursionDepth++;
 
     const pilot = await this.prisma.pilot.findUnique({
       where: { userId },
@@ -177,7 +137,7 @@ export class ProgramService {
         RankingPeriod.OVERALL,
         normalizedVehicleTypeId,
       );
-      return this.getLeaderboard(userId, page, pageSize); // Recursive call after calculation
+      return this.getLeaderboard(userId, page, pageSize, recursionDepth + 1); // Recursive call after calculation
     }
 
     const skip = (page - 1) * pageSize;
@@ -800,13 +760,44 @@ export class ProgramService {
         ? Number((superPilotProgram.criteria as any).maxSuperPilots) || 1000
         : 1000;
 
+      //  FIX: Handle vehicle type grouping for car types
+      let vehicleTypeFilter: any = {};
+      if (vehicleTypeId) {
+        // Get vehicle type name to check if it's a car type
+        const vehicleType = await tx.vehicleTypeBD.findUnique({
+          where: { id: vehicleTypeId },
+          select: { name: true },
+        });
+
+        const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
+        if (vehicleType && carTypes.includes(vehicleType.name)) {
+          // If it's a car type, get all car type IDs
+          const carTypeIds = await tx.vehicleTypeBD.findMany({
+            where: {
+              name: {
+                in: carTypes,
+              },
+            },
+            select: { id: true },
+          });
+          vehicleTypeFilter = {
+            primaryVehicleTypeId: {
+              in: carTypeIds.map((vt) => vt.id),
+            },
+          };
+        } else {
+          // For non-car types, exact match
+          vehicleTypeFilter = { primaryVehicleTypeId: vehicleTypeId };
+        }
+      }
+
       // Get eligible pilots
       const pilots = await tx.pilot.findMany({
         where: {
           totalLifetimeEarnings: {
             gte: minEarnings,
           },
-          ...(vehicleTypeId && { primaryVehicleTypeId: vehicleTypeId }),
+          ...vehicleTypeFilter,
         },
         select: {
           id: true,
@@ -981,6 +972,44 @@ export class ProgramService {
   }
 
   /**
+   * Normalize vehicle type ID for leaderboard grouping
+   * Car types (FAIR_PRIME, FAIR_PLUS, FAIR_MAX) are grouped together
+   * Other types (FAIR_BIKE, FAIR_CNG) remain separate
+   */
+  async normalizeVehicleTypeForLeaderboard(
+    vehicleTypeId: string,
+  ): Promise<string> {
+    if (!vehicleTypeId) {
+      return vehicleTypeId;
+    }
+
+    // Get vehicle type name from database
+    const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
+      where: { id: vehicleTypeId },
+      select: { name: true },
+    });
+
+    if (!vehicleType) {
+      return vehicleTypeId; // Return original if not found
+    }
+
+    // Car types that should be grouped together
+    const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
+
+    // If it's a car type, get the ID of FAIR_PRIME (or first car type) as the normalized ID
+    if (carTypes.includes(vehicleType.name)) {
+      const normalizedCarType = await this.prisma.vehicleTypeBD.findFirst({
+        where: { name: 'FAIR_PRIME' },
+        select: { id: true },
+      });
+      return normalizedCarType?.id || vehicleTypeId;
+    }
+
+    // For non-car types, return the original ID
+    return vehicleTypeId;
+  }
+
+  /**
    * Promote pilot to Super Pilot within a transaction
    */
   private async promoteToSuperPilotInTransaction(
@@ -1044,11 +1073,42 @@ export class ProgramService {
 
       if (!superPilotProgram) return;
 
+      // FIX: Handle vehicle type grouping for car types
       // Get all Super Pilots (filter by vehicle type if specified)
+      let vehicleTypeFilter: any = {};
+      if (vehicleTypeId) {
+        // Get vehicle type name to check if it's a car type
+        const vehicleType = await tx.vehicleTypeBD.findUnique({
+          where: { id: vehicleTypeId },
+          select: { name: true },
+        });
+
+        const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
+        if (vehicleType && carTypes.includes(vehicleType.name)) {
+          // If it's a car type, get all car type IDs
+          const carTypeIds = await tx.vehicleTypeBD.findMany({
+            where: {
+              name: {
+                in: carTypes,
+              },
+            },
+            select: { id: true },
+          });
+          vehicleTypeFilter = {
+            primaryVehicleTypeId: {
+              in: carTypeIds.map((vt) => vt.id),
+            },
+          };
+        } else {
+          // For non-car types, exact match
+          vehicleTypeFilter = { primaryVehicleTypeId: vehicleTypeId };
+        }
+      }
+
       const superPilots = await tx.pilot.findMany({
         where: {
           pilotType: PilotType.SUPER_PILOT,
-          ...(vehicleTypeId && { primaryVehicleTypeId: vehicleTypeId }),
+          ...vehicleTypeFilter, // Use grouped filter
         },
         select: {
           id: true,

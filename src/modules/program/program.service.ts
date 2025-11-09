@@ -30,13 +30,61 @@ export class ProgramService {
   }
 
   /**
+   * Normalize vehicle type ID for leaderboard grouping
+   * Car types (FAIR_PRIME, FAIR_PLUS, FAIR_MAX) are grouped together
+   * Other types (FAIR_BIKE, FAIR_CNG) remain separate
+   */
+  private async normalizeVehicleTypeForLeaderboard(
+    vehicleTypeId: string,
+  ): Promise<string> {
+    if (!vehicleTypeId) {
+      return vehicleTypeId;
+    }
+
+    // Get vehicle type name from database
+    const vehicleType = await this.prisma.vehicleTypeBD.findUnique({
+      where: { id: vehicleTypeId },
+      select: { name: true },
+    });
+
+    if (!vehicleType) {
+      return vehicleTypeId; // Return original if not found
+    }
+
+    // Car types that should be grouped together
+    const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
+
+    // If it's a car type, get the ID of FAIR_PRIME (or first car type) as the normalized ID
+    if (carTypes.includes(vehicleType.name)) {
+      const normalizedCarType = await this.prisma.vehicleTypeBD.findFirst({
+        where: { name: 'FAIR_PRIME' },
+        select: { id: true },
+      });
+      return normalizedCarType?.id || vehicleTypeId;
+    }
+
+    // For non-car types, return the original ID
+    return vehicleTypeId;
+  }
+
+  /**
    * Get leaderboard - Enhanced with business logic
    */
   async getLeaderboard(
     userId: string,
     page: number = 1,
     pageSize: number = 10,
+    recursionDepth: number = 0,
   ): Promise<any> {
+    // Prevent infinite recursion
+    if (recursionDepth > 1) {
+      throw new BadRequestException(
+        'Unable to calculate rankings. Please try again later.',
+      );
+    }
+    // Increment recursion depth
+    recursionDepth++;
+
     const pilot = await this.prisma.pilot.findUnique({
       where: { userId },
       select: {
@@ -97,14 +145,23 @@ export class ProgramService {
     //   };
     // }
 
-    const vehicleTypeId =
-      pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId;
+    const rawVehicleTypeId =
+      pilot.primaryVehicleTypeId || pilot.vehicle?.vehicleTypeBD?.id;
+
+    if (!rawVehicleTypeId) {
+      throw new BadRequestException(
+        'Pilot vehicle type information is missing.',
+      );
+    }
+
+    const normalizedVehicleTypeId =
+      await this.normalizeVehicleTypeForLeaderboard(rawVehicleTypeId);
 
     // Continue with normal leaderboard logic...
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: vehicleTypeId,
+        vehicleTypeId: normalizedVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -118,7 +175,7 @@ export class ProgramService {
       // If no rankings exist, calculate them on-the-fly
       await this.calculateAndStoreRankings(
         RankingPeriod.OVERALL,
-        vehicleTypeId,
+        normalizedVehicleTypeId,
       );
       return this.getLeaderboard(userId, page, pageSize); // Recursive call after calculation
     }
@@ -128,7 +185,7 @@ export class ProgramService {
     const totalCount = await this.prisma.pilotRanking.count({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: vehicleTypeId,
+        vehicleTypeId: normalizedVehicleTypeId,
         calculatedAt: latestRankingEntry.calculatedAt,
       },
     });
@@ -137,7 +194,7 @@ export class ProgramService {
     const leaderboardData = await this.prisma.pilotRanking.findMany({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: vehicleTypeId,
+        vehicleTypeId: normalizedVehicleTypeId,
         calculatedAt: latestRankingEntry.calculatedAt,
       },
       orderBy: {
@@ -287,11 +344,23 @@ export class ProgramService {
       };
     }
 
+    const rawVehicleTypeId =
+      pilot.primaryVehicleTypeId || pilot.vehicle?.vehicleTypeBD?.id;
+
+    // Add validation before using vehicleTypeId
+    if (!rawVehicleTypeId) {
+      throw new BadRequestException(
+        'Pilot vehicle type information is missing.',
+      );
+    }
+
+    const normalizedVehicleTypeId =
+      await this.normalizeVehicleTypeForLeaderboard(rawVehicleTypeId);
+
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId:
-          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+        vehicleTypeId: normalizedVehicleTypeId, // ✅ Use normalized ID
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -307,8 +376,7 @@ export class ProgramService {
         where: {
           pilotId: pilot.id,
           rankingPeriod: RankingPeriod.OVERALL,
-          vehicleTypeId:
-            pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+          vehicleTypeId: normalizedVehicleTypeId,
           calculatedAt: latestRankingEntry.calculatedAt,
         },
         select: {
@@ -323,8 +391,7 @@ export class ProgramService {
       where: {
         pilotId: pilot.id,
         rankingPeriod: RankingPeriod.DAILY,
-        vehicleTypeId:
-          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+        vehicleTypeId: normalizedVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -338,8 +405,16 @@ export class ProgramService {
     // Get total pilots in OVERALL ranking context
     const totalPilots = await this.prisma.pilot.count({
       where: {
-        primaryVehicleTypeId:
-          pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+        OR: [
+          { primaryVehicleTypeId: normalizedVehicleTypeId },
+          {
+            vehicle: {
+              vehicleTypeBD: {
+                id: normalizedVehicleTypeId,
+              },
+            },
+          },
+        ],
       },
     });
 
@@ -357,11 +432,13 @@ export class ProgramService {
    */
   async calculateAndStoreRankings(
     period: RankingPeriod,
-    vehicleTypeId?: string,
+    vehicleTypeId: string,
   ): Promise<void> {
-    this.logger.log(
-      `Calculating rankings for period: ${period}, vehicleType: ${vehicleTypeId || 'all'}`,
-    );
+    if (!vehicleTypeId) {
+      throw new BadRequestException(
+        'vehicleTypeId is required for ranking calculations',
+      );
+    }
 
     // Get Super Pilot program criteria for minimum earnings
     const superPilotProgram = await this.prisma.pilotProgram.findFirst({
@@ -400,6 +477,7 @@ export class ProgramService {
               vehicleTypeBD: {
                 select: {
                   id: true,
+                  name: true,
                 },
               },
             },
@@ -454,6 +532,7 @@ export class ProgramService {
               vehicleTypeBD: {
                 select: {
                   id: true,
+                  name: true,
                 },
               },
             },
@@ -475,6 +554,7 @@ export class ProgramService {
             totalLifetimeRides: pilot.totalLifetimeRides,
             primaryVehicleTypeId:
               pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId,
+            vehicleTypeName: pilot.vehicle?.vehicleTypeBD?.name,
             averageRating: pilot.averageRating ?? 0,
             createdAt: pilot.createdAt,
             dailyEarnings: Number(trip._sum.amount || 0),
@@ -499,21 +579,40 @@ export class ProgramService {
 
     this.logger.log(`Found ${pilots.length} pilots for ranking calculation`);
 
-    // Filter by vehicle type if specified
-    const filteredPilots = vehicleTypeId
-      ? pilots.filter(
-          (pilot) =>
-            pilot.vehicle?.vehicleTypeBD?.id ||
-            pilot.primaryVehicleTypeId === vehicleTypeId,
-        )
-      : pilots;
+    // ✅ FIX: Filter by normalized vehicle type
+    // Get the vehicle type name for the provided vehicleTypeId
+    const targetVehicleType = await this.prisma.vehicleTypeBD.findUnique({
+      where: { id: vehicleTypeId },
+      select: { name: true },
+    });
+
+    const carTypes = ['FAIR_PRIME', 'FAIR_PLUS', 'FAIR_MAX'];
+    const isTargetCarType = targetVehicleType
+      ? carTypes.includes(targetVehicleType.name)
+      : false;
+
+    const filteredPilots = pilots.filter((pilot) => {
+      const pilotVehicleTypeId =
+        pilot.vehicle?.vehicleTypeBD?.id || pilot.primaryVehicleTypeId;
+      const pilotVehicleTypeName = pilot.vehicle?.vehicleTypeBD?.name;
+
+      if (!pilotVehicleTypeId) return false;
+
+      // If target is a car type, include all car types
+      if (isTargetCarType && pilotVehicleTypeName) {
+        return carTypes.includes(pilotVehicleTypeName);
+      }
+
+      // Otherwise, exact match
+      return pilotVehicleTypeId === vehicleTypeId;
+    });
 
     const totalPilots = filteredPilots.length;
     const calculatedAt = new Date();
 
     // Create ranking entries
     const rankingEntries = filteredPilots.map((pilot, index) => {
-      const entry: any = {
+      return {
         pilotId: pilot.id,
         rank: index + 1,
         earnings: pilot.totalLifetimeEarnings,
@@ -521,14 +620,8 @@ export class ProgramService {
         totalPilots: totalPilots,
         rankingPeriod: period,
         calculatedAt: calculatedAt,
+        vehicleTypeId: vehicleTypeId,
       };
-
-      // Only add vehicleTypeId if it's not null
-      if (vehicleTypeId) {
-        entry.vehicleTypeId = vehicleTypeId;
-      }
-
-      return entry;
     });
 
     if (rankingEntries.length === 0) {

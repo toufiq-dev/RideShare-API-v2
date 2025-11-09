@@ -1244,6 +1244,7 @@ export class AdminService {
         endDate,
       } = query;
 
+
       const skip = (page - 1) * pageSize;
 
       const whereClause: any = {};
@@ -1277,7 +1278,6 @@ export class AdminService {
         };
       }
 
-      // Build dynamic select object
       const buildSelectObject = (fieldPaths: string[]): any => {
         if (fieldPaths.length === 0) {
           return undefined;
@@ -1315,10 +1315,9 @@ export class AdminService {
         sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
         sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
       ) {
-        // orderByClause = { createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc' };
+        orderByClause = { createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc' };
         orderByClause = {
-          // _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-
+          _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
         }
       } else if (sortBy === FilterDriverSortOptions.UPDATED_AT) {
         orderByClause = {
@@ -1340,15 +1339,41 @@ export class AdminService {
         where: whereClause,
       });
 
+      const pendingCount = await this.prisma.pilot.count({
+        where: {
+          ...whereClause,
+          user: {
+            status: UserStatus.IN_REVIEW,
+          },
+        },
+      });
+
+      const suspendedCount = await this.prisma.pilot.count({
+        where: {
+          ...whereClause,
+          user: {
+            status: UserStatus.SUSPENDED,
+          },
+        },
+      });
+
+      const activeCount = await this.prisma.pilot.count({
+        where: {
+          ...whereClause,
+          user: {
+            status: UserStatus.ACTIVE,
+          },
+        },
+      });
+
       let pilots = await this.prisma.pilot.findMany({
         where: whereClause,
         orderBy: orderByClause,
         select: selectObject,
         skip,
-        take: pageSize,
+        take: +pageSize || 10,
       });
 
-      // Handle document count sorting if needed
       if (
         sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
         sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
@@ -1400,11 +1425,15 @@ export class AdminService {
         message: 'Driver list fetched successfully.',
         data: {
           pilots,
+          totalPilots: totalCount,
+          pendingPilots: pendingCount,
+          suspendedPilots: suspendedCount,
+          activePilots: activeCount,
           pagination: {
             totalItems: totalCount,
             totalPages,
-            currentPage: page,
-            pageSize,
+            currentPage: +page,
+            pageSize: +pageSize,
             hasNextPage,
             hasPrevPage,
           },

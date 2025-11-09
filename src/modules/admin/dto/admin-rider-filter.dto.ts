@@ -83,7 +83,7 @@ export class FilterDriverDto {
     })
     @IsOptional()
     @IsArray()
-    @IsString({ each: true })
+    // @IsString({ each: true })
     readonly fields: string[] = [];
 
     @ApiProperty({

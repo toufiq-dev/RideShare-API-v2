@@ -8,7 +8,7 @@ export class RequestContext {
     public readonly requestId: string,
     public readonly userId?: string,
     public readonly startTime: number = Date.now(),
-  ) {}
+  ) { }
 
   getDuration(): number {
     return Date.now() - this.startTime;

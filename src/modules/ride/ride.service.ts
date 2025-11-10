@@ -1315,6 +1315,9 @@ export class RideService {
           where: { pilotId: pilot.id },
           select: { id: true, balance: true },
         });
+        if (!wallet) {
+          throw new NotFoundException('Pilot wallet not found.');
+        }
 
         let currentRank: { rank: number } | undefined = undefined;
         const rawVehicleTypeId =
@@ -1326,7 +1329,7 @@ export class RideService {
             )
           : rawVehicleTypeId;
 
-        if (pilot.currentRank) {
+        if (pilot.currentRank !== null && pilot.currentRank !== undefined) {
           currentRank = { rank: pilot.currentRank };
         } else {
           currentRank = await tx.pilotRanking.findFirst({
@@ -1348,16 +1351,23 @@ export class RideService {
           },
         });
 
-        const shouldDeductFairCoin =
-          pilot.pilotType !== PilotType.SUPER_PILOT &&
-          currentRank?.rank >
-            Number((superPilotProgram?.criteria as any).maxSuperPilots);
+        // Get maxSuperPilots with safe fallback
+        const maxSuperPilots = superPilotProgram?.criteria
+          ? Number((superPilotProgram.criteria as any).maxSuperPilots)
+          : null;
+
+        const shouldNotDeductFairCoin =
+          pilot.pilotType === PilotType.SUPER_PILOT ||
+          (currentRank?.rank &&
+            maxSuperPilots !== null &&
+            !isNaN(maxSuperPilots) &&
+            currentRank.rank <= maxSuperPilots);
 
         await tx.pilotWallet.update({
           where: { pilotId: pilot.id },
           data: {
             balance: {
-              decrement: shouldDeductFairCoin ? tripAmount : 0,
+              decrement: shouldNotDeductFairCoin ? 0 : tripAmount,
             },
             todaysEarning: todaysEarningValue,
             lastTripEarning: tripAmount,
@@ -1368,15 +1378,16 @@ export class RideService {
         await tx.transaction.create({
           data: {
             pilotId: pilot.id,
-            amount: shouldDeductFairCoin ? tripAmount : 0,
+            amount: shouldNotDeductFairCoin ? 0 : tripAmount,
             walletId: wallet.id,
-            type: shouldDeductFairCoin
-              ? TransactionType.TRIP_DEDUCTION
-              : TransactionType.NO_TRIP_DEDUCTION,
+            type: shouldNotDeductFairCoin
+              ? TransactionType.NO_TRIP_DEDUCTION
+              : TransactionType.TRIP_DEDUCTION,
             status: TransactionStatus.SUCCESSFUL,
             balanceBefore: Math.ceil(Number(wallet.balance)),
             balanceAfter: Math.ceil(
-              Number(wallet.balance) - (shouldDeductFairCoin ? tripAmount : 0),
+              Number(wallet.balance) -
+                (shouldNotDeductFairCoin ? 0 : tripAmount),
             ),
           },
         });

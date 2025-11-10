@@ -526,7 +526,7 @@ export class ProgramService {
           amount: true,
         },
         _count: {
-          pilotId: true, // ✅ Count number of trips per pilot
+          pilotId: true, // Count number of trips per pilot
         },
       });
 
@@ -596,7 +596,7 @@ export class ProgramService {
 
     this.logger.log(`Found ${pilots.length} pilots for ranking calculation`);
 
-    // ✅ FIX: Filter by normalized vehicle type
+    // FIX: Filter by normalized vehicle type
     // Get the vehicle type name for the provided vehicleTypeId
     const targetVehicleType = await this.prisma.vehicleTypeBD.findUnique({
       where: { id: vehicleTypeId },
@@ -1106,7 +1106,7 @@ export class ProgramService {
     });
 
     console.log(
-      `✅ Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
+      `Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
     );
   }
 

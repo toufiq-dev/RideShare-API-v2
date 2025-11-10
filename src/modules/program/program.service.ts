@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
-import { PilotType, ProgramType, RankingPeriod } from '@prisma/client';
+import {
+  PilotType,
+  ProgramType,
+  RankingPeriod,
+  VehicleTypeNameBD,
+} from '@prisma/client';
 import { AzureService } from 'src/core/utils/azure.util';
 import { ConfigService } from '@nestjs/config';
 import { EligibilityStatus } from './dto/leaderboard.dto';
@@ -320,7 +325,7 @@ export class ProgramService {
     const latestRankingEntry = await this.prisma.pilotRanking.findFirst({
       where: {
         rankingPeriod: RankingPeriod.OVERALL,
-        vehicleTypeId: normalizedVehicleTypeId, // ✅ Use normalized ID
+        vehicleTypeId: normalizedVehicleTypeId,
       },
       orderBy: {
         calculatedAt: 'desc',
@@ -363,8 +368,55 @@ export class ProgramService {
     });
 
     // Get total pilots in OVERALL ranking context
-    const totalPilots = await this.prisma.pilot.count({
-      where: {
+    // Handle vehicle type grouping for car types
+    let totalPilotsFilter: any = {};
+
+    // Check if normalized vehicle type is a car type
+    const normalizedVehicleType = await this.prisma.vehicleTypeBD.findUnique({
+      where: { id: normalizedVehicleTypeId },
+      select: { name: true },
+    });
+
+    const carTypes: VehicleTypeNameBD[] = [
+      VehicleTypeNameBD.FAIR_PRIME,
+      VehicleTypeNameBD.FAIR_PLUS,
+      VehicleTypeNameBD.FAIR_MAX,
+    ];
+    if (
+      normalizedVehicleType &&
+      carTypes.includes(normalizedVehicleType.name)
+    ) {
+      // If it's a car type, get all car type IDs and count all car pilots
+      const carTypeIds = await this.prisma.vehicleTypeBD.findMany({
+        where: {
+          name: {
+            in: carTypes,
+          },
+        },
+        select: { id: true },
+      });
+
+      totalPilotsFilter = {
+        OR: [
+          {
+            primaryVehicleTypeId: {
+              in: carTypeIds.map((vt) => vt.id),
+            },
+          },
+          {
+            vehicle: {
+              vehicleTypeBD: {
+                id: {
+                  in: carTypeIds.map((vt) => vt.id),
+                },
+              },
+            },
+          },
+        ],
+      };
+    } else {
+      // For non-car types, exact match
+      totalPilotsFilter = {
         OR: [
           { primaryVehicleTypeId: normalizedVehicleTypeId },
           {
@@ -375,7 +427,11 @@ export class ProgramService {
             },
           },
         ],
-      },
+      };
+    }
+
+    const totalPilots = await this.prisma.pilot.count({
+      where: totalPilotsFilter,
     });
 
     return {
@@ -387,6 +443,7 @@ export class ProgramService {
       },
     };
   }
+
   /**
    * Calculate and store rankings (CORE METHOD - OVERALL and DAILY RANKING)
    */

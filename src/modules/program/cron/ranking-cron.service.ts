@@ -64,9 +64,10 @@ export class RankingCronService {
     // Normalize vehicle types to group car types together
     const normalizedVehicleTypes = new Set<string>();
     for (const vehicleTypeId of vehicleTypes) {
-      const normalizedId = await this.programService.normalizeVehicleTypeForLeaderboard(
-        vehicleTypeId,
-      );
+      const normalizedId =
+        await this.programService.normalizeVehicleTypeForLeaderboard(
+          vehicleTypeId,
+        );
       normalizedVehicleTypes.add(normalizedId);
     }
 

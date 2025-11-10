@@ -61,19 +61,24 @@ export class RankingCronService {
     // Get all unique vehicle types
     const vehicleTypes = await this.programService.getVehicleTypes();
 
-    // Update rankings for each vehicle type
+    // Normalize vehicle types to group car types together
+    const normalizedVehicleTypes = new Set<string>();
     for (const vehicleTypeId of vehicleTypes) {
-      await this.programService.calculateAndStoreRankings(
-        period,
+      const normalizedId = await this.programService.normalizeVehicleTypeForLeaderboard(
         vehicleTypeId,
       );
-      this.logger.log(
-        `Updated ${period} rankings for vehicle type: ${vehicleTypeId}`,
-      );
+      normalizedVehicleTypes.add(normalizedId);
     }
 
-    // Also update global rankings (no vehicle type filter)
-    // await this.programService.calculateAndStoreRankings(period, null);
-    // this.logger.log(`Updated global ${period} rankings`);
+    // Update rankings for each normalized vehicle type (car types will be deduplicated)
+    for (const normalizedVehicleTypeId of normalizedVehicleTypes) {
+      await this.programService.calculateAndStoreRankings(
+        period,
+        normalizedVehicleTypeId,
+      );
+      this.logger.log(
+        `Updated ${period} rankings for vehicle type: ${normalizedVehicleTypeId}`,
+      );
+    }
   }
 }

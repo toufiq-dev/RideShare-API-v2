@@ -6,8 +6,6 @@ import { ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
 import { LoggerService } from './core/logging/logger.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-// import { WinstonModule } from 'nest-winston';
-// import { winstonConfig } from './core/logging/winston.config';
 import { SocketIOAdapter } from './core/socket/socket.adapter';
 import { MetricsService } from './core/metrics/metrics.service';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
@@ -53,6 +51,7 @@ async function bootstrap() {
       'Authorization',
       'Cache-Control',
       'Pragma',
+      'X-Request-ID',
     ],
     credentials: true,
     preflightContinue: false,
@@ -92,4 +91,5 @@ async function bootstrap() {
   logger.log(`Metrics endpoint: http://localhost:${port}/metrics`);
   logger.log(`Swagger docs: http://localhost:${port}/api-docs`);
 }
+
 bootstrap();

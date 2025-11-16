@@ -156,6 +156,7 @@ export class CustomerService {
           tripStart: data.activeBooking.tripStart,
           vehicleType: data.activeBooking?.vehicleTypeBD?.name,
           vehicleTypeId: data.activeBooking?.vehicleTypeIdBD,
+          createdAt: data?.activeBooking?.createdAt,
           pilot: pilot
             ? {
                 pilotId: pilot.id,

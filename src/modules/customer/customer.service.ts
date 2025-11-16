@@ -76,6 +76,11 @@ export class CustomerService {
           language: true,
           activeBooking: {
             include: {
+              pilotRating: {
+                select: {
+                  rating: true,
+                },
+              },
               vehicleTypeBD: {
                 select: {
                   name: true,
@@ -116,6 +121,7 @@ export class CustomerService {
               phone: true,
               averageRating: true,
               currentLocation: true,
+              pilotType: true,
               drivingLicense: {
                 select: {
                   nameOnLicense: true,
@@ -144,7 +150,9 @@ export class CustomerService {
           bookingCode: data.activeBooking.bookingCode,
           bookingId: data.activeBooking.id,
           bookingStatus: data.activeBooking.status,
-          estimatedDuration: data.activeBooking.estimatedDuration,
+          estimatedDuration: Number(data.activeBooking.estimatedDuration),
+          estimatedDistance: Number(data.activeBooking.estimatedDistance),
+          tripDuration: Number(data.activeBooking.duration),
           tripStart: data.activeBooking.tripStart,
           vehicleType: data.activeBooking?.vehicleTypeBD?.name,
           vehicleTypeId: data.activeBooking?.vehicleTypeIdBD,
@@ -159,10 +167,12 @@ export class CustomerService {
                   lat: pilotLocation[0],
                   lng: pilotLocation[1],
                 },
+                pilotType: pilot.pilotType,
                 vehicleNumber: pilot.vehicle.regNo,
                 model: pilot.vehicle.model,
                 colour: pilot.vehicle.colour,
                 vehicleType: pilot.vehicle.vehicleTypeBD.name,
+                pilotRating: data?.activeBooking?.pilotRating?.rating || 0,
               }
             : null,
           passenger: {

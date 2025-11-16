@@ -1,4 +1,4 @@
-import { BookingStatus, VehicleTypeNameBD } from '@prisma/client';
+import { BookingStatus, PilotType, VehicleTypeNameBD } from '@prisma/client';
 import { Decimal, JsonValue } from '@prisma/client/runtime/library';
 
 interface Coupon {
@@ -50,6 +50,8 @@ export interface CustomerRidePayload {
   bookingId: string;
   bookingStatus: BookingStatus;
   estimatedDuration: number;
+  estimatedDistance: number;
+  tripDuration: number | null;
   tripStart: Date | null;
   vehicleType: VehicleTypeNameBD;
   vehicleTypeId: string;
@@ -64,6 +66,8 @@ export interface CustomerRidePayload {
     model: string;
     colour: string;
     vehicleType: VehicleTypeNameBD;
+    pilotType: PilotType;
+    pilotRating: number;
   } | null;
   passenger: {
     passengerId: string;

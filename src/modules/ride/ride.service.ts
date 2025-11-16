@@ -157,6 +157,7 @@ export class RideService {
           name: true,
           status: true,
           estimatedDuration: true,
+          estimatedDistance: true,
           tripStart: true,
           customerId: true,
           estimatedFare: true,
@@ -167,6 +168,11 @@ export class RideService {
             select: {
               id: true,
               name: true,
+            },
+          },
+          pilotRating: {
+            select: {
+              rating: true,
             },
           },
           customer: {
@@ -192,6 +198,7 @@ export class RideService {
               selfieUrl: true,
               phone: true,
               userId: true,
+              pilotType: true,
               vehicle: {
                 select: {
                   regNo: true,
@@ -214,10 +221,10 @@ export class RideService {
       }
 
       const pilotLocation = booking.pilot
-        ? await this.redis.geoPos(
+        ? (await this.redis.geoPos(
             RedisKeys.PILOT_LOCATION,
             booking.pilot.userId,
-          )
+          )) || [null, null]
         : [null, null];
 
       if (booking?.customer?.coupon?.discount) {
@@ -226,11 +233,19 @@ export class RideService {
         );
       }
 
+      const tripDuration = this.calculateTripDuration(
+        booking.tripStart,
+        booking.tripEnd,
+        booking.estimatedDuration,
+      );
+
       const data: CustomerRidePayload = {
         bookingId: booking.id,
         bookingCode: booking.bookingCode,
         bookingStatus: booking.status,
-        estimatedDuration: booking.estimatedDuration,
+        estimatedDuration: Number(booking.estimatedDuration),
+        estimatedDistance: Number(booking.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: booking.tripStart,
         vehicleType: booking.vehicleTypeBD?.name,
         vehicleTypeId: booking.vehicleTypeBD?.id,
@@ -249,6 +264,8 @@ export class RideService {
               model: booking.pilot.vehicle.model,
               colour: booking.pilot.vehicle.colour,
               vehicleType: booking.vehicleTypeBD?.name,
+              pilotType: booking.pilot.pilotType,
+              pilotRating: booking?.pilotRating?.rating || 0,
             }
           : null,
         passenger: {
@@ -422,11 +439,21 @@ export class RideService {
 
       customer.coupon.discount = Number(customer.coupon.discount);
 
+      const tripDuration = booking.tripEnd
+        ? this.calculateTripDuration(
+            booking.tripStart,
+            booking.tripEnd,
+            booking.estimatedDuration,
+          )
+        : booking.estimatedDuration;
+
       const data: CustomerRidePayload = {
         bookingCode: booking.bookingCode,
         bookingId: booking.id,
         bookingStatus: booking.status,
-        estimatedDuration: booking.estimatedDuration,
+        estimatedDuration: Number(booking.estimatedDuration),
+        estimatedDistance: Number(booking.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: booking.tripStart,
         vehicleType: vehicleType.name,
         vehicleTypeId: vehicleType.id,
@@ -611,11 +638,21 @@ export class RideService {
       booking.customer.coupon.discount =
         Number(booking.customer.coupon?.discount) || 0;
 
+      const tripDuration = newBooking.tripEnd
+        ? this.calculateTripDuration(
+            newBooking.tripStart,
+            newBooking.tripEnd,
+            newBooking.estimatedDuration,
+          )
+        : newBooking.estimatedDuration;
+
       const data: CustomerRidePayload = {
         bookingCode: newBooking.bookingCode,
         bookingId: newBooking.id,
         bookingStatus: newBooking.status, // PENDING
-        estimatedDuration: newBooking.estimatedDuration,
+        estimatedDuration: Number(newBooking.estimatedDuration),
+        estimatedDistance: Number(newBooking.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: newBooking.tripStart, // null for new bookings
         vehicleType: booking.vehicleTypeBD.name,
         vehicleTypeId: booking.vehicleTypeBD.id,
@@ -676,6 +713,7 @@ export class RideService {
           onlineStatus: true,
           activeBookingId: true,
           averageRating: true,
+          pilotType: true,
           drivingLicense: { select: { id: true, nameOnLicense: true } },
           vehicle: {
             select: {
@@ -740,15 +778,23 @@ export class RideService {
           },
           select: {
             id: true,
+            tripStart: true,
+            tripEnd: true,
             status: true,
             rideType: true,
             name: true,
             bookingCode: true,
             estimatedFare: true,
             estimatedDuration: true,
+            estimatedDistance: true,
             discountedFare: true,
             pickupLocation: true,
             dropLocation: true,
+            pilotRating: {
+              select: {
+                rating: true,
+              },
+            },
             customer: {
               select: {
                 userId: true,
@@ -838,11 +884,21 @@ export class RideService {
         };
       }
 
+      const tripDuration = result.updated.tripEnd
+        ? this.calculateTripDuration(
+            result.updated.tripStart,
+            result.updated.tripEnd,
+            result.updated.estimatedDuration,
+          )
+        : result.updated.estimatedDuration;
+
       const rideAcceptedPayload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
-        estimatedDuration: result.updated.estimatedDuration,
+        estimatedDuration: Number(result.updated.estimatedDuration),
+        estimatedDistance: Number(result.updated.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: null,
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
@@ -863,6 +919,8 @@ export class RideService {
           model: pilot.vehicle.model,
           colour: pilot.vehicle.colour,
           vehicleType: pilot.vehicle.vehicleTypeBD.name,
+          pilotType: pilot.pilotType,
+          pilotRating: result.updated?.pilotRating?.rating || 0,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1018,11 +1076,18 @@ export class RideService {
             rideType: true,
             bookingCode: true,
             estimatedDuration: true,
+            estimatedDistance: true,
+            tripEnd: true,
             pickupLocation: true,
             dropLocation: true,
             estimatedFare: true,
             discountedFare: true,
             tripStart: true,
+            pilotRating: {
+              select: {
+                rating: true,
+              },
+            },
             vehicle: {
               select: {
                 vehicleTypeBD: {
@@ -1049,6 +1114,7 @@ export class RideService {
                 selfieUrl: true,
                 phone: true,
                 averageRating: true,
+                pilotType: true,
                 drivingLicense: { select: { nameOnLicense: true } },
                 vehicle: {
                   select: {
@@ -1078,11 +1144,21 @@ export class RideService {
         result.updated.pilot.userId,
       );
 
+      const tripDuration = result.updated.tripEnd
+        ? this.calculateTripDuration(
+            result.updated.tripStart,
+            result.updated.tripEnd,
+            result.updated.estimatedDuration,
+          )
+        : result.updated.estimatedDuration;
+
       const payload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
-        estimatedDuration: result.updated.estimatedDuration,
+        estimatedDuration: Number(result.updated.estimatedDuration),
+        estimatedDistance: Number(result.updated.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: result.updated.tripStart,
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
@@ -1100,6 +1176,8 @@ export class RideService {
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
+          pilotType: result.updated.pilot.pilotType,
+          pilotRating: result.updated?.pilotRating?.rating || 0,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1238,6 +1316,9 @@ export class RideService {
             tripStart: true,
             pickupLocation: true,
             dropLocation: true,
+            pilotRating: {
+              select: { rating: true },
+            },
             vehicleTypeBD: {
               select: {
                 name: true,
@@ -1444,11 +1525,21 @@ export class RideService {
         );
       }
 
+      const tripDuration = result.updated.tripEnd
+        ? this.calculateTripDuration(
+            result.updated.tripStart,
+            result.updated.tripEnd,
+            result.updated.estimatedDuration,
+          )
+        : result.updated.estimatedDuration;
+
       const payload: CustomerRidePayload = {
         bookingCode: result.updated.bookingCode,
         bookingId: result.updated.id,
         bookingStatus: result.updated.status,
-        estimatedDuration: result.updated.estimatedDuration,
+        estimatedDuration: Number(result.updated.estimatedDuration),
+        estimatedDistance: Number(result.updated.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: result.updated.tripStart,
         vehicleType: result.updated.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicleTypeBD.id,
@@ -1463,6 +1554,8 @@ export class RideService {
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.vehicleTypeBD.name,
+          pilotType: result.updated.pilot.pilotType,
+          pilotRating: result.updated?.pilotRating?.rating || 0,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1724,6 +1817,7 @@ export class RideService {
           selfieUrl: true,
           phone: true,
           averageRating: true,
+          pilotType: true,
           drivingLicense: {
             select: {
               nameOnLicense: true,
@@ -1766,7 +1860,7 @@ export class RideService {
         }
       }
 
-      // ✅ FIXED: Update booking with NEW fare calculation
+      // FIXED: Update booking with NEW fare calculation
       const updatedBooking = await this.prisma.booking.update({
         where: { id: booking.id },
         data: {
@@ -1778,6 +1872,11 @@ export class RideService {
           discountedFare: Math.ceil(price),
         },
         include: {
+          pilotRating: {
+            select: {
+              rating: true,
+            },
+          },
           vehicle: {
             include: {
               vehicleTypeBD: {
@@ -1828,11 +1927,21 @@ export class RideService {
         ? await this.redis.geoPos(RedisKeys.PILOT_LOCATION, pilot.userId)
         : null;
 
+      const tripDuration = updatedBooking.tripEnd
+        ? this.calculateTripDuration(
+            updatedBooking.tripStart,
+            updatedBooking.tripEnd,
+            updatedBooking.estimatedDuration,
+          )
+        : updatedBooking.estimatedDuration;
+
       const data: CustomerRidePayload = {
         bookingCode: updatedBooking.bookingCode,
         bookingId: updatedBooking.id,
         bookingStatus: updatedBooking.status,
-        estimatedDuration: updatedBooking.estimatedDuration,
+        estimatedDuration: Number(updatedBooking.estimatedDuration),
+        estimatedDistance: Number(updatedBooking.estimatedDistance),
+        tripDuration: tripDuration,
         tripStart: updatedBooking.tripStart,
         vehicleTypeId: updatedBooking.vehicle.vehicleTypeBD.id,
         vehicleType: updatedBooking.vehicle?.vehicleTypeBD?.name,
@@ -1853,6 +1962,8 @@ export class RideService {
               model: pilot.vehicle.model,
               colour: pilot.vehicle.colour,
               vehicleType: pilot.vehicle.vehicleTypeBD.name,
+              pilotType: pilot.pilotType,
+              pilotRating: updatedBooking?.pilotRating?.rating || 0,
             }
           : null,
         passenger: {
@@ -2159,6 +2270,7 @@ export class RideService {
             pickupLocation: true,
             dropLocation: true,
             tripStart: true,
+            tripEnd: true,
             discountedFare: true,
             status: true,
             estimatedFare: true,
@@ -2252,4 +2364,27 @@ export class RideService {
 
   //   return { distanceKm, durationMin };
   // }
+
+  private calculateTripDuration(
+    tripStart: Date | null,
+    tripEnd: Date | null,
+    estimatedDuration?: number,
+  ): number {
+    // If both tripStart and tripEnd exist, calculate actual duration
+    if (tripStart && tripEnd) {
+      const start = moment.utc(tripStart);
+      const end = moment.utc(tripEnd);
+      return Math.max(0, end.diff(start, 'minutes'));
+    }
+
+    // If trip has started but not ended, calculate from start to now
+    if (tripStart && !tripEnd) {
+      const start = moment.utc(tripStart);
+      const now = moment.utc();
+      return Math.max(0, now.diff(start, 'minutes'));
+    }
+
+    // Otherwise, fall back to estimated duration
+    return estimatedDuration || 0;
+  }
 }

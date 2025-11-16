@@ -66,25 +66,25 @@ export class FilterDriverDto {
     readonly sortOrder = FilterDriverSortOrderOptions.ASC;
 
     @ApiProperty({
-        type: Number,
-        description: '1000',
+        type: String,
+        description: 'The vehicle type id',
         required: false,
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
     @IsOptional()
     @IsUUID()
-    readonly vehicleId!: string;
+    readonly vehicleTypeId!: string;
 
-    @ApiProperty({
-        type: Array,
-        description: 'The fields to include in the response',
-        required: false,
-        example: ['id', 'name', 'phone', 'createdAt', 'updatedAt'],
-    })
-    @IsOptional()
-    @IsArray()
+    // @ApiProperty({
+    //     type: Array,
+    //     description: 'The fields to include in the response',
+    //     required: false,
+    //     example: ['id', 'name', 'phone', 'createdAt', 'updatedAt'],
+    // })
+    // @IsOptional()
+    // @IsArray()
     // @IsString({ each: true })
-    readonly fields: string[] = [];
+    // readonly fields: string[] = [];
 
     @ApiProperty({
         type: String,
@@ -126,4 +126,24 @@ export class FilterDriverDto {
     @IsOptional()
     @IsDateString()
     readonly endDate!: string;
+
+    @ApiProperty({
+        type: 'string',
+        description: 'The start date',
+        required: false,
+        example: '2025-01-01',
+    })
+    @IsOptional()
+    @IsDateString()
+    readonly updatedStartDate!: string;
+
+    @ApiProperty({
+        type: 'string',
+        description: 'The end date',
+        required: false,
+        example: '2025-01-01',
+    })
+    @IsOptional()
+    @IsDateString()
+    readonly updatedEndDate!: string;
 }

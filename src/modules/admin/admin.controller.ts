@@ -279,6 +279,7 @@ export class AdminController {
     return await this.adminService.getDriverListV2(query);
   }
 
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Get('driver/:id')

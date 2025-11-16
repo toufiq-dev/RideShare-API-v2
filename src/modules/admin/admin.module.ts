@@ -6,10 +6,11 @@ import { EmailModule } from '../email/email.module';
 import { VerificationService } from 'src/core/utils/verification.util';
 import { PilotService } from '../pilot/pilot.service';
 import { PricingModule } from '../pricing/pricing.module';
+import { AdminVehicleController } from './admin-vehicle.controller';
 
 @Module({
   imports: [EmailModule, PricingModule],
-  controllers: [AdminController],
+  controllers: [AdminController, AdminVehicleController],
   providers: [AdminService, AzureService, VerificationService, PilotService],
 })
-export class AdminModule {}
+export class AdminModule { }

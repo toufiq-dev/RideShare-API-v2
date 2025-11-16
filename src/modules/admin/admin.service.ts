@@ -44,6 +44,7 @@ import { VerificationService } from 'src/core/utils/verification.util';
 import moment from 'moment-timezone';
 import { PilotService } from '../pilot/pilot.service';
 import { FilterDriverDto, FilterDriverSortOptions, FilterDriverSortOrderOptions } from './dto/admin-rider-filter.dto';
+import { FilterVehicleTypeBDFilterDto } from './dto/admin-vehicle-type-filter.dto';
 
 @Injectable()
 export class AdminService {
@@ -1238,11 +1239,15 @@ export class AdminService {
         status,
         sortBy = FilterDriverSortOptions.CREATED_AT as any,
         sortOrder = FilterDriverSortOrderOptions.DESC as any,
-        vehicleId,
-        fields = [],
+        vehicleTypeId,
+        // fields = [],
         startDate,
         endDate,
+        updatedStartDate,
+        updatedEndDate,
       } = query;
+
+
 
 
       const skip = (page - 1) * pageSize;
@@ -1272,42 +1277,55 @@ export class AdminService {
         }
       }
 
-      if (vehicleId) {
-        whereClause.vehicle = {
-          id: vehicleId,
-        };
+      if (updatedStartDate || updatedEndDate) {
+        whereClause.updatedAt = {};
+        if (updatedStartDate) {
+          whereClause.updatedAt.gte = new Date(updatedStartDate);
+        }
+        if (updatedEndDate) {
+          whereClause.updatedAt.lte = new Date(updatedEndDate);
+        }
       }
 
-      const buildSelectObject = (fieldPaths: string[]): any => {
-        if (fieldPaths.length === 0) {
-          return undefined;
-        }
-
-        const select: any = {};
-
-        for (const fieldPath of fieldPaths) {
-          const parts = fieldPath.split('.');
-          let current = select;
-
-          for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            const isLast = i === parts.length - 1;
-
-            if (isLast) {
-              current[part] = true;
-            } else {
-              if (!current[part]) {
-                current[part] = {};
-              }
-              current = current[part];
-            }
+      if (vehicleTypeId) {
+        whereClause.vehicle = {
+          vehicleTypeBD: {
+            id: vehicleTypeId,
           }
         }
+      }
 
-        return select;
-      };
 
-      const selectObject = buildSelectObject(fields);
+      // const buildSelectObject = (fieldPaths: string[]): any => {
+      //   if (fieldPaths.length === 0) {
+      //     return undefined;
+      //   }
+
+      //   const select: any = {};
+
+      //   for (const fieldPath of fieldPaths) {
+      //     const parts = fieldPath.split('.');
+      //     let current = select;
+
+      //     for (let i = 0; i < parts.length; i++) {
+      //       const part = parts[i];
+      //       const isLast = i === parts.length - 1;
+
+      //       if (isLast) {
+      //         current[part] = true;
+      //       } else {
+      //         if (!current[part]) {
+      //           current[part] = {};
+      //         }
+      //         current = current[part];
+      //       }
+      //     }
+      //   }
+
+      //   return select;
+      // };
+
+      // const selectObject = buildSelectObject(fields);
 
       let orderByClause: any = {};
 
@@ -1316,9 +1334,9 @@ export class AdminService {
         sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
       ) {
         orderByClause = { createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc' };
-        orderByClause = {
-          _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-        }
+        // orderByClause = {
+        //   _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
+        // }
       } else if (sortBy === FilterDriverSortOptions.UPDATED_AT) {
         orderByClause = {
           updatedAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
@@ -1369,7 +1387,40 @@ export class AdminService {
       let pilots = await this.prisma.pilot.findMany({
         where: whereClause,
         orderBy: orderByClause,
-        select: selectObject,
+        // select: selectObject,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+          // nidFrontSideUrl: true,
+          // nidBackSideUrl: true,
+          // vehicleOwnersNidFrontSideUrl: true,
+          // vehicleOwnersNidBackSideUrl: true,
+          // rcFrontSideUrl: true,
+          // rcBackSideUrl: true,
+          // numberPlateUrl: true,
+          // taxTokenUrl: true,
+          // dlFrontSideUrl: true,
+          // dlBackSideUrl: true,
+          isDLVerified: true,
+          isRCVerified: true,
+          isNidVerified: true,
+          isVehicleOwnersNidVerified: true,
+          isNumberPlateVerified: true,
+          isTaxTokenVerified: true,
+          isSelfieVerified: true,
+          vehicle: {
+            select: {
+              vehicleTypeBD: {
+                select: {
+                  name: true,
+                },
+              },
+            }
+          }
+        },
         skip,
         take: +pageSize || 10,
       });
@@ -2872,6 +2923,67 @@ export class AdminService {
       }
     } catch (error) {
       console.error('Error cleaning up previous files', error);
+    }
+  }
+
+  async getVehicleTypesListBD(query: FilterVehicleTypeBDFilterDto) {
+    try {
+      const { page = 1, pageSize = 10, search, startDate, endDate } = query;
+
+      const skip = (page - 1) * pageSize;
+
+      const whereClause: any = {};
+
+      if (search && search.trim()) {
+        whereClause.OR = [
+          { name: { contains: search.trim(), mode: 'insensitive' } },
+        ];
+      }
+
+      if (startDate || endDate) {
+        whereClause.createdAt = {};
+        if (startDate) {
+          whereClause.createdAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+          whereClause.createdAt.lte = new Date(endDate);
+        }
+      }
+
+
+      const totalCount = await this.prisma.vehicleTypeBD.count({
+        where: whereClause,
+      });
+
+      const vehicleTypes = await this.prisma.vehicleTypeBD.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+        },
+        skip: +skip || 0,
+        take: +pageSize || 10,
+      });
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Vehicle list fetched successfully',
+        data: vehicleTypes,
+        pagination: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: +page,
+          pageSize: +pageSize || 10,
+          hasNextPage,
+          hasPrevPage,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
   }
 }

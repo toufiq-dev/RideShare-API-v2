@@ -164,6 +164,7 @@ export class RideService {
           discountedFare: true,
           pickupLocation: true,
           dropLocation: true,
+          createdAt: true,
           vehicleTypeBD: {
             select: {
               id: true,
@@ -249,6 +250,7 @@ export class RideService {
         tripStart: booking.tripStart,
         vehicleType: booking.vehicleTypeBD?.name,
         vehicleTypeId: booking.vehicleTypeBD?.id,
+        createdAt: booking.createdAt,
         pilot: booking.pilot
           ? {
               pilotId: booking.pilot.id,
@@ -457,6 +459,7 @@ export class RideService {
         tripStart: booking.tripStart,
         vehicleType: vehicleType.name,
         vehicleTypeId: vehicleType.id,
+        createdAt: booking.createdAt,
         pilot: null,
         passenger: {
           passengerId: customer.userId,
@@ -539,6 +542,7 @@ export class RideService {
           dropLocation: true,
           name: true,
           vehicleTypeIdBD: true,
+          createdAt: true,
           vehicleTypeBD: {
             select: {
               id: true,
@@ -656,6 +660,7 @@ export class RideService {
         tripStart: newBooking.tripStart, // null for new bookings
         vehicleType: booking.vehicleTypeBD.name,
         vehicleTypeId: booking.vehicleTypeBD.id,
+        createdAt: newBooking.createdAt,
         pilot: null,
         passenger: {
           passengerId: booking.customer.userId,
@@ -790,6 +795,7 @@ export class RideService {
             discountedFare: true,
             pickupLocation: true,
             dropLocation: true,
+            createdAt: true,
             pilotRating: {
               select: {
                 rating: true,
@@ -902,6 +908,7 @@ export class RideService {
         tripStart: null,
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
+        createdAt: result.updated.createdAt,
         pilot: {
           pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
@@ -1083,6 +1090,7 @@ export class RideService {
             estimatedFare: true,
             discountedFare: true,
             tripStart: true,
+            createdAt: true,
             pilotRating: {
               select: {
                 rating: true,
@@ -1162,6 +1170,7 @@ export class RideService {
         tripStart: result.updated.tripStart,
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
+        createdAt: result.updated.createdAt,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1316,6 +1325,7 @@ export class RideService {
             tripStart: true,
             pickupLocation: true,
             dropLocation: true,
+            createdAt: true,
             pilotRating: {
               select: { rating: true },
             },
@@ -1543,6 +1553,7 @@ export class RideService {
         tripStart: result.updated.tripStart,
         vehicleType: result.updated.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicleTypeBD.id,
+        createdAt: result.updated.createdAt,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1945,6 +1956,7 @@ export class RideService {
         tripStart: updatedBooking.tripStart,
         vehicleTypeId: updatedBooking.vehicle.vehicleTypeBD.id,
         vehicleType: updatedBooking.vehicle?.vehicleTypeBD?.name,
+        createdAt: updatedBooking.createdAt,
         pilot: pilot
           ? {
               pilotId: pilot.id,

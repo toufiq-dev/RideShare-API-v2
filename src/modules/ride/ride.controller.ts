@@ -162,9 +162,8 @@ export class RideController {
   async ratingRide(
     @Body() ratingRideDto: RatingRideDto,
     @CurrentUser('userId') userId: string,
-    @CurrentUser('role') role: UserRole,
   ) {
-    return await this.rideService.ratingRide(ratingRideDto, userId, role);
+    return await this.rideService.ratingRide(ratingRideDto, userId);
   }
 
   @Roles(UserRole.PILOT)
@@ -187,6 +186,19 @@ export class RideController {
       page,
       pageSize,
     );
+  }
+
+  @Roles(UserRole.PILOT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('history/:bookingId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get ride history by booking id' })
+  async getRideHistoryByBookingId(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.rideService.getRideHistoryByBookingId(bookingId, userId);
   }
 
   @Roles(UserRole.CUSTOMER)

@@ -159,6 +159,7 @@ export class RideService {
           estimatedDuration: true,
           estimatedDistance: true,
           tripStart: true,
+          tripEnd: true,
           customerId: true,
           estimatedFare: true,
           discountedFare: true,
@@ -413,6 +414,9 @@ export class RideService {
             estimatedDistance: Math.ceil(distanceKm).toString(),
             estimatedDuration: Math.ceil(durationMin),
             vehicleTypeIdBD: vehicleType.id,
+            baseFare: Number(fareCalculation.fareBreakdown.baseFare),
+            distanceFare: Number(fareCalculation.fareBreakdown.distanceFare),
+            durationFare: Number(fareCalculation.fareBreakdown.durationFare),
           },
         });
 
@@ -622,6 +626,9 @@ export class RideService {
             dropLocation: JSON.parse(JSON.stringify(booking.dropLocation)),
             estimatedDistance: Math.ceil(distanceKm).toString(),
             estimatedDuration: Math.ceil(durationMin),
+            baseFare: Number(fareCalculation.fareBreakdown.baseFare),
+            distanceFare: Number(fareCalculation.fareBreakdown.distanceFare),
+            durationFare: Number(fareCalculation.fareBreakdown.durationFare),
           },
         });
 
@@ -795,6 +802,7 @@ export class RideService {
             status: BookingStatus.ACCEPTED,
             acceptedAt: moment.utc().toDate(),
             vehicleId: pilot.vehicle.id,
+            pilotType: pilot.pilotType,
           },
           select: {
             id: true,
@@ -1905,6 +1913,9 @@ export class RideService {
           estimatedDuration: Math.ceil(durationMin),
           estimatedFare: Math.ceil(originalPrice),
           discountedFare: Math.ceil(price),
+          baseFare: Number(fareCalculation.fareBreakdown.baseFare),
+          distanceFare: Number(fareCalculation.fareBreakdown.distanceFare),
+          durationFare: Number(fareCalculation.fareBreakdown.durationFare),
         },
         include: {
           pilotRating: {
@@ -2035,11 +2046,7 @@ export class RideService {
     }
   }
 
-  async ratingRide(
-    ratingRideDto: RatingRideDto,
-    userId: string,
-    role: UserRole,
-  ) {
+  async ratingRide(ratingRideDto: RatingRideDto, userId: string) {
     const { bookingId, rating, feedback } = ratingRideDto;
 
     try {
@@ -2054,6 +2061,20 @@ export class RideService {
       if (booking.status !== BookingStatus.COMPLETED) {
         throw new BadRequestException('Booking is not completed yet.');
       }
+      if (!booking.pilotId || !booking.customerId) {
+        throw new BadRequestException('Pilot or customer not found.');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      const role = user.role;
 
       // 2. Verify user permissions based on role
       if (role === UserRole.PILOT) {
@@ -2071,25 +2092,25 @@ export class RideService {
         }
 
         // Create pilot rating
-        const ratingRecord = await this.prisma.pilotRating.create({
+        const ratingRecord = await this.prisma.customerRating.create({
           data: {
-            pilotId: pilot.id,
+            customerId: booking.customerId,
             bookingId,
             rating,
             feedback,
           },
         });
 
-        const ratings = await this.prisma.pilotRating.findMany({
-          where: { pilotId: pilot.id },
+        const ratings = await this.prisma.customerRating.findMany({
+          where: { customerId: booking.customerId },
           select: { rating: true },
         });
 
         const averageRating =
           ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
+        await this.prisma.customer.update({
+          where: { id: booking.customerId },
           data: { averageRating: parseFloat(averageRating.toFixed(2)) },
         });
 
@@ -2112,26 +2133,26 @@ export class RideService {
           );
         }
 
-        // Create customer rating
-        const ratingRecord = await this.prisma.customerRating.create({
+        // Create pilot rating
+        const ratingRecord = await this.prisma.pilotRating.create({
           data: {
-            customerId: customer.id,
+            pilotId: booking.pilotId,
             bookingId,
             rating,
             feedback,
           },
         });
 
-        const ratings = await this.prisma.customerRating.findMany({
-          where: { customerId: customer.id },
+        const ratings = await this.prisma.pilotRating.findMany({
+          where: { pilotId: booking.pilotId },
           select: { rating: true },
         });
 
         const averageRating =
           ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
 
-        await this.prisma.customer.update({
-          where: { id: customer.id },
+        await this.prisma.pilot.update({
+          where: { id: booking.pilotId },
           data: { averageRating: parseFloat(averageRating.toFixed(2)) },
         });
 
@@ -2269,6 +2290,120 @@ export class RideService {
             hasPrevPage,
           },
         },
+      };
+    } catch (error) {
+      this.logger.error(error, this.context);
+      throw error;
+    }
+  }
+
+  async getRideHistoryByBookingId(bookingId: string, userId: string) {
+    try {
+      const pilot = await this.prisma.pilot.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          rideType: true,
+          discountedFare: true,
+          pickupLocation: true,
+          dropLocation: true,
+          tripStart: true,
+          tripEnd: true,
+          estimatedDistance: true,
+          estimatedDuration: true,
+          baseFare: true,
+          distanceFare: true,
+          durationFare: true,
+          pilotType: true,
+          createdAt: true,
+          cancellationReason: {
+            select: {
+              cancelledBy: true,
+            },
+          },
+          customerRating: {
+            select: {
+              rating: true,
+              feedback: true,
+            },
+          },
+          customer: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!booking) {
+        throw new NotFoundException('Booking not found.');
+      }
+
+      const tripDuration = this.calculateTripDuration(
+        booking.tripStart,
+        booking.tripEnd,
+        booking.estimatedDuration,
+      );
+
+      let durationFare = Math.ceil(Number(booking.durationFare));
+      if (
+        Number(booking.discountedFare) !==
+        Number(booking.baseFare) +
+          Number(booking.distanceFare) +
+          Number(booking.durationFare)
+      ) {
+        durationFare =
+          Math.ceil(Number(booking.discountedFare)) -
+          (Math.ceil(Number(booking.baseFare)) +
+            Math.ceil(Number(booking.distanceFare)));
+      }
+
+      const totalFare =
+        Math.ceil(Number(booking.baseFare)) +
+        Math.ceil(Number(booking.distanceFare)) +
+        durationFare;
+
+      const data = {
+        id: booking.id,
+        bookingStatus: booking.status,
+        pilotType: booking.pilotType,
+        tripAmount: Math.ceil(Number(booking.discountedFare)),
+        pickupLocation: booking.pickupLocation,
+        dropLocation: booking.dropLocation,
+        tripStart: booking.tripStart,
+        tripDistance: booking.estimatedDistance,
+        tripDuration: Number(tripDuration),
+        rating: {
+          customer: {
+            rating: booking.customerRating?.rating || 0,
+            feedback: booking.customerRating?.feedback || '',
+          },
+        },
+        fairDetails: {
+          baseFare: Math.ceil(Number(booking.baseFare)),
+          distanceFare: Math.ceil(Number(booking.distanceFare)),
+          durationFare: durationFare,
+          totalFare,
+        },
+        name:
+          booking.rideType === RideType.OTHERS
+            ? booking.name
+            : booking.customer.name,
+      };
+
+      return {
+        message: 'Ride history fetched successfully',
+        data,
       };
     } catch (error) {
       this.logger.error(error, this.context);
@@ -2414,13 +2549,6 @@ export class RideService {
       const start = moment.utc(tripStart);
       const end = moment.utc(tripEnd);
       return Math.max(0, end.diff(start, 'minutes'));
-    }
-
-    // If trip has started but not ended, calculate from start to now
-    if (tripStart && !tripEnd) {
-      const start = moment.utc(tripStart);
-      const now = moment.utc();
-      return Math.max(0, now.diff(start, 'minutes'));
     }
 
     // Otherwise, fall back to estimated duration

@@ -173,9 +173,12 @@ export class CustomerService {
                 model: pilot.vehicle.model,
                 colour: pilot.vehicle.colour,
                 vehicleType: pilot.vehicle.vehicleTypeBD.name,
-                pilotRating: data?.activeBooking?.pilotRating?.rating || 0,
               }
             : null,
+          rating: {
+            forPilot: null,
+            forCustomer: null,
+          },
           passenger: {
             passengerId: data.userId,
             name: data.name,

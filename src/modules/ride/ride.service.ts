@@ -174,6 +174,7 @@ export class RideService {
           pilotRating: {
             select: {
               rating: true,
+              feedback: true,
             },
           },
           customer: {
@@ -267,9 +268,15 @@ export class RideService {
               colour: booking.pilot.vehicle.colour,
               vehicleType: booking.vehicleTypeBD?.name,
               pilotType: booking.pilot.pilotType,
-              pilotRating: booking?.pilotRating?.rating || 0,
             }
           : null,
+        rating: {
+          forPilot: {
+            rating: booking?.pilotRating?.rating || 0,
+            feedback: booking?.pilotRating?.feedback || '',
+          },
+          forCustomer: null,
+        },
         passenger: {
           passengerId: booking.customer.userId,
           name: booking.customer.name,
@@ -461,6 +468,10 @@ export class RideService {
         vehicleTypeId: vehicleType.id,
         createdAt: booking.createdAt,
         pilot: null,
+        rating: {
+          forPilot: null,
+          forCustomer: null,
+        },
         passenger: {
           passengerId: customer.userId,
           name: customer.name,
@@ -662,6 +673,10 @@ export class RideService {
         vehicleTypeId: booking.vehicleTypeBD.id,
         createdAt: newBooking.createdAt,
         pilot: null,
+        rating: {
+          forPilot: null,
+          forCustomer: null,
+        },
         passenger: {
           passengerId: booking.customer.userId,
           name: booking.customer.name,
@@ -927,7 +942,10 @@ export class RideService {
           colour: pilot.vehicle.colour,
           vehicleType: pilot.vehicle.vehicleTypeBD.name,
           pilotType: pilot.pilotType,
-          pilotRating: result.updated?.pilotRating?.rating || 0,
+        },
+        rating: {
+          forPilot: null,
+          forCustomer: null,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1186,7 +1204,10 @@ export class RideService {
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.pilot.vehicle.vehicleTypeBD.name,
           pilotType: result.updated.pilot.pilotType,
-          pilotRating: result.updated?.pilotRating?.rating || 0,
+        },
+        rating: {
+          forPilot: null,
+          forCustomer: null,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1566,7 +1587,10 @@ export class RideService {
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.vehicleTypeBD.name,
           pilotType: result.updated.pilot.pilotType,
-          pilotRating: result.updated?.pilotRating?.rating || 0,
+        },
+        rating: {
+          forPilot: null,
+          forCustomer: null,
         },
         passenger: {
           passengerId: result.updated.customer.userId,
@@ -1975,9 +1999,12 @@ export class RideService {
               colour: pilot.vehicle.colour,
               vehicleType: pilot.vehicle.vehicleTypeBD.name,
               pilotType: pilot.pilotType,
-              pilotRating: updatedBooking?.pilotRating?.rating || 0,
             }
           : null,
+        rating: {
+          forPilot: null,
+          forCustomer: null,
+        },
         passenger: {
           passengerId: customer.userId,
           name: customer.name,

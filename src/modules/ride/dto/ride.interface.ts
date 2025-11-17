@@ -68,7 +68,6 @@ export interface CustomerRidePayload {
     colour: string;
     vehicleType: VehicleTypeNameBD;
     pilotType: PilotType;
-    pilotRating: number;
   } | null;
   passenger: {
     passengerId: string;
@@ -76,6 +75,16 @@ export interface CustomerRidePayload {
     phone: string;
     rating: number;
   };
+  rating: {
+    forPilot: {
+      rating: number;
+      feedback: string;
+    } | null;
+    forCustomer: {
+      rating: number;
+      feedback: string;
+    } | null;
+  } | null;
   pickupInMinutes: number | null;
   pickupLocation: JsonValue;
   dropLocation: JsonValue;

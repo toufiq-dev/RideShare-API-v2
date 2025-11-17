@@ -35,6 +35,8 @@ model User {
   createdAt              DateTime                  @default(now()) @db.Timestamptz(6)
   updatedAt              DateTime                  @updatedAt @db.Timestamptz(6)
   admin                  Admin?
+  documentReviews        AdminDocumentSubmission[] @relation("DocumentReviews")
+  documentSubmissions    AdminDocumentSubmission[] @relation("DocumentSubmissions")
   announcementDeliveries AnnouncementDelivery[]
   customer               Customer?
   deviceTokens           DeviceToken?
@@ -43,8 +45,6 @@ model User {
   superAdmin             SuperAdmin?
   support                Support?
   supportTickets         SupportTicket[]
-  documentSubmissions    AdminDocumentSubmission[] @relation("DocumentSubmissions")
-  documentReviews        AdminDocumentSubmission[] @relation("DocumentReviews")
 }
 
 model DeviceToken {
@@ -244,6 +244,7 @@ model Pilot {
   weeklyEarnings                  Decimal                   @default(0) @db.Decimal(10, 2)
   superPilotVideoUploadedAt       DateTime?
   superPilotVideoUrl              String?
+  documentSubmissions             AdminDocumentSubmission[]
   bookings                        Booking[]
   drivingLicense                  DrivingLicense?
   nid                             Nid?                      @relation("PilotNid")
@@ -263,7 +264,6 @@ model Pilot {
   transaction                     Transaction[]
   vehicle                         Vehicle?                  @relation("PilotVehicle")
   videoProgress                   VideoProgress?
-  documentSubmissions             AdminDocumentSubmission[]
 }
 
 model AdminDocumentSubmission {
@@ -281,8 +281,8 @@ model AdminDocumentSubmission {
   createdAt          DateTime           @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
   pilot              Pilot              @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  submittedBy        User               @relation("DocumentSubmissions", fields: [submittedByUserId], references: [id])
   reviewedBy         User?              @relation("DocumentReviews", fields: [reviewedByUserId], references: [id])
+  submittedBy        User               @relation("DocumentSubmissions", fields: [submittedByUserId], references: [id])
 }
 
 model PilotCoupon {
@@ -515,6 +515,10 @@ model Booking {
   createdAt          DateTime            @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
   vehicleTypeIdBD    String?
+  pilotType          PilotType?
+  baseFare           Decimal?            @db.Decimal(10, 2)
+  distanceFare       Decimal?            @db.Decimal(10, 2)
+  durationFare       Decimal?            @db.Decimal(10, 2)
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
   vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])

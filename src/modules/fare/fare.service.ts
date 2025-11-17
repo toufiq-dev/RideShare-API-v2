@@ -118,6 +118,11 @@ export class FareService {
     routePolyline: string;
     surgeMultiplier: number;
     tariff: any;
+    fareBreakdown: {
+      baseFare: number;
+      distanceFare: number;
+      durationFare: number;
+    };
   }> {
     const {
       pickupLocation,
@@ -146,9 +151,17 @@ export class FareService {
         intercity,
       );
 
+      // Get baseline tariff values
+      const baselineData = this.tariffService.toBaseline(tariff);
+
+      // Calculate breakdown components (exact values used in calculation)
+      const baseFare = baselineData.baseFare;
+      const distanceFare = baselineData.perKm * distanceKm;
+      const durationFare = baselineData.perMin * durationMin;
+
       // Calculate baseline price
       const baseline = this.tariffService.computeB(
-        this.tariffService.toBaseline(tariff),
+        baselineData,
         distanceKm,
         durationMin,
       );
@@ -201,6 +214,12 @@ export class FareService {
         routePolyline,
         surgeMultiplier,
         tariff,
+        // Return breakdown with exact values
+        fareBreakdown: {
+          baseFare: Math.round(baseFare),
+          distanceFare: Math.round(distanceFare),
+          durationFare: Math.round(durationFare),
+        },
       };
     } catch (error) {
       console.error('Error in calculateTariffBasedFare:', error);

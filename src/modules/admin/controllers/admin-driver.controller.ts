@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AdminDriverService } from "../services/admin-driver.service";
-import { FilterDriverDto, RejectDocumentDto, UpdateDrivingLicenseDto, UpdateNidDto, UpdateNumberPlateDto, UpdateProfileImageDto, UpdateRegistrationCardDto, UpdateTaxTokenDto, UpdateVehicleOwnerNidDto } from "../dto/admin-driver.dto";
+import { ApproveDocumentDto, FilterDriverDto, RejectDocumentDto, UpdateDrivingLicenseDto, UpdateNidDto, UpdateNumberPlateDto, UpdateProfileImageDto, UpdateRegistrationCardDto, UpdateTaxTokenDto, UpdateVehicleOwnerNidDto } from "../dto/admin-driver.dto";
 
 @ApiTags('admin-driver')
 @Controller('admin/drivers')

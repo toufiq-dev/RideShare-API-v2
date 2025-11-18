@@ -278,9 +278,25 @@ export class AdminDriverService {
                     isVehicleOwnersNidVerified: true,
                     isNumberPlateVerified: true,
                     isTaxTokenVerified: true,
-                    isPanCardVerified: true,
-                    isAadhaarVerified: true,
                     isFairCoinAvailed: true,
+                    selfieUrl: true,
+                    nidFrontSideUrl: true,
+                    nidBackSideUrl: true,
+                    vehicleOwnersNidFrontSideUrl: true,
+                    vehicleOwnersNidBackSideUrl: true,
+                    rcFrontSideUrl: true,
+                    rcBackSideUrl: true,
+                    numberPlateUrl: true,
+                    taxTokenUrl: true,
+                    dlFrontSideUrl: true,
+                    dlBackSideUrl: true,
+                    nidRejectionReason: true,
+                    selfieRejectionReason: true,
+                    dlRejectionReason: true,
+                    rcRejectionReason: true,
+                    numberPlateRejectionReason: true,
+                    taxTokenRejectionReason: true,
+                    vehicleOwnersNidRejectionReason: true,
                     drivingLicense: {
                         select: {
                             nameOnLicense: true,
@@ -301,6 +317,8 @@ export class AdminDriverService {
                         select: {
                             regNo: true,
                             model: true,
+                            colour: true,
+                            registrationDate: true,
                             vehicleTypeBD: {
                                 select: {
                                     name: true,
@@ -309,6 +327,12 @@ export class AdminDriverService {
                             },
                         },
                     },
+                    nid: true,
+                    user: {
+                        select: {
+                            status: true,
+                        },
+                    }
                 },
             });
 
@@ -350,6 +374,7 @@ export class AdminDriverService {
                     data: {
                         selfieUrl: selfieUrl,
                         isSelfieVerified: VerificationStatus.IN_PROGRESS,
+                        selfieRejectionReason: null,
                         updatedAt: updatedAt,
                     },
                 });
@@ -402,6 +427,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    dlRejectionReason: null,
                 };
                 if (dlFrontSideUrl) pilotUpdateData.dlFrontSideUrl = dlFrontSideUrl || pilot.dlFrontSideUrl;
                 if (dlBackSideUrl) pilotUpdateData.dlBackSideUrl = dlBackSideUrl || pilot.dlBackSideUrl;
@@ -479,6 +505,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    nidRejectionReason: null,
                 };
                 if (nidFrontSideUrl) pilotUpdateData.nidFrontSideUrl = nidFrontSideUrl || pilot.nidFrontSideUrl;
                 if (nidBackSideUrl) pilotUpdateData.nidBackSideUrl = nidBackSideUrl || pilot.nidBackSideUrl;
@@ -548,6 +575,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    vehicleOwnersNidRejectionReason: null,
                 };
                 if (vehicleOwnersNidFrontSideUrl) pilotUpdateData.vehicleOwnersNidFrontSideUrl = vehicleOwnersNidFrontSideUrl || pilot.vehicleOwnersNidFrontSideUrl;
                 if (vehicleOwnersNidBackSideUrl) pilotUpdateData.vehicleOwnersNidBackSideUrl = vehicleOwnersNidBackSideUrl || pilot.vehicleOwnersNidBackSideUrl;
@@ -562,16 +590,18 @@ export class AdminDriverService {
                     data: pilotUpdateData,
                 });
 
+
+
                 await tx.nid.upsert({
                     where: { pilotId },
                     update: {
                         ...vehicleOwnerNidData,
-                        dateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
+                        vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
                     },
                     create: {
                         pilotId,
                         ...vehicleOwnerNidData,
-                        dateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
+                        vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
                     },
                 });
 
@@ -617,6 +647,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    rcRejectionReason: null,
                 };
                 if (rcFrontSideUrl) pilotUpdateData.rcFrontSideUrl = rcFrontSideUrl || pilot.rcFrontSideUrl;
                 if (rcBackSideUrl) pilotUpdateData.rcBackSideUrl = rcBackSideUrl || pilot.rcBackSideUrl;
@@ -688,6 +719,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    numberPlateRejectionReason: null,
                 };
                 if (numberPlateUrl) pilotUpdateData.numberPlateUrl = numberPlateUrl || pilot.numberPlateUrl;
 
@@ -701,7 +733,7 @@ export class AdminDriverService {
                 });
 
                 await tx.vehicle.upsert({
-                    where: { pilotId },
+                    where: { regNo },
                     update: {
                         regNo,
                         updatedAt: updatedAt,
@@ -709,7 +741,7 @@ export class AdminDriverService {
                     create: {
                         regNo,
                         createdAt: updatedAt,
-                        colour: null,
+                        colour: "",
                         pilot: { connect: { id: pilotId } },
                     },
                 });
@@ -756,6 +788,7 @@ export class AdminDriverService {
 
                 const pilotUpdateData: any = {
                     updatedAt: updatedAt,
+                    taxTokenRejectionReason: null,
                 };
                 if (taxTokenUrl) pilotUpdateData.taxTokenUrl = taxTokenUrl || pilot.taxTokenUrl;
 
@@ -769,14 +802,16 @@ export class AdminDriverService {
                 });
 
                 await tx.vehicle.upsert({
-                    where: { pilotId },
+                    where: { regNo: taxTokenData.regNo },
                     update: {
                         ...taxTokenData,
+                        registrationDate: new Date(taxTokenData.registrationDate),
                         updatedAt: updatedAt,
                     },
                     create: {
                         pilotId,
                         ...taxTokenData,
+                        registrationDate: new Date(taxTokenData.registrationDate),
                         createdAt: updatedAt,
                     },
                 });
@@ -813,9 +848,19 @@ export class AdminDriverService {
             throw new NotFoundException('Driver not found');
         }
 
-        if (pilot[this.verificationFieldMap[documentType]] === VerificationStatus.APPROVED) {
+        const currentDocumentStatus = pilot[this.verificationFieldMap[documentType]];
+        if (currentDocumentStatus === VerificationStatus.APPROVED) {
             throw new BadRequestException('Document already approved');
         }
+
+        if (currentDocumentStatus === VerificationStatus.PENDING) {
+            throw new BadRequestException('Document is not in review');
+        }
+
+        if (currentDocumentStatus === VerificationStatus.REJECTED) {
+            throw new BadRequestException('Document already rejected');
+        }
+
 
         const verificationField = this.verificationFieldMap[documentType];
         const rejectionField = this.rejectionReasonFieldMap[documentType];
@@ -864,14 +909,14 @@ export class AdminDriverService {
             throw new BadRequestException('Unsupported document type');
         }
 
-        const currentDocumentStatus = pilot[verificationField];
-        if (currentDocumentStatus === VerificationStatus.APPROVED) {
-            throw new BadRequestException('Document already approved');
-        }
+        // const currentDocumentStatus = pilot[verificationField];
+        // if (currentDocumentStatus === VerificationStatus.APPROVED) {
+        //     throw new BadRequestException('Document already approved');
+        // }
 
-        if (currentDocumentStatus === VerificationStatus.PENDING) {
-            throw new BadRequestException('Document is not in review');
-        }
+        // if (currentDocumentStatus === VerificationStatus.PENDING) {
+        //     throw new BadRequestException('Document is not in review');
+        // }
 
         const updatedPilot = await this.prisma.$transaction(async (tx) => {
             const updatedPilot = await tx.pilot.update({

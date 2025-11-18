@@ -31,6 +31,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ProgramModule } from './modules/program/program.module';
 import { MetricsModule } from './core/metrics/metrics.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { MapsModule } from './modules/maps/maps.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     PricingModule,
     HealthModule,
     ProgramModule,
+    MapsModule,
   ],
   providers: [GlobalExceptionFilter, MainGateway],
   exports: [JwtModule],

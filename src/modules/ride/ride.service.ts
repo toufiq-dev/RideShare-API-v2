@@ -2234,6 +2234,7 @@ export class RideService {
         this.prisma.booking.findMany({
           where: whereClause,
           select: {
+            id: true,
             pickupLocation: true,
             dropLocation: true,
             tripStart: true,

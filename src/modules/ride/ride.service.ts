@@ -164,6 +164,11 @@ export class RideService {
           pickupLocation: true,
           dropLocation: true,
           createdAt: true,
+          cancellationReason: {
+            select: {
+              cancelledBy: true,
+            },
+          },
           vehicleTypeBD: {
             select: {
               id: true,
@@ -251,6 +256,9 @@ export class RideService {
         vehicleType: booking.vehicleTypeBD?.name,
         vehicleTypeId: booking.vehicleTypeBD?.id,
         createdAt: booking.createdAt,
+        cancelledBy: booking.cancellationReason
+          ? booking.cancellationReason.cancelledBy
+          : null,
         pilot: booking.pilot
           ? {
               pilotId: booking.pilot.id,
@@ -469,6 +477,7 @@ export class RideService {
         vehicleType: vehicleType.name,
         vehicleTypeId: vehicleType.id,
         createdAt: booking.createdAt,
+        cancelledBy: null,
         pilot: null,
         rating: {
           forPilot: null,
@@ -677,6 +686,7 @@ export class RideService {
         vehicleType: booking.vehicleTypeBD.name,
         vehicleTypeId: booking.vehicleTypeBD.id,
         createdAt: newBooking.createdAt,
+        cancelledBy: null,
         pilot: null,
         rating: {
           forPilot: null,
@@ -930,6 +940,7 @@ export class RideService {
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
         createdAt: result.updated.createdAt,
+        cancelledBy: null,
         pilot: {
           pilotId: pilot.id,
           pilotName: pilot.drivingLicense.nameOnLicense,
@@ -1195,6 +1206,7 @@ export class RideService {
         vehicleType: result.updated.vehicle.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicle.vehicleTypeBD.id,
         createdAt: result.updated.createdAt,
+        cancelledBy: null,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1581,6 +1593,7 @@ export class RideService {
         vehicleType: result.updated.vehicleTypeBD.name,
         vehicleTypeId: result.updated.vehicleTypeBD.id,
         createdAt: result.updated.createdAt,
+        cancelledBy: null,
         pilot: {
           pilotId: result.updated.pilot.id,
           pilotName: result.updated.pilot.drivingLicense.nameOnLicense,
@@ -1990,6 +2003,7 @@ export class RideService {
         vehicleTypeId: updatedBooking.vehicle.vehicleTypeBD.id,
         vehicleType: updatedBooking.vehicle?.vehicleTypeBD?.name,
         createdAt: updatedBooking.createdAt,
+        cancelledBy: null,
         pilot: pilot
           ? {
               pilotId: pilot.id,
@@ -2382,6 +2396,9 @@ export class RideService {
         tripStart: booking.tripStart,
         tripDistance: booking.estimatedDistance,
         tripDuration: Number(tripDuration),
+        cancelledBy: booking.cancellationReason
+          ? booking.cancellationReason.cancelledBy
+          : null,
         rating: {
           customer: {
             rating: booking.customerRating?.rating || 0,

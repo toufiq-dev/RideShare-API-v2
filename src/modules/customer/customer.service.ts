@@ -157,6 +157,9 @@ export class CustomerService {
           vehicleType: data.activeBooking?.vehicleTypeBD?.name,
           vehicleTypeId: data.activeBooking?.vehicleTypeIdBD,
           createdAt: data?.activeBooking?.createdAt,
+          cancelledBy: data.activeBooking.cancellationReason
+            ? data.activeBooking.cancellationReason.cancelledBy
+            : null,
           pilot: pilot
             ? {
                 pilotId: pilot.id,

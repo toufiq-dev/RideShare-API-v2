@@ -1,7 +1,7 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { FilterVehicleTypeBDFilterDto } from "./dto/admin-vehicle-type-filter.dto";
-import { AdminService } from "./admin.service";
+import { FilterVehicleTypeBDFilterDto } from "../dto/admin-vehicle-type-filter.dto";
+import { AdminService } from "../services/admin.service";
 
 @ApiTags('admin-vehicle')
 @Controller('admin')

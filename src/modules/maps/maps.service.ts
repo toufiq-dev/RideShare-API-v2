@@ -41,7 +41,7 @@ export class MapsService {
       const response = await firstValueFrom(this.httpService.get(url));
 
       if (response.data.status === 'OK') {
-        return response;
+        return response.data;
       } else {
         throw new BadRequestException(
           `Google Maps API error: ${response.data.status} - ${response.data.error_message || 'Unknown error'}`,

@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class AutocompleteDto {
   @ApiProperty({
@@ -10,21 +10,21 @@ export class AutocompleteDto {
   @IsString()
   input: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Country restriction (ISO 3166-1 Alpha-2 code)',
     example: 'bd',
     default: 'bd',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  components?: string = 'country:bd';
+  components: string = 'country:bd';
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Language code',
     example: 'en',
     default: 'en',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  language?: string = 'en';
+  language: string = 'en';
 }

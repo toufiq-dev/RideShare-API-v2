@@ -44,11 +44,11 @@ import { UserRole } from '@prisma/client';
 
 @Controller('pilot')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.PILOT)
 export class PilotController {
   constructor(private readonly pilotService: PilotService) {}
 
   @Get()
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get pilot' })
@@ -57,6 +57,7 @@ export class PilotController {
   }
 
   @Post('phone/otp')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send otp to Update phone' })
@@ -65,6 +66,7 @@ export class PilotController {
   }
 
   @Post('phone/verify')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
@@ -76,6 +78,7 @@ export class PilotController {
   }
 
   @Post('driving-license')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license of pilot' })
@@ -88,6 +91,7 @@ export class PilotController {
   }
 
   @Post('driving-license/manual')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
@@ -103,6 +107,7 @@ export class PilotController {
   }
 
   @Post('live-selfie')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload live selfie for pilot' })
@@ -115,6 +120,7 @@ export class PilotController {
   }
 
   @Post('vehicle-rc')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Vehicle RC' })
@@ -127,6 +133,7 @@ export class PilotController {
   }
 
   @Post('vehicle-rc/manual')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Vehicle RC' })
@@ -202,6 +209,7 @@ export class PilotController {
   }
 
   @Get('onboarding-offer')
+  @Roles(UserRole.PILOT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Faircoins for onborading' })
   async getOnboardingOffer(@CurrentUser('userId') userId: string) {
@@ -209,6 +217,7 @@ export class PilotController {
   }
 
   @Post('free-recharge')
+  @Roles(UserRole.PILOT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Avail a bonus recharge when eligible.' })
   @ApiBody({ type: FreeRechargeDto })
@@ -220,6 +229,7 @@ export class PilotController {
   }
 
   @Get('vehicle/list')
+  @Roles(UserRole.PILOT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get list of vehicles' })
   async getVehicles(@CurrentUser('userId') userId: string) {
@@ -227,6 +237,7 @@ export class PilotController {
   }
 
   @Get('transactions')
+  @Roles(UserRole.PILOT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get list of transactions' })
   async getTransactions(
@@ -246,6 +257,7 @@ export class PilotController {
   }
 
   @Post('online')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Make Pilot available for trips' })
@@ -257,6 +269,7 @@ export class PilotController {
   }
 
   @Post('bd-license')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload driving license photo' })
@@ -275,6 +288,7 @@ export class PilotController {
   }
 
   @Post('bd-license/confirmation')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give driving license and dob of pilot' })
@@ -287,6 +301,7 @@ export class PilotController {
   }
 
   @Post('bd-nid')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload NID card photo' })
@@ -306,6 +321,7 @@ export class PilotController {
   }
 
   @Post('bd-nid/confirmation')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give NID card and dob of pilot' })
@@ -319,6 +335,7 @@ export class PilotController {
   }
 
   @Post('bd-rc')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload RC card photo' })
@@ -337,6 +354,7 @@ export class PilotController {
   }
 
   @Post('bd-rc/confirmation')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give RC card and dob of pilot' })
@@ -349,6 +367,7 @@ export class PilotController {
   }
 
   @Post('number-plate')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Number plate photo' })
@@ -361,6 +380,7 @@ export class PilotController {
   }
 
   @Post('number-plate/confirmation')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually give Number plate of pilot' })
@@ -373,6 +393,7 @@ export class PilotController {
   }
 
   @Post('tax-token')
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload Tax token photo' })
@@ -385,6 +406,7 @@ export class PilotController {
   }
 
   @Post('details')
+  @Roles(UserRole.PILOT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update Driver details' })
@@ -400,6 +422,7 @@ export class PilotController {
   }
 
   @Get('coupons')
+  @Roles(UserRole.PILOT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get list of coupons' })
   async getCoupons(@CurrentUser('userId') userId: string) {

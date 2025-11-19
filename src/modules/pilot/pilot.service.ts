@@ -1041,6 +1041,8 @@ export class PilotService {
         ...verificationResponse,
         dateOfBirth: formattedDateOfBirth,
         licenseExpiryDate: formattedLicenseExpiryDate,
+        frontSideUrl: frontSideUrl,
+        backSideUrl: backSideUrl,
       };
 
       await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
@@ -1222,6 +1224,8 @@ export class PilotService {
           dateOfBirth: formattedDateOfBirth,
           nidNumber: verificationResponse.nidNumber,
           name: verificationResponse.name,
+          frontSideUrl: frontSideUrl,
+          backSideUrl: backSideUrl,
         },
       };
     } catch (error) {
@@ -1412,6 +1416,8 @@ export class PilotService {
       verificationResponse = {
         ...verificationResponse,
         registrationDate: formattedRegistrationDate,
+        frontSideUrl: frontSideUrl,
+        backSideUrl: backSideUrl,
       };
 
       await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
@@ -1548,7 +1554,7 @@ export class PilotService {
         },
       });
 
-      const verificationResponse =
+      let verificationResponse =
         await this.verificationService.extractNumberPlateData(
           numberPlateBuffer,
         );
@@ -1562,6 +1568,23 @@ export class PilotService {
           'Number plate is not valid or not readable.',
         );
       }
+
+      const numberPlate = await this.prisma.numberPlate.upsert({
+        where: { pilotId: pilot.id },
+        update: {
+          numberPlate: verificationResponse.numberPlate,
+        },
+        create: {
+          numberPlate: verificationResponse.numberPlate,
+          pilotId: pilot.id,
+        },
+      });
+
+      verificationResponse = {
+        ...verificationResponse,
+        numberPlateUrl: numberPlateUrl,
+        numberPlate: numberPlate.numberPlate,
+      };
 
       await this.deletePreviousFiles(previousNumberPlateUrl);
 
@@ -1647,14 +1670,14 @@ export class PilotService {
         file.mimetype,
       );
 
-      const verificationResponse =
+      let verificationResponse: any =
         await this.verificationService.extractTaxTokenData(taxTokenBuffer);
 
       if (!verificationResponse) {
         throw new BadRequestException('Failed to extract tax token data.');
       }
 
-      if (!verificationResponse.name) {
+      if (!verificationResponse.registrationNumber) {
         throw new BadRequestException(
           'Tax token is not valid or not readable.',
         );
@@ -1669,6 +1692,23 @@ export class PilotService {
       });
 
       await this.deletePreviousFiles(previousTaxTokenUrl);
+
+      const taxToken = await this.prisma.taxToken.upsert({
+        where: { pilotId: pilot.id },
+        update: {
+          registrationNumber: verificationResponse.registrationNumber,
+        },
+        create: {
+          registrationNumber: verificationResponse.registrationNumber,
+          pilotId: pilot.id,
+        },
+      });
+
+      verificationResponse = {
+        ...verificationResponse,
+        taxTokenUrl: taxTokenUrl,
+        registrationNumber: taxToken.registrationNumber,
+      };
 
       await this.updateUserStatusAfterDocumentUpload(updatedPilot.id);
       return {

@@ -264,6 +264,8 @@ model Pilot {
   transaction                     Transaction[]
   vehicle                         Vehicle?                  @relation("PilotVehicle")
   videoProgress                   VideoProgress?
+  numberPlate                     NumberPlate?
+  taxToken                        TaxToken?
 }
 
 model AdminDocumentSubmission {
@@ -349,6 +351,22 @@ model Vehicle {
   pilot            Pilot          @relation("PilotVehicle", fields: [pilotId], references: [id])
   vehicleTypeBD    VehicleTypeBD? @relation(fields: [vehicleTypeIdBD], references: [id])
   vehicleType      VehicleType?   @relation(fields: [vehicleTypeId], references: [id])
+}
+
+model NumberPlate {
+  pilotId     String   @id @unique
+  numberPlate String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  pilot       Pilot    @relation(fields: [pilotId], references: [id])
+}
+
+model TaxToken {
+  pilotId            String   @id @unique
+  registrationNumber String
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
+  pilot              Pilot    @relation(fields: [pilotId], references: [id])
 }
 
 model VehicleType {

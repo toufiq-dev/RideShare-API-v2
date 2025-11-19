@@ -104,6 +104,7 @@ export interface CustomerRidePayload {
 
 export interface PilotRideResponse {
   bookingStatus?: BookingStatus;
+  pilotType: PilotType;
   customerName: string;
   customerPhone: string;
   averageRating: number;

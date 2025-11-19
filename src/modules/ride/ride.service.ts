@@ -827,6 +827,7 @@ export class RideService {
             pickupLocation: true,
             dropLocation: true,
             createdAt: true,
+            pilotType: true,
             pilotRating: {
               select: {
                 rating: true,
@@ -999,6 +1000,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        pilotType: result.updated.pilotType,
         otherPassengerInfo:
           result.updated.rideType === RideType.OTHERS
             ? { name: result.updated.name }
@@ -1126,6 +1128,7 @@ export class RideService {
             discountedFare: true,
             tripStart: true,
             createdAt: true,
+            pilotType: true,
             pilotRating: {
               select: {
                 rating: true,
@@ -1261,6 +1264,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        pilotType: result.updated.pilotType,
         otherPassengerInfo:
           result.updated.rideType === RideType.OTHERS
             ? { name: result.updated.name }
@@ -1362,9 +1366,12 @@ export class RideService {
             discountedFare: true,
             tripEndFare: true,
             tripStart: true,
+            tripEnd: true,
+            estimatedDistance: true,
             pickupLocation: true,
             dropLocation: true,
             createdAt: true,
+            pilotType: true,
             pilotRating: {
               select: { rating: true },
             },
@@ -1605,7 +1612,7 @@ export class RideService {
           model: result.updated.pilot.vehicle.model,
           colour: result.updated.pilot.vehicle.colour,
           vehicleType: result.updated.vehicleTypeBD.name,
-          pilotType: result.updated.pilot.pilotType,
+          pilotType: result.updated.pilotType,
         },
         rating: {
           forPilot: null,
@@ -1646,6 +1653,7 @@ export class RideService {
         pickupLocation: result.updated.pickupLocation,
         dropLocation: result.updated.dropLocation,
         rideStatus: result.updated.status,
+        pilotType: result.updated.pilotType,
         otherPassengerInfo:
           result.updated.rideType === RideType.OTHERS
             ? { name: result.updated.name }
@@ -1962,6 +1970,7 @@ export class RideService {
           pickupLocation: newPickupLocation,
           dropLocation: newDropLocation,
           rideStatus: updatedBooking.status,
+          pilotType: updatedBooking.pilotType,
           otherPassengerInfo:
             updatedBooking.rideType === RideType.OTHERS
               ? { name: updatedBooking.name }

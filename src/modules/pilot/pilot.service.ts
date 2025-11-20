@@ -36,6 +36,7 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
+  UserRole,
   UserStatus,
   VehicleTypeNameBD,
   VerificationStatus,
@@ -1649,13 +1650,26 @@ export class PilotService {
     }
   }
 
-  async uploadTaxToken(file: Express.Multer.File, userId: string) {
+  async uploadTaxToken(
+    file: Express.Multer.File,
+    userId: string,
+    role: UserRole,
+  ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      let pilot = null;
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({ where: { id: userId } });
+      }
+
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isTaxTokenVerified === VerificationStatus.APPROVED) {
+      if (
+        role === UserRole.PILOT &&
+        pilot.isTaxTokenVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Pilot already verified tax token.');
       }
 
@@ -1666,7 +1680,7 @@ export class PilotService {
       const taxTokenUrl = await this.azureService.uploadFile(
         taxTokenBuffer,
         file.originalname,
-        userId,
+        pilot.userId,
         file.mimetype,
       );
 
@@ -1684,7 +1698,7 @@ export class PilotService {
       }
 
       const updatedPilot = await this.prisma.pilot.update({
-        where: { userId },
+        where: { id: pilot.id },
         data: {
           taxTokenUrl,
           isTaxTokenVerified: VerificationStatus.IN_PROGRESS,

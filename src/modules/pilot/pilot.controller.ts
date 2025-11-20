@@ -12,6 +12,8 @@ import {
   Query,
   UploadedFiles,
   HttpStatus,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -36,6 +38,7 @@ import {
   FreeRechargeDto,
   BDNidTypeDto,
   UpdateDriverDetailsDto,
+  PilotIdQueryDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -400,9 +403,31 @@ export class PilotController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadTaxToken(
     @UploadedFile() file: Express.Multer.File,
+    @Query() query: PilotIdQueryDto,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
   ) {
-    return await this.pilotService.uploadTaxToken(file, userId);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      // Pilots can only upload for themselves
+      if (query.pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      // Admin roles must provide pilotId
+      if (!query.pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = query.pilotId;
+    }
+
+    return await this.pilotService.uploadTaxToken(file, targetUserId, role);
   }
 
   @Post('details')

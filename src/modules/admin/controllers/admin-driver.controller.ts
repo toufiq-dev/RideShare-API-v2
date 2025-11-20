@@ -1,18 +1,24 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AdminDriverService } from "../services/admin-driver.service";
 import { ApproveDocumentDto, FilterDriverDto, RejectDocumentDto, UpdateDrivingLicenseDto, UpdateNidDto, UpdateNumberPlateDto, UpdateProfileImageDto, UpdateRegistrationCardDto, UpdateTaxTokenDto, UpdateVehicleOwnerNidDto } from "../dto/admin-driver.dto";
+import { JwtAuthGuard } from "src/common/guards/jwt-auth.guard";
+import { RolesGuard } from "src/common/guards/roles.guard";
+import { UserRole } from "@prisma/client";
+import { Roles } from "src/common/decorators/roles.decorator";
+import { CurrentUser } from "src/common/decorators/user.decorator";
 
+@ApiBearerAuth()
 @ApiTags('admin-driver')
 @Controller('admin/drivers')
 export class AdminDriverController {
     constructor(private readonly adminDriverService: AdminDriverService) { }
 
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Get('')
     @ApiOperation({ summary: 'Driver List' })
-    async getDriverListV2(@Query() query: FilterDriverDto) {
+    async getDriverListV2(@Query() query: FilterDriverDto,) {
         return await this.adminDriverService.getDriverList(query);
     }
 
@@ -24,8 +30,8 @@ export class AdminDriverController {
 
     @Post('update-selfie')
     @ApiOperation({ summary: 'Upload Driver Profile' })
-    async updateProfileImage(@Body() updateProfileImageDto: UpdateProfileImageDto) {
-        return await this.adminDriverService.updateProfileImage(updateProfileImageDto);
+    async updateProfileImage(@Body() updateProfileImageDto: UpdateProfileImageDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateProfileImage(updateProfileImageDto, userId);
     }
 
     @Post('update-dl-info')

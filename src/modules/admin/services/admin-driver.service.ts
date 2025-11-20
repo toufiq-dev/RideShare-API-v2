@@ -350,8 +350,9 @@ export class AdminDriverService {
         }
     }
 
-    async updateProfileImage(updateProfileImageDto: UpdateProfileImageDto) {
+    async updateProfileImage(updateProfileImageDto: UpdateProfileImageDto, userId: string) {
         try {
+            console.log('userId>>>>>>', userId);
             const { pilotId, selfieUrl } = updateProfileImageDto;
 
             const pilot = await this.findUniquePilot(pilotId);
@@ -364,6 +365,11 @@ export class AdminDriverService {
                 throw new BadRequestException('Selfie already approved');
             }
 
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.SELFIE);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('Selfie already in review');
+            }
 
 
             const [updatedPilot] = await this.prisma.$transaction(async (tx) => {
@@ -390,6 +396,17 @@ export class AdminDriverService {
                         },
                     });
                 }
+
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.SELFIE,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+
+                    },
+                });
 
                 return [updatedPilot];
             });
@@ -1006,5 +1023,17 @@ export class AdminDriverService {
             pilot.isTaxTokenVerified,
             pilot.isVehicleOwnersNidVerified,
         ].every((status) => status === VerificationStatus.APPROVED);
+    }
+
+    private async existDriverDocumentSubmission(pilotId: string, documentType: DocumentType) {
+        const documentSubmissions = await this.prisma.adminDocumentSubmission.findFirst({
+            where: {
+                pilotId: pilotId,
+                documentType: documentType,
+                verificationStatus: VerificationStatus.PENDING,
+            },
+        });
+
+        return documentSubmissions;
     }
 }

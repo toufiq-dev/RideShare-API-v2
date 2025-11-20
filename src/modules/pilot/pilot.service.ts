@@ -332,15 +332,25 @@ export class PilotService {
     }
   }
 
-  async uploadLiveSelfie(file: Express.Multer.File, userId: string) {
+  async uploadLiveSelfie(
+    file: Express.Multer.File,
+    userId: string,
+    role: UserRole,
+  ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      let pilot = null;
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({ where: { id: userId } });
+      }
 
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
 
       if (
+        role === UserRole.PILOT &&
         pilot.selfieUrl &&
         pilot.isSelfieVerified === VerificationStatus.APPROVED
       ) {
@@ -352,7 +362,7 @@ export class PilotService {
       if (fileUrl) {
         await this.prisma.$transaction(async (tx) => {
           await tx.pilot.update({
-            where: { userId },
+            where: { id: pilot.id },
             data: {
               selfieUrl: fileUrl,
               isSelfieVerified: VerificationStatus.IN_PROGRESS,
@@ -360,13 +370,16 @@ export class PilotService {
           });
 
           await tx.user.update({
-            where: { id: userId },
+            where: { id: pilot.userId },
             data: { status: UserStatus.ONBOARDING },
           });
         });
       }
 
-      return { message: 'Live selfie uploaded successfully.' };
+      return {
+        message: 'Live selfie uploaded successfully.',
+        data: pilot.selfieUrl,
+      };
     } catch (error) {
       console.error(error);
       throw error;

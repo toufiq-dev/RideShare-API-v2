@@ -111,7 +111,7 @@ export class PilotController {
   }
 
   @Post('live-selfie')
-  @Roles(UserRole.PILOT)
+  @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload live selfie for pilot' })
@@ -119,8 +119,27 @@ export class PilotController {
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Query('pilotId') pilotId?: string,
   ) {
-    return await this.pilotService.uploadLiveSelfie(file, userId);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      if (pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      if (!pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = pilotId;
+    }
+    return await this.pilotService.uploadLiveSelfie(file, targetUserId, role);
   }
 
   @Post('vehicle-rc')

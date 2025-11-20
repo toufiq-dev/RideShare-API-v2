@@ -511,13 +511,45 @@ export class VerificationService {
       'You are an expert in extracting and translating Bangladeshi tax token data.';
 
     const userPrompt = `
-  Extract the name of the tax token owner from this Bangladeshi tax token image and parse it into the following JSON format:
-  {
-    "name": "The name of the tax token owner",
-  }
-  `;
+      Extract the registration number of the tax token from this Bangladeshi tax token image and return it as a JSON object.
+      CRITICAL: This must be a Bangladeshi tax token document. If this is not a tax token or is not readable, return null.
+      
+      Return the result as a valid JSON object with the following structure:
+      {
+        "registrationNumber": "the registration number extracted from the tax token"
+      }
+      
+      IMPORTANT RULES:
+      1. If this is NOT a tax token document, return { "registrationNumber": null }
+      2. If the tax token is not valid or not readable, return { "registrationNumber": null }
+      3. If you cannot extract the registration number, return { "registrationNumber": null }
+      4. Do not include any markdown formatting or backticks in your response
+      5. All text must be in English (translate Bengali to English)
+      6. The response must be valid JSON format
+      
+      BENGALI DIGIT MAPPING (translate these to English):
+      ০=0, ১=1, ২=2, ৩=3, ৪=4, ৫=5, ৬=6, ৭=7, ৮=8, ৯=9
+    `;
 
-    return this.extractDocumentData(buffer, systemPrompt, userPrompt);
+    const result = await this.extractDocumentData(
+      buffer,
+      systemPrompt,
+      userPrompt,
+    );
+
+    // Additional validation for tax token
+    if (
+      !result ||
+      !result.registrationNumber ||
+      result.registrationNumber.trim() === ''
+    ) {
+      throw new BadRequestException('Failed to extract tax token data.');
+    }
+
+    return {
+      registrationNumber: result.registrationNumber,
+      name: null,
+    };
   }
 
   async verifyDrivingLicense(dlNumber: string, dob: string) {

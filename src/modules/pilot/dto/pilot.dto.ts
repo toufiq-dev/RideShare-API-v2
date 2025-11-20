@@ -184,3 +184,14 @@ export class UpdateDriverDetailsDto {
   @IsString()
   city: string;
 }
+
+export class PilotIdQueryDto {
+  @ApiProperty({
+    description:
+      'Pilot user ID (required for admin/support roles, optional for pilot role)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  pilotId?: string;
+}

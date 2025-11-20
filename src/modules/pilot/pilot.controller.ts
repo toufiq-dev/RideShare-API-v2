@@ -39,6 +39,7 @@ import {
   BDNidTypeDto,
   UpdateDriverDetailsDto,
   PilotIdQueryDto,
+  BDNidType,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -285,9 +286,29 @@ export class PilotController {
   async uploadBDLicense(
     @UploadedFiles()
     files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    @Query() query: PilotIdQueryDto,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
   ) {
-    return await this.pilotService.uploadBDLicense(files, userId);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      if (query.pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      if (!query.pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = query.pilotId;
+    }
+
+    return await this.pilotService.uploadBDLicense(files, targetUserId, role);
   }
 
   @Post('bd-license/confirmation')
@@ -317,10 +338,30 @@ export class PilotController {
   async uploadBDNid(
     @UploadedFiles()
     files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
-    @Query() query: BDNidTypeDto,
+    @Query('type') type: BDNidType,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Query('pilotId') pilotId?: string,
   ) {
-    return await this.pilotService.uploadBDNid(files, userId, query.type);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      if (pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      if (!pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = pilotId;
+    }
+
+    return await this.pilotService.uploadBDNid(files, targetUserId, role, type);
   }
 
   @Post('bd-nid/confirmation')
@@ -351,9 +392,29 @@ export class PilotController {
   async uploadBDRC(
     @UploadedFiles()
     files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
+    @Query() query: PilotIdQueryDto,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
   ) {
-    return await this.pilotService.uploadBDRC(files, userId);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      if (query.pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      if (!query.pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = query.pilotId;
+    }
+
+    return await this.pilotService.uploadBDRC(files, targetUserId, role);
   }
 
   @Post('bd-rc/confirmation')
@@ -378,8 +439,27 @@ export class PilotController {
   async uploadNumberPlate(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Query() query: PilotIdQueryDto,
   ) {
-    return await this.pilotService.uploadNumberPlate(file, userId);
+    let targetUserId: string;
+
+    if (role === UserRole.PILOT) {
+      if (query.pilotId) {
+        throw new ForbiddenException(
+          'Pilots cannot specify pilotId parameter.',
+        );
+      }
+      targetUserId = userId;
+    } else {
+      if (!query.pilotId) {
+        throw new BadRequestException(
+          'pilotId query parameter is required for admin roles.',
+        );
+      }
+      targetUserId = query.pilotId;
+    }
+    return await this.pilotService.uploadNumberPlate(file, targetUserId, role);
   }
 
   @Post('number-plate/confirmation')
@@ -410,7 +490,6 @@ export class PilotController {
     let targetUserId: string;
 
     if (role === UserRole.PILOT) {
-      // Pilots can only upload for themselves
       if (query.pilotId) {
         throw new ForbiddenException(
           'Pilots cannot specify pilotId parameter.',
@@ -418,7 +497,6 @@ export class PilotController {
       }
       targetUserId = userId;
     } else {
-      // Admin roles must provide pilotId
       if (!query.pilotId) {
         throw new BadRequestException(
           'pilotId query parameter is required for admin roles.',

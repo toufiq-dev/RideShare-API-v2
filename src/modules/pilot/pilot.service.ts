@@ -969,13 +969,22 @@ export class PilotService {
   async uploadBDLicense(
     files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     userId: string,
+    role: UserRole,
   ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      let pilot = null;
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({ where: { id: userId } });
+      }
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isDLVerified === VerificationStatus.APPROVED) {
+      if (
+        role === UserRole.PILOT &&
+        pilot.isDLVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException(
           'Pilot already verified Driving License.',
         );
@@ -987,7 +996,7 @@ export class PilotService {
       const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
-        userId,
+        pilot.userId,
         files.front[0].mimetype,
       );
 
@@ -997,7 +1006,7 @@ export class PilotService {
         backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
-          userId,
+          pilot.userId,
           files.back[0].mimetype,
         );
       }
@@ -1012,7 +1021,7 @@ export class PilotService {
 
       // Update pilot with URLs
       await this.prisma.pilot.update({
-        where: { userId },
+        where: { id: pilot.id },
         data: updateData,
       });
 
@@ -1121,23 +1130,36 @@ export class PilotService {
   async uploadBDNid(
     files: { front: Express.Multer.File[]; back: Express.Multer.File[] },
     userId: string,
+    role: UserRole,
     nidType: BDNidType,
   ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId },
-        include: { nid: true },
-      });
+      let pilot = null;
+
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({
+          where: { userId },
+          include: { nid: true },
+        });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({
+          where: { id: userId },
+          include: { nid: true },
+        });
+      }
+
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
       if (
+        role === UserRole.PILOT &&
         nidType === BDNidType.PILOT &&
         pilot.isNidVerified === VerificationStatus.APPROVED
       ) {
         throw new BadRequestException('Pilot already verified NID.');
       }
       if (
+        role === UserRole.PILOT &&
         nidType === BDNidType.VEHICLE_OWNER &&
         pilot.isVehicleOwnersNidVerified === VerificationStatus.APPROVED
       ) {
@@ -1160,21 +1182,21 @@ export class PilotService {
       const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
-        userId,
+        pilot.userId,
         files.front[0].mimetype,
       );
 
       const backSideUrl = await this.azureService.uploadFile(
         backSideBuffer,
         files.back[0].originalname,
-        userId,
+        pilot.userId,
         files.back[0].mimetype,
       );
 
       if (frontSideUrl && backSideUrl) {
         if (nidType === BDNidType.PILOT) {
           await this.prisma.pilot.update({
-            where: { userId },
+            where: { id: pilot.id },
             data: {
               nidFrontSideUrl: frontSideUrl,
               nidBackSideUrl: backSideUrl,
@@ -1184,7 +1206,7 @@ export class PilotService {
 
         if (nidType === BDNidType.VEHICLE_OWNER) {
           await this.prisma.pilot.update({
-            where: { userId },
+            where: { id: pilot.id },
             data: {
               vehicleOwnersNidFrontSideUrl: frontSideUrl,
               vehicleOwnersNidBackSideUrl: backSideUrl,
@@ -1334,26 +1356,33 @@ export class PilotService {
   async uploadBDRC(
     files: { front: Express.Multer.File[]; back?: Express.Multer.File[] },
     userId: string,
+    role: UserRole,
   ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      let pilot = null;
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({ where: { id: userId } });
+      }
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isRCVerified === VerificationStatus.APPROVED) {
+      if (
+        role === UserRole.PILOT &&
+        pilot.isRCVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Pilot already verified RC.');
       }
 
       const previousFrontUrl = pilot.rcFrontSideUrl;
       const previousBackUrl = pilot.rcBackSideUrl;
 
-      console.time(`imageToBlob_${pilot.phone}`);
-
       const frontSideBuffer = files.front[0].buffer;
       const frontSideUrl = await this.azureService.uploadFile(
         frontSideBuffer,
         files.front[0].originalname,
-        userId,
+        pilot.userId,
         files.front[0].mimetype,
       );
 
@@ -1363,7 +1392,7 @@ export class PilotService {
         backSideUrl = await this.azureService.uploadFile(
           backSideBuffer,
           files.back[0].originalname,
-          userId,
+          pilot.userId,
           files.back[0].mimetype,
         );
       }
@@ -1377,13 +1406,10 @@ export class PilotService {
       }
 
       await this.prisma.pilot.update({
-        where: { userId },
+        where: { id: pilot.id },
         data: updateData,
       });
 
-      console.timeEnd(`imageToBlob_${pilot.phone}`);
-
-      console.time(`extractRCData_${pilot.phone}`);
       let verificationResponse =
         await this.verificationService.extractRCData(frontSideBuffer);
 
@@ -1422,8 +1448,6 @@ export class PilotService {
       };
 
       await this.deletePreviousFiles(previousFrontUrl, previousBackUrl);
-
-      console.timeEnd(`extractRCData_${pilot.phone}`);
 
       return {
         message: 'RC data extracted successfully.',
@@ -1527,13 +1551,31 @@ export class PilotService {
     }
   }
 
-  async uploadNumberPlate(file: Express.Multer.File, userId: string) {
+  async uploadNumberPlate(
+    file: Express.Multer.File,
+    userId: string,
+    role: UserRole,
+  ) {
     try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      let pilot = null;
+      if (role === UserRole.PILOT) {
+        pilot = await this.prisma.pilot.findUnique({
+          where: { userId },
+          include: { numberPlate: true },
+        });
+      } else {
+        pilot = await this.prisma.pilot.findUnique({
+          where: { id: userId },
+          include: { numberPlate: true },
+        });
+      }
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
+      if (
+        role === UserRole.PILOT &&
+        pilot.isNumberPlateVerified === VerificationStatus.APPROVED
+      ) {
         throw new BadRequestException('Pilot already verified number plate.');
       }
 
@@ -1544,12 +1586,12 @@ export class PilotService {
       const numberPlateUrl = await this.azureService.uploadFile(
         numberPlateBuffer,
         file.originalname,
-        userId,
+        pilot.userId,
         file.mimetype,
       );
 
       await this.prisma.pilot.update({
-        where: { userId },
+        where: { id: pilot.id },
         data: {
           numberPlateUrl,
         },

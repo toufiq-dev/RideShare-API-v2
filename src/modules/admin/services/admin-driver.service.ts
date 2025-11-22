@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/core/database/database.service";
-import { PilotService } from "src/modules/pilot/pilot.service";
 import { ApproveDocumentDto, FilterDriverDto, FilterDriverSortOptions, FilterDriverSortOrderOptions, RejectDocumentDto, UpdateDrivingLicenseDto, UpdateNidDto, UpdateNumberPlateDto, UpdateProfileImageDto, UpdateRegistrationCardDto, UpdateTaxTokenDto, UpdateVehicleOwnerNidDto } from "../dto/admin-driver.dto";
 import { Pilot, UserStatus, VerificationStatus } from "@prisma/client";
 import { DocumentType } from "../dto/admin.dto";
@@ -30,7 +29,6 @@ export class AdminDriverService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly pilotService: PilotService,
     ) { }
 
 
@@ -332,7 +330,8 @@ export class AdminDriverService {
                         select: {
                             status: true,
                         },
-                    }
+                    },
+                    documentSubmissions: true,
                 },
             });
 
@@ -354,18 +353,6 @@ export class AdminDriverService {
         try {
             console.log('userId>>>>>>', userId);
             const { pilotId, selfieUrl } = updateProfileImageDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) {
-                throw new NotFoundException('User not found');
-            }
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -417,8 +404,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
-
                     },
                 });
 
@@ -440,18 +425,6 @@ export class AdminDriverService {
 
     async updateDrivingLicense(updateDrivingLicenseDto: UpdateDrivingLicenseDto, userId: string) {
         const { pilotId, dlFrontSideUrl, dlBackSideUrl, ...drivingLicenseData } = updateDrivingLicenseDto;
-
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                role: true,
-            },
-        });
-
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
 
         const pilot = await this.findUniquePilot(pilotId);
 
@@ -515,7 +488,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -549,17 +521,6 @@ export class AdminDriverService {
     async updateNid(updateNidDto: UpdateNidDto, userId: string) {
         try {
             const { pilotId, nidFrontSideUrl, nidBackSideUrl, ...nidData } = updateNidDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) throw new NotFoundException('User not found');
-
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -617,7 +578,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -647,16 +607,6 @@ export class AdminDriverService {
     async updateVehicleOwnerNid(updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto, userId: string) {
         try {
             const { pilotId, vehicleOwnersNidFrontSideUrl, vehicleOwnersNidBackSideUrl, ...vehicleOwnerNidData } = updateVehicleOwnerNidDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -716,7 +666,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -746,16 +695,6 @@ export class AdminDriverService {
     async updateRegistrationInfo(updateRegistrationCardDto: UpdateRegistrationCardDto, userId: string) {
         try {
             const { pilotId, rcFrontSideUrl, rcBackSideUrl, ...registrationCardData } = updateRegistrationCardDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -814,7 +753,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -845,16 +783,6 @@ export class AdminDriverService {
     async updateNumberPlateInfo(updateNumberPlateDto: UpdateNumberPlateDto, userId: string) {
         try {
             const { pilotId, numberPlateUrl, regNo } = updateNumberPlateDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -919,7 +847,9 @@ export class AdminDriverService {
                         updatedAt: updatedAt,
                     },
                     create: {
-                        numberPlate: numberPlateUrl,
+                        pilotId,
+                        numberPlate: regNo,
+                        createdAt: updatedAt,
                     },
                 });
 
@@ -941,7 +871,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -960,16 +889,6 @@ export class AdminDriverService {
     async updateTaxTokenInfo(updateTaxTokenDto: UpdateTaxTokenDto, userId: string) {
         try {
             const { pilotId, taxTokenUrl, ...taxTokenData } = updateTaxTokenDto;
-
-            const user = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    role: true,
-                },
-            });
-
-            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -1027,6 +946,19 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.taxToken.upsert({
+                    where: { pilotId },
+                    update: {
+                        registrationNumber: taxTokenData.regNo,
+                        updatedAt: updatedAt,
+                    },
+                    create: {
+                        pilotId,
+                        registrationNumber: taxTokenData.regNo,
+                        createdAt: updatedAt,
+                    },
+                });
+
                 await tx.adminDocumentSubmission.create({
                     data: {
                         pilotId: pilotId,
@@ -1034,7 +966,6 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
-                        reviewerRole: user.role,
                     },
                 });
 
@@ -1061,8 +992,18 @@ export class AdminDriverService {
         }
     }
 
-    async rejectDocument(rejectDocumentDto: RejectDocumentDto) {
+    async rejectDocument(rejectDocumentDto: RejectDocumentDto, userId: string) {
         const { pilotId, documentType, rejectionReason } = rejectDocumentDto;
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                role: true,
+            },
+        });
+
+        if (!user) throw new NotFoundException('User not found');
 
         const pilot = await this.findUniquePilot(pilotId);
 
@@ -1071,6 +1012,7 @@ export class AdminDriverService {
         }
 
         const currentDocumentStatus = pilot[this.verificationFieldMap[documentType]];
+
         if (currentDocumentStatus === VerificationStatus.APPROVED) {
             throw new BadRequestException('Document already approved');
         }
@@ -1091,6 +1033,12 @@ export class AdminDriverService {
             throw new BadRequestException('Unsupported document type');
         }
 
+        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, documentType);
+
+        if (!existDriverDocumentSubmission) {
+            throw new BadRequestException('Document not found');
+        }
+
         const updatedPilot = await this.prisma.$transaction(async (tx) => {
             const updatedPilot = await tx.pilot.update({
                 where: { id: pilotId },
@@ -1098,6 +1046,18 @@ export class AdminDriverService {
                     [verificationField]: VerificationStatus.REJECTED,
                     [rejectionField]: rejectionReason,
                     updatedAt: new Date(),
+                },
+            });
+
+            await tx.adminDocumentSubmission.update({
+                where: { id: existDriverDocumentSubmission.id },
+                data: {
+                    verificationStatus: VerificationStatus.REJECTED,
+                    updatedAt: new Date(),
+                    reviewedByUserId: userId,
+                    reviewedAt: new Date(),
+                    reviewerRole: user.role,
+                    rejectionReason: rejectionReason,
                 },
             });
 
@@ -1117,7 +1077,18 @@ export class AdminDriverService {
         };
     }
 
-    async approveDocument({ pilotId, documentType }: ApproveDocumentDto) {
+    async approveDocument({ pilotId, documentType }: ApproveDocumentDto, userId: string) {
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                role: true,
+            },
+        });
+
+        if (!user) throw new NotFoundException('User not found');
+
         const pilot = await this.findUniquePilot(pilotId);
         if (!pilot) {
             throw new NotFoundException('Driver not found');
@@ -1131,14 +1102,11 @@ export class AdminDriverService {
             throw new BadRequestException('Unsupported document type');
         }
 
-        // const currentDocumentStatus = pilot[verificationField];
-        // if (currentDocumentStatus === VerificationStatus.APPROVED) {
-        //     throw new BadRequestException('Document already approved');
-        // }
+        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, documentType);
 
-        // if (currentDocumentStatus === VerificationStatus.PENDING) {
-        //     throw new BadRequestException('Document is not in review');
-        // }
+        if (!existDriverDocumentSubmission) {
+            throw new BadRequestException('Document not found');
+        }
 
         const updatedPilot = await this.prisma.$transaction(async (tx) => {
             const updatedPilot = await tx.pilot.update({
@@ -1147,6 +1115,17 @@ export class AdminDriverService {
                     [verificationField]: VerificationStatus.APPROVED,
                     [rejectionField]: null,
                     updatedAt: new Date(),
+                },
+            });
+
+            await tx.adminDocumentSubmission.update({
+                where: { id: existDriverDocumentSubmission.id },
+                data: {
+                    verificationStatus: VerificationStatus.APPROVED,
+                    updatedAt: new Date(),
+                    reviewedByUserId: userId,
+                    reviewedAt: new Date(),
+                    reviewerRole: user.role,
                 },
             });
 

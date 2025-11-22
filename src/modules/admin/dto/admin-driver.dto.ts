@@ -447,7 +447,9 @@ export class UpdateTaxTokenDto {
         required: true,
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
-    @IsNotEmpty()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -456,7 +458,9 @@ export class UpdateTaxTokenDto {
         description: 'Tax token image',
         example: 'https://example.com/tax-token.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Tax token image is required',
+    })
     @IsUrl()
     readonly taxTokenUrl?: string;
 
@@ -465,7 +469,9 @@ export class UpdateTaxTokenDto {
         description: 'Vehicle registration number',
         example: 'ABC-1234',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle registration number is required',
+    })
     @IsString()
     readonly regNo!: string;
 
@@ -474,7 +480,9 @@ export class UpdateTaxTokenDto {
         description: 'The vehicle type id',
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle type id is required',
+    })
     @IsUUID()
     readonly vehicleTypeIdBD!: string;
 
@@ -483,7 +491,9 @@ export class UpdateTaxTokenDto {
         description: 'Vehicle color',
         example: 'Red',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle color is required',
+    })
     @IsString()
     readonly colour!: string;
 
@@ -492,7 +502,9 @@ export class UpdateTaxTokenDto {
         description: 'Registration date',
         example: '2020-01-15',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Registration date is required',
+    })
     @IsDateString()
     readonly registrationDate!: string;
 }

@@ -1,12 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/core/database/database.service";
 import { ApproveDocumentDto, FilterDriverDto, FilterDriverSortOptions, FilterDriverSortOrderOptions, RejectDocumentDto, UpdateDrivingLicenseDto, UpdateNidDto, UpdateNumberPlateDto, UpdateProfileImageDto, UpdateRegistrationCardDto, UpdateTaxTokenDto, UpdateVehicleOwnerNidDto } from "../dto/admin-driver.dto";
-import { Pilot, UserStatus, VerificationStatus } from "@prisma/client";
+import { Pilot, Prisma, UserStatus, VerificationStatus } from "@prisma/client";
 import { DocumentType } from "../dto/admin.dto";
 
 @Injectable()
 export class AdminDriverService {
-
     private readonly verificationFieldMap: Record<DocumentType, keyof Pilot> = {
         [DocumentType.SELFIE]: 'isSelfieVerified',
         [DocumentType.DRIVING_LICENSE]: 'isDLVerified',
@@ -27,221 +26,117 @@ export class AdminDriverService {
         [DocumentType.VEHICLE_OWNERS_NID]: 'vehicleOwnersNidRejectionReason',
     };
 
+    private readonly documentUrlFields: Record<DocumentType, string[]> = {
+        [DocumentType.SELFIE]: ['selfieUrl'],
+        [DocumentType.DRIVING_LICENSE]: ['dlFrontSideUrl', 'dlBackSideUrl'],
+        [DocumentType.NID]: ['nidFrontSideUrl', 'nidBackSideUrl'],
+        [DocumentType.REGISTRATION_CERTIFICATE]: ['rcFrontSideUrl', 'rcBackSideUrl'],
+        [DocumentType.NUMBER_PLATE]: ['numberPlateUrl'],
+        [DocumentType.TAX_TOKEN]: ['taxTokenUrl'],
+        [DocumentType.VEHICLE_OWNERS_NID]: ['vehicleOwnersNidFrontSideUrl', 'vehicleOwnersNidBackSideUrl'],
+    };
+
+    private readonly documentTypeNames: Record<DocumentType, string> = {
+        [DocumentType.SELFIE]: 'Selfie',
+        [DocumentType.DRIVING_LICENSE]: 'Driving License',
+        [DocumentType.NID]: 'NID',
+        [DocumentType.REGISTRATION_CERTIFICATE]: 'Registration Certificate',
+        [DocumentType.NUMBER_PLATE]: 'Number Plate',
+        [DocumentType.TAX_TOKEN]: 'Tax Token',
+        [DocumentType.VEHICLE_OWNERS_NID]: 'Vehicle Owner NID',
+    };
+
+    private readonly documentFieldsForCount = [
+        'nidFrontSideUrl', 'nidBackSideUrl',
+        'vehicleOwnersNidFrontSideUrl', 'vehicleOwnersNidBackSideUrl',
+        'rcFrontSideUrl', 'rcBackSideUrl',
+        'numberPlateUrl', 'taxTokenUrl',
+        'dlFrontSideUrl', 'dlBackSideUrl',
+        'selfieUrl',
+    ];
+
     constructor(
         private readonly prisma: PrismaService,
     ) { }
 
+    // ==================== Public Methods ====================
 
     async getDriverList(query: FilterDriverDto) {
+        const {
+            page = 1,
+            pageSize = 10,
+            search,
+            status,
+            sortBy = FilterDriverSortOptions.CREATED_AT as any,
+            sortOrder = FilterDriverSortOrderOptions.DESC as any,
+            vehicleTypeId,
+            startDate,
+            endDate,
+            updatedStartDate,
+            updatedEndDate,
+        } = query;
+
+        const skip = (page - 1) * pageSize;
+        const whereClause = this.buildWhereClause({
+            search,
+            status,
+            vehicleTypeId,
+            startDate,
+            endDate,
+            updatedStartDate,
+            updatedEndDate,
+        });
+
+        const orderByClause = this.buildOrderByClause(sortBy, sortOrder);
+
         try {
-            const {
-                page = 1,
-                pageSize = 10,
-                search,
-                status,
-                sortBy = FilterDriverSortOptions.CREATED_AT as any,
-                sortOrder = FilterDriverSortOrderOptions.DESC as any,
-                vehicleTypeId,
-                startDate,
-                endDate,
-                updatedStartDate,
-                updatedEndDate,
-            } = query;
-
-            const skip = (page - 1) * pageSize;
-
-            const whereClause: any = {};
-
-            if (status) {
-                whereClause.user = {
-                    status: status as UserStatus,
-                };
-            }
-
-            if (search && search.trim()) {
-                whereClause.OR = [
-                    { name: { contains: search.trim(), mode: 'insensitive' } },
-                    { phone: { contains: search.trim(), mode: 'insensitive' } },
-                ];
-            }
-
-            if (startDate || endDate) {
-                whereClause.createdAt = {};
-                if (startDate) {
-                    whereClause.createdAt.gte = new Date(startDate);
-                }
-                if (endDate) {
-                    whereClause.createdAt.lte = new Date(endDate);
-                }
-            }
-
-            if (updatedStartDate || updatedEndDate) {
-                whereClause.updatedAt = {};
-                if (updatedStartDate) {
-                    whereClause.updatedAt.gte = new Date(updatedStartDate);
-                }
-                if (updatedEndDate) {
-                    whereClause.updatedAt.lte = new Date(updatedEndDate);
-                }
-            }
-
-            if (vehicleTypeId) {
-                whereClause.vehicle = {
-                    vehicleTypeBD: {
-                        id: vehicleTypeId,
-                    }
-                }
-            }
-
-            let orderByClause: any = {};
-
-            if (
-                sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
-                sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
-            ) {
-                orderByClause = { createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc' };
-                // orderByClause = {
-                //   _documentCount: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-                // }
-            } else if (sortBy === FilterDriverSortOptions.UPDATED_AT) {
-                orderByClause = {
-                    updatedAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-                };
-            } else if (sortBy === FilterDriverSortOptions.CREATED_AT) {
-                orderByClause = {
-                    createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-                };
-            } else if (sortBy === FilterDriverSortOptions.NAME) {
-                orderByClause = {
-                    name: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
-                };
-            } else {
-                orderByClause = { createdAt: 'desc' };
-            }
-
-            const totalCount = await this.prisma.pilot.count({
-                where: whereClause,
-            });
-
-            const pendingCount = await this.prisma.pilot.count({
-                where: {
-                    ...whereClause,
-                    user: {
-                        status: UserStatus.IN_REVIEW,
-                    },
-                },
-            });
-
-            const suspendedCount = await this.prisma.pilot.count({
-                where: {
-                    ...whereClause,
-                    user: {
-                        status: UserStatus.SUSPENDED,
-                    },
-                },
-            });
-
-            const activeCount = await this.prisma.pilot.count({
-                where: {
-                    ...whereClause,
-                    user: {
-                        status: UserStatus.ACTIVE,
-                    },
-                },
-            });
-
-            let pilots = await this.prisma.pilot.findMany({
-                where: whereClause,
-                orderBy: orderByClause,
-                // select: selectObject,
-                select: {
-                    id: true,
-                    name: true,
-                    phone: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    // nidFrontSideUrl: true,
-                    // nidBackSideUrl: true,
-                    // vehicleOwnersNidFrontSideUrl: true,
-                    // vehicleOwnersNidBackSideUrl: true,
-                    // rcFrontSideUrl: true,
-                    // rcBackSideUrl: true,
-                    // numberPlateUrl: true,
-                    // taxTokenUrl: true,
-                    // dlFrontSideUrl: true,
-                    // dlBackSideUrl: true,
-                    isDLVerified: true,
-                    isRCVerified: true,
-                    isNidVerified: true,
-                    isVehicleOwnersNidVerified: true,
-                    isNumberPlateVerified: true,
-                    isTaxTokenVerified: true,
-                    isSelfieVerified: true,
-                    vehicle: {
-                        select: {
-                            vehicleTypeBD: {
-                                select: {
-                                    name: true,
+            const [totalCount, pendingCount, suspendedCount, activeCount, pilots] = await Promise.all([
+                this.prisma.pilot.count({ where: whereClause }),
+                this.prisma.pilot.count({
+                    where: { ...whereClause, user: { status: UserStatus.IN_REVIEW } },
+                }),
+                this.prisma.pilot.count({
+                    where: { ...whereClause, user: { status: UserStatus.SUSPENDED } },
+                }),
+                this.prisma.pilot.count({
+                    where: { ...whereClause, user: { status: UserStatus.ACTIVE } },
+                }),
+                this.prisma.pilot.findMany({
+                    where: whereClause,
+                    orderBy: orderByClause,
+                    select: {
+                        id: true,
+                        name: true,
+                        phone: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        isDLVerified: true,
+                        isRCVerified: true,
+                        isNidVerified: true,
+                        isVehicleOwnersNidVerified: true,
+                        isNumberPlateVerified: true,
+                        isTaxTokenVerified: true,
+                        isSelfieVerified: true,
+                        vehicle: {
+                            select: {
+                                vehicleTypeBD: {
+                                    select: { name: true },
                                 },
-                            },
+                            }
                         }
-                    }
-                },
-                skip,
-                take: +pageSize || 10,
-            });
+                    },
+                    skip,
+                    take: +pageSize || 10,
+                }),
+            ]);
 
-            if (
-                sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED ||
-                sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
-            ) {
-                // Calculate document count for each pilot
-                const pilotsWithDocCount = pilots.map((pilot: any) => {
-                    const documentFields = [
-                        'nidFrontSideUrl',
-                        'nidBackSideUrl',
-                        'vehicleOwnersNidFrontSideUrl',
-                        'vehicleOwnersNidBackSideUrl',
-                        'rcFrontSideUrl',
-                        'rcBackSideUrl',
-                        'numberPlateUrl',
-                        'taxTokenUrl',
-                        'dlFrontSideUrl',
-                        'dlBackSideUrl',
-                        'selfieUrl',
-                    ];
-
-                    let docCount = 0;
-                    for (const field of documentFields) {
-                        if (pilot[field] && pilot[field] !== null) {
-                            docCount++;
-                        }
-                    }
-
-                    return {
-                        ...pilot,
-                        _documentCount: docCount,
-                    };
-                });
-
-                // Sort by document count
-                pilotsWithDocCount.sort((a, b) => {
-                    if (sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED) {
-                        return b._documentCount - a._documentCount;
-                    } else {
-                        return a._documentCount - b._documentCount;
-                    }
-                });
-                pilots = pilotsWithDocCount.map(({ _documentCount, ...pilot }) => pilot);
-            }
+            const sortedPilots = this.sortPilotsByDocumentCount(pilots, sortBy);
             const totalPages = Math.ceil(totalCount / pageSize);
-            const hasNextPage = page < totalPages;
-            const hasPrevPage = page > 1;
 
             return {
                 message: 'Driver list fetched successfully.',
                 data: {
-                    pilots,
+                    pilots: sortedPilots,
                     totalPilots: totalCount,
                     pendingPilots: pendingCount,
                     suspendedPilots: suspendedCount,
@@ -251,14 +146,13 @@ export class AdminDriverService {
                         totalPages,
                         currentPage: +page,
                         pageSize: +pageSize,
-                        hasNextPage,
-                        hasPrevPage,
+                        hasNextPage: page < totalPages,
+                        hasPrevPage: page > 1,
                     },
                 },
             };
         } catch (error) {
-            console.error(error);
-            throw error;
+            throw this.handleError(error, 'Failed to fetch driver list. Please try again later.');
         }
     }
 
@@ -336,7 +230,7 @@ export class AdminDriverService {
             });
 
             if (!pilot) {
-                throw new NotFoundException('Driver not found');
+                throw new NotFoundException('Driver not found. Please verify the driver ID and try again.');
             }
 
             return {
@@ -344,82 +238,40 @@ export class AdminDriverService {
                 data: pilot,
             };
         } catch (error) {
-            console.error(error);
-            throw error;
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw this.handleError(error, 'Failed to fetch driver details. Please try again later.');
         }
     }
 
     async updateProfileImage(updateProfileImageDto: UpdateProfileImageDto, userId: string) {
+        const { pilotId, selfieUrl } = updateProfileImageDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.SELFIE);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.SELFIE);
+
         try {
-            console.log('userId>>>>>>', userId);
-            const { pilotId, selfieUrl } = updateProfileImageDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isSelfieVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('Selfie already approved');
-            }
-
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.SELFIE);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('Selfie already in review');
-            }
-
-
-            const [updatedPilot] = await this.prisma.$transaction(async (tx) => {
-
-                const updatedAt = new Date();
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: {
-                        selfieUrl: selfieUrl,
-                        isSelfieVerified: VerificationStatus.IN_PROGRESS,
-                        selfieRejectionReason: null,
-                        updatedAt: updatedAt,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot) ? UserStatus.IN_REVIEW : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: {
-                            status: expectedStatus,
-                            updatedAt: updatedAt,
-                        },
-                    });
-                }
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.SELFIE,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-                return [updatedPilot];
-            });
-
-            if (!updatedPilot) {
-                throw new BadRequestException('Failed to upload driver profile');
-            }
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.SELFIE,
+                { selfieUrl },
+                userId,
+                pilot,
+            );
 
             return {
-                message: 'Driver profile uploaded successfully.',
+                message: 'Driver profile image uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.SELFIE].toLowerCase()}.`,
+                DocumentType.SELFIE,
+            );
         }
     }
 
@@ -427,730 +279,525 @@ export class AdminDriverService {
         const { pilotId, dlFrontSideUrl, dlBackSideUrl, ...drivingLicenseData } = updateDrivingLicenseDto;
 
         const pilot = await this.findUniquePilot(pilotId);
-
-        if (!pilot) {
-            throw new NotFoundException('Driver not found');
-        }
-
-        if (pilot.isDLVerified === VerificationStatus.APPROVED) {
-            throw new BadRequestException('Driving license already approved');
-        }
-
-        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.DRIVING_LICENSE);
-
-        if (existDriverDocumentSubmission) {
-            throw new BadRequestException('Driving license already in review');
-        }
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.DRIVING_LICENSE);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.DRIVING_LICENSE);
 
         try {
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    dlRejectionReason: null,
-                };
-                if (dlFrontSideUrl) pilotUpdateData.dlFrontSideUrl = dlFrontSideUrl || pilot.dlFrontSideUrl;
-                if (dlBackSideUrl) pilotUpdateData.dlBackSideUrl = dlBackSideUrl || pilot.dlBackSideUrl;
-
-                pilotUpdateData.isDLVerified =
-                    (pilotUpdateData?.dlFrontSideUrl && pilotUpdateData?.dlBackSideUrl)
-                        ? VerificationStatus.IN_PROGRESS
-                        : VerificationStatus.PENDING;
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-                await tx.drivingLicense.upsert({
-                    where: { pilotId },
-                    update: {
-                        ...drivingLicenseData,
-                        dateOfBirth: new Date(drivingLicenseData.dateOfBirth),
-                        validUntill: new Date(drivingLicenseData.validUntill),
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        pilotId,
-                        ...drivingLicenseData,
-                        dateOfBirth: new Date(drivingLicenseData.dateOfBirth),
-                        validUntill: new Date(drivingLicenseData.validUntill),
-                        createdAt: updatedAt,
-                    },
-                });
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.DRIVING_LICENSE,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.DRIVING_LICENSE,
+                { dlFrontSideUrl, dlBackSideUrl },
+                userId,
+                pilot,
+                async (tx, updatedPilot) => {
+                    await tx.drivingLicense.upsert({
+                        where: { pilotId },
+                        update: {
+                            ...drivingLicenseData,
+                            dateOfBirth: new Date(drivingLicenseData.dateOfBirth),
+                            validUntill: new Date(drivingLicenseData.validUntill),
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            pilotId,
+                            ...drivingLicenseData,
+                            dateOfBirth: new Date(drivingLicenseData.dateOfBirth),
+                            validUntill: new Date(drivingLicenseData.validUntill),
+                            createdAt: updatedPilot.updatedAt,
+                        },
                     });
-                }
-
-                return updatedPilot;
-            });
-
-            if (!updatedPilot) {
-                throw new BadRequestException('Failed to upload driving license');
-            }
+                },
+            );
 
             return {
                 message: 'Driving license uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.DRIVING_LICENSE].toLowerCase()}.`,
+                DocumentType.DRIVING_LICENSE,
+            );
         }
     }
 
     async updateNid(updateNidDto: UpdateNidDto, userId: string) {
+        const { pilotId, nidFrontSideUrl, nidBackSideUrl, ...nidData } = updateNidDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.NID);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.NID);
+
         try {
-            const { pilotId, nidFrontSideUrl, nidBackSideUrl, ...nidData } = updateNidDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isNidVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('NID already approved');
-            }
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.NID);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('NID already in review');
-            }
-
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    nidRejectionReason: null,
-                };
-                if (nidFrontSideUrl) pilotUpdateData.nidFrontSideUrl = nidFrontSideUrl || pilot.nidFrontSideUrl;
-                if (nidBackSideUrl) pilotUpdateData.nidBackSideUrl = nidBackSideUrl || pilot.nidBackSideUrl;
-
-                pilotUpdateData.isNidVerified =
-                    (pilotUpdateData?.nidFrontSideUrl && pilotUpdateData?.nidBackSideUrl)
-                        ? VerificationStatus.IN_PROGRESS
-                        : VerificationStatus.PENDING;
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-                await tx.nid.upsert({
-                    where: { pilotId },
-                    update: {
-                        ...nidData,
-                        dateOfBirth: new Date(nidData.dateOfBirth),
-                    },
-                    create: {
-                        pilotId,
-                        ...nidData,
-                        dateOfBirth: new Date(nidData.dateOfBirth),
-                    },
-                });
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.NID,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.NID,
+                { nidFrontSideUrl, nidBackSideUrl },
+                userId,
+                pilot,
+                async (tx) => {
+                    await tx.nid.upsert({
+                        where: { pilotId },
+                        update: {
+                            ...nidData,
+                            dateOfBirth: new Date(nidData.dateOfBirth),
+                        },
+                        create: {
+                            pilotId,
+                            ...nidData,
+                            dateOfBirth: new Date(nidData.dateOfBirth),
+                        },
                     });
-                }
-
-                return updatedPilot;
-            });
+                },
+            );
 
             return {
                 message: 'NID uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.NID].toLowerCase()}.`,
+                DocumentType.NID,
+            );
         }
     }
 
     async updateVehicleOwnerNid(updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto, userId: string) {
+        const { pilotId, vehicleOwnersNidFrontSideUrl, vehicleOwnersNidBackSideUrl, ...vehicleOwnerNidData } = updateVehicleOwnerNidDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.VEHICLE_OWNERS_NID);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.VEHICLE_OWNERS_NID);
+
         try {
-            const { pilotId, vehicleOwnersNidFrontSideUrl, vehicleOwnersNidBackSideUrl, ...vehicleOwnerNidData } = updateVehicleOwnerNidDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isVehicleOwnersNidVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('Vehicle owner NID already approved');
-            }
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.VEHICLE_OWNERS_NID);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('Vehicle owner NID already in review');
-            }
-
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    vehicleOwnersNidRejectionReason: null,
-                };
-                if (vehicleOwnersNidFrontSideUrl) pilotUpdateData.vehicleOwnersNidFrontSideUrl = vehicleOwnersNidFrontSideUrl || pilot.vehicleOwnersNidFrontSideUrl;
-                if (vehicleOwnersNidBackSideUrl) pilotUpdateData.vehicleOwnersNidBackSideUrl = vehicleOwnersNidBackSideUrl || pilot.vehicleOwnersNidBackSideUrl;
-
-                pilotUpdateData.isNidVerified =
-                    (pilotUpdateData?.vehicleOwnersNidFrontSideUrl && pilotUpdateData?.vehicleOwnersNidBackSideUrl)
-                        ? VerificationStatus.IN_PROGRESS
-                        : VerificationStatus.PENDING;
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-
-
-                await tx.nid.upsert({
-                    where: { pilotId },
-                    update: {
-                        ...vehicleOwnerNidData,
-                        vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
-                    },
-                    create: {
-                        pilotId,
-                        ...vehicleOwnerNidData,
-                        vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
-                    },
-                });
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.VEHICLE_OWNERS_NID,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.VEHICLE_OWNERS_NID,
+                { vehicleOwnersNidFrontSideUrl, vehicleOwnersNidBackSideUrl },
+                userId,
+                pilot,
+                async (tx) => {
+                    await tx.nid.upsert({
+                        where: { pilotId },
+                        update: {
+                            ...vehicleOwnerNidData,
+                            vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
+                        },
+                        create: {
+                            pilotId,
+                            ...vehicleOwnerNidData,
+                            vehicleOwnerNidDateOfBirth: new Date(vehicleOwnerNidData.vehicleOwnerNidDateOfBirth),
+                        },
                     });
-                }
-
-                return updatedPilot;
-            });
+                },
+            );
 
             return {
                 message: 'Vehicle owner NID uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.VEHICLE_OWNERS_NID].toLowerCase()}.`,
+                DocumentType.VEHICLE_OWNERS_NID,
+            );
         }
     }
 
     async updateRegistrationInfo(updateRegistrationCardDto: UpdateRegistrationCardDto, userId: string) {
+        const { pilotId, rcFrontSideUrl, rcBackSideUrl, ...registrationCardData } = updateRegistrationCardDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.REGISTRATION_CERTIFICATE);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.REGISTRATION_CERTIFICATE);
+
         try {
-            const { pilotId, rcFrontSideUrl, rcBackSideUrl, ...registrationCardData } = updateRegistrationCardDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isRCVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('Registration certificate already approved');
-            }
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.REGISTRATION_CERTIFICATE);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('Registration certificate already in review');
-            }
-
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    rcRejectionReason: null,
-                };
-                if (rcFrontSideUrl) pilotUpdateData.rcFrontSideUrl = rcFrontSideUrl || pilot.rcFrontSideUrl;
-                if (rcBackSideUrl) pilotUpdateData.rcBackSideUrl = rcBackSideUrl || pilot.rcBackSideUrl;
-
-                pilotUpdateData.isRCVerified =
-                    (pilotUpdateData?.rcFrontSideUrl && pilotUpdateData?.rcBackSideUrl) ? VerificationStatus.IN_PROGRESS : VerificationStatus.PENDING;
-
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-                await tx.vehicle.upsert({
-                    where: { pilotId },
-                    update: {
-                        ...registrationCardData,
-                        registrationDate: new Date(registrationCardData.registrationDate),
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        pilotId,
-                        ...registrationCardData,
-                        registrationDate: new Date(registrationCardData.registrationDate),
-                        createdAt: updatedAt,
-                    },
-                });
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.REGISTRATION_CERTIFICATE,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.REGISTRATION_CERTIFICATE,
+                { rcFrontSideUrl, rcBackSideUrl },
+                userId,
+                pilot,
+                async (tx, updatedPilot) => {
+                    await tx.vehicle.upsert({
+                        where: { pilotId },
+                        update: {
+                            ...registrationCardData,
+                            registrationDate: new Date(registrationCardData.registrationDate),
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            pilotId,
+                            ...registrationCardData,
+                            registrationDate: new Date(registrationCardData.registrationDate),
+                            createdAt: updatedPilot.updatedAt,
+                        },
                     });
-                }
-
-                return updatedPilot;
-
-            });
+                },
+            );
 
             return {
-                message: 'Registration info uploaded successfully.',
+                message: 'Registration certificate uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.REGISTRATION_CERTIFICATE].toLowerCase()}.`,
+                DocumentType.REGISTRATION_CERTIFICATE,
+            );
         }
     }
 
     async updateNumberPlateInfo(updateNumberPlateDto: UpdateNumberPlateDto, userId: string) {
+        const { pilotId, numberPlateUrl, regNo } = updateNumberPlateDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.NUMBER_PLATE);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.NUMBER_PLATE);
+        await this.validateVehicleExists(pilotId);
+
         try {
-            const { pilotId, numberPlateUrl, regNo } = updateNumberPlateDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('Number plate already approved');
-            }
-
-            const hasRegisteredVehicle = await this.prisma.vehicle.findFirst({
-                where: { pilotId: pilotId },
-            });
-
-            if (!hasRegisteredVehicle) {
-                throw new BadRequestException('You did not submit any vehicle registration number');
-            }
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.NUMBER_PLATE);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('Number plate already in review');
-            }
-
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    numberPlateRejectionReason: null,
-                };
-                if (numberPlateUrl) pilotUpdateData.numberPlateUrl = numberPlateUrl || pilot.numberPlateUrl;
-
-                pilotUpdateData.isNumberPlateVerified =
-                    (pilotUpdateData?.numberPlateUrl) ? VerificationStatus.IN_PROGRESS : VerificationStatus.PENDING;
-
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-                await tx.vehicle.upsert({
-                    where: { regNo },
-                    update: {
-                        regNo,
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        regNo,
-                        createdAt: updatedAt,
-                        colour: "",
-                        pilot: { connect: { id: pilotId } },
-                    },
-                });
-
-                await tx.numberPlate.upsert({
-                    where: { pilotId },
-                    update: {
-                        numberPlate: regNo,
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        pilotId,
-                        numberPlate: regNo,
-                        createdAt: updatedAt,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.NUMBER_PLATE,
+                { numberPlateUrl },
+                userId,
+                pilot,
+                async (tx, updatedPilot) => {
+                    await tx.vehicle.upsert({
+                        where: { regNo },
+                        update: {
+                            regNo,
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            regNo,
+                            createdAt: updatedPilot.updatedAt,
+                            colour: "",
+                            pilot: { connect: { id: pilotId } },
+                        },
                     });
-                }
 
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.NUMBER_PLATE,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
+                    await tx.numberPlate.upsert({
+                        where: { pilotId },
+                        update: {
+                            numberPlate: regNo,
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            pilotId,
+                            numberPlate: regNo,
+                            createdAt: updatedPilot.updatedAt,
+                        },
+                    });
+                },
+            );
 
-                return updatedPilot;
-
-            });
             return {
                 message: 'Number plate uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.NUMBER_PLATE].toLowerCase()}.`,
+                DocumentType.NUMBER_PLATE,
+            );
         }
     }
 
     async updateTaxTokenInfo(updateTaxTokenDto: UpdateTaxTokenDto, userId: string) {
+        const { pilotId, taxTokenUrl, ...taxTokenData } = updateTaxTokenDto;
+
+        const pilot = await this.findUniquePilot(pilotId);
+        this.validatePilotExists(pilot);
+        this.validateDocumentNotApproved(pilot, DocumentType.TAX_TOKEN);
+        await this.validateDocumentNotInReview(pilotId, DocumentType.TAX_TOKEN);
+        await this.validateVehicleExists(pilotId);
+
         try {
-            const { pilotId, taxTokenUrl, ...taxTokenData } = updateTaxTokenDto;
-
-            const pilot = await this.findUniquePilot(pilotId);
-
-            if (!pilot) {
-                throw new NotFoundException('Driver not found');
-            }
-
-            if (pilot.isTaxTokenVerified === VerificationStatus.APPROVED) {
-                throw new BadRequestException('Tax token already approved');
-            }
-            const hasRegisteredVehicle = await this.prisma.vehicle.findFirst({
-                where: { pilotId: pilotId },
-            });
-
-            if (!hasRegisteredVehicle) {
-                throw new BadRequestException('You did not submit any vehicle registration number');
-            }
-
-            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.TAX_TOKEN);
-
-            if (existDriverDocumentSubmission) {
-                throw new BadRequestException('Tax token already in review');
-            }
-
-            const updatedPilot = await this.prisma.$transaction(async (tx) => {
-                const updatedAt = new Date();
-
-                const pilotUpdateData: any = {
-                    updatedAt: updatedAt,
-                    taxTokenRejectionReason: null,
-                };
-                if (taxTokenUrl) pilotUpdateData.taxTokenUrl = taxTokenUrl || pilot.taxTokenUrl;
-
-                pilotUpdateData.isTaxTokenVerified =
-                    (pilotUpdateData?.taxTokenUrl) ? VerificationStatus.IN_PROGRESS : VerificationStatus.PENDING;
-
-
-                const updatedPilot = await tx.pilot.update({
-                    where: { id: pilotId },
-                    data: pilotUpdateData,
-                });
-
-                await tx.vehicle.upsert({
-                    where: { regNo: taxTokenData.regNo },
-                    update: {
-                        ...taxTokenData,
-                        registrationDate: new Date(taxTokenData.registrationDate),
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        pilotId,
-                        ...taxTokenData,
-                        registrationDate: new Date(taxTokenData.registrationDate),
-                        createdAt: updatedAt,
-                    },
-                });
-
-                await tx.taxToken.upsert({
-                    where: { pilotId },
-                    update: {
-                        registrationNumber: taxTokenData.regNo,
-                        updatedAt: updatedAt,
-                    },
-                    create: {
-                        pilotId,
-                        registrationNumber: taxTokenData.regNo,
-                        createdAt: updatedAt,
-                    },
-                });
-
-                await tx.adminDocumentSubmission.create({
-                    data: {
-                        pilotId: pilotId,
-                        documentType: DocumentType.TAX_TOKEN,
-                        verificationStatus: VerificationStatus.PENDING,
-                        createdAt: updatedAt,
-                        submittedByUserId: userId,
-                    },
-                });
-
-                const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
-                    ? UserStatus.IN_REVIEW
-                    : UserStatus.ONBOARDING;
-
-                if (pilot.user.status !== expectedStatus) {
-                    await tx.user.update({
-                        where: { id: pilot.userId },
-                        data: { status: expectedStatus, updatedAt: updatedAt },
+            const updatedPilot = await this.updateDocumentWithTransaction(
+                pilotId,
+                DocumentType.TAX_TOKEN,
+                { taxTokenUrl },
+                userId,
+                pilot,
+                async (tx, updatedPilot) => {
+                    await tx.vehicle.upsert({
+                        where: { regNo: taxTokenData.regNo },
+                        update: {
+                            ...taxTokenData,
+                            registrationDate: new Date(taxTokenData.registrationDate),
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            pilotId,
+                            ...taxTokenData,
+                            registrationDate: new Date(taxTokenData.registrationDate),
+                            createdAt: updatedPilot.updatedAt,
+                        },
                     });
-                }
 
-                return updatedPilot;
+                    await tx.taxToken.upsert({
+                        where: { pilotId },
+                        update: {
+                            registrationNumber: taxTokenData.regNo,
+                            updatedAt: updatedPilot.updatedAt,
+                        },
+                        create: {
+                            pilotId,
+                            registrationNumber: taxTokenData.regNo,
+                            createdAt: updatedPilot.updatedAt,
+                        },
+                    });
+                },
+            );
 
-            });
             return {
                 message: 'Tax token uploaded successfully.',
                 data: updatedPilot,
             };
         } catch (error) {
-            throw error;
+            throw this.handleTransactionError(
+                error,
+                `Failed to upload ${this.documentTypeNames[DocumentType.TAX_TOKEN].toLowerCase()}.`,
+                DocumentType.TAX_TOKEN,
+            );
         }
     }
 
     async rejectDocument(rejectDocumentDto: RejectDocumentDto, userId: string) {
         const { pilotId, documentType, rejectionReason } = rejectDocumentDto;
 
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                role: true,
-            },
-        });
-
-        if (!user) throw new NotFoundException('User not found');
-
+        const user = await this.findUserWithRole(userId);
         const pilot = await this.findUniquePilot(pilotId);
-
-        if (!pilot) {
-            throw new NotFoundException('Driver not found');
-        }
-
-        const currentDocumentStatus = pilot[this.verificationFieldMap[documentType]];
-
-        if (currentDocumentStatus === VerificationStatus.APPROVED) {
-            throw new BadRequestException('Document already approved');
-        }
-
-        if (currentDocumentStatus === VerificationStatus.PENDING) {
-            throw new BadRequestException('Document is not in review');
-        }
-
-        if (currentDocumentStatus === VerificationStatus.REJECTED) {
-            throw new BadRequestException('Document already rejected');
-        }
-
+        this.validatePilotExists(pilot);
 
         const verificationField = this.verificationFieldMap[documentType];
         const rejectionField = this.rejectionReasonFieldMap[documentType];
 
         if (!verificationField || !rejectionField) {
-            throw new BadRequestException('Unsupported document type');
+            throw new BadRequestException(`Unsupported document type: ${documentType}. Please contact support.`);
         }
 
-        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, documentType);
+        const currentStatus = pilot[verificationField] as VerificationStatus;
+        this.validateDocumentStatusForRejection(currentStatus, documentType);
 
-        if (!existDriverDocumentSubmission) {
-            throw new BadRequestException('Document not found');
+        const documentSubmission = await this.findDocumentSubmission(pilotId, documentType);
+        if (!documentSubmission) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`
+            );
         }
 
-        const updatedPilot = await this.prisma.$transaction(async (tx) => {
-            const updatedPilot = await tx.pilot.update({
-                where: { id: pilotId },
-                data: {
-                    [verificationField]: VerificationStatus.REJECTED,
-                    [rejectionField]: rejectionReason,
-                    updatedAt: new Date(),
-                },
-            });
-
-            await tx.adminDocumentSubmission.update({
-                where: { id: existDriverDocumentSubmission.id },
-                data: {
-                    verificationStatus: VerificationStatus.REJECTED,
-                    updatedAt: new Date(),
-                    reviewedByUserId: userId,
-                    reviewedAt: new Date(),
-                    reviewerRole: user.role,
-                    rejectionReason: rejectionReason,
-                },
-            });
-
-            if (pilot.user.status === UserStatus.IN_REVIEW) {
-                await tx.user.update({
-                    where: { id: pilot.userId },
-                    data: { status: UserStatus.ONBOARDING, updatedAt: new Date() },
+        try {
+            const updatedPilot = await this.prisma.$transaction(async (tx) => {
+                const updatedPilot = await tx.pilot.update({
+                    where: { id: pilotId },
+                    data: {
+                        [verificationField]: VerificationStatus.REJECTED,
+                        [rejectionField]: rejectionReason,
+                        updatedAt: new Date(),
+                    },
                 });
-            }
 
-            return updatedPilot;
-        });
+                await tx.adminDocumentSubmission.update({
+                    where: { id: documentSubmission.id },
+                    data: {
+                        verificationStatus: VerificationStatus.REJECTED,
+                        updatedAt: new Date(),
+                        reviewedByUserId: userId,
+                        reviewedAt: new Date(),
+                        reviewerRole: user.role,
+                        rejectionReason: rejectionReason,
+                    },
+                });
 
-        return {
-            message: 'Document rejected successfully.',
-            data: updatedPilot,
-        };
+                if (pilot.user.status === UserStatus.IN_REVIEW) {
+                    await tx.user.update({
+                        where: { id: pilot.userId },
+                        data: { status: UserStatus.ONBOARDING, updatedAt: new Date() },
+                    });
+                }
+
+                return updatedPilot;
+            });
+
+            return {
+                message: `${this.documentTypeNames[documentType]} rejected successfully.`,
+                data: updatedPilot,
+            };
+        } catch (error) {
+            throw this.handleTransactionError(
+                error,
+                `Failed to reject ${this.documentTypeNames[documentType].toLowerCase()}.`,
+                documentType,
+            );
+        }
     }
 
     async approveDocument({ pilotId, documentType }: ApproveDocumentDto, userId: string) {
-
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                role: true,
-            },
-        });
-
-        if (!user) throw new NotFoundException('User not found');
-
+        const user = await this.findUserWithRole(userId);
         const pilot = await this.findUniquePilot(pilotId);
-        if (!pilot) {
-            throw new NotFoundException('Driver not found');
-        }
+        this.validatePilotExists(pilot);
 
         const verificationField = this.verificationFieldMap[documentType];
         const rejectionField = this.rejectionReasonFieldMap[documentType];
 
-        if (pilot[verificationField] === VerificationStatus.APPROVED) {
-            throw new BadRequestException('Document already approved');
-        }
-
         if (!verificationField || !rejectionField) {
-            throw new BadRequestException('Unsupported document type');
+            throw new BadRequestException(`Unsupported document type: ${documentType}. Please contact support.`);
         }
 
-        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, documentType);
-
-        if (!existDriverDocumentSubmission) {
-            throw new BadRequestException('Document not found');
+        if (pilot[verificationField] === VerificationStatus.APPROVED) {
+            throw new BadRequestException(`${this.documentTypeNames[documentType]} has already been approved.`);
         }
 
-        const updatedPilot = await this.prisma.$transaction(async (tx) => {
-            const updatedPilot = await tx.pilot.update({
-                where: { id: pilotId },
-                data: {
-                    [verificationField]: VerificationStatus.APPROVED,
-                    [rejectionField]: null,
-                    updatedAt: new Date(),
-                },
-            });
+        const documentSubmission = await this.findDocumentSubmission(pilotId, documentType);
+        if (!documentSubmission) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`
+            );
+        }
 
-            await tx.adminDocumentSubmission.update({
-                where: { id: existDriverDocumentSubmission.id },
-                data: {
-                    verificationStatus: VerificationStatus.APPROVED,
-                    updatedAt: new Date(),
-                    reviewedByUserId: userId,
-                    reviewedAt: new Date(),
-                    reviewerRole: user.role,
-                },
-            });
-
-            if (this.isAllDocumentsApproved(updatedPilot)) {
-                await tx.user.update({
-                    where: { id: pilot.userId },
-                    data: { status: UserStatus.ACTIVE, updatedAt: new Date() },
+        try {
+            const updatedPilot = await this.prisma.$transaction(async (tx) => {
+                const updatedPilot = await tx.pilot.update({
+                    where: { id: pilotId },
+                    data: {
+                        [verificationField]: VerificationStatus.APPROVED,
+                        [rejectionField]: null,
+                        updatedAt: new Date(),
+                    },
                 });
-            }
 
-            return updatedPilot;
-        });
+                await tx.adminDocumentSubmission.update({
+                    where: { id: documentSubmission.id },
+                    data: {
+                        verificationStatus: VerificationStatus.APPROVED,
+                        updatedAt: new Date(),
+                        reviewedByUserId: userId,
+                        reviewedAt: new Date(),
+                        reviewerRole: user.role,
+                    },
+                });
 
-        return {
-            message: 'Document approved successfully.',
-            data: updatedPilot,
-        };
+                if (this.isAllDocumentsApproved(updatedPilot)) {
+                    await tx.user.update({
+                        where: { id: pilot.userId },
+                        data: { status: UserStatus.ACTIVE, updatedAt: new Date() },
+                    });
+                }
+
+                return updatedPilot;
+            });
+
+            return {
+                message: `${this.documentTypeNames[documentType]} approved successfully.`,
+                data: updatedPilot,
+            };
+        } catch (error) {
+            throw this.handleTransactionError(
+                error,
+                `Failed to approve ${this.documentTypeNames[documentType].toLowerCase()}.`,
+                documentType,
+            );
+        }
     }
 
+    private buildWhereClause(params: {
+        search?: string;
+        status?: string;
+        vehicleTypeId?: string;
+        startDate?: string;
+        endDate?: string;
+        updatedStartDate?: string;
+        updatedEndDate?: string;
+    }): Prisma.PilotWhereInput {
+        const { search, status, vehicleTypeId, startDate, endDate, updatedStartDate, updatedEndDate } = params;
+        const whereClause: Prisma.PilotWhereInput = {};
+
+        if (status) {
+            whereClause.user = { status: status as UserStatus };
+        }
+
+        if (search?.trim()) {
+            whereClause.OR = [
+                { name: { contains: search.trim(), mode: 'insensitive' } },
+                { phone: { contains: search.trim(), mode: 'insensitive' } },
+            ];
+        }
+
+        if (startDate || endDate) {
+            whereClause.createdAt = {};
+            if (startDate) whereClause.createdAt.gte = new Date(startDate);
+            if (endDate) whereClause.createdAt.lte = new Date(endDate);
+        }
+
+        if (updatedStartDate || updatedEndDate) {
+            whereClause.updatedAt = {};
+            if (updatedStartDate) whereClause.updatedAt.gte = new Date(updatedStartDate);
+            if (updatedEndDate) whereClause.updatedAt.lte = new Date(updatedEndDate);
+        }
+
+        if (vehicleTypeId) {
+            whereClause.vehicle = {
+                vehicleTypeBD: { id: vehicleTypeId },
+            };
+        }
+
+        return whereClause;
+    }
+
+    private buildOrderByClause(sortBy: string, sortOrder: string): Prisma.PilotOrderByWithRelationInput {
+        const orderMap: Record<string, Prisma.PilotOrderByWithRelationInput> = {
+            [FilterDriverSortOptions.UPDATED_AT]: {
+                updatedAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc'
+            },
+            [FilterDriverSortOptions.CREATED_AT]: {
+                createdAt: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc'
+            },
+            [FilterDriverSortOptions.NAME]: {
+                name: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc'
+            },
+        };
+
+        return orderMap[sortBy] || { createdAt: 'desc' };
+    }
+
+    private sortPilotsByDocumentCount(pilots: any[], sortBy: string): any[] {
+        if (
+            sortBy !== FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED &&
+            sortBy !== FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
+        ) {
+            return pilots;
+        }
+
+        const pilotsWithDocCount = pilots.map((pilot) => {
+            const docCount = this.documentFieldsForCount.filter(
+                (field) => pilot[field] !== null && pilot[field] !== undefined
+            ).length;
+
+            return { ...pilot, _documentCount: docCount };
+        });
+
+        pilotsWithDocCount.sort((a, b) => {
+            return sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED
+                ? b._documentCount - a._documentCount
+                : a._documentCount - b._documentCount;
+        });
+
+        return pilotsWithDocCount.map(({ _documentCount, ...pilot }) => pilot);
+    }
 
     private async findUniquePilot(pilotId: string) {
         return await this.prisma.pilot.findUnique({
@@ -1183,11 +830,156 @@ export class AdminDriverService {
                 },
             },
         });
-
     }
 
-    private async isAllDocumentsUploaded(pilot: Pilot) {
-        const allDocumentsUploaded = [
+    private validatePilotExists(pilot: any): void {
+        if (!pilot) {
+            throw new NotFoundException('Driver not found. Please verify the driver ID and try again.');
+        }
+    }
+
+    private validateDocumentNotApproved(pilot: any, documentType: DocumentType): void {
+        const verificationField = this.verificationFieldMap[documentType];
+        if (pilot[verificationField] === VerificationStatus.APPROVED) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} has already been approved and cannot be updated.`
+            );
+        }
+    }
+
+    private async validateDocumentNotInReview(pilotId: string, documentType: DocumentType): Promise<void> {
+        const existingSubmission = await this.findDocumentSubmission(pilotId, documentType);
+        if (existingSubmission) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} is already under review. Please wait for the current review to complete.`
+            );
+        }
+    }
+
+    private async validateVehicleExists(pilotId: string): Promise<void> {
+        const vehicle = await this.prisma.vehicle.findFirst({
+            where: { pilotId },
+        });
+
+        if (!vehicle) {
+            throw new BadRequestException(
+                'Vehicle registration is required before uploading this document. Please submit vehicle registration information first.'
+            );
+        }
+    }
+
+    private validateDocumentStatusForRejection(currentStatus: VerificationStatus, documentType: DocumentType): void {
+        if (currentStatus === VerificationStatus.APPROVED) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} has already been approved and cannot be rejected.`
+            );
+        }
+
+        if (currentStatus === VerificationStatus.PENDING) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} is not currently under review and cannot be rejected.`
+            );
+        }
+
+        if (currentStatus === VerificationStatus.REJECTED) {
+            throw new BadRequestException(
+                `${this.documentTypeNames[documentType]} has already been rejected.`
+            );
+        }
+    }
+
+    private async findUserWithRole(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found. Please verify your authentication and try again.');
+        }
+
+        return user;
+    }
+
+    private async findDocumentSubmission(pilotId: string, documentType: DocumentType) {
+        return await this.prisma.adminDocumentSubmission.findFirst({
+            where: {
+                pilotId,
+                documentType,
+                verificationStatus: VerificationStatus.PENDING,
+            },
+        });
+    }
+
+    private async updateDocumentWithTransaction(
+        pilotId: string,
+        documentType: DocumentType,
+        urlFields: Record<string, string | undefined>,
+        userId: string,
+        pilot: any,
+        additionalOperations?: (tx: Prisma.TransactionClient, updatedPilot: Pilot) => Promise<void>,
+    ) {
+        return await this.prisma.$transaction(async (tx) => {
+            const updatedAt = new Date();
+            const verificationField = this.verificationFieldMap[documentType];
+            const rejectionField = this.rejectionReasonFieldMap[documentType];
+            const requiredFields = this.documentUrlFields[documentType];
+
+            const pilotUpdateData: any = {
+                updatedAt,
+                [rejectionField]: null,
+            };
+
+            for (const [field, value] of Object.entries(urlFields)) {
+                if (value) {
+                    pilotUpdateData[field] = value;
+                }
+            }
+
+            const allRequiredFieldsPresent = requiredFields.every(
+                (field) => pilotUpdateData[field] !== undefined && pilotUpdateData[field] !== null
+            );
+
+            pilotUpdateData[verificationField] = allRequiredFieldsPresent
+                ? VerificationStatus.IN_PROGRESS
+                : VerificationStatus.PENDING;
+
+            const updatedPilot = await tx.pilot.update({
+                where: { id: pilotId },
+                data: pilotUpdateData,
+            });
+
+            if (additionalOperations) {
+                await additionalOperations(tx, updatedPilot);
+            }
+
+            await tx.adminDocumentSubmission.create({
+                data: {
+                    pilotId,
+                    documentType,
+                    verificationStatus: VerificationStatus.PENDING,
+                    createdAt: updatedAt,
+                    submittedByUserId: userId,
+                },
+            });
+
+            const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
+                ? UserStatus.IN_REVIEW
+                : UserStatus.ONBOARDING;
+
+            if (pilot.user.status !== expectedStatus) {
+                await tx.user.update({
+                    where: { id: pilot.userId },
+                    data: { status: expectedStatus, updatedAt },
+                });
+            }
+
+            return updatedPilot;
+        });
+    }
+
+    private isAllDocumentsUploaded(pilot: Pilot): boolean {
+        return [
             pilot.selfieUrl,
             pilot.rcBackSideUrl,
             pilot.rcFrontSideUrl,
@@ -1200,10 +992,9 @@ export class AdminDriverService {
             pilot.numberPlateUrl,
             pilot.taxTokenUrl,
         ].every((document) => document !== null);
-        return allDocumentsUploaded;
     }
 
-    private isAllDocumentsApproved(pilot: Pilot) {
+    private isAllDocumentsApproved(pilot: Pilot): boolean {
         return [
             pilot.isSelfieVerified,
             pilot.isNidVerified,
@@ -1215,15 +1006,75 @@ export class AdminDriverService {
         ].every((status) => status === VerificationStatus.APPROVED);
     }
 
-    private async existDriverDocumentSubmission(pilotId: string, documentType: DocumentType) {
-        const documentSubmissions = await this.prisma.adminDocumentSubmission.findFirst({
-            where: {
-                pilotId: pilotId,
-                documentType: documentType,
-                verificationStatus: VerificationStatus.PENDING,
-            },
-        });
 
-        return documentSubmissions;
+    private handleTransactionError(
+        error: any,
+        defaultMessage: string,
+        documentType?: DocumentType,
+    ): BadRequestException {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            switch (error.code) {
+                case 'P2002':
+                    const targetFields = (error.meta?.target as string[])?.join(', ') || 'field';
+                    return new BadRequestException(
+                        `${defaultMessage} A record with this ${targetFields} already exists. Please verify the data and try again.`
+                    );
+                case 'P2025':
+                    return new BadRequestException(
+                        `${defaultMessage} The requested record was not found. It may have been deleted or does not exist.`
+                    );
+                case 'P2003':
+                    return new BadRequestException(
+                        `${defaultMessage} Invalid reference detected. Please verify all related records exist and try again.`
+                    );
+                case 'P2014':
+                    return new BadRequestException(
+                        `${defaultMessage} Required relationship is missing. Please ensure all required data is provided.`
+                    );
+                case 'P2001':
+                    return new BadRequestException(
+                        `${defaultMessage} The record does not exist. Please verify the information and try again.`
+                    );
+                default:
+                    return new BadRequestException(
+                        `${defaultMessage} Database operation failed. Please try again later or contact support if the issue persists.`
+                    );
+            }
+        }
+
+        if (error instanceof Prisma.PrismaClientValidationError) {
+            return new BadRequestException(
+                `${defaultMessage} Invalid data provided. Please verify all required fields are correctly formatted.`
+            );
+        }
+
+        if (error?.message?.includes('timeout') || error?.message?.includes('connection')) {
+            return new BadRequestException(
+                `${defaultMessage} Database connection timeout. Please try again in a moment.`
+            );
+        }
+
+        if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof ConflictException) {
+            return error;
+        }
+
+        console.error('Transaction error:', error);
+        return new BadRequestException(
+            `${defaultMessage} An unexpected error occurred. Please try again or contact support if the problem persists.`
+        );
+    }
+
+
+    private handleError(error: any, defaultMessage: string): BadRequestException | Error {
+        if (error instanceof BadRequestException || error instanceof NotFoundException) {
+            return error;
+        }
+
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            return this.handleTransactionError(error, defaultMessage);
+        }
+
+        console.error('Service error:', error);
+        return new BadRequestException(defaultMessage);
     }
 }

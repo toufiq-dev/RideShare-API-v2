@@ -181,7 +181,9 @@ export class UpdateDrivingLicenseDto {
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
         required: true,
     })
-    @IsNotEmpty()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -190,7 +192,9 @@ export class UpdateDrivingLicenseDto {
         description: 'Driving license front side image',
         example: 'https://example.com/dl-front-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Driving license front side image is required',
+    })
     @IsUrl()
     readonly dlFrontSideUrl?: string;
 
@@ -199,7 +203,9 @@ export class UpdateDrivingLicenseDto {
         description: 'Driving license back side image',
         example: 'https://example.com/dl-back-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Driving license back side image is required',
+    })
     @IsUrl()
     readonly dlBackSideUrl?: string;
 
@@ -208,7 +214,9 @@ export class UpdateDrivingLicenseDto {
         description: 'Name on driving license',
         example: 'John Doe',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Name on driving license is required',
+    })
     @IsString()
     readonly nameOnLicense!: string;
 
@@ -217,7 +225,9 @@ export class UpdateDrivingLicenseDto {
         description: 'Date of birth',
         example: '1990-01-15',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Date of birth is required',
+    })
     @IsDateString()
     readonly dateOfBirth!: string;
 
@@ -226,7 +236,9 @@ export class UpdateDrivingLicenseDto {
         description: 'Driving license number',
         example: 'DL1234567890',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Driving license number is required',
+    })
     @IsString()
     readonly licenseNumber!: string;
 
@@ -235,7 +247,9 @@ export class UpdateDrivingLicenseDto {
         description: 'License expiry date',
         example: '2025-12-31',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'License expiry date is required',
+    })
     @IsDateString()
     readonly validUntill!: string;
 }
@@ -245,8 +259,11 @@ export class UpdateNidDto {
         type: String,
         description: 'The pilot id',
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+        required: true,
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -255,7 +272,9 @@ export class UpdateNidDto {
         description: 'NID front side image',
         example: 'https://example.com/nid-front-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'NID front side image is required',
+    })
     @IsUrl()
     nidFrontSideUrl?: string;
 
@@ -264,7 +283,9 @@ export class UpdateNidDto {
         description: 'NID back side image',
         example: 'https://example.com/nid-back-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'NID back side image is required',
+    })
     @IsUrl()
     nidBackSideUrl?: string;
 
@@ -273,7 +294,9 @@ export class UpdateNidDto {
         description: 'Name on NID',
         example: 'John Doe',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Name on NID is required',
+    })
     @IsString()
     readonly name!: string;
 
@@ -282,7 +305,9 @@ export class UpdateNidDto {
         description: 'Date of birth',
         example: '1990-01-15',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Date of birth is required',
+    })
     @IsDateString()
     readonly dateOfBirth!: string;
 
@@ -291,7 +316,9 @@ export class UpdateNidDto {
         description: 'NID number',
         example: '1234567890123',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'NID number is required',
+    })
     @IsString()
     readonly nidNumber!: string;
 }
@@ -303,7 +330,9 @@ export class UpdateRegistrationCardDto {
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
         required: true,
     })
-    @IsNotEmpty()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -312,7 +341,9 @@ export class UpdateRegistrationCardDto {
         description: 'Registration card front side image',
         example: 'https://example.com/rc-front-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Registration card front side image is required',
+    })
     @IsUrl()
     rcFrontSideUrl?: string;
 
@@ -321,7 +352,9 @@ export class UpdateRegistrationCardDto {
         description: 'Registration card back side image',
         example: 'https://example.com/rc-back-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Registration card back side image is required',
+    })
     @IsUrl()
     rcBackSideUrl?: string;
 
@@ -331,7 +364,9 @@ export class UpdateRegistrationCardDto {
         required: true,
         example: 'ABC-1234',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle registration number is required',
+    })
     @IsString()
     readonly regNo!: string;
 
@@ -340,7 +375,9 @@ export class UpdateRegistrationCardDto {
         description: 'The vehicle type id',
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle type id is required',
+    })
     @IsUUID()
     readonly vehicleTypeIdBD!: string;
 
@@ -349,7 +386,9 @@ export class UpdateRegistrationCardDto {
         description: 'Vehicle color',
         example: 'Red',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle color is required',
+    })
     @IsString()
     readonly colour!: string;
 
@@ -358,7 +397,9 @@ export class UpdateRegistrationCardDto {
         description: 'Registration date',
         example: '2020-01-15',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Registration date is required',
+    })
     @IsDateString()
     readonly registrationDate!: string;
 }
@@ -370,7 +411,9 @@ export class UpdateNumberPlateDto {
         required: true,
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
-    @IsNotEmpty()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -379,7 +422,9 @@ export class UpdateNumberPlateDto {
         description: 'Number plate image',
         example: 'https://example.com/number-plate.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Number plate image is required',
+    })
     @IsUrl()
     readonly numberPlateUrl?: string;
 
@@ -388,7 +433,9 @@ export class UpdateNumberPlateDto {
         description: 'Vehicle registration number',
         example: 'ABC-1234',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle registration number is required',
+    })
     @IsString()
     readonly regNo!: string;
 }
@@ -457,7 +504,9 @@ export class UpdateVehicleOwnerNidDto {
         required: true,
         example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
     })
-    @IsNotEmpty()
+    @IsNotEmpty({
+        message: 'Pilot id is required',
+    })
     @IsUUID()
     readonly pilotId!: string;
 
@@ -466,7 +515,9 @@ export class UpdateVehicleOwnerNidDto {
         description: 'NID front side image',
         example: 'https://example.com/vehicle-owners-nid-front-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle owner NID front side image is required',
+    })
     @IsUrl()
     vehicleOwnersNidFrontSideUrl?: string;
 
@@ -475,7 +526,9 @@ export class UpdateVehicleOwnerNidDto {
         description: 'NID back side image',
         example: 'https://example.com/vehicle-owners-nid-back-side.jpg',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Vehicle owner NID back side image is required',
+    })
     @IsUrl()
     vehicleOwnersNidBackSideUrl?: string;
 
@@ -484,7 +537,9 @@ export class UpdateVehicleOwnerNidDto {
         description: 'Name on NID',
         example: 'John Doe',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Name on NID is required',
+    })
     @IsString()
     readonly vehicleOwnerNidName!: string;
 
@@ -493,7 +548,9 @@ export class UpdateVehicleOwnerNidDto {
         description: 'Date of birth',
         example: '1990-01-15',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'Date of birth is required',
+    })
     @IsDateString()
     readonly vehicleOwnerNidDateOfBirth!: string;
 
@@ -502,7 +559,9 @@ export class UpdateVehicleOwnerNidDto {
         description: 'NID number',
         example: '1234567890123',
     })
-    @IsOptional()
+    @IsNotEmpty({
+        message: 'NID number is required',
+    })
     @IsString()
     readonly vehicleOwnerNidNumber!: string;
 }

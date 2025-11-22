@@ -28,58 +28,76 @@ export class AdminDriverController {
         return await this.adminDriverService.getDriverDetails(id);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-selfie')
     @ApiOperation({ summary: 'Upload Driver Profile' })
     async updateProfileImage(@Body() updateProfileImageDto: UpdateProfileImageDto, @CurrentUser('userId') userId: string) {
         return await this.adminDriverService.updateProfileImage(updateProfileImageDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-dl-info')
     @ApiOperation({ summary: 'Upload Driving License Info' })
-    async updateDrivingLicense(@Body() updateDrivingLicenseDto: UpdateDrivingLicenseDto) {
-        return await this.adminDriverService.updateDrivingLicense(updateDrivingLicenseDto);
+    async updateDrivingLicense(@Body() updateDrivingLicenseDto: UpdateDrivingLicenseDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateDrivingLicense(updateDrivingLicenseDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-nid-info')
     @ApiOperation({ summary: 'Upload NID Info' })
-    async updateNid(@Body() updateNidDto: UpdateNidDto) {
-        return await this.adminDriverService.updateNid(updateNidDto);
+    async updateNid(@Body() updateNidDto: UpdateNidDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateNid(updateNidDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-vehicle-owner-nid-info')
     @ApiOperation({ summary: 'Upload Vehicle Owner NID Info' })
-    async updateVehicleOwnerNid(@Body() updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto) {
-        return await this.adminDriverService.updateVehicleOwnerNid(updateVehicleOwnerNidDto);
+    async updateVehicleOwnerNid(@Body() updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateVehicleOwnerNid(updateVehicleOwnerNidDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-registration-info')
     @ApiOperation({ summary: 'Upload Registration Info' })
-    async updateRegistrationInfo(@Body() updateRegistrationCardDto: UpdateRegistrationCardDto) {
-        return await this.adminDriverService.updateRegistrationInfo(updateRegistrationCardDto);
+    async updateRegistrationInfo(@Body() updateRegistrationCardDto: UpdateRegistrationCardDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateRegistrationInfo(updateRegistrationCardDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-number-plate-info')
     @ApiOperation({ summary: 'Upload Number Plate Info' })
-    async updateNumberPlateInfo(@Body() updateNumberPlateDto: UpdateNumberPlateDto) {
-        return await this.adminDriverService.updateNumberPlateInfo(updateNumberPlateDto);
+    async updateNumberPlateInfo(@Body() updateNumberPlateDto: UpdateNumberPlateDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateNumberPlateInfo(updateNumberPlateDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('update-tax-token-info')
     @ApiOperation({ summary: 'Upload Tax Token Info' })
-    async updateTaxTokenInfo(@Body() updateTaxTokenDto: UpdateTaxTokenDto) {
-        return await this.adminDriverService.updateTaxTokenInfo(updateTaxTokenDto);
+    async updateTaxTokenInfo(@Body() updateTaxTokenDto: UpdateTaxTokenDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.updateTaxTokenInfo(updateTaxTokenDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('reject-document')
     @ApiOperation({ summary: 'Reject Document' })
-    async rejectDocument(@Body() rejectDocumentDto: RejectDocumentDto) {
-        return await this.adminDriverService.rejectDocument(rejectDocumentDto);
+    async rejectDocument(@Body() rejectDocumentDto: RejectDocumentDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.rejectDocument(rejectDocumentDto, userId);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
     @Post('approve-document')
     @ApiOperation({ summary: 'Approve a specific driver document' })
-    async approveDocument(@Body() approveDocumentDto: ApproveDocumentDto) {
-        return await this.adminDriverService.approveDocument(approveDocumentDto);
+    async approveDocument(@Body() approveDocumentDto: ApproveDocumentDto, @CurrentUser('userId') userId: string) {
+        return await this.adminDriverService.approveDocument(approveDocumentDto, userId);
     }
 
 

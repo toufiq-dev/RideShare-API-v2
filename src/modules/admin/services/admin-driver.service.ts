@@ -355,6 +355,18 @@ export class AdminDriverService {
             console.log('userId>>>>>>', userId);
             const { pilotId, selfieUrl } = updateProfileImageDto;
 
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
             const pilot = await this.findUniquePilot(pilotId);
 
             if (!pilot) {
@@ -364,6 +376,7 @@ export class AdminDriverService {
             if (pilot.isSelfieVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('Selfie already approved');
             }
+
 
             const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.SELFIE);
 
@@ -404,6 +417,7 @@ export class AdminDriverService {
                         verificationStatus: VerificationStatus.PENDING,
                         createdAt: updatedAt,
                         submittedByUserId: userId,
+                        reviewerRole: user.role,
 
                     },
                 });
@@ -424,8 +438,20 @@ export class AdminDriverService {
         }
     }
 
-    async updateDrivingLicense(updateDrivingLicenseDto: UpdateDrivingLicenseDto) {
+    async updateDrivingLicense(updateDrivingLicenseDto: UpdateDrivingLicenseDto, userId: string) {
         const { pilotId, dlFrontSideUrl, dlBackSideUrl, ...drivingLicenseData } = updateDrivingLicenseDto;
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                role: true,
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
 
         const pilot = await this.findUniquePilot(pilotId);
 
@@ -435,6 +461,12 @@ export class AdminDriverService {
 
         if (pilot.isDLVerified === VerificationStatus.APPROVED) {
             throw new BadRequestException('Driving license already approved');
+        }
+
+        const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.DRIVING_LICENSE);
+
+        if (existDriverDocumentSubmission) {
+            throw new BadRequestException('Driving license already in review');
         }
 
         try {
@@ -476,6 +508,17 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.DRIVING_LICENSE,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
+                    },
+                });
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
@@ -503,9 +546,20 @@ export class AdminDriverService {
         }
     }
 
-    async updateNid(updateNidDto: UpdateNidDto) {
+    async updateNid(updateNidDto: UpdateNidDto, userId: string) {
         try {
             const { pilotId, nidFrontSideUrl, nidBackSideUrl, ...nidData } = updateNidDto;
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) throw new NotFoundException('User not found');
+
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -515,6 +569,12 @@ export class AdminDriverService {
 
             if (pilot.isNidVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('NID already approved');
+            }
+
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.NID);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('NID already in review');
             }
 
             const updatedPilot = await this.prisma.$transaction(async (tx) => {
@@ -550,6 +610,17 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.NID,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
+                    },
+                });
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
@@ -573,9 +644,19 @@ export class AdminDriverService {
         }
     }
 
-    async updateVehicleOwnerNid(updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto) {
+    async updateVehicleOwnerNid(updateVehicleOwnerNidDto: UpdateVehicleOwnerNidDto, userId: string) {
         try {
             const { pilotId, vehicleOwnersNidFrontSideUrl, vehicleOwnersNidBackSideUrl, ...vehicleOwnerNidData } = updateVehicleOwnerNidDto;
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -585,6 +666,12 @@ export class AdminDriverService {
 
             if (pilot.isVehicleOwnersNidVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('Vehicle owner NID already approved');
+            }
+
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.VEHICLE_OWNERS_NID);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('Vehicle owner NID already in review');
             }
 
             const updatedPilot = await this.prisma.$transaction(async (tx) => {
@@ -622,6 +709,17 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.VEHICLE_OWNERS_NID,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
+                    },
+                });
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
@@ -645,9 +743,19 @@ export class AdminDriverService {
         }
     }
 
-    async updateRegistrationInfo(updateRegistrationCardDto: UpdateRegistrationCardDto) {
+    async updateRegistrationInfo(updateRegistrationCardDto: UpdateRegistrationCardDto, userId: string) {
         try {
             const { pilotId, rcFrontSideUrl, rcBackSideUrl, ...registrationCardData } = updateRegistrationCardDto;
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -657,6 +765,12 @@ export class AdminDriverService {
 
             if (pilot.isRCVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('Registration certificate already approved');
+            }
+
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.REGISTRATION_CERTIFICATE);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('Registration certificate already in review');
             }
 
             const updatedPilot = await this.prisma.$transaction(async (tx) => {
@@ -693,6 +807,17 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.REGISTRATION_CERTIFICATE,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
+                    },
+                });
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
@@ -717,9 +842,19 @@ export class AdminDriverService {
         }
     }
 
-    async updateNumberPlateInfo(updateNumberPlateDto: UpdateNumberPlateDto) {
+    async updateNumberPlateInfo(updateNumberPlateDto: UpdateNumberPlateDto, userId: string) {
         try {
             const { pilotId, numberPlateUrl, regNo } = updateNumberPlateDto;
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -729,6 +864,20 @@ export class AdminDriverService {
 
             if (pilot.isNumberPlateVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('Number plate already approved');
+            }
+
+            const hasRegisteredVehicle = await this.prisma.vehicle.findFirst({
+                where: { pilotId: pilotId },
+            });
+
+            if (!hasRegisteredVehicle) {
+                throw new BadRequestException('You did not submit any vehicle registration number');
+            }
+
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.NUMBER_PLATE);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('Number plate already in review');
             }
 
             const updatedPilot = await this.prisma.$transaction(async (tx) => {
@@ -763,6 +912,17 @@ export class AdminDriverService {
                     },
                 });
 
+                await tx.numberPlate.upsert({
+                    where: { pilotId },
+                    update: {
+                        numberPlate: regNo,
+                        updatedAt: updatedAt,
+                    },
+                    create: {
+                        numberPlate: numberPlateUrl,
+                    },
+                });
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
@@ -773,6 +933,17 @@ export class AdminDriverService {
                         data: { status: expectedStatus, updatedAt: updatedAt },
                     });
                 }
+
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.NUMBER_PLATE,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
+                    },
+                });
 
                 return updatedPilot;
 
@@ -786,9 +957,19 @@ export class AdminDriverService {
         }
     }
 
-    async updateTaxTokenInfo(updateTaxTokenDto: UpdateTaxTokenDto) {
+    async updateTaxTokenInfo(updateTaxTokenDto: UpdateTaxTokenDto, userId: string) {
         try {
             const { pilotId, taxTokenUrl, ...taxTokenData } = updateTaxTokenDto;
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    role: true,
+                },
+            });
+
+            if (!user) throw new NotFoundException('User not found');
 
             const pilot = await this.findUniquePilot(pilotId);
 
@@ -798,6 +979,19 @@ export class AdminDriverService {
 
             if (pilot.isTaxTokenVerified === VerificationStatus.APPROVED) {
                 throw new BadRequestException('Tax token already approved');
+            }
+            const hasRegisteredVehicle = await this.prisma.vehicle.findFirst({
+                where: { pilotId: pilotId },
+            });
+
+            if (!hasRegisteredVehicle) {
+                throw new BadRequestException('You did not submit any vehicle registration number');
+            }
+
+            const existDriverDocumentSubmission = await this.existDriverDocumentSubmission(pilotId, DocumentType.TAX_TOKEN);
+
+            if (existDriverDocumentSubmission) {
+                throw new BadRequestException('Tax token already in review');
             }
 
             const updatedPilot = await this.prisma.$transaction(async (tx) => {
@@ -830,6 +1024,17 @@ export class AdminDriverService {
                         ...taxTokenData,
                         registrationDate: new Date(taxTokenData.registrationDate),
                         createdAt: updatedAt,
+                    },
+                });
+
+                await tx.adminDocumentSubmission.create({
+                    data: {
+                        pilotId: pilotId,
+                        documentType: DocumentType.TAX_TOKEN,
+                        verificationStatus: VerificationStatus.PENDING,
+                        createdAt: updatedAt,
+                        submittedByUserId: userId,
+                        reviewerRole: user.role,
                     },
                 });
 

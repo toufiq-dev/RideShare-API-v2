@@ -756,9 +756,12 @@ export class AdminDriverService {
                     },
                 });
 
+
+
                 const expectedStatus = this.isAllDocumentsUploaded(updatedPilot)
                     ? UserStatus.IN_REVIEW
                     : UserStatus.ONBOARDING;
+
 
                 if (pilot.user.status !== expectedStatus) {
                     await tx.user.update({
@@ -1097,6 +1100,9 @@ export class AdminDriverService {
         const verificationField = this.verificationFieldMap[documentType];
         const rejectionField = this.rejectionReasonFieldMap[documentType];
 
+        if (pilot[verificationField] === VerificationStatus.APPROVED) {
+            throw new BadRequestException('Document already approved');
+        }
 
         if (!verificationField || !rejectionField) {
             throw new BadRequestException('Unsupported document type');

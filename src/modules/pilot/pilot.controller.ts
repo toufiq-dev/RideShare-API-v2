@@ -18,7 +18,13 @@ import {
 import { PilotService } from './pilot.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
 import {
   FileFieldsInterceptor,
@@ -114,7 +120,19 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload live selfie for pilot' })
+  @ApiOperation({
+    summary: 'Upload live selfie for pilot verification',
+    description:
+      'Uploads a live selfie photo of the pilot for identity verification.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the selfie belongs to.',
+    type: String,
+  })
   @UseInterceptors(CustomFileInterceptor)
   async uploadLiveSelfie(
     @UploadedFile() file: Express.Multer.File,
@@ -295,6 +313,19 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload Bangladesh driving license documents',
+    description:
+      'Uploads front and back photos of a Bangladesh driving license for pilot verification. The front photo is required, while the back photo is optional. For pilots, the license is automatically associated with their account. For admin/support roles, a pilotId query parameter must be provided.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the license belongs to.',
+    type: String,
+  })
   @ApiOperation({ summary: 'Upload driving license photo' })
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -347,6 +378,26 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload Bangladesh National ID (NID) card documents',
+    description:
+      'Uploads front and back photos of a Bangladesh National ID (NID) card for pilot or vehicle owner verification. The type parameter specifies whether the NID belongs to the pilot or the vehicle owner. Both front and back photos are required. For pilots, the NID is automatically associated with their account. For admin/support roles, a pilotId query parameter must be provided.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    description:
+      'Type of NID - either "pilot" for pilot\'s NID or "vehicleOwner" for vehicle owner\'s NID',
+    enum: Object.values(BDNidType),
+  })
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the NID belongs to.',
+    type: String,
+  })
   @ApiOperation({ summary: 'Upload NID card photo' })
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -401,6 +452,20 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Upload Bangladesh Vehicle Registration Certificate (RC) documents',
+    description:
+      'Uploads front and back photos of a Bangladesh Vehicle Registration Certificate (RC) for vehicle verification. The front photo is required, while the back photo is optional. For admin/support roles, a pilotId query parameter must be provided.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the RC belongs to.',
+    type: String,
+  })
   @ApiOperation({ summary: 'Upload RC card photo' })
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -453,6 +518,19 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload vehicle number plate photo',
+    description:
+      "Uploads a photo of the vehicle's number plate for verification. The number plate photo is used to verify the vehicle registration and ensure it matches the submitted RC documents. After uploading, pilots must confirm the number plate details using the /number-plate/confirmation endpoint. For pilots, the number plate is automatically associated with their account. For admin/support roles, a pilotId query parameter must be provided.",
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the number plate belongs to.',
+    type: String,
+  })
   @ApiOperation({ summary: 'Upload Number plate photo' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadNumberPlate(
@@ -498,6 +576,19 @@ export class PilotController {
   @Roles(UserRole.PILOT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SUPPORT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload vehicle tax token document',
+    description:
+      "Uploads a photo of the vehicle's tax token document for verification. For pilots, the tax token is automatically associated with their account. For admin/support roles, a pilotId query parameter must be provided.",
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiQuery({
+    name: 'pilotId',
+    required: false,
+    description:
+      'Pilot user ID (required for ADMIN/SUPER_ADMIN/SUPPORT roles, must not be provided for PILOT role). When provided by admin roles, this specifies which pilot the tax token belongs to.',
+    type: String,
+  })
   @ApiOperation({ summary: 'Upload Tax token photo' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadTaxToken(

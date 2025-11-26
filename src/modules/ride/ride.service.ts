@@ -1682,6 +1682,7 @@ export class RideService {
     userId: string,
   ) {
     const { bookingId, reason } = cancelRideRequestDto;
+
     try {
       const booking = await this.prisma.booking.findUnique({
         where: {
@@ -1777,7 +1778,28 @@ export class RideService {
         return { updatedBooking };
       });
 
-      await this.driverSearchService.stopSearchSession(bookingId);
+      if (cancelledBy === CancelledBy.CUSTOMER) {
+        // Stop search session and notify all notified pilots
+        await this.driverSearchService.stopSearchSession(bookingId);
+
+        // Get all notified pilots from Redis keys
+        const notifiedKeysPattern = `${RedisKeys.NOTIFIED}${bookingId}:*`;
+        const notifiedKeys = await this.redis.keys(notifiedKeysPattern);
+
+        // Extract pilot user IDs from the keys (format: notified-{bookingId}:{pilotUserId})
+        const notifiedPilotUserIds = notifiedKeys.map((key) => {
+          const parts = key.split(':');
+          return parts[parts.length - 1]; // Get the last part which is the pilotUserId
+        });
+
+        // Send RIDE_REQUEST_TIMEOUT event to all notified pilots
+        for (const pilotUserId of notifiedPilotUserIds) {
+          await this.rideNotificationService.notifyRideRequestTimeout(
+            bookingId,
+            pilotUserId,
+          );
+        }
+      }
 
       // Cache booking status in Redis
       await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);

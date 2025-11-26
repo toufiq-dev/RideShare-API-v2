@@ -47,7 +47,7 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
-export class CreateAdminDto extends LoginDto {}
+export class CreateAdminDto extends LoginDto { }
 
 export class VerifyEmailDto {
   @ApiProperty({ description: 'Email of the admin' })
@@ -312,3 +312,4 @@ export class EditSupportRoleDto {
   @IsOptional()
   supportPermissionIds?: string[];
 }
+

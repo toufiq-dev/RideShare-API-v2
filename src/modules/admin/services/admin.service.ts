@@ -22,7 +22,7 @@ import {
   EditMenuPermissionsDto,
   EditStaffDto,
   EditSupportRoleDto,
-} from './dto/admin.dto';
+} from '../dto/admin.dto';
 import { randomInt } from 'crypto';
 import {
   AppPlatform,
@@ -37,12 +37,13 @@ import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { AzureService } from 'src/core/utils/azure.util';
-import { EmailService } from '../email/email.service';
-import { EmailSendOtpDto } from '../email/dto/email.dto';
-import { DocumentValidation } from './admin.constants';
+import { EmailService } from '../../email/email.service';
+import { EmailSendOtpDto } from '../../email/dto/email.dto';
+import { DocumentValidation } from '../admin.constants';
 import { VerificationService } from 'src/core/utils/verification.util';
 import moment from 'moment-timezone';
-import { PilotService } from '../pilot/pilot.service';
+import { PilotService } from '../../pilot/pilot.service';
+import { FilterVehicleTypeBDFilterDto } from '../dto/admin-vehicle-type-filter.dto';
 
 @Injectable()
 export class AdminService {
@@ -1226,6 +1227,7 @@ export class AdminService {
       throw error;
     }
   }
+
 
   async getDriverDetails(id: string) {
     try {
@@ -2654,6 +2656,67 @@ export class AdminService {
       }
     } catch (error) {
       console.error('Error cleaning up previous files', error);
+    }
+  }
+
+  async getVehicleTypesListBD(query: FilterVehicleTypeBDFilterDto) {
+    try {
+      const { page = 1, pageSize = 10, search, startDate, endDate } = query;
+
+      const skip = (page - 1) * pageSize;
+
+      const whereClause: any = {};
+
+      if (search && search.trim()) {
+        whereClause.OR = [
+          { name: { contains: search.trim(), mode: 'insensitive' } },
+        ];
+      }
+
+      if (startDate || endDate) {
+        whereClause.createdAt = {};
+        if (startDate) {
+          whereClause.createdAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+          whereClause.createdAt.lte = new Date(endDate);
+        }
+      }
+
+
+      const totalCount = await this.prisma.vehicleTypeBD.count({
+        where: whereClause,
+      });
+
+      const vehicleTypes = await this.prisma.vehicleTypeBD.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+        },
+        skip: +skip || 0,
+        take: +pageSize || 10,
+      });
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return {
+        message: 'Vehicle list fetched successfully',
+        data: vehicleTypes,
+        pagination: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: +page,
+          pageSize: +pageSize || 10,
+          hasNextPage,
+          hasPrevPage,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
   }
 }

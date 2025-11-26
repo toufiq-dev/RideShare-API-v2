@@ -4,7 +4,9 @@ import {
   PilotType,
   VehicleTypeNameBD,
 } from '@prisma/client';
-import { Decimal, JsonValue } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+type Decimal = Prisma.Decimal;
+type JsonValue = Prisma.JsonValue;
 
 interface Coupon {
   id: string;

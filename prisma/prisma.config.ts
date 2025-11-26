@@ -14,4 +14,4 @@ export default defineConfig({
 
     return new PrismaPg(pool);
   },
-});
+} as any);

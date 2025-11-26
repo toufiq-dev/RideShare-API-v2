@@ -17,7 +17,7 @@ import {
   ParseUUIDPipe,
   ParseEnumPipe,
 } from '@nestjs/common';
-import { AdminService } from './admin.service';
+import { AdminService } from '../services/admin.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import {
   CreateSubscriptionTypeDto,
@@ -36,7 +36,7 @@ import {
   EditMenuPermissionsDto,
   EditStaffDto,
   EditSupportRoleDto,
-} from './dto/admin.dto';
+} from '../dto/admin.dto';
 import { AppPlatform, UserRole, UserStatus } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -47,7 +47,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -268,6 +268,17 @@ export class AdminController {
     );
   }
 
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
+  // @Get('driver-list-v2')
+  // @ApiOperation({ summary: 'Driver List V2' })
+  // async getDriverListV2(
+  //   @Query() query: FilterDriverDto
+  // ) {
+  //   return await this.adminService.getDriverListV2(query);
+  // }
+
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Get('driver/:id')
@@ -295,6 +306,7 @@ export class AdminController {
       sortOrder,
     );
   }
+
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)

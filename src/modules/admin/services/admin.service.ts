@@ -1228,7 +1228,6 @@ export class AdminService {
     }
   }
 
-
   async getDriverDetails(id: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
@@ -1858,18 +1857,31 @@ export class AdminService {
           );
         }
 
-        const formattedDateOfBirth = moment(
-          verificationResponse?.dateOfBirth,
-          'DD MMM YYYY',
-        )
-          .startOf('day')
-          .toISOString();
-        const formattedLicenseExpiryDate = moment(
-          verificationResponse?.licenseExpiryDate,
-          'DD MMM YYYY',
-        )
-          .startOf('day')
-          .toISOString();
+        const formattedDateOfBirth = verificationResponse?.dateOfBirth
+          ? moment(verificationResponse.dateOfBirth, 'DD MMM YYYY')
+              .startOf('day')
+              .toISOString()
+          : null;
+
+        const formattedLicenseExpiryDate =
+          verificationResponse?.licenseExpiryDate
+            ? moment(verificationResponse.licenseExpiryDate, 'DD MMM YYYY')
+                .startOf('day')
+                .toISOString()
+            : null;
+
+        // Validate required dates before upsert
+        if (!formattedDateOfBirth) {
+          throw new BadRequestException(
+            'Date of birth could not be extracted from the driving license. Please ensure the document is clear and readable.',
+          );
+        }
+
+        if (!formattedLicenseExpiryDate) {
+          throw new BadRequestException(
+            'License expiry date could not be extracted from the driving license. Please ensure the document is clear and readable.',
+          );
+        }
 
         verificationResponse = {
           ...verificationResponse,
@@ -2682,7 +2694,6 @@ export class AdminService {
           whereClause.createdAt.lte = new Date(endDate);
         }
       }
-
 
       const totalCount = await this.prisma.vehicleTypeBD.count({
         where: whereClause,

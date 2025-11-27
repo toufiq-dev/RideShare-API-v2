@@ -13,6 +13,12 @@ import { AdminDriverService } from './services/admin-driver.service';
 @Module({
   imports: [EmailModule, PricingModule],
   controllers: [AdminController, AdminVehicleController, AdminDriverController],
-  providers: [AdminService, AzureService, VerificationService, PilotService, AdminDriverService],
+  providers: [
+    AdminService,
+    AzureService,
+    VerificationService,
+    PilotService,
+    AdminDriverService,
+  ],
 })
-export class AdminModule { }
+export class AdminModule {}

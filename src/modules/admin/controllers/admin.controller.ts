@@ -47,7 +47,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 @ApiTags('admin')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -278,7 +278,6 @@ export class AdminController {
   //   return await this.adminService.getDriverListV2(query);
   // }
 
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)
   @Get('driver/:id')
@@ -306,7 +305,6 @@ export class AdminController {
       sortOrder,
     );
   }
-
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT)

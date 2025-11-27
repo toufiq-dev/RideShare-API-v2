@@ -123,7 +123,14 @@ export class AdminDriverService {
                                     select: { name: true },
                                 },
                             }
-                        }
+                        },
+                        documentSubmissions: {
+                            select: {
+                                submittedAt: true,
+                                documentType: true,
+                                verificationStatus: true
+                            },
+                        },
                     },
                     skip,
                     take: +pageSize || 10,
@@ -193,6 +200,9 @@ export class AdminDriverService {
                         select: {
                             nameOnLicense: true,
                             dateOfBirth: true,
+                            licenseNumber: true,
+                            validUntill: true,
+                            dateOfIssue: true
                         },
                     },
                     wallet: {
@@ -226,6 +236,7 @@ export class AdminDriverService {
                         },
                     },
                     documentSubmissions: true,
+
                 },
             });
 

@@ -7,6 +7,12 @@ export default defineConfig({
   migrations: {
     path: './prisma/migrations',
   },
+  experimental: {
+    adapter: true,
+  },
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
   adapter: async () => {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,

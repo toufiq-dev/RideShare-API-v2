@@ -905,6 +905,10 @@ export class RideService {
       await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
       await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
 
+      await this.redis.del(
+        `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}${pilot.userId}`,
+      );
+
       // Cache active ride in Redis
       await this.redis.setActiveRide(
         pilot.userId,
@@ -1797,6 +1801,20 @@ export class RideService {
           await this.rideNotificationService.notifyRideRequestTimeout(
             bookingId,
             pilotUserId,
+          );
+        }
+      }
+
+      const activePattern = `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}*`;
+      const activeKeys = await this.redis.keys(activePattern);
+
+      for (const activeKey of activeKeys) {
+        const activeBookingId = await this.redis.get(activeKey);
+        if (activeBookingId === bookingId) {
+          await this.redis.del(activeKey);
+          this.logger.log(
+            `Cleared active notification ${activeKey} for cancelled booking ${bookingId}`,
+            this.context,
           );
         }
       }

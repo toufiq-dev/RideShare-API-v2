@@ -40,7 +40,7 @@ async function bootstrap() {
       'https://dashboard.fairdrive.com.bd',
       'https://api.fairdriveindia.com',
       'https://www.fairdrive.com.bd',
-      'https://staging-dash.fairdrive.com.bd'
+      'https://staging-dash.fairdrive.com.bd',
       // Add other allowed origins as needed
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

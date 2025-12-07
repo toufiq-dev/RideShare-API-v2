@@ -1906,12 +1906,12 @@ export class AdminService {
           },
         });
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isDLVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isDLVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
@@ -2011,12 +2011,12 @@ export class AdminService {
           },
         });
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isRCVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isRCVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
@@ -2088,12 +2088,12 @@ export class AdminService {
           },
         });
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isNidVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isNidVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
@@ -2169,12 +2169,12 @@ export class AdminService {
             pilotId: pilot.id,
           },
         });
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isVehicleOwnersNidVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
@@ -2210,12 +2210,12 @@ export class AdminService {
           );
         }
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isNumberPlateVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else if (
@@ -2236,12 +2236,12 @@ export class AdminService {
           await this.deletePreviousFiles(pilot.taxTokenUrl);
         }
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isTaxTokenVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         const verificationResponse =
           await this.verificationService.extractTaxTokenData(
@@ -2277,12 +2277,12 @@ export class AdminService {
           await this.deletePreviousFiles(pilot.selfieUrl);
         }
 
-        await this.prisma.pilot.update({
-          where: { id: pilot.id },
-          data: {
-            isSelfieVerified: VerificationStatus.IN_PROGRESS,
-          },
-        });
+        // await this.prisma.pilot.update({
+        //   where: { id: pilot.id },
+        //   data: {
+        //     isSelfieVerified: VerificationStatus.IN_PROGRESS,
+        //   },
+        // });
 
         await this.pilotService.updateUserStatusAfterDocumentUpload(pilot.id);
       } else {

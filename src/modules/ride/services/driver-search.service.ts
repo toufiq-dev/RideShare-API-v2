@@ -467,7 +467,7 @@ export class DriverSearchService {
       ) {
         if (bookingStatus.isResolved) break;
 
-        // ✅ NEW: Check if driver has active notification (round-robin check)
+        // Check if driver has active notification (round-robin check)
         const hasActive = await this.hasActiveNotification(pilotUserId);
         if (hasActive) {
           this.logger.log(
@@ -505,7 +505,7 @@ export class DriverSearchService {
           durationMin: Math.ceil(durationMin),
         };
 
-        // ✅ NEW: Set active notification BEFORE sending (prevents concurrent notifications)
+        // Set active notification BEFORE sending (prevents concurrent notifications)
         await this.setActiveNotification(pilot.userId, bookingId);
 
         // Notify driver
@@ -517,9 +517,20 @@ export class DriverSearchService {
           where: { userId: pilotUserId },
         });
         this.logger.log(
-          `[DRIVER_NOTIFICATION] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}`,
+          `[DRIVER_NOTIFICATION_SENT] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}, price: ${discountedFare}`,
           this.context,
         );
+
+        const currentStatus = await this.redis.getBookingStatus(bookingId);
+        if (currentStatus !== null && currentStatus !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[NOTIFICATION_CANCELLED] Booking ${bookingId} was cancelled. Status: ${currentStatus}. Skipping notification to driver ${pilot.phone}`,
+            this.context,
+          );
+          // Continue to next driver or break if booking resolved
+          if (bookingStatus.isResolved) break;
+          continue;
+        }
 
         // Wait for driver response
         const driverAccepted = await this.waitForDriverResponse(
@@ -532,14 +543,14 @@ export class DriverSearchService {
         );
 
         if (driverAccepted) {
-          // ✅ NEW: Clear active notification on accept
+          // Clear active notification on accept
           await this.clearActiveNotification(pilot.userId, bookingId);
           await this.redis.del(acceptanceKey);
           return true;
         }
 
         // Driver didn't respond in time
-        // ✅ NEW: Clear active notification on timeout (driver becomes available for other bookings)
+        // Clear active notification on timeout (driver becomes available for other bookings)
         await this.clearActiveNotification(pilot.userId, bookingId);
         await this.redis.del(acceptanceKey);
         await this.rideNotificationService.notifyRideRequestTimeout(
@@ -551,7 +562,7 @@ export class DriverSearchService {
           this.context,
         );
 
-        // ✅ Continue to next driver (round-robin continues within same iteration)
+        // Continue to next driver (round-robin continues within same iteration)
         // Don't return false yet - try next driver in this iteration
       }
     }

@@ -1011,8 +1011,6 @@ export class RideService {
             : null,
       };
 
-      await this.redis.setBookingStatus(bookingId, BookingStatus.ACCEPTED);
-
       return {
         message: 'Ride accepted successfully.',
         data,
@@ -1896,7 +1894,7 @@ export class RideService {
       const newPickupLocation = pickupLocation || booking.pickupLocation;
       const newDropLocation = dropLocation || booking.dropLocation;
 
-      // ✅ FIXED: Calculate fare using NEW locations
+      // Calculate fare using NEW locations
       const fareCalculation = await this.fareService.calculateTariffBasedFare({
         pickupLocation: newPickupLocation,
         dropLocation: newDropLocation,

@@ -306,8 +306,14 @@ export class DriverSearchService {
     let radius = config.radiusIncrement;
     const maxRadius = iterationRecord.maxRadius;
 
+    // ✅ Track retry state for "all drivers busy" scenario
+    const ALL_BUSY_RETRY_DELAY = 2000; // Wait 2 seconds between retries
+    const MAX_ALL_BUSY_RETRIES = 5; // Retry up to 5 times (total ~10 seconds wait)
+    let allBusyRetryCount = 0;
+    let lastRadiusWithAllBusy = 0;
+
     while (radius <= maxRadius && !bookingStatus.isResolved) {
-      const driverAccepted = await this.searchAndNotifyDriversInRadius(
+      const result = await this.searchAndNotifyDriversInRadius(
         bookingId,
         iterationRecord,
         pickupLocation,
@@ -323,7 +329,8 @@ export class DriverSearchService {
         config,
       );
 
-      if (driverAccepted) {
+      if (result === true) {
+        // Driver accepted
         return true;
       }
 
@@ -335,6 +342,47 @@ export class DriverSearchService {
         break;
       }
 
+      // ✅ Handle "all drivers busy" scenario
+      if (result === 'ALL_BUSY') {
+        // Check if we should retry the same radius
+        if (
+          allBusyRetryCount < MAX_ALL_BUSY_RETRIES &&
+          lastRadiusWithAllBusy === radius
+        ) {
+          allBusyRetryCount++;
+          this.logger.log(
+            `[RETRY_ALL_BUSY] All drivers in ${radius}m radius have active notifications for booking ${bookingId}. Retry ${allBusyRetryCount}/${MAX_ALL_BUSY_RETRIES} after ${ALL_BUSY_RETRY_DELAY}ms delay.`,
+            this.context,
+          );
+          await this.delay(ALL_BUSY_RETRY_DELAY);
+          // Retry same radius without incrementing
+          continue;
+        } else if (lastRadiusWithAllBusy !== radius) {
+          // New radius with all busy - reset counter and retry
+          allBusyRetryCount = 1;
+          lastRadiusWithAllBusy = radius;
+          this.logger.log(
+            `[RETRY_ALL_BUSY] All drivers in ${radius}m radius have active notifications for booking ${bookingId}. Retry ${allBusyRetryCount}/${MAX_ALL_BUSY_RETRIES} after ${ALL_BUSY_RETRY_DELAY}ms delay.`,
+            this.context,
+          );
+          await this.delay(ALL_BUSY_RETRY_DELAY);
+          continue;
+        } else {
+          // Exhausted retries for this radius, move to next
+          this.logger.log(
+            `[ALL_BUSY_EXHAUSTED] Exhausted ${MAX_ALL_BUSY_RETRIES} retries for ${radius}m radius. Moving to next radius.`,
+            this.context,
+          );
+          allBusyRetryCount = 0;
+          lastRadiusWithAllBusy = 0;
+          radius += config.radiusIncrement;
+          continue;
+        }
+      }
+
+      // Normal flow: no drivers found or other error, move to next radius
+      allBusyRetryCount = 0;
+      lastRadiusWithAllBusy = 0;
       radius += config.radiusIncrement;
     }
 
@@ -343,6 +391,7 @@ export class DriverSearchService {
 
   /**
    * Search and notify drivers in specific radius
+   * Returns: true if driver accepted, false if no drivers/error, 'ALL_BUSY' if all drivers have active notifications
    */
   private async searchAndNotifyDriversInRadius(
     bookingId: string,
@@ -358,7 +407,7 @@ export class DriverSearchService {
     messageHandler: any,
     bookingStatusChannel: string,
     config: SearchConfiguration,
-  ): Promise<boolean> {
+  ): Promise<boolean | 'ALL_BUSY'> {
     if (bookingStatus.isResolved) {
       return false;
     }
@@ -382,7 +431,7 @@ export class DriverSearchService {
       this.context,
     );
     if (!nearbyPilots.length) {
-      return false;
+      return false; // Truly no drivers in radius
     }
 
     // Extract pilot user IDs
@@ -410,7 +459,7 @@ export class DriverSearchService {
     );
 
     if (!eligiblePilotUserIds.length) {
-      return false;
+      return false; // All drivers already notified max times
     }
 
     // Batch fetch eligible pilots
@@ -449,6 +498,10 @@ export class DriverSearchService {
 
     const fare = Number(discountedFare);
 
+    // ✅ Track if we found eligible drivers but all were busy
+    let foundEligibleDrivers = false;
+    let allDriversWereBusy = true;
+
     // Process pilots in order of distance (round-robin)
     for (const [pilotUserId, distance] of nearbyPilots as any) {
       if (bookingStatus.isResolved) break;
@@ -465,17 +518,22 @@ export class DriverSearchService {
         walletBalance > fare &&
         notificationCount < config.maxNotificationsPerDriver
       ) {
+        foundEligibleDrivers = true; // Found at least one eligible driver
+
         if (bookingStatus.isResolved) break;
 
         // Check if driver has active notification (round-robin check)
         const hasActive = await this.hasActiveNotification(pilotUserId);
         if (hasActive) {
           this.logger.log(
-            `[DRIVER_BUSY] Driver ${pilot.phone} has active notification, skipping for booking ${bookingId}. Will retry in next iteration.`,
+            `[DRIVER_BUSY] Driver ${pilot.phone} has active notification, skipping for booking ${bookingId}. Will retry.`,
             this.context,
           );
           continue; // Round-robin: skip busy driver, try next one
         }
+
+        // ✅ Found an available driver - proceed with notification
+        allDriversWereBusy = false; // At least one driver was available
 
         // Increment notification count
         await this.redis.incrWithExpire(
@@ -527,9 +585,10 @@ export class DriverSearchService {
             `[NOTIFICATION_CANCELLED] Booking ${bookingId} was cancelled. Status: ${currentStatus}. Skipping notification to driver ${pilot.phone}`,
             this.context,
           );
-          // Continue to next driver or break if booking resolved
-          if (bookingStatus.isResolved) break;
-          continue;
+          // Update isResolved flag immediately
+          bookingStatus.isResolved = true;
+          bookingStatus.status = currentStatus as BookingStatus;
+          break;
         }
 
         // Wait for driver response
@@ -565,6 +624,15 @@ export class DriverSearchService {
         // Continue to next driver (round-robin continues within same iteration)
         // Don't return false yet - try next driver in this iteration
       }
+    }
+
+    // ✅ If we found eligible drivers but all were busy, return special indicator
+    if (foundEligibleDrivers && allDriversWereBusy) {
+      this.logger.log(
+        `[ALL_DRIVERS_BUSY] All eligible drivers in ${radius}m radius have active notifications for booking ${bookingId}. Will retry after delay.`,
+        this.context,
+      );
+      return 'ALL_BUSY';
     }
 
     return false;

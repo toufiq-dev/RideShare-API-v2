@@ -247,6 +247,7 @@ model Pilot {
   bookings                        Booking[]
   drivingLicense                  DrivingLicense?
   nid                             Nid?                      @relation("PilotNid")
+  numberPlate                     NumberPlate?
   activeBooking                   Booking?                  @relation("PilotActiveBooking", fields: [activeBookingId], references: [id])
   language                        Languages                 @relation(fields: [languageId], references: [id])
   pilotCoupon                     PilotCoupon?              @relation(fields: [pilotCouponId], references: [id])
@@ -260,11 +261,10 @@ model Pilot {
   ratings                         PilotRating[]
   pilotTrips                      PilotTrips[]
   wallet                          PilotWallet?
+  taxToken                        TaxToken?
   transaction                     Transaction[]
   vehicle                         Vehicle?                  @relation("PilotVehicle")
   videoProgress                   VideoProgress?
-  numberPlate                     NumberPlate?
-  taxToken                        TaxToken?
 }
 
 model AdminDocumentSubmission {
@@ -362,9 +362,9 @@ model NumberPlate {
 
 model TaxToken {
   pilotId            String   @id @unique
-  registrationNumber String
   createdAt          DateTime @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime @updatedAt @db.Timestamptz(6)
+  registrationNumber String
   pilot              Pilot    @relation(fields: [pilotId], references: [id])
 }
 
@@ -532,10 +532,10 @@ model Booking {
   createdAt          DateTime            @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
   vehicleTypeIdBD    String?
-  pilotType          PilotType?
   baseFare           Decimal?            @db.Decimal(10, 2)
   distanceFare       Decimal?            @db.Decimal(10, 2)
   durationFare       Decimal?            @db.Decimal(10, 2)
+  pilotType          PilotType?
   customer           Customer            @relation(fields: [customerId], references: [id])
   pilot              Pilot?              @relation(fields: [pilotId], references: [id])
   vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])

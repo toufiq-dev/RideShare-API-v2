@@ -4,6 +4,11 @@ import { defineConfig } from 'prisma/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
+// Check if we're in a context where DATABASE_URL is needed
+const isGenerationContext = process.argv.includes('generate') || 
+                           process.argv.includes('prisma generate') ||
+                           !process.env.DATABASE_URL;
+
 // load .env from project root into process.env if DATABASE_URL not already set
 if (!process.env.DATABASE_URL) {
   try {
@@ -23,9 +28,13 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
-if (!process.env.DATABASE_URL) {
+// Only require DATABASE_URL if we're not just generating the client
+if (!process.env.DATABASE_URL && !isGenerationContext) {
   throw new Error('DATABASE_URL is not set. Add it to .env at project root or export it in your shell.');
 }
+
+// Use a dummy URL during generation if needed
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy';
 
 export default defineConfig({
   schema: './prisma/schema.prisma',
@@ -39,18 +48,21 @@ export default defineConfig({
   // required by `pnpm prisma db pull`
   datasource: {
     provider: 'postgresql',
-    url: process.env.DATABASE_URL,
+    url: databaseUrl,
   },
 
   // keep for runtime/adapter if you need it
   datasources: {
     db: {
       provider: 'postgresql',
-      url: process.env.DATABASE_URL,
+      url: databaseUrl,
     },
   },
 
   adapter: async () => {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required for database adapter');
+    }
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });

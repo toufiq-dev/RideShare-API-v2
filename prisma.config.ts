@@ -30,11 +30,11 @@ if (!process.env.DATABASE_URL) {
 
 // Only require DATABASE_URL if we're not just generating the client
 if (!process.env.DATABASE_URL && !isGenerationContext) {
-  throw new Error('DATABASE_URL is not set. Add it to .env at project root or export it in your shell.');
+  throw new Error('DATABASE_URL is not set.');
 }
 
 // Use a dummy URL during generation if needed
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy';
+const databaseUrl = process.env.DATABASE_URL;
 
 export default defineConfig({
   schema: './prisma/schema.prisma',

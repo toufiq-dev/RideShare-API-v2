@@ -67,6 +67,9 @@ export class PilotService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
+        select: {
+          status: true,
+        },
       });
       if (!user) {
         throw new NotFoundException('User not found.');
@@ -152,6 +155,7 @@ export class PilotService {
       }
 
       data.totalLifetimeEarnings = Number(data.totalLifetimeEarnings);
+      data.status = user.status;
 
       return {
         message: 'Pilot fetched successfully.',
@@ -1118,6 +1122,7 @@ export class PilotService {
         where: { userId },
         data: {
           isDLVerified: VerificationStatus.IN_PROGRESS,
+          name: name,
         },
       });
 

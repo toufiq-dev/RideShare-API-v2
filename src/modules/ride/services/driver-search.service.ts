@@ -105,6 +105,16 @@ export class DriverSearchService {
 
       // Set total search timeout
       const searchTimeoutId = setTimeout(async () => {
+        const currentStatus = await this.redis.getBookingStatus(bookingId);
+
+        if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[TIMEOUT_CANCELLED] Booking ${bookingId} was already resolved with status ${currentStatus}. Redis pub/sub updated status. Skipping timeout handler.`,
+            this.context,
+          );
+          return;
+        }
+
         if (!bookingStatus.isResolved) {
           await this.handleSearchTimeout(bookingId, searchSession, userId);
         }
@@ -691,6 +701,15 @@ export class DriverSearchService {
   ): Promise<void> {
     this.logger.log(`Search timeout for booking ${bookingId}`, this.context);
 
+    const currentStatus = await this.redis.getBookingStatus(bookingId);
+    if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+      this.logger.log(
+        `[TIMEOUT_CANCELLED] Booking ${bookingId} was already resolved with status ${currentStatus}. Skipping timeout handler.`,
+        this.context,
+      );
+      return;
+    }
+
     searchSession.status = 'CANCELLED';
     searchSession.completedAt = new Date();
     await this.updateSearchSession(bookingId, searchSession);
@@ -705,14 +724,34 @@ export class DriverSearchService {
     this.logger.log(`No driver found for booking ${bookingId}`, this.context);
 
     try {
+      const currentStatus = await this.redis.getBookingStatus(bookingId);
+      if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+        this.logger.log(
+          `[SKIP_NOTIFICATION] Booking ${bookingId} was already resolved with status ${currentStatus}. Skipping "driver not found" notification.`,
+          this.context,
+        );
+        return;
+      }
+
+
       await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
-          select: { customerId: true },
+          select: { customerId: true, status: true },
         });
         if (!booking) {
           throw new NotFoundException('Booking not found for this customer');
         }
+
+        if (booking.status !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[SKIP_UPDATE] Booking ${bookingId} status is ${booking.status}, not PENDING. Skipping status update.`,
+            this.context,
+          );
+          return; // Don't update if already resolved
+        }
+
+
         await tx.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.NOT_FOUND },
@@ -739,6 +778,15 @@ export class DriverSearchService {
           }
         }
       });
+
+      const finalStatus = await this.redis.getBookingStatus(bookingId);
+      if (finalStatus && finalStatus !== BookingStatus.NOT_FOUND) {
+        this.logger.log(
+          `[SKIP_NOTIFICATION] Booking ${bookingId} status changed to ${finalStatus} during transaction. Skipping notification.`,
+          this.context,
+        );
+        return;
+      }
 
       // Update Redis cache
       await this.redis.set(

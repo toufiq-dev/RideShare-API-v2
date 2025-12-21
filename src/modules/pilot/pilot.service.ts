@@ -22,6 +22,7 @@ import {
   FreeRechargeDto,
   BDNidType,
   UpdateDriverDetailsDto,
+  UpdatePilotPhoneDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -32,6 +33,7 @@ import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
+  Country,
   PilotStatus,
   RideType,
   TransactionStatus,
@@ -47,6 +49,7 @@ import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
 import { TelemetryService } from '../pricing/telemetry.service';
 import { h3Cell } from 'src/core/utils/h3.util';
+import { OTPService } from 'src/core/utils/otp.util';
 
 @Injectable()
 export class PilotService {
@@ -59,6 +62,7 @@ export class PilotService {
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
     private readonly telemetryService: TelemetryService,
+    private readonly otpService: OTPService,
   ) {
     this.flexiPack = this.configService.get<string>('subscription.flexiPack');
   }
@@ -167,7 +171,9 @@ export class PilotService {
     }
   }
 
-  async updatePhone(userId: string) {
+  async updatePhone(userId: string, updatePilotPhoneDto: UpdatePilotPhoneDto) {
+    const { phone } = updatePilotPhoneDto;
+
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: {
@@ -178,18 +184,53 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      // Determine country code
+      let countryCode: Country | null = null;
+      if (phone.startsWith('+880')) {
+        countryCode = Country.BD;
+      } else if (phone.startsWith('+91')) {
+        countryCode = Country.IN;
+      } else {
+        throw new BadRequestException('Invalid phone number format.');
+      }
+
+      // Check if OTP was already sent recently
+      const otpSent = await this.redis.get(`otpSent:${phone}`);
+      if (otpSent) {
+        throw new BadRequestException(
+          'OTP already sent. Please wait for 1 minute.',
+        );
+      }
+
       const otp = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${userId}`, otp, 300);
 
-      // const requestId = await this.otpService.sendOTP(phone);
-      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+      // Send OTP based on country
+      if (countryCode === Country.BD) {
+        const isSent = await this.otpService.sendOTPBD(phone, otp);
+        if (!isSent) {
+          throw new BadRequestException('Failed to send OTP.');
+        }
+        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
-      return {
-        message: 'OTP sent to your phone successfully.',
-        data: {
-          otp,
-        },
-      };
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      } else if (countryCode === Country.IN) {
+        const requestId = await this.otpService.sendOTP(phone);
+        await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      }
     } catch (error) {
       console.error(error);
       throw error;

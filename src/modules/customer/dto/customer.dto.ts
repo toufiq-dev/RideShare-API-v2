@@ -40,6 +40,13 @@ export class UpdateCustomerNameDto {
   name: string;
 }
 
+export class UpdateCustomerPhoneDto {
+  @ApiProperty({ description: 'Phone number' })
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+}
+
 export class CreateSavedPlaceDto {
   @ApiProperty({ description: 'Name of the address type' })
   @IsOptional()

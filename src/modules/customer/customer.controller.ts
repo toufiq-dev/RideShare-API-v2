@@ -20,6 +20,7 @@ import {
   CreateSavedPlaceDto,
   CompleteCustomerOnboardingDto,
   VehicleCategoryDto,
+  UpdateCustomerPhoneDto,
 } from './dto/customer.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -70,8 +71,14 @@ export class CustomerController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update phone' })
-  async updatePhone(@CurrentUser('userId') userId: string) {
-    return await this.customerService.updatePhone(userId);
+  async updatePhone(
+    @Body() updateCustomerPhoneDto: UpdateCustomerPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.customerService.updatePhone(
+      userId,
+      updateCustomerPhoneDto,
+    );
   }
 
   @Post('phone/verify')

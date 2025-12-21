@@ -46,6 +46,7 @@ import {
   UpdateDriverDetailsDto,
   PilotIdQueryDto,
   BDNidType,
+  UpdatePilotPhoneDto,
 } from './dto/pilot.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -71,8 +72,11 @@ export class PilotController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send otp to Update phone' })
-  async updatePhone(@CurrentUser('userId') userId: string) {
-    return await this.pilotService.updatePhone(userId);
+  async updatePhone(
+    @Body() updatePilotPhoneDto: UpdatePilotPhoneDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.pilotService.updatePhone(userId, updatePilotPhoneDto);
   }
 
   @Post('phone/verify')

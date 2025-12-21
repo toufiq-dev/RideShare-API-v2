@@ -733,7 +733,6 @@ export class DriverSearchService {
         return;
       }
 
-
       await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
@@ -750,7 +749,6 @@ export class DriverSearchService {
           );
           return; // Don't update if already resolved
         }
-
 
         await tx.booking.update({
           where: { id: bookingId },

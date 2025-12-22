@@ -13,6 +13,13 @@ import {
 } from 'class-validator';
 import { LocationDto } from 'src/common/dto/common.dto';
 
+export class UpdatePilotPhoneDto {
+  @ApiProperty({ description: 'Phone number' })
+  @IsNotEmpty({ message: 'Phone number is required' })
+  @IsString()
+  phone: string;
+}
+
 export class DrivingLicenseDto {
   @ApiProperty({ description: 'Driving license number' })
   @IsNotEmpty({ message: 'Driving license number is required' })

@@ -905,6 +905,10 @@ export class RideService {
       await this.redis.del(`${RedisKeys.NOTIFIED}${bookingId}:${pilot.userId}`);
       await this.redis.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
 
+      await this.redis.del(
+        `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}${pilot.userId}`,
+      );
+
       // Cache active ride in Redis
       await this.redis.setActiveRide(
         pilot.userId,
@@ -1006,8 +1010,6 @@ export class RideService {
             ? { name: result.updated.name }
             : null,
       };
-
-      await this.redis.setBookingStatus(bookingId, BookingStatus.ACCEPTED);
 
       return {
         message: 'Ride accepted successfully.',
@@ -1801,6 +1803,20 @@ export class RideService {
         }
       }
 
+      const activePattern = `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}*`;
+      const activeKeys = await this.redis.keys(activePattern);
+
+      for (const activeKey of activeKeys) {
+        const activeBookingId = await this.redis.get(activeKey);
+        if (activeBookingId === bookingId) {
+          await this.redis.del(activeKey);
+          this.logger.log(
+            `Cleared active notification ${activeKey} for cancelled booking ${bookingId}`,
+            this.context,
+          );
+        }
+      }
+
       // Cache booking status in Redis
       await this.redis.setBookingStatus(bookingId, BookingStatus.CANCELLED);
 
@@ -1878,7 +1894,7 @@ export class RideService {
       const newPickupLocation = pickupLocation || booking.pickupLocation;
       const newDropLocation = dropLocation || booking.dropLocation;
 
-      // ✅ FIXED: Calculate fare using NEW locations
+      // Calculate fare using NEW locations
       const fareCalculation = await this.fareService.calculateTariffBasedFare({
         pickupLocation: newPickupLocation,
         dropLocation: newDropLocation,

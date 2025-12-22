@@ -378,8 +378,8 @@ export class ProgramService {
     });
 
     const carTypes: VehicleTypeNameBD[] = [
-      VehicleTypeNameBD.FAIR_PRIME,
-      VehicleTypeNameBD.FAIR_PLUS,
+      VehicleTypeNameBD.FAIR_GO,
+      VehicleTypeNameBD.FAIR_ELITE,
       VehicleTypeNameBD.FAIR_MAX,
     ];
     if (
@@ -1056,7 +1056,7 @@ export class ProgramService {
     // If it's a car type, get the ID of FAIR_PRIME (or first car type) as the normalized ID
     if (carTypes.includes(vehicleType.name)) {
       const normalizedCarType = await this.prisma.vehicleTypeBD.findFirst({
-        where: { name: 'FAIR_PRIME' },
+        where: { name: 'FAIR_ELITE' },
         select: { id: true },
       });
       return normalizedCarType?.id || vehicleTypeId;

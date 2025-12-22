@@ -1,5 +1,4 @@
-import { BookingStatus, VehicleTypeName } from '@prisma/client';
-import { JsonValue } from '@prisma/client/runtime/library';
+import { VehicleTypeName } from '@prisma/client';
 
 export interface VerificationResponseDL {
   licenseNumber: string;

@@ -13,6 +13,7 @@ import {
   CompleteCustomerOnboardingDto,
   UpdateCustomerNameDto,
   VehicleCategoryDto,
+  UpdateCustomerPhoneDto,
 } from './dto/customer.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { OTPService } from 'src/core/utils/otp.util';
@@ -23,6 +24,7 @@ import {
   PilotStatus,
   BookingStatus,
   VehicleTypeNameBD,
+  Country,
 } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
@@ -296,7 +298,12 @@ export class CustomerService {
     }
   }
 
-  async updatePhone(userId: string) {
+  async updatePhone(
+    userId: string,
+    updateCustomerPhoneDto: UpdateCustomerPhoneDto,
+  ) {
+    const { phone } = updateCustomerPhoneDto;
+
     try {
       const customer = await this.prisma.customer.findUnique({
         where: {
@@ -307,18 +314,53 @@ export class CustomerService {
         throw new NotFoundException('Customer not found.');
       }
 
+      // Determine country code
+      let countryCode: Country | null = null;
+      if (phone.startsWith('+880')) {
+        countryCode = Country.BD;
+      } else if (phone.startsWith('+91')) {
+        countryCode = Country.IN;
+      } else {
+        throw new BadRequestException('Invalid phone number format.');
+      }
+
+      // Check if OTP was already sent recently
+      const otpSent = await this.redis.get(`otpSent:${phone}`);
+      if (otpSent) {
+        throw new BadRequestException(
+          'OTP already sent. Please wait for 1 minute.',
+        );
+      }
+
       const otp = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${userId}`, otp, 300);
 
-      // const requestId = await this.otpService.sendOTP(phone);
-      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+      // Send OTP based on country
+      if (countryCode === Country.BD) {
+        const isSent = await this.otpService.sendOTPBD(phone, otp);
+        if (!isSent) {
+          throw new BadRequestException('Failed to send OTP.');
+        }
+        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
-      return {
-        message: 'OTP sent to your phone successfully.',
-        data: {
-          otp,
-        },
-      };
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      } else if (countryCode === Country.IN) {
+        const requestId = await this.otpService.sendOTP(phone);
+        await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      }
     } catch (error) {
       console.error(error);
       throw error;
@@ -335,9 +377,9 @@ export class CustomerService {
         throw new UnauthorizedException('Invalid or expired OTP.');
       }
       const cachedOtp: any = await this.redis.del(`otp:${userId}`);
-      if (!cachedOtp) {
-        throw new UnauthorizedException('Invalid or expired OTP.');
-      }
+      // if (!cachedOtp) {
+      //   throw new UnauthorizedException('Invalid or expired OTP.');
+      // }
 
       const data = await this.prisma.customer.update({
         where: {

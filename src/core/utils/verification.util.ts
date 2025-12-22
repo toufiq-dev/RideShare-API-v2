@@ -345,8 +345,8 @@ export class VerificationService {
   async mapVehicleType(vehicleType: string): Promise<VehicleTypeNameBD> {
     try {
       const systemPrompt = 'You are an expert in mapping vehicle types.';
-      const userPrompt = `Map the vehicle type "${vehicleType}" to a valid vehicle type of our system: FAIR_BIKE, FAIR_PRIME, FAIR_PLUS, FAIR_MAX, FAIR_CNG.
-      The vehicle types FAIR_PRIME, FAIR_PLUS, FAIR_MAX are for cars, FAIR_BIKE for motorcycles, and FAIR_CNG for CNG vehicles.
+      const userPrompt = `Map the vehicle type "${vehicleType}" to a valid vehicle type of our system: FAIR_BIKE, FAIR_GO, FAIR_ELITE, FAIR_MAX, FAIR_CNG.
+      The vehicle types FAIR_GO, FAIR_ELITE, FAIR_MAX are for cars, FAIR_BIKE for motorcycles, and FAIR_CNG for CNG vehicles.
       Return the result as a JSON object with a single key "vehicleType" (e.g., { "vehicleType": "FAIR_BIKE" }).
       If the vehicle type is not valid or not readable, return { "vehicleType": null } as a JSON object.
       Do not include any markdown formatting or backticks in your response. The response must be valid JSON.

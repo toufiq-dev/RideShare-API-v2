@@ -105,6 +105,16 @@ export class DriverSearchService {
 
       // Set total search timeout
       const searchTimeoutId = setTimeout(async () => {
+        const currentStatus = await this.redis.getBookingStatus(bookingId);
+
+        if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[TIMEOUT_CANCELLED] Booking ${bookingId} was already resolved with status ${currentStatus}. Redis pub/sub updated status. Skipping timeout handler.`,
+            this.context,
+          );
+          return;
+        }
+
         if (!bookingStatus.isResolved) {
           await this.handleSearchTimeout(bookingId, searchSession, userId);
         }
@@ -306,8 +316,14 @@ export class DriverSearchService {
     let radius = config.radiusIncrement;
     const maxRadius = iterationRecord.maxRadius;
 
+    // ✅ Track retry state for "all drivers busy" scenario
+    const ALL_BUSY_RETRY_DELAY = 2000; // Wait 2 seconds between retries
+    const MAX_ALL_BUSY_RETRIES = 5; // Retry up to 5 times (total ~10 seconds wait)
+    let allBusyRetryCount = 0;
+    let lastRadiusWithAllBusy = 0;
+
     while (radius <= maxRadius && !bookingStatus.isResolved) {
-      const driverAccepted = await this.searchAndNotifyDriversInRadius(
+      const result = await this.searchAndNotifyDriversInRadius(
         bookingId,
         iterationRecord,
         pickupLocation,
@@ -323,7 +339,8 @@ export class DriverSearchService {
         config,
       );
 
-      if (driverAccepted) {
+      if (result === true) {
+        // Driver accepted
         return true;
       }
 
@@ -335,6 +352,47 @@ export class DriverSearchService {
         break;
       }
 
+      // ✅ Handle "all drivers busy" scenario
+      if (result === 'ALL_BUSY') {
+        // Check if we should retry the same radius
+        if (
+          allBusyRetryCount < MAX_ALL_BUSY_RETRIES &&
+          lastRadiusWithAllBusy === radius
+        ) {
+          allBusyRetryCount++;
+          this.logger.log(
+            `[RETRY_ALL_BUSY] All drivers in ${radius}m radius have active notifications for booking ${bookingId}. Retry ${allBusyRetryCount}/${MAX_ALL_BUSY_RETRIES} after ${ALL_BUSY_RETRY_DELAY}ms delay.`,
+            this.context,
+          );
+          await this.delay(ALL_BUSY_RETRY_DELAY);
+          // Retry same radius without incrementing
+          continue;
+        } else if (lastRadiusWithAllBusy !== radius) {
+          // New radius with all busy - reset counter and retry
+          allBusyRetryCount = 1;
+          lastRadiusWithAllBusy = radius;
+          this.logger.log(
+            `[RETRY_ALL_BUSY] All drivers in ${radius}m radius have active notifications for booking ${bookingId}. Retry ${allBusyRetryCount}/${MAX_ALL_BUSY_RETRIES} after ${ALL_BUSY_RETRY_DELAY}ms delay.`,
+            this.context,
+          );
+          await this.delay(ALL_BUSY_RETRY_DELAY);
+          continue;
+        } else {
+          // Exhausted retries for this radius, move to next
+          this.logger.log(
+            `[ALL_BUSY_EXHAUSTED] Exhausted ${MAX_ALL_BUSY_RETRIES} retries for ${radius}m radius. Moving to next radius.`,
+            this.context,
+          );
+          allBusyRetryCount = 0;
+          lastRadiusWithAllBusy = 0;
+          radius += config.radiusIncrement;
+          continue;
+        }
+      }
+
+      // Normal flow: no drivers found or other error, move to next radius
+      allBusyRetryCount = 0;
+      lastRadiusWithAllBusy = 0;
       radius += config.radiusIncrement;
     }
 
@@ -343,6 +401,7 @@ export class DriverSearchService {
 
   /**
    * Search and notify drivers in specific radius
+   * Returns: true if driver accepted, false if no drivers/error, 'ALL_BUSY' if all drivers have active notifications
    */
   private async searchAndNotifyDriversInRadius(
     bookingId: string,
@@ -358,7 +417,7 @@ export class DriverSearchService {
     messageHandler: any,
     bookingStatusChannel: string,
     config: SearchConfiguration,
-  ): Promise<boolean> {
+  ): Promise<boolean | 'ALL_BUSY'> {
     if (bookingStatus.isResolved) {
       return false;
     }
@@ -382,7 +441,7 @@ export class DriverSearchService {
       this.context,
     );
     if (!nearbyPilots.length) {
-      return false;
+      return false; // Truly no drivers in radius
     }
 
     // Extract pilot user IDs
@@ -410,7 +469,7 @@ export class DriverSearchService {
     );
 
     if (!eligiblePilotUserIds.length) {
-      return false;
+      return false; // All drivers already notified max times
     }
 
     // Batch fetch eligible pilots
@@ -449,7 +508,11 @@ export class DriverSearchService {
 
     const fare = Number(discountedFare);
 
-    // Process pilots in order of distance
+    // ✅ Track if we found eligible drivers but all were busy
+    let foundEligibleDrivers = false;
+    let allDriversWereBusy = true;
+
+    // Process pilots in order of distance (round-robin)
     for (const [pilotUserId, distance] of nearbyPilots as any) {
       if (bookingStatus.isResolved) break;
 
@@ -465,7 +528,22 @@ export class DriverSearchService {
         walletBalance > fare &&
         notificationCount < config.maxNotificationsPerDriver
       ) {
+        foundEligibleDrivers = true; // Found at least one eligible driver
+
         if (bookingStatus.isResolved) break;
+
+        // Check if driver has active notification (round-robin check)
+        const hasActive = await this.hasActiveNotification(pilotUserId);
+        if (hasActive) {
+          this.logger.log(
+            `[DRIVER_BUSY] Driver ${pilot.phone} has active notification, skipping for booking ${bookingId}. Will retry.`,
+            this.context,
+          );
+          continue; // Round-robin: skip busy driver, try next one
+        }
+
+        // ✅ Found an available driver - proceed with notification
+        allDriversWereBusy = false; // At least one driver was available
 
         // Increment notification count
         await this.redis.incrWithExpire(
@@ -495,6 +573,9 @@ export class DriverSearchService {
           durationMin: Math.ceil(durationMin),
         };
 
+        // Set active notification BEFORE sending (prevents concurrent notifications)
+        await this.setActiveNotification(pilot.userId, bookingId);
+
         // Notify driver
         await this.rideNotificationService.notifyRideRequest(
           notifyDriverPayload,
@@ -504,9 +585,21 @@ export class DriverSearchService {
           where: { userId: pilotUserId },
         });
         this.logger.log(
-          `[DRIVER_NOTIFICATION] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}`,
+          `[DRIVER_NOTIFICATION_SENT] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}, price: ${discountedFare}`,
           this.context,
         );
+
+        const currentStatus = await this.redis.getBookingStatus(bookingId);
+        if (currentStatus !== null && currentStatus !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[NOTIFICATION_CANCELLED] Booking ${bookingId} was cancelled. Status: ${currentStatus}. Skipping notification to driver ${pilot.phone}`,
+            this.context,
+          );
+          // Update isResolved flag immediately
+          bookingStatus.isResolved = true;
+          bookingStatus.status = currentStatus as BookingStatus;
+          break;
+        }
 
         // Wait for driver response
         const driverAccepted = await this.waitForDriverResponse(
@@ -519,21 +612,37 @@ export class DriverSearchService {
         );
 
         if (driverAccepted) {
+          // Clear active notification on accept
+          await this.clearActiveNotification(pilot.userId, bookingId);
           await this.redis.del(acceptanceKey);
           return true;
         }
 
         // Driver didn't respond in time
+        // Clear active notification on timeout (driver becomes available for other bookings)
+        await this.clearActiveNotification(pilot.userId, bookingId);
         await this.redis.del(acceptanceKey);
         await this.rideNotificationService.notifyRideRequestTimeout(
           bookingId,
           pilot.userId,
         );
         this.logger.log(
-          `[DRIVER_NOTIFICATION_TIMEOUT] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}`,
+          `[DRIVER_NOTIFICATION_TIMEOUT] Notified pilot ${notifiedPilot.phone} for booking ${bookingId}. Driver is now available for other bookings.`,
           this.context,
         );
+
+        // Continue to next driver (round-robin continues within same iteration)
+        // Don't return false yet - try next driver in this iteration
       }
+    }
+
+    // ✅ If we found eligible drivers but all were busy, return special indicator
+    if (foundEligibleDrivers && allDriversWereBusy) {
+      this.logger.log(
+        `[ALL_DRIVERS_BUSY] All eligible drivers in ${radius}m radius have active notifications for booking ${bookingId}. Will retry after delay.`,
+        this.context,
+      );
+      return 'ALL_BUSY';
     }
 
     return false;
@@ -592,6 +701,15 @@ export class DriverSearchService {
   ): Promise<void> {
     this.logger.log(`Search timeout for booking ${bookingId}`, this.context);
 
+    const currentStatus = await this.redis.getBookingStatus(bookingId);
+    if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+      this.logger.log(
+        `[TIMEOUT_CANCELLED] Booking ${bookingId} was already resolved with status ${currentStatus}. Skipping timeout handler.`,
+        this.context,
+      );
+      return;
+    }
+
     searchSession.status = 'CANCELLED';
     searchSession.completedAt = new Date();
     await this.updateSearchSession(bookingId, searchSession);
@@ -606,14 +724,32 @@ export class DriverSearchService {
     this.logger.log(`No driver found for booking ${bookingId}`, this.context);
 
     try {
+      const currentStatus = await this.redis.getBookingStatus(bookingId);
+      if (currentStatus && currentStatus !== BookingStatus.PENDING) {
+        this.logger.log(
+          `[SKIP_NOTIFICATION] Booking ${bookingId} was already resolved with status ${currentStatus}. Skipping "driver not found" notification.`,
+          this.context,
+        );
+        return;
+      }
+
       await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
-          select: { customerId: true },
+          select: { customerId: true, status: true },
         });
         if (!booking) {
           throw new NotFoundException('Booking not found for this customer');
         }
+
+        if (booking.status !== BookingStatus.PENDING) {
+          this.logger.log(
+            `[SKIP_UPDATE] Booking ${bookingId} status is ${booking.status}, not PENDING. Skipping status update.`,
+            this.context,
+          );
+          return; // Don't update if already resolved
+        }
+
         await tx.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.NOT_FOUND },
@@ -640,6 +776,15 @@ export class DriverSearchService {
           }
         }
       });
+
+      const finalStatus = await this.redis.getBookingStatus(bookingId);
+      if (finalStatus && finalStatus !== BookingStatus.NOT_FOUND) {
+        this.logger.log(
+          `[SKIP_NOTIFICATION] Booking ${bookingId} status changed to ${finalStatus} during transaction. Skipping notification.`,
+          this.context,
+        );
+        return;
+      }
 
       // Update Redis cache
       await this.redis.set(
@@ -740,6 +885,51 @@ export class DriverSearchService {
       maxRadius: parseInt(process.env.MAX_SEARCH_RADIUS || '2000'),
       driverTimeout: parseInt(process.env.DRIVER_TIMEOUT || '15000'),
     };
+  }
+
+  /**
+   * Check if driver has an active notification
+   */
+  private async hasActiveNotification(pilotUserId: string): Promise<boolean> {
+    const activeKey = `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}${pilotUserId}`;
+    const activeBookingId = await this.redis.get(activeKey);
+    return activeBookingId !== null;
+  }
+
+  /**
+   * Set driver as having an active notification
+   */
+  private async setActiveNotification(
+    pilotUserId: string,
+    bookingId: string,
+  ): Promise<void> {
+    const activeKey = `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}${pilotUserId}`;
+    // TTL = 15 seconds (matches driver timeout)
+    await this.redis.set(activeKey, bookingId, 15);
+    this.logger.log(
+      `Set active notification for driver ${pilotUserId}, booking ${bookingId}`,
+      this.context,
+    );
+  }
+
+  /**
+   * Clear active notification for a driver
+   */
+  private async clearActiveNotification(
+    pilotUserId: string,
+    bookingId: string,
+  ): Promise<void> {
+    const activeKey = `${RedisKeys.DRIVER_ACTIVE_NOTIFICATION}${pilotUserId}`;
+    const activeBookingId = await this.redis.get(activeKey);
+
+    // Only clear if it's the same booking (prevent race conditions)
+    if (activeBookingId === bookingId) {
+      await this.redis.del(activeKey);
+      this.logger.log(
+        `Cleared active notification for driver ${pilotUserId}, booking ${bookingId}`,
+        this.context,
+      );
+    }
   }
 
   /**

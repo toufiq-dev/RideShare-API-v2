@@ -22,6 +22,7 @@ import {
   FreeRechargeDto,
   BDNidType,
   UpdateDriverDetailsDto,
+  UpdatePilotPhoneDto,
 } from './dto/pilot.dto';
 import {
   VerificationResponseDL,
@@ -32,6 +33,7 @@ import { VerifyAadhaarDto } from './dto/pilot.dto';
 import { RedisService } from 'src/core/cache/redis.service';
 import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
+  Country,
   PilotStatus,
   RideType,
   TransactionStatus,
@@ -47,6 +49,7 @@ import { RedisKeys } from 'src/core/cache/redis-keys';
 import { ConfigService } from '@nestjs/config';
 import { TelemetryService } from '../pricing/telemetry.service';
 import { h3Cell } from 'src/core/utils/h3.util';
+import { OTPService } from 'src/core/utils/otp.util';
 
 @Injectable()
 export class PilotService {
@@ -59,6 +62,7 @@ export class PilotService {
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
     private readonly telemetryService: TelemetryService,
+    private readonly otpService: OTPService,
   ) {
     this.flexiPack = this.configService.get<string>('subscription.flexiPack');
   }
@@ -67,6 +71,9 @@ export class PilotService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
+        select: {
+          status: true,
+        },
       });
       if (!user) {
         throw new NotFoundException('User not found.');
@@ -152,6 +159,7 @@ export class PilotService {
       }
 
       data.totalLifetimeEarnings = Number(data.totalLifetimeEarnings);
+      data.status = user.status;
 
       return {
         message: 'Pilot fetched successfully.',
@@ -163,7 +171,9 @@ export class PilotService {
     }
   }
 
-  async updatePhone(userId: string) {
+  async updatePhone(userId: string, updatePilotPhoneDto: UpdatePilotPhoneDto) {
+    const { phone } = updatePilotPhoneDto;
+
     try {
       const pilot = await this.prisma.pilot.findUnique({
         where: {
@@ -174,18 +184,53 @@ export class PilotService {
         throw new NotFoundException('Pilot not found.');
       }
 
+      // Determine country code
+      let countryCode: Country | null = null;
+      if (phone.startsWith('+880')) {
+        countryCode = Country.BD;
+      } else if (phone.startsWith('+91')) {
+        countryCode = Country.IN;
+      } else {
+        throw new BadRequestException('Invalid phone number format.');
+      }
+
+      // Check if OTP was already sent recently
+      const otpSent = await this.redis.get(`otpSent:${phone}`);
+      if (otpSent) {
+        throw new BadRequestException(
+          'OTP already sent. Please wait for 1 minute.',
+        );
+      }
+
       const otp = randomInt(1000, 10000).toString();
       await this.redis.set(`otp:${userId}`, otp, 300);
 
-      // const requestId = await this.otpService.sendOTP(phone);
-      // await this.redis.set(`requestId:${phone}`, requestId, 300);
+      // Send OTP based on country
+      if (countryCode === Country.BD) {
+        const isSent = await this.otpService.sendOTPBD(phone, otp);
+        if (!isSent) {
+          throw new BadRequestException('Failed to send OTP.');
+        }
+        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
-      return {
-        message: 'OTP sent to your phone successfully.',
-        data: {
-          otp,
-        },
-      };
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      } else if (countryCode === Country.IN) {
+        const requestId = await this.otpService.sendOTP(phone);
+        await this.redis.set(`requestId:${phone}`, requestId, 300);
+
+        return {
+          message: 'OTP sent to your phone successfully.',
+          data: {
+            otp: ' ',
+          },
+        };
+      }
     } catch (error) {
       console.error(error);
       throw error;
@@ -1118,6 +1163,7 @@ export class PilotService {
         where: { userId },
         data: {
           isDLVerified: VerificationStatus.IN_PROGRESS,
+          name: name,
         },
       });
 
@@ -2096,13 +2142,97 @@ export class PilotService {
         isTaxTokenVerified: true,
         isNumberPlateVerified: true,
         isVehicleOwnersNidVerified: true,
+        selfieUrl: true,
+        dlFrontSideUrl: true,
+        dlBackSideUrl: true,
+        rcFrontSideUrl: true,
+        rcBackSideUrl: true,
+        nidFrontSideUrl: true,
+        nidBackSideUrl: true,
+        taxTokenUrl: true,
+        numberPlateUrl: true,
+        vehicleOwnersNidFrontSideUrl: true,
+        vehicleOwnersNidBackSideUrl: true,
       },
     });
 
     if (!pilot) return;
 
-    // Check if all documents are in progress
-    const allDocumentsInProgress = [
+    // Use consistent logic with admin-driver.service.ts
+    const expectedStatus = this.determineUserStatus(pilot);
+
+    // Get current user status
+    const user = await this.prisma.user.findUnique({
+      where: { id: pilot.userId },
+      select: { status: true },
+    });
+
+    if (!user) return;
+
+    // Validate status transition before updating
+    if (user.status !== expectedStatus) {
+      this.validateStatusTransition(user.status, expectedStatus);
+
+      await this.prisma.user.update({
+        where: { id: pilot.userId },
+        data: { status: expectedStatus },
+      });
+    }
+  }
+
+  /**
+   * Determines the appropriate UserStatus based on document upload and verification states
+   * This method ensures consistency with admin-driver.service.ts logic
+   *
+   * Rules:
+   * - ACTIVE: All documents APPROVED
+   * - IN_REVIEW: All documents uploaded AND at least one is IN_PROGRESS or PENDING
+   * - ONBOARDING: One or more documents uploaded but not all, OR all uploaded but none in review
+   * - INACTIVE: Verified by OTP but no documents submitted (handled in auth.service.ts)
+   */
+  private determineUserStatus(pilot: {
+    selfieUrl: string | null;
+    dlFrontSideUrl: string | null;
+    dlBackSideUrl: string | null;
+    rcFrontSideUrl: string | null;
+    rcBackSideUrl: string | null;
+    nidFrontSideUrl: string | null;
+    nidBackSideUrl: string | null;
+    taxTokenUrl: string | null;
+    numberPlateUrl: string | null;
+    vehicleOwnersNidFrontSideUrl: string | null;
+    vehicleOwnersNidBackSideUrl: string | null;
+    isSelfieVerified: VerificationStatus;
+    isDLVerified: VerificationStatus;
+    isRCVerified: VerificationStatus;
+    isNidVerified: VerificationStatus;
+    isTaxTokenVerified: VerificationStatus;
+    isNumberPlateVerified: VerificationStatus;
+    isVehicleOwnersNidVerified: VerificationStatus;
+  }): UserStatus {
+    // Check if all documents are uploaded (have URLs)
+    const allDocumentsUploaded = [
+      pilot.selfieUrl,
+      pilot.dlFrontSideUrl,
+      pilot.dlBackSideUrl,
+      pilot.rcFrontSideUrl,
+      pilot.rcBackSideUrl,
+      pilot.nidFrontSideUrl,
+      pilot.nidBackSideUrl,
+      pilot.taxTokenUrl,
+      pilot.numberPlateUrl,
+      pilot.vehicleOwnersNidFrontSideUrl,
+      pilot.vehicleOwnersNidBackSideUrl,
+    ].every((url) => url !== null && url !== undefined);
+
+    if (!allDocumentsUploaded) {
+      // Not all documents uploaded - set ONBOARDING
+      // Rule: "submitted one or more documents but not all"
+      return UserStatus.ONBOARDING;
+    }
+
+    // All documents are uploaded - check verification statuses
+    const documentStatuses = [
       pilot.isSelfieVerified,
       pilot.isDLVerified,
       pilot.isRCVerified,
@@ -2110,18 +2240,130 @@ export class PilotService {
       pilot.isTaxTokenVerified,
       pilot.isNumberPlateVerified,
       pilot.isVehicleOwnersNidVerified,
-    ].every((status) => status === VerificationStatus.IN_PROGRESS);
+    ];
 
-    if (allDocumentsInProgress) {
-      await this.prisma.user.update({
-        where: { id: pilot.userId },
-        data: { status: UserStatus.IN_REVIEW },
-      });
-    } else {
-      await this.prisma.user.update({
-        where: { id: pilot.userId },
-        data: { status: UserStatus.ONBOARDING },
-      });
+    // Check if all documents are approved
+    const allDocumentsApproved = documentStatuses.every(
+      (status) => status === VerificationStatus.APPROVED,
+    );
+
+    if (allDocumentsApproved) {
+      // All documents approved - should be ACTIVE
+      // Rule: "status active for driver when all the documents get Approved"
+      return UserStatus.ACTIVE;
+    }
+
+    // Check if at least one document is IN_PROGRESS or PENDING (review in progress)
+    const hasDocumentInReview = documentStatuses.some(
+      (status) =>
+        status === VerificationStatus.IN_PROGRESS ||
+        status === VerificationStatus.PENDING,
+    );
+
+    if (hasDocumentInReview) {
+      // All documents uploaded and at least one is in review - set IN_REVIEW
+      // Rule: "when driver submitted all documents and document review in progress"
+      return UserStatus.IN_REVIEW;
+    }
+
+    // All documents uploaded but none in review (all rejected or mixed states) - set ONBOARDING
+    // Rule: "submitted one or more documents but not all" - but in this case all are uploaded,
+    // so we set ONBOARDING to allow resubmission
+    return UserStatus.ONBOARDING;
+  }
+
+  /**
+   * Validates status transitions to prevent invalid state changes
+   * @param currentStatus - Current user status
+   * @param newStatus - Desired new status
+   * @throws BadRequestException if transition is invalid
+   */
+  private validateStatusTransition(
+    currentStatus: UserStatus,
+    newStatus: UserStatus,
+  ): void {
+    // No validation needed if status is unchanged
+    if (currentStatus === newStatus) {
+      return;
+    }
+
+    // DELETED is a terminal state - cannot transition from it
+    if (currentStatus === UserStatus.DELETED) {
+      throw new BadRequestException(
+        'Cannot change status of a deleted user. User must be restored first.',
+      );
+    }
+
+    // SUSPENDED can only be changed by unsuspend operation (handled separately)
+    // But we allow transitions from SUSPENDED if documents are being processed
+    if (
+      currentStatus === UserStatus.SUSPENDED &&
+      newStatus !== UserStatus.ACTIVE
+    ) {
+      // Allow SUSPENDED -> ONBOARDING/IN_REVIEW if documents are being updated
+      if (
+        newStatus === UserStatus.ONBOARDING ||
+        newStatus === UserStatus.IN_REVIEW
+      ) {
+        return; // Allow this transition
+      }
+    }
+
+    // INACTIVE can only transition to ONBOARDING (when first document is uploaded)
+    if (currentStatus === UserStatus.INACTIVE) {
+      if (newStatus !== UserStatus.ONBOARDING) {
+        throw new BadRequestException(
+          `Invalid status transition: ${currentStatus} -> ${newStatus}. INACTIVE users can only transition to ONBOARDING when documents are uploaded.`,
+        );
+      }
+      return;
+    }
+
+    // ACTIVE can only transition to ONBOARDING (if document is rejected) or SUSPENDED/DELETED
+    if (currentStatus === UserStatus.ACTIVE) {
+      const allowedTransitions: UserStatus[] = [
+        UserStatus.ONBOARDING,
+        UserStatus.SUSPENDED,
+        UserStatus.DELETED,
+      ];
+      if (!allowedTransitions.includes(newStatus)) {
+        throw new BadRequestException(
+          `Invalid status transition: ${currentStatus} -> ${newStatus}. ACTIVE users can only transition to ONBOARDING (document rejection), SUSPENDED, or DELETED.`,
+        );
+      }
+      return;
+    }
+
+    // IN_REVIEW can transition to ONBOARDING (document rejected), ACTIVE (all approved), SUSPENDED, or DELETED
+    if (currentStatus === UserStatus.IN_REVIEW) {
+      const allowedTransitions: UserStatus[] = [
+        UserStatus.ONBOARDING,
+        UserStatus.ACTIVE,
+        UserStatus.SUSPENDED,
+        UserStatus.DELETED,
+      ];
+      if (!allowedTransitions.includes(newStatus)) {
+        throw new BadRequestException(
+          `Invalid status transition: ${currentStatus} -> ${newStatus}. IN_REVIEW users can only transition to ONBOARDING (document rejection), ACTIVE (all approved), SUSPENDED, or DELETED.`,
+        );
+      }
+      return;
+    }
+
+    // ONBOARDING can transition to IN_REVIEW (all documents uploaded), ACTIVE (all approved), SUSPENDED, or DELETED
+    if (currentStatus === UserStatus.ONBOARDING) {
+      const allowedTransitions: UserStatus[] = [
+        UserStatus.IN_REVIEW,
+        UserStatus.ACTIVE,
+        UserStatus.SUSPENDED,
+        UserStatus.DELETED,
+      ];
+      if (!allowedTransitions.includes(newStatus)) {
+        throw new BadRequestException(
+          `Invalid status transition: ${currentStatus} -> ${newStatus}. ONBOARDING users can only transition to IN_REVIEW (all documents uploaded), ACTIVE (all approved), SUSPENDED, or DELETED.`,
+        );
+      }
+      return;
     }
   }
 

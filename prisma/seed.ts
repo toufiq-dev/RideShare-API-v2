@@ -103,7 +103,7 @@ async function main() {
       insuranceFee: 5.0,
     },
     {
-      name: VehicleTypeNameBD.FAIR_PLUS,
+      name: VehicleTypeNameBD.FAIR_ELITE,
       serialNumber: 2,
       isFaster: false,
       airCondition: [],
@@ -115,7 +115,7 @@ async function main() {
       insuranceFee: 20.0,
     },
     {
-      name: VehicleTypeNameBD.FAIR_PRIME,
+      name: VehicleTypeNameBD.FAIR_GO,
       serialNumber: 3,
       isFaster: false,
       airCondition: [],

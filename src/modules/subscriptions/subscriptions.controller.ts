@@ -46,11 +46,4 @@ export class SubscriptionsController {
       updateSubscriptionTypeDto,
     );
   }
-
-  @Get('onboarding-offer')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get Faircoins for onborading' })
-  async getOnboardingOffer(@CurrentUser('userId') userId: string) {
-    return await this.subscriptionService.onboardingOffer(userId);
-  }
 }

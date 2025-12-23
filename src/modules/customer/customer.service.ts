@@ -145,7 +145,10 @@ export class CustomerService {
           });
         }
         const pilotLocation = pilot
-          ? await this.redis.geoPos(RedisKeys.PILOT_LOCATION, pilot.userId)
+          ? ((await this.redis.geoPos(
+              RedisKeys.PILOT_LOCATION,
+              pilot.userId,
+            )) ?? [null, null])
           : [null, null];
 
         const payload: CustomerRidePayload = {

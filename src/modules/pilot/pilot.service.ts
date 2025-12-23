@@ -742,6 +742,7 @@ export class PilotService {
             pilotId: pilot.id,
             balance: subscription.coins,
             subscriptionId: subscription.id,
+            autoRechargeEnabled: false,
           },
         });
 
@@ -788,7 +789,7 @@ export class PilotService {
       if (!wallet) {
         throw new NotFoundException('Pilot wallet not found.');
       }
-      if (!wallet.autoRechargeEnabled) {
+      if (wallet.autoRechargeEnabled !== true) {
         throw new BadRequestException(
           'Pilot does not have auto recharge enabled.',
         );

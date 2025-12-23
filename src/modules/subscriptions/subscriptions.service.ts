@@ -84,44 +84,4 @@ export class SubscriptionsService {
       data,
     };
   }
-
-  async onboardingOffer(userId: string) {
-    try {
-      const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
-
-      const subscription = await this.prisma.subscription.findUnique({
-        where: { name: 'Flexi Pack' },
-      });
-
-      // Create pilot wallet
-      let data = null;
-      this.prisma.$transaction(async (tx) => {
-        data = await tx.pilotWallet.create({
-          data: {
-            pilotId: pilot.id,
-            balance: subscription.coins,
-            subscriptionId: subscription.id,
-          },
-        });
-
-        await tx.transaction.create({
-          data: {
-            pilotId: pilot.id,
-            amount: subscription.coins,
-            type: TransactionType.ONBOARDING_OFFER,
-            status: TransactionStatus.SUCCESSFUL,
-            walletId: data.id,
-          },
-        });
-      });
-
-      return {
-        message: 'Pilot onboarding coins availed successfully.',
-        data,
-      };
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
 }

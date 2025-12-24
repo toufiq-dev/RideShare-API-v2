@@ -2524,10 +2524,14 @@ export class RideService {
           skip,
           take: pageSize,
         }),
+
         this.prisma.booking.count({
           where: {
             customerId: customer.id,
             status,
+            ...(status !== BookingStatus.PENDING && {
+              vehicleId: { not: null },
+            }),
           },
         }),
       ]);

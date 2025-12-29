@@ -556,6 +556,7 @@ export class RideService {
         where: { id: bookingId },
         select: {
           rideType: true,
+          customerId: true,
           estimatedFare: true,
           discountedFare: true,
           estimatedDistance: true,

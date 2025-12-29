@@ -35,7 +35,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         case 'P2002':
           status = HttpStatus.BAD_REQUEST;
           const targetFields = (exception.meta?.target as string[])?.join(', ');
-          errorMessage = `This ${targetFields} already exists.`;
+          errorMessage = `Unfortunately this already exists.`;
           break;
         default:
           status = HttpStatus.INTERNAL_SERVER_ERROR;

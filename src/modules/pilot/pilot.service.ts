@@ -35,6 +35,7 @@ import { VerifyPhoneDto } from 'src/common/dto/common.dto';
 import {
   Country,
   PilotStatus,
+  Prisma,
   RideType,
   TransactionStatus,
   TransactionType,
@@ -783,17 +784,6 @@ export class PilotService {
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
-      const wallet = await this.prisma.pilotWallet.findUnique({
-        where: { pilotId: pilot.id },
-      });
-      if (!wallet) {
-        throw new NotFoundException('Pilot wallet not found.');
-      }
-      if (wallet.autoRechargeEnabled !== true) {
-        throw new BadRequestException(
-          'Pilot does not have auto recharge enabled.',
-        );
-      }
 
       const pilotCoupon = await this.prisma.pilotCoupon.findUnique({
         where: {
@@ -808,48 +798,66 @@ export class PilotService {
         where: { name: this.flexiPack },
       });
 
-      const balanceBefore = Number(wallet.balance);
-      const balanceAfter = balanceBefore + Number(subscription.coins);
+      // Move all checks and operations inside the transaction with row locking
+      const result = await this.prisma.$transaction(
+        async (tx) => {
+          // Lock the wallet row to prevent concurrent access
+          const wallet = await tx.pilotWallet.findUnique({
+            where: { pilotId: pilot.id },
+          });
 
-      await this.prisma.$transaction(async (tx) => {
-        // Update wallet with bonus
-        await tx.pilotWallet.update({
-          where: { pilotId: pilot.id },
-          data: {
-            balance: balanceAfter,
-          },
-        });
+          if (!wallet) {
+            throw new NotFoundException('Pilot wallet not found.');
+          }
 
-        // Create the transaction record
-        await tx.transaction.create({
-          data: {
-            pilotId: pilot.id,
-            amount: Number(subscription.coins),
-            walletId: wallet.id,
-            type: TransactionType.AUTO_RECHARGE,
-            status: TransactionStatus.SUCCESSFUL,
-            balanceBefore,
-            balanceAfter,
-          },
-        });
+          // Re-check autoRechargeEnabled inside the transaction
+          if (wallet.autoRechargeEnabled !== true) {
+            throw new BadRequestException(
+              'Pilot does not have auto recharge enabled.',
+            );
+          }
 
-        // Reset the bonus eligibility flag
-        await tx.pilotWallet.update({
-          where: { pilotId: pilot.id },
-          data: {
-            autoRechargeEnabled: false,
-            autoRechargeAmount: Number(subscription.coins),
-            autoRechargeDate: moment.utc().toDate(),
-            autoRechargeEnabledUntil: moment.utc().add(1, 'day').toDate(),
-          },
-        });
-      });
+          const balanceBefore = Number(wallet.balance);
+          const balanceAfter = balanceBefore + Number(subscription.coins);
+
+          // Update wallet with bonus
+          await tx.pilotWallet.update({
+            where: { pilotId: pilot.id },
+            data: {
+              balance: balanceAfter,
+              autoRechargeEnabled: false,
+              autoRechargeAmount: Number(subscription.coins),
+              autoRechargeDate: moment.utc().toDate(),
+              autoRechargeEnabledUntil: moment.utc().add(1, 'day').toDate(),
+            },
+          });
+
+          // Create the transaction record
+          await tx.transaction.create({
+            data: {
+              pilotId: pilot.id,
+              amount: Number(subscription.coins),
+              walletId: wallet.id,
+              type: TransactionType.AUTO_RECHARGE,
+              status: TransactionStatus.SUCCESSFUL,
+              balanceBefore,
+              balanceAfter,
+            },
+          });
+
+          return { balanceAfter, bonusAmount: Number(subscription.coins) };
+        },
+        {
+          // Isolation level to prevent dirty reads
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        },
+      );
 
       return {
         message: 'Bonus recharge availed successfully!',
         data: {
-          bonusAmount: Number(subscription.coins),
-          newBalance: balanceAfter,
+          bonusAmount: result.bonusAmount,
+          newBalance: result.balanceAfter,
         },
       };
     } catch (error) {

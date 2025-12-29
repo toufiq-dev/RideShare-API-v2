@@ -591,6 +591,12 @@ export class RideService {
         throw new NotFoundException('Booking not found.');
       }
 
+      if (customer.id !== booking.customerId) {
+        throw new BadRequestException(
+          'You are not authorized to request again for this booking.',
+        );
+      }
+
       const activeBooking =
         customer.activeBookingId &&
         (customer.activeBooking.status === BookingStatus.ACCEPTED ||
@@ -2150,6 +2156,13 @@ export class RideService {
           );
         }
 
+        const existingRating = await this.prisma.pilotRating.findUnique({
+          where: { bookingId: booking.id, pilotId: pilot.id },
+        });
+        if (existingRating) {
+          throw new BadRequestException('You have already rated this pilot.');
+        }
+
         // Create pilot rating
         const ratingRecord = await this.prisma.customerRating.create({
           data: {
@@ -2189,6 +2202,15 @@ export class RideService {
         if (customer.id !== booking.customerId) {
           throw new ForbiddenException(
             'You can only rate rides you have booked.',
+          );
+        }
+
+        const existingRating = await this.prisma.customerRating.findUnique({
+          where: { bookingId: booking.id, customerId: customer.id },
+        });
+        if (existingRating) {
+          throw new BadRequestException(
+            'You have already rated this customer.',
           );
         }
 

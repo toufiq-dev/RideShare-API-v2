@@ -83,7 +83,17 @@ export class SocketService {
     }
   }
 
-  handleDisconnect(client: Socket) {
-    console.log('Client disconnected:', client.id);
+  async handleDisconnect(client: Socket) {
+    try {
+      if (client.data?.user?.userId) {
+        const connectionKey = `${RedisKeys.SOCKET_CONNECTION}${client.data.user.userId}`;
+        await this.redis.del(connectionKey);
+        console.log('Client disconnected and cleaned up:', client.id);
+      } else {
+        console.log('Client disconnected (no user data):', client.id);
+      }
+    } catch (error) {
+      console.error('Error during disconnect cleanup:', error);
+    }
   }
 }

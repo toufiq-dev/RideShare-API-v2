@@ -70,6 +70,12 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() sendMessageDto: SendMessageDto,
   ) {
     try {
+      if (!client.data?.user?.userId) {
+        client.emit('error', { message: 'User not authenticated' });
+        console.log('❌ Client not authenticated to send message');
+        return;
+      }
+
       const userId = client.data.user.userId;
       const { message, recipientId } = await this.chatService.sendMessage(
         userId,

@@ -71,6 +71,12 @@ export class RideService {
 
   async handleUpdateLocation(client: Socket, lat: number, lng: number) {
     try {
+      if (!client.data?.user?.userId) {
+        client.emit('error', { message: 'User not authenticated' });
+        console.log('❌ Client not authenticated to update location');
+        return;
+      }
+
       // Store location in Redis geospatial set
       await this.redis.geoAdd(
         RedisKeys.PILOT_LOCATION,
@@ -87,6 +93,12 @@ export class RideService {
   }
 
   async getActiveRideForPilot(client: Socket) {
+    if (!client.data?.user?.userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      console.log('❌ Client not authenticated to get active ride for pilot');
+      return;
+    }
+
     const cachedRide = await this.redis.getActiveRide(client.data.user.userId);
     if (cachedRide) {
       return cachedRide;

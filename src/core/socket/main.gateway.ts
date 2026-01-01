@@ -20,7 +20,14 @@ import { BookingStatus } from '@prisma/client';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+      'https://dashboard.fairdrivebd.com',
+      'https://www.fairdrivebd.com',
+      'https://staging-dash.fairdrivebd.com',
+      'https://api.v1.fairdrivebd.com',
+      'https://api.v2.fairdrivebd.com',
+      'https://dev.fairdrivebd.com',
+    ],
     credentials: true,
   },
   namespace: '/socket',
@@ -44,19 +51,26 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    console.log('�� New connection attempt:');
+    console.log('🔌 New connection attempt:');
     console.log('  - Client ID:', client.id);
     console.log('  - Namespace:', client.nsp.name);
 
     try {
       await this.socketService.handleConnection(client);
-
       console.log('✅ Client connected successfully:', client.id);
     } catch (error) {
-      console.error(error);
-      client.emit('error', {
-        message: 'Failed to connect',
-      });
+      console.error('Connection error:', error);
+      // Only emit error if client is still connected
+      if (client.connected) {
+        client.emit('error', {
+          message: 'Failed to connect',
+          error: error.message,
+        });
+      }
+      // Client should already be disconnected by handleConnection, but ensure it
+      if (client.connected) {
+        client.disconnect(true);
+      }
     }
   }
 
@@ -103,7 +117,25 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: { lat: number; lng: number; angle?: number },
   ) {
     try {
+      // Add null check for authentication
+      if (!client.data?.user?.userId) {
+        client.emit(RideEvents.ERROR, {
+          message: 'User not authenticated',
+        });
+        console.log('❌ Client not authenticated to update location');
+        return;
+      }
+
       const { lat, lng, angle } = body;
+
+      // Validate input
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        client.emit(RideEvents.ERROR, {
+          message: 'Invalid location data',
+        });
+        return;
+      }
+
       await this.rideService.handleUpdateLocation(client, lat, lng);
 
       const activeRide = await this.rideService.getActiveRideForPilot(client);
@@ -143,9 +175,10 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
         message: 'Location updated successfully',
       };
     } catch (error) {
-      console.error(error);
+      console.error('updateLocation error:', error);
       client.emit(RideEvents.ERROR, {
         message: 'Failed to update location',
+        error: error.message,
       });
     }
   }

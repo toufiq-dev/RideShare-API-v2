@@ -838,12 +838,17 @@ export class AuthService {
           console.log(
             `Force disconnecting socket ${existingClientId} for user ${userId}`,
           );
-          oldSocket.disconnect(true);
 
+          // Emit before disconnecting to ensure message is sent
           oldSocket.emit('force_logout', {
             message: 'You have been logged out due to login on another device',
             reason: 'MULTIPLE_DEVICE_LOGIN',
           });
+
+          // Small delay to ensure message is sent before disconnect
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          oldSocket.disconnect(true);
         }
 
         await this.redis.del(connectionKey);

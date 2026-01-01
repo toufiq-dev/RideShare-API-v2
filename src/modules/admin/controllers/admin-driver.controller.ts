@@ -10,7 +10,13 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminDriverService } from '../services/admin-driver.service';
 import {
-  ApproveDocumentDto,
+  ApproveNidDto,
+  ApproveSelfieDto,
+  ApproveDrivingLicenseDto,
+  ApproveVehicleOwnerNidDto,
+  ApproveRegistrationCertificateDto,
+  ApproveNumberPlateDto,
+  ApproveTaxTokenDto,
   FilterDriverDto,
   RejectDocumentDto,
   UpdateDrivingLicenseDto,
@@ -23,9 +29,9 @@ import {
 } from '../dto/admin-driver.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
+import { UserRole } from 'src/modules/auth/dto/auth.dto';
 
 const ADMIN_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT];
 
@@ -35,7 +41,7 @@ const ADMIN_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT];
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(...ADMIN_ROLES)
 export class AdminDriverController {
-  constructor(private readonly adminDriverService: AdminDriverService) {}
+  constructor(private readonly adminDriverService: AdminDriverService) { }
 
   @Get('')
   @ApiOperation({ summary: 'Driver List' })
@@ -142,14 +148,89 @@ export class AdminDriverController {
     );
   }
 
-  @Post('approve-document')
-  @ApiOperation({ summary: 'Approve a specific driver document' })
-  async approveDocument(
-    @Body() approveDocumentDto: ApproveDocumentDto,
+
+  // Approve Document APIs
+
+  @Post('approve-selfie')
+  @ApiOperation({ summary: 'Approve driver selfie' })
+  async approveSelfie(
+    @Body() approveSelfieDto: ApproveSelfieDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.adminDriverService.approveDocument(
-      approveDocumentDto,
+    return await this.adminDriverService.approveSelfie(
+      approveSelfieDto,
+      userId,
+    );
+  }
+
+  @Post('approve-driving-license')
+  @ApiOperation({ summary: 'Approve driving license' })
+  async approveDrivingLicense(
+    @Body() approveDrivingLicenseDto: ApproveDrivingLicenseDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveDrivingLicense(
+      approveDrivingLicenseDto,
+      userId,
+    );
+  }
+
+  @Post('approve-nid')
+  @ApiOperation({ summary: 'Approve NID' })
+  async approveNid(
+    @Body() approveNidDto: ApproveNidDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveNid(
+      approveNidDto,
+      userId,
+    );
+  }
+
+  @Post('approve-vehicle-owner-nid')
+  @ApiOperation({ summary: 'Approve vehicle owner NID' })
+  async approveVehicleOwnerNid(
+    @Body() approveVehicleOwnerNidDto: ApproveVehicleOwnerNidDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveVehicleOwnerNid(
+      approveVehicleOwnerNidDto,
+      userId,
+    );
+  }
+
+  @Post('approve-registration-certificate')
+  @ApiOperation({ summary: 'Approve registration certificate' })
+  async approveRegistrationCertificate(
+    @Body() approveRegistrationCertificateDto: ApproveRegistrationCertificateDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveRegistrationCertificate(
+      approveRegistrationCertificateDto,
+      userId,
+    );
+  }
+
+  @Post('approve-number-plate')
+  @ApiOperation({ summary: 'Approve number plate' })
+  async approveNumberPlate(
+    @Body() approveNumberPlateDto: ApproveNumberPlateDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveNumberPlate(
+      approveNumberPlateDto,
+      userId,
+    );
+  }
+
+  @Post('approve-tax-token')
+  @ApiOperation({ summary: 'Approve tax token' })
+  async approveTaxToken(
+    @Body() approveTaxTokenDto: ApproveTaxTokenDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.adminDriverService.approveTaxToken(
+      approveTaxTokenDto,
       userId,
     );
   }

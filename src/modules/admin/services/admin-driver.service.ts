@@ -5,11 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
+import { Pilot, Prisma, UserStatus, VerificationStatus } from '@prisma/client';
+import { DocumentType } from '../dto/admin.dto';
 import {
-  ApproveDocumentDto,
+  ApproveNidDto,
+  ApproveSelfieDto,
+  ApproveDrivingLicenseDto,
+  ApproveVehicleOwnerNidDto,
+  ApproveRegistrationCertificateDto,
+  ApproveNumberPlateDto,
+  ApproveTaxTokenDto,
   FilterDriverDto,
-  FilterDriverSortOptions,
-  FilterDriverSortOrderOptions,
   RejectDocumentDto,
   UpdateDrivingLicenseDto,
   UpdateNidDto,
@@ -18,9 +24,9 @@ import {
   UpdateRegistrationCardDto,
   UpdateTaxTokenDto,
   UpdateVehicleOwnerNidDto,
-} from '../dto/admin-driver.dto';
-import { Pilot, Prisma, UserStatus, VerificationStatus } from '@prisma/client';
-import { DocumentType } from '../dto/admin.dto';
+  FilterDriverSortOptions,
+  FilterDriverSortOrderOptions
+} from "../dto/admin-driver.dto";
 
 @Injectable()
 export class AdminDriverService {
@@ -71,21 +77,7 @@ export class AdminDriverService {
     [DocumentType.VEHICLE_OWNERS_NID]: 'Vehicle Owner NID',
   };
 
-  private readonly documentFieldsForCount = [
-    'nidFrontSideUrl',
-    'nidBackSideUrl',
-    'vehicleOwnersNidFrontSideUrl',
-    'vehicleOwnersNidBackSideUrl',
-    'rcFrontSideUrl',
-    'rcBackSideUrl',
-    'numberPlateUrl',
-    'taxTokenUrl',
-    'dlFrontSideUrl',
-    'dlBackSideUrl',
-    'selfieUrl',
-  ];
-
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ==================== Public Methods ====================
 
@@ -166,13 +158,12 @@ export class AdminDriverService {
           }),
         ]);
 
-      const sortedPilots = this.sortPilotsByDocumentCount(pilots, sortBy);
       const totalPages = Math.ceil(totalCount / pageSize);
 
       return {
         message: 'Driver list fetched successfully.',
         data: {
-          pilots: sortedPilots,
+          pilots: pilots,
           totalPilots: totalCount,
           pendingPilots: pendingCount,
           suspendedPilots: suspendedCount,
@@ -267,7 +258,35 @@ export class AdminDriverService {
               status: true,
             },
           },
-          documentSubmissions: true,
+          documentSubmissions: {
+            select: {
+              id: true,
+              documentType: true,
+              verificationStatus: true,
+              submittedAt: true,
+              reviewedBy: {
+                select: {
+                  admin: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  superAdmin: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  support: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+              reviewedAt: true,
+              rejectionReason: true,
+            },
+          },
         },
       });
 
@@ -740,9 +759,192 @@ export class AdminDriverService {
     }
   }
 
-  async approveDocument(
-    { pilotId, documentType }: ApproveDocumentDto,
+  async approveSelfie(approveSelfieDto: ApproveSelfieDto, userId: string) {
+    const { pilotId, updateData } = approveSelfieDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.SELFIE,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveDrivingLicense(approveDrivingLicenseDto: ApproveDrivingLicenseDto, userId: string) {
+    const { pilotId, updateData } = approveDrivingLicenseDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.DRIVING_LICENSE,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveNid(approveNidDto: ApproveNidDto, userId: string) {
+    const { pilotId, updateData } = approveNidDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.NID,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveVehicleOwnerNid(approveVehicleOwnerNidDto: ApproveVehicleOwnerNidDto, userId: string) {
+    const { pilotId, updateData } = approveVehicleOwnerNidDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.VEHICLE_OWNERS_NID,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveRegistrationCertificate(approveRegistrationCertificateDto: ApproveRegistrationCertificateDto, userId: string) {
+    const { pilotId, updateData } = approveRegistrationCertificateDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.REGISTRATION_CERTIFICATE,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveNumberPlate(approveNumberPlateDto: ApproveNumberPlateDto, userId: string) {
+    const { pilotId, updateData } = approveNumberPlateDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.NUMBER_PLATE,
+      userId,
+      updateData,
+    );
+  }
+
+  async approveTaxToken(approveTaxTokenDto: ApproveTaxTokenDto, userId: string) {
+    const { pilotId, updateData } = approveTaxTokenDto;
+    return this.approveDocumentBase(
+      pilotId,
+      DocumentType.TAX_TOKEN,
+      userId,
+      updateData,
+    );
+  }
+
+  // Add this helper method
+  private async updateRelatedDocumentData(
+    tx: Prisma.TransactionClient,
+    pilotId: string,
+    documentType: DocumentType,
+    updateData: any,
+    updatedAt: Date,
+  ) {
+    switch (documentType) {
+      case DocumentType.DRIVING_LICENSE:
+        if (updateData.nameOnLicense || updateData.dateOfBirth || updateData.licenseNumber || updateData.validUntill) {
+          const dlData: any = {};
+          if (updateData.nameOnLicense) dlData.nameOnLicense = updateData.nameOnLicense;
+          if (updateData.licenseNumber) dlData.licenseNumber = updateData.licenseNumber;
+          if (updateData.dateOfBirth) dlData.dateOfBirth = new Date(updateData.dateOfBirth);
+          if (updateData.validUntill) dlData.validUntill = new Date(updateData.validUntill);
+
+          await tx.drivingLicense.upsert({
+            where: { pilotId },
+            update: { ...dlData, updatedAt },
+            create: { pilotId, ...dlData, createdAt: updatedAt },
+          });
+        }
+        break;
+
+      case DocumentType.NID:
+        if (updateData.name || updateData.dateOfBirth || updateData.nidNumber) {
+          const nidData: any = {};
+          if (updateData.name) nidData.name = updateData.name;
+          if (updateData.nidNumber) nidData.nidNumber = updateData.nidNumber;
+          if (updateData.dateOfBirth) nidData.dateOfBirth = new Date(updateData.dateOfBirth);
+
+          await tx.nid.upsert({
+            where: { pilotId },
+            update: nidData,
+            create: { pilotId, ...nidData },
+          });
+        }
+        break;
+
+      case DocumentType.VEHICLE_OWNERS_NID:
+        if (updateData.vehicleOwnerNidName || updateData.vehicleOwnerNidDateOfBirth || updateData.vehicleOwnerNidNumber) {
+          const vehicleOwnerData: any = {};
+          if (updateData.vehicleOwnerNidName) vehicleOwnerData.vehicleOwnerNidName = updateData.vehicleOwnerNidName;
+          if (updateData.vehicleOwnerNidNumber) vehicleOwnerData.vehicleOwnerNidNumber = updateData.vehicleOwnerNidNumber;
+          if (updateData.vehicleOwnerNidDateOfBirth) vehicleOwnerData.vehicleOwnerNidDateOfBirth = new Date(updateData.vehicleOwnerNidDateOfBirth);
+
+          await tx.nid.upsert({
+            where: { pilotId },
+            update: vehicleOwnerData,
+            create: { pilotId, ...vehicleOwnerData },
+          });
+        }
+        break;
+
+      case DocumentType.REGISTRATION_CERTIFICATE:
+        if (updateData.regNo || updateData.vehicleTypeIdBD || updateData.colour || updateData.registrationDate) {
+          const vehicleData: any = {};
+          if (updateData.regNo) vehicleData.regNo = updateData.regNo;
+          if (updateData.vehicleTypeIdBD) vehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
+          if (updateData.colour) vehicleData.colour = updateData.colour;
+          if (updateData.registrationDate) vehicleData.registrationDate = new Date(updateData.registrationDate);
+
+          await tx.vehicle.upsert({
+            where: { pilotId },
+            update: { ...vehicleData, updatedAt },
+            create: { pilotId, ...vehicleData, createdAt: updatedAt },
+          });
+        }
+        break;
+
+      case DocumentType.NUMBER_PLATE:
+        if (updateData.regNo) {
+          await tx.vehicle.upsert({
+            where: { regNo: updateData.regNo },
+            update: { regNo: updateData.regNo, updatedAt },
+            create: { regNo: updateData.regNo, createdAt: updatedAt, colour: "", pilot: { connect: { id: pilotId } } },
+          });
+
+          await tx.numberPlate.upsert({
+            where: { pilotId },
+            update: { numberPlate: updateData.regNo, updatedAt },
+            create: { pilotId, numberPlate: updateData.regNo, createdAt: updatedAt },
+          });
+        }
+        break;
+
+      case DocumentType.TAX_TOKEN:
+        if (updateData.regNo || updateData.vehicleTypeIdBD || updateData.colour || updateData.registrationDate) {
+          const taxTokenVehicleData: any = {};
+          if (updateData.regNo) taxTokenVehicleData.regNo = updateData.regNo;
+          if (updateData.vehicleTypeIdBD) taxTokenVehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
+          if (updateData.colour) taxTokenVehicleData.colour = updateData.colour;
+          if (updateData.registrationDate) taxTokenVehicleData.registrationDate = new Date(updateData.registrationDate);
+
+          await tx.vehicle.upsert({
+            where: { regNo: updateData.regNo },
+            update: { ...taxTokenVehicleData, updatedAt },
+            create: { pilotId, ...taxTokenVehicleData, createdAt: updatedAt },
+          });
+
+          await tx.taxToken.upsert({
+            where: { pilotId },
+            update: { registrationNumber: updateData.regNo, updatedAt },
+            create: { pilotId, registrationNumber: updateData.regNo, createdAt: updatedAt },
+          });
+        }
+        break;
+    }
+  }
+
+  private async approveDocumentBase(
+    pilotId: string,
+    documentType: DocumentType,
     userId: string,
+    updateData?: any,
   ) {
     const user = await this.findUserWithRole(userId);
     const pilot = await this.findUniquePilot(pilotId);
@@ -752,53 +954,94 @@ export class AdminDriverService {
     const rejectionField = this.rejectionReasonFieldMap[documentType];
 
     if (!verificationField || !rejectionField) {
-      throw new BadRequestException(
-        `Unsupported document type: ${documentType}. Please contact support.`,
-      );
+      throw new BadRequestException(`Unsupported document type: ${documentType}. Please contact support.`);
     }
 
     if (pilot[verificationField] === VerificationStatus.APPROVED) {
-      throw new BadRequestException(
-        `${this.documentTypeNames[documentType]} has already been approved.`,
-      );
+      throw new BadRequestException(`${this.documentTypeNames[documentType]} has already been approved.`);
     }
 
-    const documentSubmission = await this.findDocumentSubmission(
-      pilotId,
-      documentType,
-    );
+    const documentSubmission = await this.findDocumentSubmission(pilotId, documentType);
     if (!documentSubmission) {
       throw new BadRequestException(
-        `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`,
+        `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`
       );
     }
 
     try {
       const updatedPilot = await this.prisma.$transaction(async (tx) => {
+        const updatedAt = new Date();
+
+        // Base pilot update data
+        const pilotUpdateData: any = {
+          [verificationField]: VerificationStatus.APPROVED,
+          [rejectionField]: null,
+          updatedAt,
+        };
+
+        // Add document-specific updates if provided
+        if (updateData) {
+          switch (documentType) {
+            case DocumentType.SELFIE:
+              if (updateData.selfieUrl) pilotUpdateData.selfieUrl = updateData.selfieUrl;
+              break;
+            case DocumentType.DRIVING_LICENSE:
+              if (updateData.dlFrontSideUrl) pilotUpdateData.dlFrontSideUrl = updateData.dlFrontSideUrl;
+              if (updateData.dlBackSideUrl) pilotUpdateData.dlBackSideUrl = updateData.dlBackSideUrl;
+              break;
+            case DocumentType.NID:
+              if (updateData.nidFrontSideUrl) pilotUpdateData.nidFrontSideUrl = updateData.nidFrontSideUrl;
+              if (updateData.nidBackSideUrl) pilotUpdateData.nidBackSideUrl = updateData.nidBackSideUrl;
+              break;
+            case DocumentType.VEHICLE_OWNERS_NID:
+              if (updateData.vehicleOwnersNidFrontSideUrl) {
+                pilotUpdateData.vehicleOwnersNidFrontSideUrl = updateData.vehicleOwnersNidFrontSideUrl;
+              }
+              if (updateData.vehicleOwnersNidBackSideUrl) {
+                pilotUpdateData.vehicleOwnersNidBackSideUrl = updateData.vehicleOwnersNidBackSideUrl;
+              }
+              break;
+            case DocumentType.REGISTRATION_CERTIFICATE:
+              if (updateData.rcFrontSideUrl) pilotUpdateData.rcFrontSideUrl = updateData.rcFrontSideUrl;
+              if (updateData.rcBackSideUrl) pilotUpdateData.rcBackSideUrl = updateData.rcBackSideUrl;
+              break;
+            case DocumentType.NUMBER_PLATE:
+              if (updateData.numberPlateUrl) pilotUpdateData.numberPlateUrl = updateData.numberPlateUrl;
+              break;
+            case DocumentType.TAX_TOKEN:
+              if (updateData.taxTokenUrl) pilotUpdateData.taxTokenUrl = updateData.taxTokenUrl;
+              break;
+          }
+        }
+
+        // Update pilot
         const updatedPilot = await tx.pilot.update({
           where: { id: pilotId },
-          data: {
-            [verificationField]: VerificationStatus.APPROVED,
-            [rejectionField]: null,
-            updatedAt: new Date(),
-          },
+          data: pilotUpdateData,
         });
 
+        // Handle additional related data updates
+        if (updateData) {
+          await this.updateRelatedDocumentData(tx, pilotId, documentType, updateData, updatedAt);
+        }
+
+        // Update document submission
         await tx.adminDocumentSubmission.update({
           where: { id: documentSubmission.id },
           data: {
             verificationStatus: VerificationStatus.APPROVED,
-            updatedAt: new Date(),
+            updatedAt,
             reviewedByUserId: userId,
-            reviewedAt: new Date(),
+            reviewedAt: updatedAt,
             reviewerRole: user.role,
           },
         });
 
+        // Update user status if all documents approved
         if (this.isAllDocumentsApproved(updatedPilot)) {
           await tx.user.update({
             where: { id: pilot.userId },
-            data: { status: UserStatus.ACTIVE, updatedAt: new Date() },
+            data: { status: UserStatus.ACTIVE, updatedAt },
           });
         }
 
@@ -887,34 +1130,19 @@ export class AdminDriverService {
       [FilterDriverSortOptions.NAME]: {
         name: sortOrder === FilterDriverSortOrderOptions.ASC ? 'asc' : 'desc',
       },
+      [FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED]: {
+        documentSubmissions: {
+          _count: 'desc',
+        },
+      },
+      [FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED]: {
+        documentSubmissions: {
+          _count: 'asc',
+        },
+      },
     };
 
     return orderMap[sortBy] || { createdAt: 'desc' };
-  }
-
-  private sortPilotsByDocumentCount(pilots: any[], sortBy: string): any[] {
-    if (
-      sortBy !== FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED &&
-      sortBy !== FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED
-    ) {
-      return pilots;
-    }
-
-    const pilotsWithDocCount = pilots.map((pilot) => {
-      const docCount = this.documentFieldsForCount.filter(
-        (field) => pilot[field] !== null && pilot[field] !== undefined,
-      ).length;
-
-      return { ...pilot, _documentCount: docCount };
-    });
-
-    pilotsWithDocCount.sort((a, b) => {
-      return sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED
-        ? b._documentCount - a._documentCount
-        : a._documentCount - b._documentCount;
-    });
-
-    return pilotsWithDocCount.map(({ _documentCount, ...pilot }) => pilot);
   }
 
   private async findUniquePilot(pilotId: string) {

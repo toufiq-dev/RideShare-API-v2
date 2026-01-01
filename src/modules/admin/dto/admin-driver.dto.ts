@@ -4,6 +4,7 @@ import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUrl, IsUUID, Validate
 import { IsNumberString } from "class-validator";
 import { IsEnum } from "class-validator";
 import { DocumentType } from "./admin.dto";
+import { VerificationStatus } from "@prisma/client";
 
 export enum FilterDriverSortOptions {
   CREATED_AT = 'createdAt',
@@ -146,6 +147,16 @@ export class FilterDriverDto {
   @IsOptional()
   @IsDateString()
   readonly updatedEndDate!: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'The verification status',
+    required: false,
+    example: VerificationStatus.PENDING,
+  })
+  @IsOptional()
+  @IsEnum(VerificationStatus)
+  readonly verificationStatus!: VerificationStatus;
 }
 
 export class UpdateProfileImageDto {

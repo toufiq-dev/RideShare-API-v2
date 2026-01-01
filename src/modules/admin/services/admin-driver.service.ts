@@ -186,6 +186,83 @@ export class AdminDriverService {
     }
   }
 
+  async getDriversSortedByDocs(query: FilterDriverDto) {
+    const {
+      page = 1,
+      pageSize = 10,
+      verificationStatus,
+      search,
+      status,
+      vehicleTypeId,
+      startDate,
+      endDate,
+      updatedStartDate,
+      updatedEndDate,
+      sortOrder
+    } = query;
+
+    const whereClause = this.buildWhereClause({
+      search,
+      status,
+      vehicleTypeId,
+      startDate,
+      endDate,
+      updatedStartDate,
+      updatedEndDate,
+    });
+
+
+    const pilotsLight = await this.prisma.pilot.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        documentSubmissions: {
+          where: verificationStatus ? { verificationStatus } : undefined,
+          select: { id: true }
+        }
+      }
+    });
+
+    pilotsLight.sort((a, b) => {
+      const countA = a.documentSubmissions.length;
+      const countB = b.documentSubmissions.length;
+
+      return sortOrder === FilterDriverSortOrderOptions.ASC ? countA - countB : countB - countA;
+    });
+
+    const totalCount = pilotsLight.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const skip = (page - 1) * pageSize;
+    const paginatedIds = pilotsLight.slice(skip, skip + pageSize).map(p => p.id);
+
+    const pilotsFull = await this.prisma.pilot.findMany({
+      where: { id: { in: paginatedIds } },
+      include: {
+        user: { select: { status: true } },
+        vehicle: { include: { vehicleTypeBD: true } },
+        documentSubmissions: true,
+      }
+    });
+
+    const sortedPilots = paginatedIds.map(id => pilotsFull.find(p => p.id === id));
+
+    return {
+      message: 'Driver list fetched successfully.',
+      data: {
+        pilots: sortedPilots,
+        totalPilots: totalCount,
+        pagination: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: +page,
+          pageSize: +pageSize,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      },
+    };
+  }
+
   async getDriverDetails(id: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({
@@ -736,12 +813,12 @@ export class AdminDriverService {
           },
         });
 
-        if (pilot.user.status === UserStatus.IN_REVIEW) {
-          await tx.user.update({
-            where: { id: pilot.userId },
-            data: { status: UserStatus.ONBOARDING, updatedAt: new Date() },
-          });
-        }
+        // if (pilot.user.status === UserStatus.IN_REVIEW) {
+        await tx.user.update({
+          where: { id: pilot.userId },
+          data: { status: UserStatus.ONBOARDING, updatedAt: new Date() },
+        });
+        // }
 
         return updatedPilot;
       });

@@ -26,6 +26,7 @@ import {
   UpdateRegistrationCardDto,
   UpdateTaxTokenDto,
   UpdateVehicleOwnerNidDto,
+  FilterDriverSortOptions,
 } from '../dto/admin-driver.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -46,6 +47,14 @@ export class AdminDriverController {
   @Get('')
   @ApiOperation({ summary: 'Driver List' })
   async getDriverListV2(@Query() query: FilterDriverDto) {
+
+    const isDocumentSort =
+      query.sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED.toString() ||
+      query.sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED.toString();
+
+    if (isDocumentSort && query.verificationStatus) {
+      return await this.adminDriverService.getDriversSortedByDocs(query);
+    }
     return await this.adminDriverService.getDriverList(query);
   }
 

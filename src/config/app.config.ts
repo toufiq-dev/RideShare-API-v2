@@ -35,6 +35,11 @@ export default () => ({
     secretKey: process.env.KHUDEBARTA_SECRET_KEY,
     senderId: process.env.KHUDEBARTA_SENDER_ID,
   },
+  ssl: {
+    baseUrl: process.env.SSL_BASE_URL || 'https://smsplus.sslwireless.com/api/v3/send-sms',
+    apiToken: process.env.SSL_API_TOKEN,
+    senderId: process.env.SSL_SENDER_ID || 'FAIRDRIVE',
+  },
   jwt: {
     secret: process.env.JWT_SECRET,
     accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN,

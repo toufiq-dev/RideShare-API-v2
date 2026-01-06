@@ -12,6 +12,9 @@ export class OTPService {
   private readonly khudebartaAPIKey: string;
   private readonly khudebartaSecretKey: string;
   private readonly khudebartaSenderId: string;
+  private readonly sslBaseUrl: string;
+  private readonly sslApiToken: string;
+  private readonly sslSenderId: string;
 
   constructor(private configService: ConfigService) {
     this.baseUrl = this.configService.get<string>('msg91.baseUrl');
@@ -28,12 +31,24 @@ export class OTPService {
     this.khudebartaSenderId = this.configService.get<string>(
       'khudebarta.senderId',
     );
+    this.sslBaseUrl = this.configService.get<string>('ssl.baseUrl');
+    this.sslApiToken = this.configService.get<string>('ssl.apiToken');
+    this.sslSenderId = this.configService.get<string>('ssl.senderId');
+  }
+
+  /**
+   * Generates the OTP message text
+   * @param otp - The OTP code to include in the message
+   * @returns The formatted OTP message
+   */
+  private getOTPMessage(otp: string): string {
+    return `OTP for FairDrive is ${otp} and valid till 2 minutes. Do not share this OTP to anyone for security reasons.`;
   }
 
   async sendOTPBD(mobile: string, otp: string) {
     mobile = mobile.replace('+', '');
 
-    const message = `OTP for FairDrive is ${otp} and valid till 2 minutes. Do not share this OTP to anyone for security reasons.`;
+    const message = this.getOTPMessage(otp);
 
     const requestBody = [
       {
@@ -61,6 +76,40 @@ export class OTPService {
       return false;
     } catch (error) {
       console.error(error);
+      throw error;
+    }
+  }
+
+  async sendOTPSSL(mobile: string, otp: string) {
+    mobile = mobile.replace('+', '');
+
+    const message = '[FairDrive] ' + this.getOTPMessage(otp);
+
+    // Generate a unique csms_id (optional but recommended)
+    const csmsId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    try {
+      const response = await axios.post(`${this.sslBaseUrl}`, null, {
+        params: {
+          api_token: this.sslApiToken,
+          sid: this.sslSenderId,
+          msisdn: mobile,
+          sms: message,
+          csms_id: csmsId,
+        },
+      });
+
+      const responseData = response.data;
+
+      // Check if the status is SUCCESS (adjust based on actual API response)
+      if (responseData.status === 'SUCCESS' || responseData.status_code === 200) {
+        return true;
+      }
+
+      console.error('SSL SMS failed:', responseData);
+      return false;
+    } catch (error) {
+      console.error('SSL SMS error:', error);
       throw error;
     }
   }

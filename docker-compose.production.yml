@@ -17,30 +17,30 @@ services:
       - fairdrive-network-prod
 
   # Production API (api.fairdriveindia.com)
-  fairdrive-api-india:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:3000:3000"
-    env_file:
-      - .env.production
-    environment:
-      - API_VERSION=v1
-      - NODE_ENV=production
-      - PORT=3000
-    depends_on:
-      redis-prod:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - fairdrive-network-prod
+  # fairdrive-api-india:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "127.0.0.1:3000:3000"
+  #   env_file:
+  #     - .env.production
+  #   environment:
+  #     - API_VERSION=v1
+  #     - NODE_ENV=production
+  #     - PORT=3000
+  #   depends_on:
+  #     redis-prod:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   networks:
+  #     - fairdrive-network-prod
 
   # Production V1 API (api.v1.fairdrive.com.bd)
   fairdrive-api-v1:
@@ -74,32 +74,32 @@ services:
       - fairdrive-network-prod
 
   # Production V2 API (api.v2.fairdrive.com.bd)
-  fairdrive-api-v2:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:3002:3000"
-    env_file:
-      - .env.production.v2
-    environment:
-      - API_VERSION=v2
-      - NODE_ENV=production
-      - PORT=3000
-    depends_on:
-      redis-prod:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 0.5g
-    cpus: 0.5
-    healthcheck:
-      test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - fairdrive-network-prod
+  # fairdrive-api-v2:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "127.0.0.1:3002:3000"
+  #   env_file:
+  #     - .env.production.v2
+  #   environment:
+  #     - API_VERSION=v2
+  #     - NODE_ENV=production
+  #     - PORT=3000
+  #   depends_on:
+  #     redis-prod:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   mem_limit: 0.5g
+  #   cpus: 0.5
+  #   healthcheck:
+  #     test: ["CMD", "node", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   networks:
+  #     - fairdrive-network-prod
 
   # Prometheus for monitoring
   prometheus:

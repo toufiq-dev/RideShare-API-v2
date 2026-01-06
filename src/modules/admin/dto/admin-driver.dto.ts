@@ -1,15 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUrl,
-  IsUUID,
-} from 'class-validator';
-import { IsNumberString } from 'class-validator';
-import { IsEnum } from 'class-validator';
-import { DocumentType } from './admin.dto';
+import { ApiProperty, OmitType, PartialType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUrl, IsUUID, ValidateNested, ValidateIf } from "class-validator";
+import { IsNumberString } from "class-validator";
+import { IsEnum } from "class-validator";
+import { DocumentType } from "./admin.dto";
+import { VerificationStatus } from "@prisma/client";
 
 export enum FilterDriverSortOptions {
   CREATED_AT = 'createdAt',
@@ -76,7 +71,7 @@ export class FilterDriverDto {
     type: String,
     description: 'The vehicle type id',
     required: false,
-    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+    example: '',
   })
   @IsOptional()
   @IsUUID()
@@ -97,7 +92,7 @@ export class FilterDriverDto {
     type: String,
     description: 'The search term',
     required: false,
-    example: 'Karim Mia',
+    example: '',
   })
   @IsOptional()
   @IsString()
@@ -117,7 +112,7 @@ export class FilterDriverDto {
     type: 'string',
     description: 'The start date',
     required: false,
-    example: '2025-01-01',
+    example: '',
   })
   @IsOptional()
   @IsDateString()
@@ -127,7 +122,7 @@ export class FilterDriverDto {
     type: 'string',
     description: 'The end date',
     required: false,
-    example: '2025-01-01',
+    example: '',
   })
   @IsOptional()
   @IsDateString()
@@ -137,7 +132,7 @@ export class FilterDriverDto {
     type: 'string',
     description: 'The start date',
     required: false,
-    example: '2025-01-01',
+    example: '',
   })
   @IsOptional()
   @IsDateString()
@@ -147,11 +142,21 @@ export class FilterDriverDto {
     type: 'string',
     description: 'The end date',
     required: false,
-    example: '2025-01-01',
+    example: '',
   })
   @IsOptional()
   @IsDateString()
   readonly updatedEndDate!: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'The verification status',
+    required: false,
+    example: VerificationStatus.PENDING,
+  })
+  @IsOptional()
+  @IsEnum(VerificationStatus)
+  readonly verificationStatus!: VerificationStatus;
 }
 
 export class UpdateProfileImageDto {
@@ -613,7 +618,326 @@ export class RejectDocumentDto {
   readonly rejectionReason!: string;
 }
 
-export class ApproveDocumentDto {
+/**
+ * Optional update payloads for document approval
+ * These are partial versions of the update DTOs without pilotId
+ */
+export class ApproveSelfieUpdateDto {
+  @ApiProperty({
+    type: String,
+    description: 'The selfie url',
+    required: false,
+    example: 'https://example.com/selfie.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  @IsUrl()
+  readonly selfieUrl?: string;
+}
+
+export class ApproveDrivingLicenseUpdateDto {
+  @ApiProperty({
+    type: 'string',
+    description: 'Driving license front side image',
+    example: 'https://example.com/dl-front-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly dlFrontSideUrl?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'Driving license back side image',
+    example: 'https://example.com/dl-back-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly dlBackSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Name on driving license',
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly nameOnLicense?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'Date of birth',
+    example: '1990-01-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly dateOfBirth?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Driving license number',
+    example: 'DL1234567890',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly licenseNumber?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'License expiry date',
+    example: '2025-12-31',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly validUntill?: string;
+}
+
+export class ApproveNidUpdateDto {
+  @ApiProperty({
+    type: 'string',
+    description: 'NID front side image',
+    example: 'https://example.com/nid-front-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly nidFrontSideUrl?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'NID back side image',
+    example: 'https://example.com/nid-back-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly nidBackSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Name on NID',
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly name?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'Date of birth',
+    example: '1990-01-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly dateOfBirth?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'NID number',
+    example: '1234567890123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly nidNumber?: string;
+}
+
+export class ApproveVehicleOwnerNidUpdateDto {
+  @ApiProperty({
+    type: String,
+    description: 'NID front side image',
+    example: 'https://example.com/vehicle-owners-nid-front-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly vehicleOwnersNidFrontSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'NID back side image',
+    example: 'https://example.com/vehicle-owners-nid-back-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly vehicleOwnersNidBackSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Name on NID',
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly vehicleOwnerNidName?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Date of birth',
+    example: '1990-01-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly vehicleOwnerNidDateOfBirth?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'NID number',
+    example: '1234567890123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly vehicleOwnerNidNumber?: string;
+}
+
+export class ApproveRegistrationCardUpdateDto {
+  @ApiProperty({
+    type: String,
+    description: 'Registration card front side image',
+    example: 'https://example.com/rc-front-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly rcFrontSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Registration card back side image',
+    example: 'https://example.com/rc-back-side.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly rcBackSideUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Vehicle registration number',
+    example: 'ABC-1234',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly regNo?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'The vehicle type id',
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  readonly vehicleTypeIdBD?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Vehicle color',
+    example: 'Red',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly colour?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Registration date',
+    example: '2020-01-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly registrationDate?: string;
+}
+
+export class ApproveNumberPlateUpdateDto {
+  @ApiProperty({
+    type: String,
+    description: 'Number plate image',
+    example: 'https://example.com/number-plate.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly numberPlateUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Vehicle registration number',
+    example: 'ABC-1234',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly regNo?: string;
+}
+
+export class ApproveTaxTokenUpdateDto {
+  @ApiProperty({
+    type: String,
+    description: 'Tax token image',
+    example: 'https://example.com/tax-token.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsUrl()
+  readonly taxTokenUrl?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Vehicle registration number',
+    example: 'ABC-1234',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly regNo?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'The vehicle type id',
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  readonly vehicleTypeIdBD?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Vehicle color',
+    example: 'Red',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  readonly colour?: string;
+
+  @ApiProperty({
+    type: String,
+    description: 'Registration date',
+    example: '2020-01-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  readonly registrationDate?: string;
+}
+
+export class ApproveSelfieDto {
   @ApiProperty({
     type: String,
     description: 'The pilot id',
@@ -625,12 +949,144 @@ export class ApproveDocumentDto {
   readonly pilotId!: string;
 
   @ApiProperty({
+    type: ApproveSelfieUpdateDto,
+    description: 'Optional update data when approving selfie',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveSelfieUpdateDto)
+  readonly updateData?: ApproveSelfieUpdateDto;
+}
+
+export class ApproveDrivingLicenseDto {
+  @ApiProperty({
     type: String,
-    description: 'The document type',
+    description: 'The pilot id',
     required: true,
-    example: DocumentType.DRIVING_LICENSE,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
   })
   @IsNotEmpty()
-  @IsEnum(DocumentType)
-  readonly documentType!: DocumentType.DRIVING_LICENSE;
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveDrivingLicenseUpdateDto,
+    description: 'Optional update data when approving driving license',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveDrivingLicenseUpdateDto)
+  readonly updateData?: ApproveDrivingLicenseUpdateDto;
+}
+
+export class ApproveNidDto {
+  @ApiProperty({
+    type: String,
+    description: 'The pilot id',
+    required: true,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveNidUpdateDto,
+    description: 'Optional update data when approving NID',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveNidUpdateDto)
+  readonly updateData?: ApproveNidUpdateDto;
+}
+
+export class ApproveVehicleOwnerNidDto {
+  @ApiProperty({
+    type: String,
+    description: 'The pilot id',
+    required: true,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveVehicleOwnerNidUpdateDto,
+    description: 'Optional update data when approving vehicle owner NID',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveVehicleOwnerNidUpdateDto)
+  readonly updateData?: ApproveVehicleOwnerNidUpdateDto;
+}
+
+export class ApproveRegistrationCertificateDto {
+  @ApiProperty({
+    type: String,
+    description: 'The pilot id',
+    required: true,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveRegistrationCardUpdateDto,
+    description: 'Optional update data when approving registration certificate',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveRegistrationCardUpdateDto)
+  readonly updateData?: ApproveRegistrationCardUpdateDto;
+}
+
+export class ApproveNumberPlateDto {
+  @ApiProperty({
+    type: String,
+    description: 'The pilot id',
+    required: true,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveNumberPlateUpdateDto,
+    description: 'Optional update data when approving number plate',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveNumberPlateUpdateDto)
+  readonly updateData?: ApproveNumberPlateUpdateDto;
+}
+
+export class ApproveTaxTokenDto {
+  @ApiProperty({
+    type: String,
+    description: 'The pilot id',
+    required: true,
+    example: 'c389a85c-fbf6-4b22-a4d0-0c4ab441a5d9',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  readonly pilotId!: string;
+
+  @ApiProperty({
+    type: ApproveTaxTokenUpdateDto,
+    description: 'Optional update data when approving tax token',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApproveTaxTokenUpdateDto)
+  readonly updateData?: ApproveTaxTokenUpdateDto;
 }

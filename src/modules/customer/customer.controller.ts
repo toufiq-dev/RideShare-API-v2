@@ -156,4 +156,12 @@ export class CustomerController {
       userId,
     );
   }
+
+  @Get('home')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get customer home data' })
+  async getCustomerHomeData(@CurrentUser('userId') userId: string) {
+    return await this.customerService.getCustomerHomeData(userId);
+  }
 }

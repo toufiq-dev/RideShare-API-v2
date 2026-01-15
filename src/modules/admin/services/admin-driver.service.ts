@@ -25,8 +25,8 @@ import {
   UpdateTaxTokenDto,
   UpdateVehicleOwnerNidDto,
   FilterDriverSortOptions,
-  FilterDriverSortOrderOptions
-} from "../dto/admin-driver.dto";
+  FilterDriverSortOrderOptions,
+} from '../dto/admin-driver.dto';
 
 @Injectable()
 export class AdminDriverService {
@@ -77,7 +77,7 @@ export class AdminDriverService {
     [DocumentType.VEHICLE_OWNERS_NID]: 'Vehicle Owner NID',
   };
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // ==================== Public Methods ====================
 
@@ -198,7 +198,7 @@ export class AdminDriverService {
       endDate,
       updatedStartDate,
       updatedEndDate,
-      sortOrder
+      sortOrder,
     } = query;
 
     const whereClause = this.buildWhereClause({
@@ -211,29 +211,32 @@ export class AdminDriverService {
       updatedEndDate,
     });
 
-
     const pilotsLight = await this.prisma.pilot.findMany({
       where: whereClause,
       select: {
         id: true,
         documentSubmissions: {
           where: verificationStatus ? { verificationStatus } : undefined,
-          select: { id: true }
-        }
-      }
+          select: { id: true },
+        },
+      },
     });
 
     pilotsLight.sort((a, b) => {
       const countA = a.documentSubmissions.length;
       const countB = b.documentSubmissions.length;
 
-      return sortOrder === FilterDriverSortOrderOptions.ASC ? countA - countB : countB - countA;
+      return sortOrder === FilterDriverSortOrderOptions.ASC
+        ? countA - countB
+        : countB - countA;
     });
 
     const totalCount = pilotsLight.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const skip = (page - 1) * pageSize;
-    const paginatedIds = pilotsLight.slice(skip, skip + pageSize).map(p => p.id);
+    const paginatedIds = pilotsLight
+      .slice(skip, skip + pageSize)
+      .map((p) => p.id);
 
     const pilotsFull = await this.prisma.pilot.findMany({
       where: { id: { in: paginatedIds } },
@@ -241,10 +244,12 @@ export class AdminDriverService {
         user: { select: { status: true } },
         vehicle: { include: { vehicleTypeBD: true } },
         documentSubmissions: true,
-      }
+      },
     });
 
-    const sortedPilots = paginatedIds.map(id => pilotsFull.find(p => p.id === id));
+    const sortedPilots = paginatedIds.map((id) =>
+      pilotsFull.find((p) => p.id === id),
+    );
 
     return {
       message: 'Driver list fetched successfully.',
@@ -846,7 +851,10 @@ export class AdminDriverService {
     );
   }
 
-  async approveDrivingLicense(approveDrivingLicenseDto: ApproveDrivingLicenseDto, userId: string) {
+  async approveDrivingLicense(
+    approveDrivingLicenseDto: ApproveDrivingLicenseDto,
+    userId: string,
+  ) {
     const { pilotId, updateData } = approveDrivingLicenseDto;
     return this.approveDocumentBase(
       pilotId,
@@ -866,7 +874,10 @@ export class AdminDriverService {
     );
   }
 
-  async approveVehicleOwnerNid(approveVehicleOwnerNidDto: ApproveVehicleOwnerNidDto, userId: string) {
+  async approveVehicleOwnerNid(
+    approveVehicleOwnerNidDto: ApproveVehicleOwnerNidDto,
+    userId: string,
+  ) {
     const { pilotId, updateData } = approveVehicleOwnerNidDto;
     return this.approveDocumentBase(
       pilotId,
@@ -876,7 +887,10 @@ export class AdminDriverService {
     );
   }
 
-  async approveRegistrationCertificate(approveRegistrationCertificateDto: ApproveRegistrationCertificateDto, userId: string) {
+  async approveRegistrationCertificate(
+    approveRegistrationCertificateDto: ApproveRegistrationCertificateDto,
+    userId: string,
+  ) {
     const { pilotId, updateData } = approveRegistrationCertificateDto;
     return this.approveDocumentBase(
       pilotId,
@@ -886,7 +900,10 @@ export class AdminDriverService {
     );
   }
 
-  async approveNumberPlate(approveNumberPlateDto: ApproveNumberPlateDto, userId: string) {
+  async approveNumberPlate(
+    approveNumberPlateDto: ApproveNumberPlateDto,
+    userId: string,
+  ) {
     const { pilotId, updateData } = approveNumberPlateDto;
     return this.approveDocumentBase(
       pilotId,
@@ -896,7 +913,10 @@ export class AdminDriverService {
     );
   }
 
-  async approveTaxToken(approveTaxTokenDto: ApproveTaxTokenDto, userId: string) {
+  async approveTaxToken(
+    approveTaxTokenDto: ApproveTaxTokenDto,
+    userId: string,
+  ) {
     const { pilotId, updateData } = approveTaxTokenDto;
     return this.approveDocumentBase(
       pilotId,
@@ -916,12 +936,21 @@ export class AdminDriverService {
   ) {
     switch (documentType) {
       case DocumentType.DRIVING_LICENSE:
-        if (updateData.nameOnLicense || updateData.dateOfBirth || updateData.licenseNumber || updateData.validUntill) {
+        if (
+          updateData.nameOnLicense ||
+          updateData.dateOfBirth ||
+          updateData.licenseNumber ||
+          updateData.validUntill
+        ) {
           const dlData: any = {};
-          if (updateData.nameOnLicense) dlData.nameOnLicense = updateData.nameOnLicense;
-          if (updateData.licenseNumber) dlData.licenseNumber = updateData.licenseNumber;
-          if (updateData.dateOfBirth) dlData.dateOfBirth = new Date(updateData.dateOfBirth);
-          if (updateData.validUntill) dlData.validUntill = new Date(updateData.validUntill);
+          if (updateData.nameOnLicense)
+            dlData.nameOnLicense = updateData.nameOnLicense;
+          if (updateData.licenseNumber)
+            dlData.licenseNumber = updateData.licenseNumber;
+          if (updateData.dateOfBirth)
+            dlData.dateOfBirth = new Date(updateData.dateOfBirth);
+          if (updateData.validUntill)
+            dlData.validUntill = new Date(updateData.validUntill);
 
           await tx.drivingLicense.upsert({
             where: { pilotId },
@@ -936,7 +965,8 @@ export class AdminDriverService {
           const nidData: any = {};
           if (updateData.name) nidData.name = updateData.name;
           if (updateData.nidNumber) nidData.nidNumber = updateData.nidNumber;
-          if (updateData.dateOfBirth) nidData.dateOfBirth = new Date(updateData.dateOfBirth);
+          if (updateData.dateOfBirth)
+            nidData.dateOfBirth = new Date(updateData.dateOfBirth);
 
           await tx.nid.upsert({
             where: { pilotId },
@@ -947,11 +977,22 @@ export class AdminDriverService {
         break;
 
       case DocumentType.VEHICLE_OWNERS_NID:
-        if (updateData.vehicleOwnerNidName || updateData.vehicleOwnerNidDateOfBirth || updateData.vehicleOwnerNidNumber) {
+        if (
+          updateData.vehicleOwnerNidName ||
+          updateData.vehicleOwnerNidDateOfBirth ||
+          updateData.vehicleOwnerNidNumber
+        ) {
           const vehicleOwnerData: any = {};
-          if (updateData.vehicleOwnerNidName) vehicleOwnerData.vehicleOwnerNidName = updateData.vehicleOwnerNidName;
-          if (updateData.vehicleOwnerNidNumber) vehicleOwnerData.vehicleOwnerNidNumber = updateData.vehicleOwnerNidNumber;
-          if (updateData.vehicleOwnerNidDateOfBirth) vehicleOwnerData.vehicleOwnerNidDateOfBirth = new Date(updateData.vehicleOwnerNidDateOfBirth);
+          if (updateData.vehicleOwnerNidName)
+            vehicleOwnerData.vehicleOwnerNidName =
+              updateData.vehicleOwnerNidName;
+          if (updateData.vehicleOwnerNidNumber)
+            vehicleOwnerData.vehicleOwnerNidNumber =
+              updateData.vehicleOwnerNidNumber;
+          if (updateData.vehicleOwnerNidDateOfBirth)
+            vehicleOwnerData.vehicleOwnerNidDateOfBirth = new Date(
+              updateData.vehicleOwnerNidDateOfBirth,
+            );
 
           await tx.nid.upsert({
             where: { pilotId },
@@ -962,12 +1003,21 @@ export class AdminDriverService {
         break;
 
       case DocumentType.REGISTRATION_CERTIFICATE:
-        if (updateData.regNo || updateData.vehicleTypeIdBD || updateData.colour || updateData.registrationDate) {
+        if (
+          updateData.regNo ||
+          updateData.vehicleTypeIdBD ||
+          updateData.colour ||
+          updateData.registrationDate
+        ) {
           const vehicleData: any = {};
           if (updateData.regNo) vehicleData.regNo = updateData.regNo;
-          if (updateData.vehicleTypeIdBD) vehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
+          if (updateData.vehicleTypeIdBD)
+            vehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
           if (updateData.colour) vehicleData.colour = updateData.colour;
-          if (updateData.registrationDate) vehicleData.registrationDate = new Date(updateData.registrationDate);
+          if (updateData.registrationDate)
+            vehicleData.registrationDate = new Date(
+              updateData.registrationDate,
+            );
 
           await tx.vehicle.upsert({
             where: { pilotId },
@@ -982,24 +1032,42 @@ export class AdminDriverService {
           await tx.vehicle.upsert({
             where: { regNo: updateData.regNo },
             update: { regNo: updateData.regNo, updatedAt },
-            create: { regNo: updateData.regNo, createdAt: updatedAt, colour: "", pilot: { connect: { id: pilotId } } },
+            create: {
+              regNo: updateData.regNo,
+              createdAt: updatedAt,
+              colour: '',
+              pilot: { connect: { id: pilotId } },
+            },
           });
 
           await tx.numberPlate.upsert({
             where: { pilotId },
             update: { numberPlate: updateData.regNo, updatedAt },
-            create: { pilotId, numberPlate: updateData.regNo, createdAt: updatedAt },
+            create: {
+              pilotId,
+              numberPlate: updateData.regNo,
+              createdAt: updatedAt,
+            },
           });
         }
         break;
 
       case DocumentType.TAX_TOKEN:
-        if (updateData.regNo || updateData.vehicleTypeIdBD || updateData.colour || updateData.registrationDate) {
+        if (
+          updateData.regNo ||
+          updateData.vehicleTypeIdBD ||
+          updateData.colour ||
+          updateData.registrationDate
+        ) {
           const taxTokenVehicleData: any = {};
           if (updateData.regNo) taxTokenVehicleData.regNo = updateData.regNo;
-          if (updateData.vehicleTypeIdBD) taxTokenVehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
+          if (updateData.vehicleTypeIdBD)
+            taxTokenVehicleData.vehicleTypeIdBD = updateData.vehicleTypeIdBD;
           if (updateData.colour) taxTokenVehicleData.colour = updateData.colour;
-          if (updateData.registrationDate) taxTokenVehicleData.registrationDate = new Date(updateData.registrationDate);
+          if (updateData.registrationDate)
+            taxTokenVehicleData.registrationDate = new Date(
+              updateData.registrationDate,
+            );
 
           await tx.vehicle.upsert({
             where: { regNo: updateData.regNo },
@@ -1010,7 +1078,11 @@ export class AdminDriverService {
           await tx.taxToken.upsert({
             where: { pilotId },
             update: { registrationNumber: updateData.regNo, updatedAt },
-            create: { pilotId, registrationNumber: updateData.regNo, createdAt: updatedAt },
+            create: {
+              pilotId,
+              registrationNumber: updateData.regNo,
+              createdAt: updatedAt,
+            },
           });
         }
         break;
@@ -1031,17 +1103,24 @@ export class AdminDriverService {
     const rejectionField = this.rejectionReasonFieldMap[documentType];
 
     if (!verificationField || !rejectionField) {
-      throw new BadRequestException(`Unsupported document type: ${documentType}. Please contact support.`);
+      throw new BadRequestException(
+        `Unsupported document type: ${documentType}. Please contact support.`,
+      );
     }
 
     if (pilot[verificationField] === VerificationStatus.APPROVED) {
-      throw new BadRequestException(`${this.documentTypeNames[documentType]} has already been approved.`);
+      throw new BadRequestException(
+        `${this.documentTypeNames[documentType]} has already been approved.`,
+      );
     }
 
-    const documentSubmission = await this.findDocumentSubmission(pilotId, documentType);
+    const documentSubmission = await this.findDocumentSubmission(
+      pilotId,
+      documentType,
+    );
     if (!documentSubmission) {
       throw new BadRequestException(
-        `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`
+        `${this.documentTypeNames[documentType]} submission not found. The document may not have been submitted for review.`,
       );
     }
 
@@ -1060,33 +1139,44 @@ export class AdminDriverService {
         if (updateData) {
           switch (documentType) {
             case DocumentType.SELFIE:
-              if (updateData.selfieUrl) pilotUpdateData.selfieUrl = updateData.selfieUrl;
+              if (updateData.selfieUrl)
+                pilotUpdateData.selfieUrl = updateData.selfieUrl;
               break;
             case DocumentType.DRIVING_LICENSE:
-              if (updateData.dlFrontSideUrl) pilotUpdateData.dlFrontSideUrl = updateData.dlFrontSideUrl;
-              if (updateData.dlBackSideUrl) pilotUpdateData.dlBackSideUrl = updateData.dlBackSideUrl;
+              if (updateData.dlFrontSideUrl)
+                pilotUpdateData.dlFrontSideUrl = updateData.dlFrontSideUrl;
+              if (updateData.dlBackSideUrl)
+                pilotUpdateData.dlBackSideUrl = updateData.dlBackSideUrl;
               break;
             case DocumentType.NID:
-              if (updateData.nidFrontSideUrl) pilotUpdateData.nidFrontSideUrl = updateData.nidFrontSideUrl;
-              if (updateData.nidBackSideUrl) pilotUpdateData.nidBackSideUrl = updateData.nidBackSideUrl;
+              if (updateData.nidFrontSideUrl)
+                pilotUpdateData.nidFrontSideUrl = updateData.nidFrontSideUrl;
+              if (updateData.nidBackSideUrl)
+                pilotUpdateData.nidBackSideUrl = updateData.nidBackSideUrl;
               break;
             case DocumentType.VEHICLE_OWNERS_NID:
               if (updateData.vehicleOwnersNidFrontSideUrl) {
-                pilotUpdateData.vehicleOwnersNidFrontSideUrl = updateData.vehicleOwnersNidFrontSideUrl;
+                pilotUpdateData.vehicleOwnersNidFrontSideUrl =
+                  updateData.vehicleOwnersNidFrontSideUrl;
               }
               if (updateData.vehicleOwnersNidBackSideUrl) {
-                pilotUpdateData.vehicleOwnersNidBackSideUrl = updateData.vehicleOwnersNidBackSideUrl;
+                pilotUpdateData.vehicleOwnersNidBackSideUrl =
+                  updateData.vehicleOwnersNidBackSideUrl;
               }
               break;
             case DocumentType.REGISTRATION_CERTIFICATE:
-              if (updateData.rcFrontSideUrl) pilotUpdateData.rcFrontSideUrl = updateData.rcFrontSideUrl;
-              if (updateData.rcBackSideUrl) pilotUpdateData.rcBackSideUrl = updateData.rcBackSideUrl;
+              if (updateData.rcFrontSideUrl)
+                pilotUpdateData.rcFrontSideUrl = updateData.rcFrontSideUrl;
+              if (updateData.rcBackSideUrl)
+                pilotUpdateData.rcBackSideUrl = updateData.rcBackSideUrl;
               break;
             case DocumentType.NUMBER_PLATE:
-              if (updateData.numberPlateUrl) pilotUpdateData.numberPlateUrl = updateData.numberPlateUrl;
+              if (updateData.numberPlateUrl)
+                pilotUpdateData.numberPlateUrl = updateData.numberPlateUrl;
               break;
             case DocumentType.TAX_TOKEN:
-              if (updateData.taxTokenUrl) pilotUpdateData.taxTokenUrl = updateData.taxTokenUrl;
+              if (updateData.taxTokenUrl)
+                pilotUpdateData.taxTokenUrl = updateData.taxTokenUrl;
               break;
           }
         }
@@ -1099,7 +1189,13 @@ export class AdminDriverService {
 
         // Handle additional related data updates
         if (updateData) {
-          await this.updateRelatedDocumentData(tx, pilotId, documentType, updateData, updatedAt);
+          await this.updateRelatedDocumentData(
+            tx,
+            pilotId,
+            documentType,
+            updateData,
+            updatedAt,
+          );
         }
 
         // Update document submission

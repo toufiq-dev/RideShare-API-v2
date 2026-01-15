@@ -25,6 +25,7 @@ import {
   BookingStatus,
   VehicleTypeNameBD,
   Country,
+  SavedPlaceType,
 } from '@prisma/client';
 import { CustomerRidePayload } from '../ride/dto/ride.interface';
 import { RedisKeys } from 'src/core/cache/redis-keys';
@@ -613,6 +614,170 @@ export class CustomerService {
         success: true,
         message: 'Vehicle categories fetched successfully.',
         data: { vehicles, coupon: customer.coupon || null },
+      };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  async getCustomerHomeData(userId: string) {
+    try {
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId },
+      });
+
+      if (!customer) {
+        throw new NotFoundException('Customer not found.');
+      }
+
+      // Get saved places
+      const savedPlaces = await this.prisma.savedPlace.findMany({
+        where: {
+          customerId: customer.id,
+        },
+      });
+
+      const homePlace = savedPlaces.find((place) => place.type === SavedPlaceType.HOME);
+      const workPlace = savedPlaces.find((place) => place.type === SavedPlaceType.WORK);
+
+      // Get recent rides (completed bookings, limit to 2 most recent)
+      const recentRides = await this.prisma.booking.findMany({
+        where: {
+          customerId: customer.id,
+          status: BookingStatus.COMPLETED,
+          vehicleId: { not: null },
+        },
+        select: {
+          id: true,
+          dropLocation: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 2,
+      });
+
+      // Transform recent rides to show destination addresses
+      const transformedRecentRides = recentRides.map((ride) => {
+        const dropLocation = ride.dropLocation as any;
+        return {
+          bookingId: ride.id,
+          placeName:
+            dropLocation?.name ||
+            dropLocation?.address?.split(',')[0] ||
+            'Destination',
+          address:
+            dropLocation?.address || dropLocation?.formattedAddress || '',
+          location: dropLocation?.location || dropLocation,
+          createdAt: ride.createdAt,
+        };
+      });
+
+      // Get vehicle categories (basic list without fare calculation)
+      const vehicleCategories = await this.prisma.vehicleTypeBD.findMany({
+        select: {
+          id: true,
+          name: true,
+          airCondition: true,
+          isFaster: true,
+          passengerCapacity: true,
+          serialNumber: true,
+        },
+        orderBy: {
+          serialNumber: 'asc',
+        },
+      });
+
+      // Dummy data for offer banners
+      const offerBanners = [
+        {
+          id: 'banner_001',
+          navigationPath: '/promotions/new-year-ride',
+          imageUrl:
+            'https://img.freepik.com/premium-vector/special-discount-offer-bannersale-banner-vector-template-discount-label-sale-background-special-discount-marketing-poster-design-web-social-vector-illustration_1213989-299.jpg',
+        },
+        {
+          id: 'banner_002',
+          navigationPath: '/offers/first-ride-free',
+          imageUrl:
+            'https://obhai.com/sites/mghobhai.vizualize.com/files/2024-02/blog-banner_1.jpg',
+        },
+        {
+          id: 'banner_003',
+          navigationPath: '/refer-friend',
+          imageUrl:
+            'https://azoreseasyrent.com/wp-content/uploads/2023/12/BANNER-PT-DESCONTO-2-RODAS-RESIDENTE-AZORES-EASY-RENT-scaled.jpeg',
+        },
+      ];
+
+      // Dummy data for visitable places
+      const visitablePlaces = [
+        {
+          id: 'place_001',
+          name: 'Gulshan Lake Park',
+          imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/88/0b/b8/winter-morning.jpg?w=900&h=500&s=1',
+          location: {
+            lat: 23.797911,
+            lng: 90.414391,
+          },
+        },
+        {
+          id: 'place_002',
+          name: 'National Parliament House',
+          imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/49/57/25/national-parliament-house.jpg?w=600&h=-1&s=1',
+          location: {
+            lat: 23.7625,
+            lng: 90.3789,
+          },
+        },
+        {
+          id: 'place_003',
+          name: 'Lalbagh Fort',
+          imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/23/bf/22/24/caption.jpg?w=800&h=800&s=1',
+          location: {
+            lat: 23.7175,
+            lng: 90.3881,
+          },
+        },
+        {
+          id: 'place_004',
+          name: 'Ahsan Manzil',
+          imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/14/16/b2/fe/ahsan-monjil.jpg?w=900&h=500&s=1',
+          location: {
+            lat: 23.7089,
+            lng: 90.4075,
+          },
+        },
+        {
+          id: 'place_005',
+          name: 'Dhaka University Area',
+          imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/31/4e/e6/67/curzon-hall-in-dhaka.jpg?w=900&h=500&s=1',
+          location: {
+            lat: 23.7333,
+            lng: 90.3958,
+          },
+        },
+      ];
+
+      return {
+        message: 'Customer home data fetched successfully.',
+        data: {
+          savedPlaces: {
+            homePlace: homePlace || {},
+            workPlace: workPlace || {},
+          },
+          recentRides: transformedRecentRides,
+          vehicleTypes: vehicleCategories,
+          offerBanners,
+          visitablePlaces,
+        },
       };
     } catch (error) {
       console.error(error);

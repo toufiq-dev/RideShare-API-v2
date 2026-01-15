@@ -36,7 +36,9 @@ export default () => ({
     senderId: process.env.KHUDEBARTA_SENDER_ID,
   },
   ssl: {
-    baseUrl: process.env.SSL_BASE_URL || 'https://smsplus.sslwireless.com/api/v3/send-sms',
+    baseUrl:
+      process.env.SSL_BASE_URL ||
+      'https://smsplus.sslwireless.com/api/v3/send-sms',
     apiToken: process.env.SSL_API_TOKEN,
     senderId: process.env.SSL_SENDER_ID || 'FAIRDRIVE',
   },

@@ -1,10 +1,19 @@
-import { ApiProperty, OmitType, PartialType } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUrl, IsUUID, ValidateNested, ValidateIf } from "class-validator";
-import { IsNumberString } from "class-validator";
-import { IsEnum } from "class-validator";
-import { DocumentType } from "./admin.dto";
-import { VerificationStatus } from "@prisma/client";
+import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+  ValidateNested,
+  ValidateIf,
+} from 'class-validator';
+import { IsNumberString } from 'class-validator';
+import { IsEnum } from 'class-validator';
+import { DocumentType } from './admin.dto';
+import { VerificationStatus } from '@prisma/client';
 
 export enum FilterDriverSortOptions {
   CREATED_AT = 'createdAt',

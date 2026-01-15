@@ -42,15 +42,16 @@ const ADMIN_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT];
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(...ADMIN_ROLES)
 export class AdminDriverController {
-  constructor(private readonly adminDriverService: AdminDriverService) { }
+  constructor(private readonly adminDriverService: AdminDriverService) {}
 
   @Get('')
   @ApiOperation({ summary: 'Driver List' })
   async getDriverListV2(@Query() query: FilterDriverDto) {
-
     const isDocumentSort =
-      query.sortBy === FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED.toString() ||
-      query.sortBy === FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED.toString();
+      query.sortBy ===
+        FilterDriverSortOptions.MOST_DOCUMENTS_UPLOADED.toString() ||
+      query.sortBy ===
+        FilterDriverSortOptions.LEAST_DOCUMENTS_UPLOADED.toString();
 
     if (isDocumentSort && query.verificationStatus) {
       return await this.adminDriverService.getDriversSortedByDocs(query);
@@ -157,7 +158,6 @@ export class AdminDriverController {
     );
   }
 
-
   // Approve Document APIs
 
   @Post('approve-selfie')
@@ -190,10 +190,7 @@ export class AdminDriverController {
     @Body() approveNidDto: ApproveNidDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return await this.adminDriverService.approveNid(
-      approveNidDto,
-      userId,
-    );
+    return await this.adminDriverService.approveNid(approveNidDto, userId);
   }
 
   @Post('approve-vehicle-owner-nid')
@@ -211,7 +208,8 @@ export class AdminDriverController {
   @Post('approve-registration-certificate')
   @ApiOperation({ summary: 'Approve registration certificate' })
   async approveRegistrationCertificate(
-    @Body() approveRegistrationCertificateDto: ApproveRegistrationCertificateDto,
+    @Body()
+    approveRegistrationCertificateDto: ApproveRegistrationCertificateDto,
     @CurrentUser('userId') userId: string,
   ) {
     return await this.adminDriverService.approveRegistrationCertificate(

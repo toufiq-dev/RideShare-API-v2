@@ -102,7 +102,10 @@ export class OTPService {
       const responseData = response.data;
 
       // Check if the status is SUCCESS (adjust based on actual API response)
-      if (responseData.status === 'SUCCESS' || responseData.status_code === 200) {
+      if (
+        responseData.status === 'SUCCESS' ||
+        responseData.status_code === 200
+      ) {
         return true;
       }
 

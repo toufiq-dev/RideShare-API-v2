@@ -13,7 +13,11 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
+import {
+  CreateOrderDto,
+  VerifyPaymentDto,
+  VerifySslcommerzDto,
+} from './dto/payment.dto';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Payment')
@@ -22,6 +26,37 @@ import { UserRole } from '@prisma/client';
 @Roles(UserRole.PILOT)
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
+
+  @Post('sslcommerz/init')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Init SSLCommerz payment for subscription purchase',
+  })
+  @ApiBody({ type: CreateOrderDto })
+  initSslcommerz(
+    @Body() dto: CreateOrderDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.paymentService.initSslcommerzSubscription(dto, userId);
+  }
+
+  @Post('sslcommerz/verify/:tranId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Verify SSLCommerz payment (server-to-server validation)',
+  })
+  verifySslcommerz(
+    @Param('transactionId') transactionId: string,
+    @Body() dto: VerifySslcommerzDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.paymentService.verifySslcommerzSubscription(
+      transactionId,
+      userId,
+    );
+  }
 
   @Post('create-order')
   @HttpCode(HttpStatus.OK)

@@ -42,6 +42,15 @@ export default () => ({
     apiToken: process.env.SSL_API_TOKEN,
     senderId: process.env.SSL_SENDER_ID || 'FAIRDRIVE',
   },
+  sslcommerz: {
+    storeId: process.env.SSLCOMMERZ_STORE_ID,
+    storePassword: process.env.SSLCOMMERZ_STORE_PASSWORD,
+    validatorBaseUrl:
+      process.env.SSLCOMMERZ_VALIDATOR_BASE_URL ||
+      'https://sandbox.sslcommerz.com/validator/api',
+    validatorVersion: process.env.SSLCOMMERZ_VALIDATOR_VERSION || '3',
+    validatorFormat: process.env.SSLCOMMERZ_VALIDATOR_FORMAT || 'json',
+  },
   jwt: {
     secret: process.env.JWT_SECRET,
     accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN,

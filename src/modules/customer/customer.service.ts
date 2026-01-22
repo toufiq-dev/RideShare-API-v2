@@ -638,8 +638,12 @@ export class CustomerService {
         },
       });
 
-      const homePlace = savedPlaces.find((place) => place.type === SavedPlaceType.HOME);
-      const workPlace = savedPlaces.find((place) => place.type === SavedPlaceType.WORK);
+      const homePlace = savedPlaces.find(
+        (place) => place.type === SavedPlaceType.HOME,
+      );
+      const workPlace = savedPlaces.find(
+        (place) => place.type === SavedPlaceType.WORK,
+      );
 
       // Get recent rides (completed bookings, limit to 2 most recent)
       const recentRides = await this.prisma.booking.findMany({

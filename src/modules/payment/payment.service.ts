@@ -7,7 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/database.service';
 import axios from 'axios';
-import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
+import {
+  CreateOrderDto,
+  VerifyPaymentDto,
+  VerifySslcommerzDto,
+} from './dto/payment.dto';
 import { TransactionType, TransactionStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
@@ -124,7 +128,9 @@ export class PaymentService {
     };
   }
 
-  async verifySslcommerzSubscription(transactionId: string, userId: string) {
+  async verifySslcommerzSubscription(dto: VerifySslcommerzDto, userId: string) {
+    const { transactionId } = dto;
+
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
     if (!pilot) throw new NotFoundException('User not found');
 

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 
 export class CreateOrderDto {
   @ApiProperty({ description: 'Subscription id' })
@@ -36,24 +43,16 @@ export class VerifyPaymentDto {
 }
 
 export class VerifySslcommerzDto {
-  @ApiPropertyOptional({
-    description: 'Returned by SSLCommerz. Preferred for validation.',
+  @ApiProperty({
+    description: 'Transaction ID',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  val_id?: string;
-
-  @ApiPropertyOptional({
-    description: 'Your tran_id (merchant transaction id). If not in URL.',
+  @Length(16, 16, {
+    message: 'transactionId must have required length',
   })
-  @IsOptional()
-  @IsString()
-  tran_id?: string;
-
-  @ApiPropertyOptional({
-    description: 'Local Transaction.id (optional; helpful)',
+  @Matches(/^FD[a-f0-9]{14}$/i, {
+    message: 'transactionId format invalid',
   })
-  @IsOptional()
-  @IsString()
-  transactionId?: string;
+  transactionId: string;
 }

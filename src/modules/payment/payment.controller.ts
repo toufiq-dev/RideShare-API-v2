@@ -41,21 +41,18 @@ export class PaymentController {
     return this.paymentService.initSslcommerzSubscription(dto, userId);
   }
 
-  @Post('sslcommerz/verify/:tranId')
+  @Post('sslcommerz/verify')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Verify SSLCommerz payment (server-to-server validation)',
   })
+  @ApiBody({ type: VerifySslcommerzDto })
   verifySslcommerz(
-    @Param('transactionId') transactionId: string,
     @Body() dto: VerifySslcommerzDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.paymentService.verifySslcommerzSubscription(
-      transactionId,
-      userId,
-    );
+    return this.paymentService.verifySslcommerzSubscription(dto, userId);
   }
 
   @Post('create-order')

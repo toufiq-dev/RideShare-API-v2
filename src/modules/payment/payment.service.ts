@@ -124,6 +124,7 @@ export class PaymentService {
         couponCode: coupon ? coupon.name : null,
         finalAmount,
         storeId: this.storeId,
+        storePassword: this.storePassword,
       },
     };
   }

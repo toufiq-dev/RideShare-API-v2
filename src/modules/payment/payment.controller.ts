@@ -1,22 +1,31 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   Param,
   UseGuards,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import {
   CreateOrderDto,
   VerifyPaymentDto,
-  VerifySslcommerzDto,
+  SslcommerzCallbackQueryDto,
+  ReconcileSslcommerzDto,
 } from './dto/payment.dto';
 import { UserRole } from '@prisma/client';
 
@@ -41,18 +50,70 @@ export class PaymentController {
     return this.paymentService.initSslcommerzSubscription(dto, userId);
   }
 
+  @Get('sslcommerz/success')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'SSLCommerz success callback - Verifies payment via server-to-server validation',
+    description:
+      'Called by Android app after successful payment. Validates with SSLCommerz APIs and credits wallet.',
+  })
+  @ApiQuery({
+    name: 'transactionId',
+    description: 'SSLCommerz transaction ID (tran_id)',
+    example: 'FDa65f8d1f90194',
+    required: true,
+  })
+  verifySslcommerzSuccess(
+    @Query() query: SslcommerzCallbackQueryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.paymentService.verifySslcommerzSuccess(
+      query.transactionId,
+      userId,
+    );
+  }
+
+  @Get('sslcommerz/fail')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'SSLCommerz failure callback - Marks transaction as failed',
+    description:
+      'Called by Android app when payment fails. Updates transaction status to FAILED.',
+  })
+  @ApiQuery({
+    name: 'transactionId',
+    description: 'SSLCommerz transaction ID (tran_id)',
+    example: 'FDa65f8d1f90194',
+    required: true,
+  })
+  markSslcommerzFailed(
+    @Query() query: SslcommerzCallbackQueryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.paymentService.markSslcommerzFailed(
+      query.transactionId,
+      userId,
+    );
+  }
+
   @Post('sslcommerz/verify')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Verify SSLCommerz payment (server-to-server validation)',
+    summary:
+      'Manual reconciliation for SSLCommerz payment - Handles network disruptions',
+    description:
+      'Called by Android app when network disruption occurs but payment may have succeeded. Verifies with SSLCommerz if success=true, otherwise marks as failed.',
   })
-  @ApiBody({ type: VerifySslcommerzDto })
-  verifySslcommerz(
-    @Body() dto: VerifySslcommerzDto,
+  @ApiBody({ type: ReconcileSslcommerzDto })
+  reconcileSslcommerz(
+    @Body() dto: ReconcileSslcommerzDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.paymentService.verifySslcommerzSubscription(dto, userId);
+    return this.paymentService.verifySslcommerzPayment(dto, userId);
   }
 
   @Post('create-order')

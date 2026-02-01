@@ -737,7 +737,7 @@ export class PaymentService {
       }
 
       if (!valId) {
-        throw new BadRequestException('val_id not found in first API response');
+        throw new BadRequestException('Invalid Validation');
       }
     } catch (error) {
       await this.prisma.transaction.update({
@@ -754,7 +754,7 @@ export class PaymentService {
         },
       });
       throw new BadRequestException(
-        `Failed to validate transaction with SSLCommerz: ${error.message}`,
+        `Failed to validate transaction`,
       );
     }
 
@@ -791,7 +791,7 @@ export class PaymentService {
         },
       });
       throw new BadRequestException(
-        `Failed to validate with val_id: ${error.message}`,
+        `Failed to validate transaction`,
       );
     }
 

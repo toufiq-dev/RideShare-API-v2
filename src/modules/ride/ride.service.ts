@@ -2169,11 +2169,11 @@ export class RideService {
           );
         }
 
-        const existingRating = await this.prisma.pilotRating.findUnique({
-          where: { bookingId: booking.id, pilotId: pilot.id },
+        const existingRating = await this.prisma.customerRating.findUnique({
+          where: { bookingId: booking.id },
         });
         if (existingRating) {
-          throw new BadRequestException('You have already rated this pilot.');
+          throw new BadRequestException('You have already submitted a rating for this ride.');
         }
 
         // Create pilot rating
@@ -2218,12 +2218,12 @@ export class RideService {
           );
         }
 
-        const existingRating = await this.prisma.customerRating.findUnique({
-          where: { bookingId: booking.id, customerId: customer.id },
+        const existingRating = await this.prisma.pilotRating.findUnique({
+          where: { bookingId: booking.id },
         });
         if (existingRating) {
           throw new BadRequestException(
-            'You have already rated this customer.',
+            'You have already submitted a rating for this ride.',
           );
         }
 

@@ -32,63 +32,6 @@ async function main() {
     { name: 'Oriya' },
   ];
 
-  const vehicleTypes = [
-    {
-      name: VehicleTypeName.HATCHBACK,
-      isFaster: true,
-      airCondition: ['AC'],
-      passengerCapacity: 4,
-      baseFare: 50.0,
-      perKmRate: 15.0,
-      perMinRate: 2.0,
-    },
-    {
-      name: VehicleTypeName.SEDAN,
-      isFaster: false,
-      airCondition: ['AC'],
-      passengerCapacity: 4,
-      baseFare: 55.0,
-      perKmRate: 15.0,
-      perMinRate: 2.0,
-    },
-    {
-      name: VehicleTypeName.SUV,
-      isFaster: false,
-      airCondition: ['AC'],
-      passengerCapacity: 6,
-      baseFare: 60.0,
-      perKmRate: 15.0,
-      perMinRate: 2.0,
-    },
-    {
-      name: VehicleTypeName.KALIPEELI,
-      isFaster: false,
-      airCondition: ['AC', 'Non-AC'],
-      passengerCapacity: 4,
-      baseFare: 45.0,
-      perKmRate: 15.0,
-      perMinRate: 2.0,
-    },
-    {
-      name: VehicleTypeName.AUTORICKSHAW,
-      isFaster: false,
-      airCondition: ['Non-AC'],
-      passengerCapacity: 3,
-      baseFare: 30.0,
-      perKmRate: 10.0,
-      perMinRate: 1.5,
-    },
-    {
-      name: VehicleTypeName.OTHER,
-      isFaster: false,
-      airCondition: ['Non-AC'],
-      passengerCapacity: 0,
-      baseFare: 50.0,
-      perKmRate: 15.0,
-      perMinRate: 2.0,
-    },
-  ];
-
   const vehicleTypesBD = [
     {
       name: VehicleTypeNameBD.FAIR_BIKE,

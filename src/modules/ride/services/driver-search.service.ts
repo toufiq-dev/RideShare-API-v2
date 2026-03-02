@@ -3,7 +3,7 @@ import { PrismaService } from 'src/core/database/database.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RideNotificationService } from './ride-notification.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
-import { BookingStatus, CancelledBy, PilotStatus } from '@prisma/client';
+import { BookingStatus, CancelledBy, PilotStatus, UserStatus } from '@prisma/client';
 import { NotifyDriverPayload, RideRequestPayload } from '../dto/ride.interface';
 
 interface SearchIteration {
@@ -316,7 +316,7 @@ export class DriverSearchService {
     let radius = config.radiusIncrement;
     const maxRadius = iterationRecord.maxRadius;
 
-    // ✅ Track retry state for "all drivers busy" scenario
+    // Track retry state for "all drivers busy" scenario
     const ALL_BUSY_RETRY_DELAY = 2000; // Wait 2 seconds between retries
     const MAX_ALL_BUSY_RETRIES = 5; // Retry up to 5 times (total ~10 seconds wait)
     let allBusyRetryCount = 0;
@@ -352,7 +352,7 @@ export class DriverSearchService {
         break;
       }
 
-      // ✅ Handle "all drivers busy" scenario
+      // Handle "all drivers busy" scenario
       if (result === 'ALL_BUSY') {
         // Check if we should retry the same radius
         if (
@@ -478,6 +478,9 @@ export class DriverSearchService {
         userId: { in: eligiblePilotUserIds },
         onlineStatus: PilotStatus.AVAILABLE,
         activeBookingId: null,
+        user: {
+          status: UserStatus.ACTIVE as UserStatus,
+        },
       },
       select: {
         id: true,
@@ -508,7 +511,7 @@ export class DriverSearchService {
 
     const fare = Number(discountedFare);
 
-    // ✅ Track if we found eligible drivers but all were busy
+    // Track if we found eligible drivers but all were busy
     let foundEligibleDrivers = false;
     let allDriversWereBusy = true;
 
@@ -542,7 +545,7 @@ export class DriverSearchService {
           continue; // Round-robin: skip busy driver, try next one
         }
 
-        // ✅ Found an available driver - proceed with notification
+        // Found an available driver - proceed with notification
         allDriversWereBusy = false; // At least one driver was available
 
         // Increment notification count
@@ -636,7 +639,7 @@ export class DriverSearchService {
       }
     }
 
-    // ✅ If we found eligible drivers but all were busy, return special indicator
+    // If we found eligible drivers but all were busy, return special indicator
     if (foundEligibleDrivers && allDriversWereBusy) {
       this.logger.log(
         `[ALL_DRIVERS_BUSY] All eligible drivers in ${radius}m radius have active notifications for booking ${bookingId}. Will retry after delay.`,

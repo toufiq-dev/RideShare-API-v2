@@ -17,6 +17,7 @@ import {
   RideType,
   TransactionStatus,
   TransactionType,
+  UserStatus,
   VehicleTypeNameBD,
 } from '@prisma/client';
 import { Socket } from 'socket.io';
@@ -768,6 +769,11 @@ export class RideService {
           activeBookingId: true,
           averageRating: true,
           pilotType: true,
+          user: {
+            select: {
+              status: true,
+            },
+          },
           drivingLicense: { select: { id: true, nameOnLicense: true } },
           vehicle: {
             select: {
@@ -781,6 +787,9 @@ export class RideService {
         },
       });
       if (!pilot) throw new NotFoundException('Pilot not found.');
+      if (pilot.user.status !== UserStatus.ACTIVE as UserStatus) {
+        throw new BadRequestException('Pilot is not active. Please complete your onboarding process first.');
+      }
       if (pilot.onlineStatus !== PilotStatus.AVAILABLE) {
         throw new BadRequestException('Pilot is not available.');
       }

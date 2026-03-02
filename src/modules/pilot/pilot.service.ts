@@ -414,12 +414,9 @@ export class PilotService {
               isSelfieVerified: VerificationStatus.IN_PROGRESS,
             },
           });
-
-          await tx.user.update({
-            where: { id: pilot.userId },
-            data: { status: UserStatus.ONBOARDING },
-          });
         });
+
+        await this.updateUserStatusAfterDocumentUpload(pilot.id);
       }
 
       return {
@@ -985,18 +982,19 @@ export class PilotService {
           isRCVerified: true,
           isDLVerified: true,
           isNidVerified: true,
+          user: {
+            select: {
+              status: true,
+            },
+          }
         },
       });
       if (!pilot) {
         throw new NotFoundException('Pilot not found.');
       }
 
-      if (
-        pilot.isRCVerified !== VerificationStatus.APPROVED ||
-        pilot.isDLVerified !== VerificationStatus.APPROVED ||
-        pilot.isNidVerified !== VerificationStatus.APPROVED
-      ) {
-        throw new BadRequestException('RC, DL or NID is not verfied.');
+      if (pilot.user.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException('Pilot is not active. Please complete your onboarding process first.');
       }
 
       if (onlineStatus) {

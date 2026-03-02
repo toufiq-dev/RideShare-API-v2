@@ -1,8 +1,29 @@
 import { PrismaClient, VehicleTypeNameBD } from '@prisma/client';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    const raw = fs.readFileSync(envPath, 'utf8');
+    raw.split(/\r?\n/).forEach((line) => {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) return;
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[m[1]] === undefined) process.env[m[1]] = val;
+    });
+  } catch {
+    // ignore
+  }
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 const CITY = process.env.CITY || 'dhaka';
 
 type SeedRow = {
@@ -85,4 +106,5 @@ main().catch((e) => {
   process.exit(1);
 }).finally(async () => {
   await prisma.$disconnect();
+  await pool.end();
 });

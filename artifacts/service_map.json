@@ -1,10 +1,10 @@
 {
   "Bike": "FAIR_BIKE",
-  "Car Plus": "FAIR_PLUS",
-  "Car Prime": "FAIR_PRIME",
+  "Car Plus": "FAIR_GO",
+  "Car Prime": "FAIR_ELITE",
   "Car Max": "FAIR_MAX",
   "CNG": "FAIR_CNG", 
-  "Plus Intercity": "FAIR_PLUS",
-  "Prime Intercity": "FAIR_PRIME",
+  "Plus Intercity": "FAIR_GO",
+  "Prime Intercity": "FAIR_ELITE",
   "Max Intercity": "FAIR_MAX"
 }

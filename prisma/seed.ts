@@ -6,6 +6,10 @@ import {
   VerificationStatus,
   UserStatus,
 } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   CouponsNames,
   PilotCouponsNames,
@@ -13,23 +17,43 @@ import {
 import { randomInt } from 'node:crypto';
 import bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+// Load .env so DATABASE_URL is available
+if (!process.env.DATABASE_URL) {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    const raw = fs.readFileSync(envPath, 'utf8');
+    raw.split(/\r?\n/).forEach((line) => {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) return;
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[m[1]] === undefined) process.env[m[1]] = val;
+    });
+  } catch {
+    // ignore
+  }
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 async function main() {
   const languages = [
     { name: 'English' },
-    { name: 'Hindi' },
-    { name: 'Marathi' },
-    { name: 'Gujarati' },
-    { name: 'Kannada' },
-    { name: 'Telugu' },
-    { name: 'Tamil' },
-    { name: 'Malayalam' },
-    { name: 'Punjabi' },
+    // { name: 'Hindi' },
+    // { name: 'Marathi' },
+    // { name: 'Gujarati' },
+    // { name: 'Kannada' },
+    // { name: 'Telugu' },
+    // { name: 'Tamil' },
+    // { name: 'Malayalam' },
+    // { name: 'Punjabi' },
     { name: 'Bengali' },
-    { name: 'Urdu' },
-    { name: 'Assamese' },
-    { name: 'Oriya' },
+    // { name: 'Urdu' },
+    // { name: 'Assamese' },
+    // { name: 'Oriya' },
   ];
 
   const vehicleTypesBD = [
@@ -274,104 +298,104 @@ async function main() {
     },
   });
 
-  for (let i = 0; i < users.length; i++) {
-    const user = users[i];
-    const pilot = pilots[i];
+  // for (let i = 0; i < users.length; i++) {
+  //   const user = users[i];
+  //   const pilot = pilots[i];
 
-    // Check if pilot already exists
-    const existingPilot = await prisma.pilot.findUnique({
-      where: { phone: pilot.phone },
-    });
+  //   // Check if pilot already exists
+  //   const existingPilot = await prisma.pilot.findUnique({
+  //     where: { phone: pilot.phone },
+  //   });
 
-    if (existingPilot) {
-      console.log(`Pilot with phone ${pilot.phone} already exists`);
-      continue;
-    }
+  //   if (existingPilot) {
+  //     console.log(`Pilot with phone ${pilot.phone} already exists`);
+  //     continue;
+  //   }
 
-    // Create a new User
-    const newUser = await prisma.user.create({
-      data: {
-        role: user.role,
-      },
-    });
+  //   // Create a new User
+  //   const newUser = await prisma.user.create({
+  //     data: {
+  //       role: user.role,
+  //     },
+  //   });
 
-    // Create a new Pilot associated with the new User
-    const newPilot = await prisma.pilot.create({
-      data: {
-        phone: pilot.phone,
-        userId: newUser.id, // Unique userId for this pilot
-        languageId: english.id,
-        isDLVerified: VerificationStatus.APPROVED,
-        isRCVerified: VerificationStatus.APPROVED,
-        isNidVerified: VerificationStatus.APPROVED,
-        isSelfieVerified: VerificationStatus.APPROVED,
-        isNumberPlateVerified: VerificationStatus.APPROVED,
-        isTaxTokenVerified: VerificationStatus.APPROVED,
-        isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
-        isFairCoinAvailed: true,
-      },
-    });
+  //   // Create a new Pilot associated with the new User
+  //   const newPilot = await prisma.pilot.create({
+  //     data: {
+  //       phone: pilot.phone,
+  //       userId: newUser.id, // Unique userId for this pilot
+  //       languageId: english.id,
+  //       isDLVerified: VerificationStatus.APPROVED,
+  //       isRCVerified: VerificationStatus.APPROVED,
+  //       isNidVerified: VerificationStatus.APPROVED,
+  //       isSelfieVerified: VerificationStatus.APPROVED,
+  //       isNumberPlateVerified: VerificationStatus.APPROVED,
+  //       isTaxTokenVerified: VerificationStatus.APPROVED,
+  //       isVehicleOwnersNidVerified: VerificationStatus.APPROVED,
+  //       isFairCoinAvailed: true,
+  //     },
+  //   });
 
-    // Create DrivingLicense
-    await prisma.drivingLicense.create({
-      data: {
-        licenseNumber: Date.now().toString() + i, // Ensure unique license number
-        nameOnLicense: 'Antor Saha',
-        dateOfIssue: new Date(),
-        validUntill: new Date(),
-        dateOfBirth: new Date(),
-        pilotId: newPilot.id,
-      },
-    });
+  //   // Create DrivingLicense
+  //   await prisma.drivingLicense.create({
+  //     data: {
+  //       licenseNumber: Date.now().toString() + i, // Ensure unique license number
+  //       nameOnLicense: 'Antor Saha',
+  //       dateOfIssue: new Date(),
+  //       validUntill: new Date(),
+  //       dateOfBirth: new Date(),
+  //       pilotId: newPilot.id,
+  //     },
+  //   });
 
-    // Fetch VehicleType
-    const vehicleType = await prisma.vehicleTypeBD.findUnique({
-      where: { name: VehicleTypeNameBD.FAIR_BIKE },
-    });
+  //   // Fetch VehicleType
+  //   const vehicleType = await prisma.vehicleTypeBD.findUnique({
+  //     where: { name: VehicleTypeNameBD.FAIR_BIKE },
+  //   });
 
-    // Create Vehicle
-    const regNo = Date.now().toString() + i; // Ensure unique regNo
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        regNo,
-        regUpto: new Date(),
-        permitUpto: new Date(),
-        status: 'ACTIVE',
-        insuranceUpto: new Date(),
-        manufacturer: 'Honda',
-        model: 'Civic',
-        colour: 'Black',
-        seatCapacity: '4',
-        state: 'Maharashtra',
-        pilotId: newPilot.id,
-        vehicleTypeIdBD: vehicleTypeIds[randromNumber],
-      },
-    });
+  //   // Create Vehicle
+  //   const regNo = Date.now().toString() + i; // Ensure unique regNo
+  //   const vehicle = await prisma.vehicle.create({
+  //     data: {
+  //       regNo,
+  //       regUpto: new Date(),
+  //       permitUpto: new Date(),
+  //       status: 'ACTIVE',
+  //       insuranceUpto: new Date(),
+  //       manufacturer: 'Honda',
+  //       model: 'Civic',
+  //       colour: 'Black',
+  //       seatCapacity: '4',
+  //       state: 'Maharashtra',
+  //       pilotId: newPilot.id,
+  //       vehicleTypeIdBD: vehicleTypeIds[randromNumber],
+  //     },
+  //   });
 
-    // Fetch Subscription
-    const subscription = await prisma.subscription.findUnique({
-      where: { name: 'Starter Pack' },
-    });
+  //   // Fetch Subscription
+  //   const subscription = await prisma.subscription.findUnique({
+  //     where: { name: 'Starter Pack' },
+  //   });
 
-    // Create PilotWallet
-    await prisma.pilotWallet.create({
-      data: {
-        pilotId: newPilot.id,
-        balance: 4800,
-        subscriptionId: subscription.id,
-      },
-    });
+  //   // Create PilotWallet
+  //   await prisma.pilotWallet.create({
+  //     data: {
+  //       pilotId: newPilot.id,
+  //       balance: 4800,
+  //       subscriptionId: subscription.id,
+  //     },
+  //   });
 
-    await prisma.pilot.update({
-      where: { id: newPilot.id },
-      data: {
-        isFairCoinAvailed: true,
-        primaryVehicleTypeId: vehicle.vehicleTypeIdBD,
-      },
-    });
+  //   await prisma.pilot.update({
+  //     where: { id: newPilot.id },
+  //     data: {
+  //       isFairCoinAvailed: true,
+  //       primaryVehicleTypeId: vehicle.vehicleTypeIdBD,
+  //     },
+  //   });
 
-    console.log(`Created pilot with phone ${pilot.phone}`);
-  }
+  //   console.log(`Created pilot with phone ${pilot.phone}`);
+  // }
 
   const customers = [
     { phone: '+8801412345673' },
@@ -381,35 +405,35 @@ async function main() {
     { phone: '+8801412345672' },
   ];
 
-  for (const customer of customers) {
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { phone: customer.phone },
-    });
+  // for (const customer of customers) {
+  //   const existingCustomer = await prisma.customer.findUnique({
+  //     where: { phone: customer.phone },
+  //   });
 
-    if (!existingCustomer) {
-      const user = await prisma.user.create({
-        data: {
-          role: UserRole.CUSTOMER,
-        },
-      });
+  //   if (!existingCustomer) {
+  //     const user = await prisma.user.create({
+  //       data: {
+  //         role: UserRole.CUSTOMER,
+  //       },
+  //     });
 
-      const coupon = await prisma.coupon.findUnique({
-        where: { name: 'Mini' },
-      });
+  //     const coupon = await prisma.coupon.findUnique({
+  //       where: { name: 'Mini' },
+  //     });
 
-      await prisma.customer.create({
-        data: {
-          phone: customer.phone,
-          languageId: english.id,
-          userId: user.id,
-          couponId: coupon.id,
-        },
-      });
-      console.log(`Created customer with phone ${customer.phone}`);
-    } else {
-      console.log(`Customer with phone ${customer.phone} already exists`);
-    }
-  }
+  //     await prisma.customer.create({
+  //       data: {
+  //         phone: customer.phone,
+  //         languageId: english.id,
+  //         userId: user.id,
+  //         couponId: coupon.id,
+  //       },
+  //     });
+  //     console.log(`Created customer with phone ${customer.phone}`);
+  //   } else {
+  //     console.log(`Customer with phone ${customer.phone} already exists`);
+  //   }
+  // }
 
   // System Config
   await prisma.systemConfig.upsert({
@@ -942,4 +966,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

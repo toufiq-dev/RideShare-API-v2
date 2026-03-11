@@ -1078,7 +1078,6 @@ export class PilotService {
 
       const updateData: any = {
         dlFrontSideUrl: frontSideUrl,
-        isDLVerified: VerificationStatus.IN_PROGRESS,
       };
 
       if (backSideUrl) {

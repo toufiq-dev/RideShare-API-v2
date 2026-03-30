@@ -14,7 +14,7 @@ This directory mirrors the repository layout: each `documentation/**/*.md` file 
 | Features | [`src/modules/`](src/modules/) | Auth, customer, ride, pilot, admin, payment, email, fare, maps, pricing, program, subscriptions, languages, chat, health |
 | Database | [`prisma/`](prisma/) | Schema models; seed scripts |
 
-## Architecture (short)
+## Architecture
 
 - **Framework:** NestJS 11, TypeScript.
 - **API:** REST + Swagger at `/api-docs`; WebSocket namespace `/socket` for chat and live location.

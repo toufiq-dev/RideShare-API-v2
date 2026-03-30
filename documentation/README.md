@@ -2,6 +2,10 @@
 
 This directory mirrors the repository layout: each `documentation/**/*.md` file documents the corresponding `src/**/*.ts` (or `prisma/*`) source file.
 
+## Third-party integrations
+
+Vendor-specific setup (env var **names**, dashboards, sandbox vs live, callback routes): **[`integrations/README.md`](integrations/README.md)** (Google Maps, SSLCommerz, Cashfree, SMS, Signzy, Firebase, Azure).
+
 ## How to navigate
 
 | Area | Path | What it covers |

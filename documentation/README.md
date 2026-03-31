@@ -9,7 +9,7 @@ This folder contains **narrative** and **diagrammatic** documentation. It comple
 | **REST endpoints** (paths, methods, request bodies, auth) | **Swagger UI** at `/api-docs` on a running server | Generated from Nest decorators (`@ApiTags`, `@ApiBody`, controllers). **Prefer Swagger** when integrating a client. |
 | **WebSocket events** | `src/core/socket/socket-events.ts` + `MainGateway` | Namespace `/socket`; auth via handshake. |
 | **Database schema** | `prisma/schema.prisma` | Migrations apply the real DDL. |
-| **Configuration keys** | `src/config/app.config.ts` + [`.env.example`](../.env.example) | Env var **names**; values are local/secret. |
+| **Configuration keys** | `src/config/app.config.ts` + [env template](operations/environment-variables.template.md) | Var **names** in docs; local `.env` gitignored. |
 | **Per-module behavior** | `documentation/src/**` mirrors `src/**` | Explains *why* and *how* at file level; may lag—verify against git if unsure. |
 
 Markdown under `documentation/src/` is **descriptive**. If Swagger and a `.md` file disagree, **trust Swagger and the code**, then fix the doc.
@@ -23,6 +23,7 @@ Markdown under `documentation/src/` is **descriptive**. If Swagger and a `.md` f
 | **Architecture & Mermaid flows** | [`architecture/README.md`](architecture/README.md), [`architecture/flows.md`](architecture/flows.md) |
 | **ER-style data model** | [`prisma/data-model.md`](prisma/data-model.md) |
 | **Run / deploy / observe** | [`operations/README.md`](operations/README.md) |
+| **Infrastructure & deployment** | [`infrastructure-and-deployment/README.md`](infrastructure-and-deployment/README.md) |
 | **Third-party vendors** | [`integrations/README.md`](integrations/README.md) |
 | **Per-source-file notes** | [`src/`](src/main.md) (tree mirrors `src/`) |
 

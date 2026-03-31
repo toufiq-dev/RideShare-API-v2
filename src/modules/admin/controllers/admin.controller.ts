@@ -359,7 +359,10 @@ export class AdminController {
     return await this.adminService.getNid();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get('numberplate')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Driving Lincese documents' })
   async getNumberPlate() {
     return await this.adminService.getNumberPlates();
@@ -388,7 +391,10 @@ export class AdminController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Post('app-version')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update App Version' })
   @ApiBody({
     type: AppUpdateDto,
@@ -397,13 +403,19 @@ export class AdminController {
     return await this.adminService.updateAppVersion(appUpdateDto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get('app-version')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get App Version' })
   async getAppVersion(@Query('platform') platform: AppPlatform) {
     return await this.adminService.getAppVersion(platform);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Post('subscription')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create Subscription Type' })
   @ApiBody({
     type: CreateSubscriptionTypeDto,
@@ -416,13 +428,19 @@ export class AdminController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get('subscription')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all Subscription Types' })
   async getSubscriptionTypes() {
     return await this.adminService.getSubscriptionTypes();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch('subscription/:id')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update Subscription Type' })
   @ApiBody({
     type: CreateSubscriptionTypeDto,
@@ -477,6 +495,8 @@ export class AdminController {
     return await this.adminService.getPromoterProfile(userId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get('promoter-list')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()

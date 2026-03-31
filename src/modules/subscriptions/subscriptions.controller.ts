@@ -1,15 +1,20 @@
-import { Body, Controller, Get, Patch, Post, Param } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Patch, Post, Param, UseGuards } from '@nestjs/common';
+import { ApiBody, ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SubscriptionsService } from './subscriptions.service';
 import {
   CreateSubscriptionTypeDto,
   UpdateSubscriptionTypeDto,
 } from './dto/subscriptions.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
-import { CurrentUser } from 'src/common/decorators/user.decorator';
 
 @ApiTags('Subscriptions')
 @Controller('subscription')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+@ApiBearerAuth()
 export class SubscriptionsController {
   constructor(private readonly subscriptionService: SubscriptionsService) {}
 

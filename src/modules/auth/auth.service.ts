@@ -56,23 +56,30 @@ export class AuthService {
     );
   }
 
+  /** Store-review test numbers; never active when NODE_ENV is not development. */
+  private isDevelopmentOtpBypassEnabled(): boolean {
+    return process.env.NODE_ENV === 'development';
+  }
+
   async sendOtp(sendOtpDto: SendOtpDto) {
     const { language, phone, referralCode } = sendOtpDto;
 
     try {
-      if (
-        phone === '+8801412345670' ||
-        phone === '+8801412345671' ||
-        phone === '+8801412345672' ||
-        phone === '+8801412345673' ||
-        phone === '+8801412345674'
-      ) {
-        return {
-          message: 'OTP sent to your phone successfully.',
-          data: {
-            otp: '4242',
-          },
-        };
+      if (this.isDevelopmentOtpBypassEnabled()) {
+        if (
+          phone === '+8801412345670' ||
+          phone === '+8801412345671' ||
+          phone === '+8801412345672' ||
+          phone === '+8801412345673' ||
+          phone === '+8801412345674'
+        ) {
+          return {
+            message: 'OTP sent to your phone successfully.',
+            data: {
+              otp: '4242',
+            },
+          };
+        }
       }
 
       const Language = await this.prisma.languages.findUnique({
@@ -165,14 +172,15 @@ export class AuthService {
     const { phone, otp, role, fcmToken } = verifyOtpDto;
 
     try {
-      // For App review in ios and android store START
+      // For App review in ios and android store START (development only)
       if (
-        (phone == '+8801412345670' && otp == '4242') ||
-        (phone == '+8801412345671' && otp == '4242') ||
-        (phone == '+8801412345672' && otp == '4242') ||
-        (phone == '+8801412345673' && otp == '4242') ||
-        (phone == '+8801412345674' && otp == '4242') ||
-        (phone == '+919999999999' && otp == '4242')
+        this.isDevelopmentOtpBypassEnabled() &&
+        ((phone == '+8801412345670' && otp == '4242') ||
+          (phone == '+8801412345671' && otp == '4242') ||
+          (phone == '+8801412345672' && otp == '4242') ||
+          (phone == '+8801412345673' && otp == '4242') ||
+          (phone == '+8801412345674' && otp == '4242') ||
+          (phone == '+919999999999' && otp == '4242'))
       ) {
         let user = null;
         let pilot = null;
@@ -378,7 +386,10 @@ export class AuthService {
           throw new NotFoundException('Pilot not found.');
         }
 
-        if (pilot.phone === '+919999999999') {
+        if (
+          this.isDevelopmentOtpBypassEnabled() &&
+          pilot.phone === '+919999999999'
+        ) {
           return {
             data: {
               isInServiceArea: true,

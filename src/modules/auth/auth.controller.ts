@@ -18,6 +18,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { LocationDto } from 'src/common/dto/common.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from 'src/common/decorators/user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
@@ -81,11 +82,21 @@ export class AuthController {
     return await this.authService.refreshFcmToken(refreshFcmTokenDto, userId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PILOT)
   @Post('find-pilot')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Find Pilot Account' })
-  async findPilotAccount(@Body() findPilotDto: FindPilotDto) {
-    return await this.authService.findMyAccount(findPilotDto);
+  @ApiOperation({
+    summary: 'Find Pilot Account',
+    description:
+      'Returns the authenticated pilot profile only when the body phone matches the pilot linked to this JWT.',
+  })
+  async findPilotAccount(
+    @Body() findPilotDto: FindPilotDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return await this.authService.findMyAccount(findPilotDto, userId);
   }
 
   @UseGuards(JwtAuthGuard)

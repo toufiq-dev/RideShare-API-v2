@@ -476,11 +476,11 @@ export class AuthService {
     }
   }
 
-  async findMyAccount(findPilotDto: FindPilotDto) {
+  async findMyAccount(findPilotDto: FindPilotDto, userId: string) {
     const { phone } = findPilotDto;
     try {
-      const data = await this.prisma.pilot.findUnique({
-        where: { phone },
+      const data = await this.prisma.pilot.findFirst({
+        where: { userId, phone },
         include: {
           drivingLicense: true,
         },

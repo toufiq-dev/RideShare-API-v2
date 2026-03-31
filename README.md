@@ -26,6 +26,8 @@
 
 **FairDrive API** is a modular, scalable backend server built with [NestJS](https://nestjs.com/), designed to power ride-sharing and related services. It features robust authentication, real-time communication, payment processing, geofencing, and more. The project leverages Prisma ORM for database management and is structured for maintainability and extensibility.
 
+**Extended docs (diagrams, integrations, `.env` template):** see the [`documentation/`](documentation/README.md) folder — **REST contract** is still Swagger at `/api-docs` on a running server.
+
 ---
 
 ## Architecture
@@ -179,7 +181,8 @@ fairdrive-api/
 
 ## API Reference
 
-> For a full API reference, see the controller files in each module (e.g., `auth.controller.ts`, `ride.controller.ts`, etc.).  
+> **Canonical reference:** Open **Swagger** at `/api-docs` when the server is running (generated from Nest decorators).  
+> **Narrative + diagrams:** [`documentation/README.md`](documentation/README.md) (per-file notes under `documentation/src/`, flows in `documentation/architecture/`).  
 > Endpoints are RESTful and follow standard HTTP conventions.
 
 ### Example Endpoints

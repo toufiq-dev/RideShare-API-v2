@@ -1,12 +1,40 @@
-# FairDrive API — Code documentation
+# FairDrive API — documentation
 
-This directory mirrors the repository layout: each `documentation/**/*.md` file documents the corresponding `src/**/*.ts` (or `prisma/*`) source file.
+This folder contains **narrative** and **diagrammatic** documentation. It complements—but does not replace—the **running API contract** and **source code**.
+
+## Canonical sources of truth
+
+| Concern | Source of truth | Notes |
+|---------|-----------------|--------|
+| **REST endpoints** (paths, methods, request bodies, auth) | **Swagger UI** at `/api-docs` on a running server | Generated from Nest decorators (`@ApiTags`, `@ApiBody`, controllers). **Prefer Swagger** when integrating a client. |
+| **WebSocket events** | `src/core/socket/socket-events.ts` + `MainGateway` | Namespace `/socket`; auth via handshake. |
+| **Database schema** | `prisma/schema.prisma` | Migrations apply the real DDL. |
+| **Configuration keys** | `src/config/app.config.ts` + [`.env.example`](../.env.example) | Env var **names**; values are local/secret. |
+| **Per-module behavior** | `documentation/src/**` mirrors `src/**` | Explains *why* and *how* at file level; may lag—verify against git if unsure. |
+
+Markdown under `documentation/src/` is **descriptive**. If Swagger and a `.md` file disagree, **trust Swagger and the code**, then fix the doc.
+
+---
+
+## Where to read next
+
+| Topic | Location |
+|-------|----------|
+| **Architecture & Mermaid flows** | [`architecture/README.md`](architecture/README.md), [`architecture/flows.md`](architecture/flows.md) |
+| **ER-style data model** | [`prisma/data-model.md`](prisma/data-model.md) |
+| **Run / deploy / observe** | [`operations/README.md`](operations/README.md) |
+| **Third-party vendors** | [`integrations/README.md`](integrations/README.md) |
+| **Per-source-file notes** | [`src/`](src/main.md) (tree mirrors `src/`) |
+
+---
 
 ## Third-party integrations
 
-Vendor-specific setup (env var **names**, dashboards, sandbox vs live, callback routes): **[`integrations/README.md`](integrations/README.md)** (Google Maps, SSLCommerz, Cashfree, SMS, Signzy, Firebase, Azure).
+Vendor setup (env var **names**, dashboards, sandbox vs live, callback routes): **[`integrations/README.md`](integrations/README.md)**.
 
-## How to navigate
+---
+
+## How to navigate per-file docs
 
 | Area | Path | What it covers |
 |------|------|----------------|
@@ -16,9 +44,11 @@ Vendor-specific setup (env var **names**, dashboards, sandbox vs live, callback 
 | Cross-cutting | [`src/common/`](src/common/) | Guards, interceptors, filters, middleware, shared DTOs/types |
 | Infrastructure | [`src/core/`](src/core/) | Prisma, Redis, logging, metrics, WebSockets, Firebase, geofencing, Bull |
 | Features | [`src/modules/`](src/modules/) | Auth, customer, ride, pilot, admin, payment, email, fare, maps, pricing, program, subscriptions, languages, chat, health |
-| Database | [`prisma/`](prisma/) | Schema models; seed scripts |
+| Database | [`prisma/`](prisma/) | Schema notes; seeds — see also [`prisma/data-model.md`](prisma/data-model.md) |
 
-## Architecture
+---
+
+## Architecture (short)
 
 - **Framework:** NestJS 11, TypeScript.
 - **API:** REST + Swagger at `/api-docs`; WebSocket namespace `/socket` for chat and live location.
@@ -26,6 +56,10 @@ Vendor-specific setup (env var **names**, dashboards, sandbox vs live, callback 
 - **Cache / realtime:** Redis (sessions, geo, pub/sub, token store); Socket.IO with JWT validation.
 - **Jobs:** BullMQ backed by Redis (`core/queue/bull.config.ts`).
 - **Observability:** Prometheus metrics at `/metrics`; Winston logs (files + optional Loki).
+
+Diagrams: [`architecture/flows.md`](architecture/flows.md).
+
+---
 
 ## Module responsibilities
 
@@ -45,16 +79,18 @@ Vendor-specific setup (env var **names**, dashboards, sandbox vs live, callback 
 | **subscriptions** | Pilot subscription products and purchase helpers |
 | **languages** | CRUD/list languages for apps |
 | **chat** | Persisted messages; realtime via `MainGateway` |
-| **health** | `@nestjs/terminus` probes |
-
-## Per-file pages
-
-Open the `.md` file that matches the path of the source you are reading (e.g. `src/modules/ride/ride.service.ts` → `documentation/src/modules/ride/ride.service.md`). Each page includes:
-
-1. **Role** — what the file does in the system.
-2. **Exports** — classes, decorators, DTOs, constants.
-3. **Functions / methods** — descriptions of public behaviors.
+| **health** | `@nestjs/terminus` probes (`/health`, `/health/detailed`) |
 
 ---
 
-*Generated and curated for the FairDrive API repository. When in doubt, the TypeScript source remains the source of truth.*
+## Per-file pages
+
+Open the `.md` file that matches the path of the source (e.g. `src/modules/ride/ride.service.ts` → `documentation/src/modules/ride/ride.service.md`). Typical contents:
+
+1. **Role** — what the file does in the system.
+2. **Exports / routes** — classes, DTOs, HTTP routes where relevant.
+3. **Functions / methods** — summaries (large services are overview-style).
+
+---
+
+*When in doubt, the TypeScript source and Swagger remain the source of truth.*

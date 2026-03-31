@@ -4,6 +4,10 @@
 
 **Prisma schema** for PostgreSQL: defines models, relations, indexes, and enums. The Prisma Client (`@prisma/client`) is generated from this file.
 
+## Related documentation
+
+- **ER overview and model index:** [`data-model.md`](data-model.md) — high-level relationships and checklist of models.
+
 ## Major domains
 
 | Domain | Examples |

@@ -28,3 +28,4 @@ Payment flows are implemented as **app-invoked HTTPS routes** on FairDrive API (
 
 - Central config mapping: [`src/config/app.config.ts`](../src/config/app.config.md)
 - Payment module: [`src/modules/payment/`](../src/modules/payment/payment.service.md)
+- Environment template (names only): [`.env.example`](../../.env.example)

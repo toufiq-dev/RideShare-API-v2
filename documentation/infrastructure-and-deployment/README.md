@@ -13,6 +13,7 @@ Operational context for FairDrive API: **what is known from the repository and t
 | DNS & TLS | [dns-and-tls.md](dns-and-tls.md) | Mostly TBD — fill when registrar/nginx owner confirms |
 | Azure subscription / RG | [azure-subscription.md](azure-subscription.md) | TBD — no portal access |
 | GitHub Actions secrets | [github-actions-secrets.md](github-actions-secrets.md) | Derived from `.github/workflows/*.yml` |
+| Vendor register (audit / governance) | [third-party-services-register.md](third-party-services-register.md) | Env var **names** + TBD owner/plan; no secrets |
 
 ## Quick facts (for audits)
 

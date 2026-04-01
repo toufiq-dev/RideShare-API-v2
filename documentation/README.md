@@ -24,6 +24,7 @@ Markdown under `documentation/src/` is **descriptive**. If Swagger and a `.md` f
 | **ER-style data model** | [`prisma/data-model.md`](prisma/data-model.md) |
 | **Run / deploy / observe** | [`operations/README.md`](operations/README.md) |
 | **Infrastructure & deployment** | [`infrastructure-and-deployment/README.md`](infrastructure-and-deployment/README.md) |
+| **Third-party register (audit)** | [`infrastructure-and-deployment/third-party-services-register.md`](infrastructure-and-deployment/third-party-services-register.md) |
 | **Third-party vendors** | [`integrations/README.md`](integrations/README.md) |
 | **Per-source-file notes** | [`src/`](src/main.md) (tree mirrors `src/`) |
 

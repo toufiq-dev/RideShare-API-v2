@@ -170,12 +170,14 @@ services:
       - fairdrive-network-prod
 
   # Grafana for visualization
+  # Set GRAFANA_ADMIN_PASSWORD in the deployment environment or in a .env file next to this
+  # compose file on the server (GitHub Actions / Azure Key Vault / etc.); never commit real values.
   grafana:
     image: grafana/grafana:latest
     ports:
       - "127.0.0.1:3003:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set for Grafana}
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
     volumes:
       - grafana-data:/var/lib/grafana

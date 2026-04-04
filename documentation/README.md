@@ -22,6 +22,7 @@ Markdown under `documentation/src/` is **descriptive**. If Swagger and a `.md` f
 |-------|----------|
 | **Architecture & Mermaid flows** | [`architecture/README.md`](architecture/README.md), [`architecture/flows.md`](architecture/flows.md) |
 | **ER-style data model** | [`prisma/data-model.md`](prisma/data-model.md) |
+| **ER diagrams (Mermaid), indexes, dictionary** | [`data-model/README.md`](data-model/README.md) |
 | **Run / deploy / observe** | [`operations/README.md`](operations/README.md) |
 | **Infrastructure & deployment** | [`infrastructure-and-deployment/README.md`](infrastructure-and-deployment/README.md) |
 | **Third-party register (audit)** | [`infrastructure-and-deployment/third-party-services-register.md`](infrastructure-and-deployment/third-party-services-register.md) |

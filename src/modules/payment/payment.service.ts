@@ -483,9 +483,10 @@ export class PaymentService {
         throw new Error('Failed to create order');
       }
 
-      const wallet: any = await this.prisma.pilotWallet.findUnique({
+      const wallet = await this.prisma.pilotWallet.findUnique({
         where: { pilotId: pilot.id },
       });
+      if (!wallet) throw new NotFoundException('Pilot wallet not found');
 
       const transaction = await this.prisma.transaction.create({
         data: {

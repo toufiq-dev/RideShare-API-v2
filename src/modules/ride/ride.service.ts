@@ -12,6 +12,7 @@ import {
   BookingStatus,
   CancelledBy,
   PilotType,
+  Prisma,
   ProgramType,
   RankingPeriod,
   RideType,
@@ -48,6 +49,11 @@ import { LoggerService } from 'src/core/logging/logger.service';
 import { DriverSearchService } from './services/driver-search.service';
 import { ProgramService } from '../program/program.service';
 import { MetricsService } from 'src/core/metrics/metrics.service';
+import { LocationDto } from 'src/common/dto/common.dto';
+
+type CustomerWithCouponAndActiveBooking = Prisma.CustomerGetPayload<{
+  include: { coupon: true; activeBooking: true };
+}>;
 
 @Injectable()
 export class RideService {
@@ -168,7 +174,7 @@ export class RideService {
 
   async getRideDetails(bookingId: string) {
     try {
-      const booking: any = await this.prisma.booking.findUnique({
+      const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
           id: true,
@@ -352,9 +358,9 @@ export class RideService {
       otherPassengerInfo,
     } = createRideRequestDto;
 
-    let booking: any;
+    let booking!: Booking;
     let originalPrice: number;
-    let customer: any;
+    let customer!: CustomerWithCouponAndActiveBooking;
     let distanceKm: number;
     let durationMin: number;
 
@@ -577,7 +583,7 @@ export class RideService {
         throw new BadRequestException('You already have an active booking');
       }
 
-      const booking: any = await this.prisma.booking.findUnique({
+      const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
         select: {
           rideType: true,
@@ -947,7 +953,7 @@ export class RideService {
         const { durationMin } =
           await this.fareService.calculateDistanceAndDuration(
             { lat, lng },
-            result.updated.pickupLocation as any,
+            result.updated.pickupLocation as LocationDto,
           );
         pickupInMinutes = Math.ceil(durationMin);
       }
@@ -1411,7 +1417,7 @@ export class RideService {
           data: { activeBookingId: null },
         });
 
-        const updated: any = await tx.booking.update({
+        const updated = await tx.booking.update({
           where: { id: bookingId },
           data: {
             status: BookingStatus.COMPLETED,
@@ -1551,10 +1557,9 @@ export class RideService {
           },
         });
 
-        // Get maxSuperPilots with safe fallback
-        const maxSuperPilots = superPilotProgram?.criteria
-          ? Number((superPilotProgram.criteria as any).maxSuperPilots)
-          : null;
+        const maxSuperPilots = this.parseMaxSuperPilotsFromCriteria(
+          superPilotProgram?.criteria,
+        );
 
         const shouldNotDeductFairCoin =
           pilot.pilotType === PilotType.SUPER_PILOT ||
@@ -1927,12 +1932,12 @@ export class RideService {
     const { pickupLocation, dropLocation } = editRideRequestDto;
 
     try {
-      const [customer, booking]: any = await Promise.all([
-        await this.prisma.customer.findUnique({
+      const [customer, booking] = await Promise.all([
+        this.prisma.customer.findUnique({
           where: { userId },
           include: { coupon: true },
         }),
-        await this.prisma.booking.findUnique({
+        this.prisma.booking.findUnique({
           where: { id },
           include: {
             vehicleTypeBD: {
@@ -2378,7 +2383,7 @@ export class RideService {
         return sum + Math.ceil(Number(trip.discountedFare));
       }, 0);
 
-      const [bookings, total]: any = await Promise.all([
+      const [bookings, total] = await Promise.all([
         this.prisma.booking.findMany({
           where: whereClause,
           select: {
@@ -2408,18 +2413,15 @@ export class RideService {
         }),
       ]);
 
-      // Map bookings and calculate trip duration for display only
-      let tripDurationInMinutes: number;
-      bookings.map((booking) => {
-        booking.estimatedDistance = Math.ceil(
-          Number(booking.estimatedDistance),
-        );
-        booking.discountedFare = Math.ceil(Number(booking.discountedFare));
-
-        const start = moment.utc(booking.tripStart);
-        const end = moment.utc(booking.tripEnd);
-        tripDurationInMinutes = end.diff(start, 'minutes');
-        booking.tripDurationInMinutes = tripDurationInMinutes;
+      const displayBookings = bookings.map((b) => {
+        const start = moment.utc(b.tripStart);
+        const end = moment.utc(b.tripEnd);
+        return {
+          ...b,
+          estimatedDistance: Math.ceil(Number(b.estimatedDistance)),
+          discountedFare: Math.ceil(Number(b.discountedFare)),
+          tripDurationInMinutes: end.diff(start, 'minutes'),
+        };
       });
 
       const totalPages = Math.ceil(total / pageSize);
@@ -2430,7 +2432,7 @@ export class RideService {
         message: 'Ride history fetched successfully',
         data: {
           totalEarning,
-          bookings,
+          bookings: displayBookings,
           pagination: {
             totalItems: total,
             currentPage: page,
@@ -2576,7 +2578,7 @@ export class RideService {
     pageSize: number,
   ) {
     try {
-      const customer: any = await this.prisma.customer.findUnique({
+      const customer = await this.prisma.customer.findUnique({
         where: { userId },
         select: { id: true, coupon: true },
       });
@@ -2586,7 +2588,7 @@ export class RideService {
 
       const skip = (page - 1) * pageSize;
 
-      const [bookings, total]: any = await Promise.all([
+      const [bookings, total] = await Promise.all([
         this.prisma.booking.findMany({
           where: {
             customerId: customer.id,
@@ -2692,6 +2694,21 @@ export class RideService {
       );
       throw error;
     }
+  }
+
+  private parseMaxSuperPilotsFromCriteria(
+    criteria: Prisma.JsonValue | null | undefined,
+  ): number | null {
+    if (
+      criteria === null ||
+      typeof criteria !== 'object' ||
+      Array.isArray(criteria)
+    ) {
+      return null;
+    }
+    const raw = (criteria as Record<string, unknown>).maxSuperPilots;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
   }
 
   private calculateTripDuration(

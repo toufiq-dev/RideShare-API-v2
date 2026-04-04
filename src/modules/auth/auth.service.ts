@@ -804,7 +804,7 @@ export class AuthService {
     return { user, customer, pilot };
   }
 
-  private async generateTokens(userId: string, role: any) {
+  private async generateTokens(userId: string, role: UserRole) {
     // 1. Check if user has existing tokens
     const existingAccessToken = await this.redis.get(
       `${RedisKeys.ACCESS_TOKEN}${userId}`,

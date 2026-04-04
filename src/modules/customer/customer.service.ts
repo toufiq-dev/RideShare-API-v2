@@ -103,8 +103,6 @@ export class CustomerService {
         data.coupon.discount = Number(data.coupon.discount);
       }
 
-      console.log('data.activeBooking', data.activeBooking);
-
       if (
         data?.activeBooking?.status === BookingStatus.PENDING ||
         data?.activeBooking?.status === BookingStatus.ACCEPTED ||

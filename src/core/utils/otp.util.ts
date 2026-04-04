@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class OTPService {
@@ -16,7 +17,10 @@ export class OTPService {
   private readonly sslApiToken: string;
   private readonly sslSenderId: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.baseUrl = this.configService.get<string>('msg91.baseUrl');
     this.authKey = this.configService.get<string>('msg91.authKey');
     this.templateId = this.configService.get<string>('msg91.templateId');
@@ -75,7 +79,11 @@ export class OTPService {
 
       return false;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'OTPService',
+        { scope: 'sendOTPBD' },
+      );
       throw error;
     }
   }
@@ -109,10 +117,17 @@ export class OTPService {
         return true;
       }
 
-      console.error('SSL SMS failed:', responseData);
+      this.logger.warn(
+        `SSL SMS failed (status=${responseData?.status ?? responseData?.status_code ?? 'unknown'})`,
+        'OTPService',
+      );
       return false;
     } catch (error) {
-      console.error('SSL SMS error:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'OTPService',
+        { scope: 'sendOTPSSL' },
+      );
       throw error;
     }
   }
@@ -134,7 +149,11 @@ export class OTPService {
 
       return response.data.request_id;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'OTPService',
+        { scope: 'sendOTP' },
+      );
       throw error;
     }
   }
@@ -150,11 +169,18 @@ export class OTPService {
         },
       });
 
-      console.log(response.data);
+      this.logger.debug(
+        `msg91 OTP verify response type=${response.data?.type ?? 'unknown'}`,
+        'OTPService',
+      );
 
       return response.data.type === 'success';
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'OTPService',
+        { scope: 'verifyOTP' },
+      );
       throw error;
     }
   }
@@ -180,7 +206,11 @@ export class OTPService {
 
       throw new HttpException('Failed to resend OTP', HttpStatus.BAD_REQUEST);
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'OTPService',
+        { scope: 'resendOTP' },
+      );
       throw error;
     }
   }

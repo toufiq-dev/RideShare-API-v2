@@ -34,6 +34,7 @@ import { MultiplierService } from '../pricing/multiplier.service';
 import { TelemetryService } from '../pricing/telemetry.service';
 import { h3Cell } from 'src/core/utils/h3.util';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class CustomerService {
@@ -50,6 +51,7 @@ export class CustomerService {
     private readonly multService: MultiplierService,
     private readonly telemetry: TelemetryService,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.CITY = this.configService.get<string>('pricing.city');
     this.MU_MIN = this.configService.get<number>('pricing.MU_MIN');
@@ -221,7 +223,10 @@ export class CustomerService {
         data: customerData,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -259,7 +264,10 @@ export class CustomerService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -295,7 +303,10 @@ export class CustomerService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -343,7 +354,7 @@ export class CustomerService {
         if (!isSent) {
           throw new BadRequestException('Failed to send OTP.');
         }
-        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        this.logger.log('OTP dispatched via BD SMS path', 'CustomerService');
         await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
         return {
@@ -364,7 +375,10 @@ export class CustomerService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -397,7 +411,10 @@ export class CustomerService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -434,7 +451,10 @@ export class CustomerService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -466,7 +486,10 @@ export class CustomerService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -516,7 +539,10 @@ export class CustomerService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -553,7 +579,10 @@ export class CustomerService {
         message: 'Saved place deleted successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -614,7 +643,10 @@ export class CustomerService {
         data: { vehicles, coupon: customer.coupon || null },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }
@@ -782,7 +814,10 @@ export class CustomerService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomerService',
+      );
       throw error;
     }
   }

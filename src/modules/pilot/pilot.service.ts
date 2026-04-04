@@ -51,6 +51,7 @@ import { ConfigService } from '@nestjs/config';
 import { TelemetryService } from '../pricing/telemetry.service';
 import { h3Cell } from 'src/core/utils/h3.util';
 import { OTPService } from 'src/core/utils/otp.util';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class PilotService {
@@ -64,6 +65,7 @@ export class PilotService {
     private readonly configService: ConfigService,
     private readonly telemetryService: TelemetryService,
     private readonly otpService: OTPService,
+    private readonly logger: LoggerService,
   ) {
     this.flexiPack = this.configService.get<string>('subscription.flexiPack');
   }
@@ -167,7 +169,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -212,7 +217,7 @@ export class PilotService {
         if (!isSent) {
           throw new BadRequestException('Failed to send OTP.');
         }
-        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        this.logger.log('OTP dispatched via BD SMS path', 'PilotService');
         await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
         return {
@@ -233,7 +238,10 @@ export class PilotService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -263,7 +271,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -321,7 +332,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -373,7 +387,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -424,7 +441,10 @@ export class PilotService {
         data: pilot.selfieUrl,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -474,7 +494,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -506,7 +529,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -563,7 +589,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -605,7 +634,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -645,7 +677,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -675,7 +710,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -713,7 +751,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -774,7 +815,10 @@ export class PilotService {
         message: 'Pilot onboarding coins availed successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -864,7 +908,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -888,7 +935,10 @@ export class PilotService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -972,7 +1022,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1032,7 +1085,10 @@ export class PilotService {
         },
       });
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1133,7 +1189,10 @@ export class PilotService {
         data: verificationResponse,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1194,7 +1253,10 @@ export class PilotService {
         data: transformedData,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1324,7 +1386,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1420,7 +1485,10 @@ export class PilotService {
         data: transformedData,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1526,7 +1594,10 @@ export class PilotService {
         data: verificationResponse,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1618,7 +1689,10 @@ export class PilotService {
         data: transformedData,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1708,7 +1782,10 @@ export class PilotService {
         data: verificationResponse,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1759,7 +1836,10 @@ export class PilotService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1844,7 +1924,10 @@ export class PilotService {
         data: verificationResponse,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -1871,7 +1954,10 @@ export class PilotService {
         data: { name, city },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+      );
       throw error;
     }
   }
@@ -2128,7 +2214,11 @@ export class PilotService {
         await Promise.allSettled(deletePromises);
       }
     } catch (error) {
-      console.error('Error cleaning up previous files', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PilotService',
+        { scope: 'deletePreviousFiles' },
+      );
     }
   }
 

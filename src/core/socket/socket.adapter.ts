@@ -1,7 +1,16 @@
+import { INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 export class SocketIOAdapter extends IoAdapter {
+  constructor(
+    app: INestApplicationContext,
+    private readonly logger: LoggerService,
+  ) {
+    super(app);
+  }
+
   createIOServer(port: number, options?: ServerOptions): any {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'https://dashboard.fairdrivebd.com',
@@ -22,10 +31,14 @@ export class SocketIOAdapter extends IoAdapter {
       transports: ['websocket', 'polling'],
     });
 
-    // Log the server creation
-    console.log('🚀 Socket.IO server created on port:', port);
-    console.log('📡 Available transports:', server.engine?.transports);
-    console.log('🌐 Allowed origins:', allowedOrigins);
+    this.logger.debug(
+      `Socket.IO server created (port=${port}, transports=${JSON.stringify(server.engine?.transports)})`,
+      'SocketIOAdapter',
+    );
+    this.logger.debug(
+      `Socket.IO CORS origins count=${allowedOrigins.length}`,
+      'SocketIOAdapter',
+    );
 
     return server;
   }

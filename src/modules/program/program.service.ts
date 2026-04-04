@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
@@ -15,10 +14,10 @@ import {
 import { AzureService } from 'src/core/utils/azure.util';
 import { ConfigService } from '@nestjs/config';
 import { EligibilityStatus } from './dto/leaderboard.dto';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class ProgramService {
-  private readonly logger = new Logger(ProgramService.name);
   private readonly allowedMimeTypes: string[];
   private readonly maxFileSize: number;
 
@@ -26,6 +25,7 @@ export class ProgramService {
     private readonly prisma: PrismaService,
     private readonly azureService: AzureService,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.allowedMimeTypes = this.configService.get<string[]>(
       'file.allowedMimeTypes',
@@ -678,7 +678,11 @@ export class ProgramService {
       });
       return vehicleTypes.map((vt) => vt.id);
     } catch (error) {
-      this.logger.error('Error fetching vehicle types:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'ProgramService',
+        { scope: 'getVehicleTypes' },
+      );
       return []; // Return empty array on error
     }
   }
@@ -723,7 +727,10 @@ export class ProgramService {
       });
 
       if (!superPilotProgram) {
-        console.log('No active Super Pilot program found');
+        this.logger.log(
+          'No active Super Pilot program found',
+          'ProgramService',
+        );
         return;
       }
 
@@ -733,8 +740,9 @@ export class ProgramService {
       const maxSuperPilots = Number(criteria.maxSuperPilots) || 1000;
 
       if (!pilot.currentRank) {
-        console.log(
-          `Pilot ${pilotId} has no current rank yet (not eligible for promotion)`,
+        this.logger.log(
+          'Pilot has no current rank yet (not eligible for promotion)',
+          'ProgramService',
         );
         return;
       }
@@ -762,30 +770,35 @@ export class ProgramService {
           superPilotProgram.id,
           tx,
         );
-        console.log(
-          `Pilot ${pilotId} promoted to Super Pilot! Earnings: ${pilot.totalLifetimeEarnings}, Rank: ${pilot.currentRank}`,
+        this.logger.log(
+          'Pilot promoted to Super Pilot',
+          'ProgramService',
         );
       } else {
         if (!meetsEarningsCriteria) {
-          console.log(
-            `Pilot ${pilotId} needs ${minEarnings - Number(pilot.totalLifetimeEarnings)} more earnings`,
+          this.logger.debug(
+            'Super Pilot promotion: earnings criteria not met',
+            'ProgramService',
           );
         }
         if (!meetsRankCriteria) {
-          console.log(
-            `Pilot ${pilotId} rank ${pilot.currentRank} is outside top ${maxSuperPilots}`,
+          this.logger.debug(
+            'Super Pilot promotion: rank criteria not met',
+            'ProgramService',
           );
         }
         if (!hasCapacityForMore) {
-          console.log(
-            `Already at max capacity of ${maxSuperPilots} Super Pilots (current: ${currentSuperPilotsCount})`,
+          this.logger.debug(
+            'Super Pilot promotion: at max capacity',
+            'ProgramService',
           );
         }
       }
     } catch (error) {
-      console.error(
-        'Error checking Super Pilot promotion in transaction:',
-        error,
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'ProgramService',
+        { scope: 'checkSuperPilotPromotionInTransaction' },
       );
     }
   }
@@ -913,8 +926,9 @@ export class ProgramService {
         });
       }
 
-      console.log(
-        `Updated ${rankingEntries.length} rankings in transaction for vehicle type: ${vehicleTypeId || 'all'}`,
+      this.logger.log(
+        `Updated rankings in transaction (count=${rankingEntries.length})`,
+        'ProgramService',
       );
 
       // Check and demote Super Pilots who fell out of top rankings
@@ -924,7 +938,11 @@ export class ProgramService {
         tx,
       );
     } catch (error) {
-      console.error('Error updating rankings in transaction:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'ProgramService',
+        { scope: 'updateRankingsInTransaction' },
+      );
     }
   }
 
@@ -1021,8 +1039,10 @@ export class ProgramService {
         },
       };
     } catch (error) {
-      this.logger.error(
-        `Error uploading super pilot video for user ${userId}: ${error.message}`,
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'ProgramService',
+        { scope: 'uploadSuperPilotVideo', userId },
       );
       throw error;
     }
@@ -1105,8 +1125,9 @@ export class ProgramService {
       },
     });
 
-    console.log(
-      `Pilot ${pilotId} successfully promoted to Super Pilot in transaction`,
+    this.logger.log(
+      'Pilot successfully promoted to Super Pilot in transaction',
+      'ProgramService',
     );
   }
 
@@ -1182,8 +1203,9 @@ export class ProgramService {
         return; // No demotions needed
       }
 
-      console.log(
-        `Demoting ${pilotsToDemote.length} Super Pilots who fell out of top ${maxSuperPilots}`,
+      this.logger.log(
+        `Demoting Super Pilots who fell out of top rankings (count=${pilotsToDemote.length})`,
+        'ProgramService',
       );
 
       // Demote each pilot
@@ -1208,12 +1230,17 @@ export class ProgramService {
           },
         });
 
-        console.log(
-          `Demoted pilot ${pilot.id} from Super Pilot (rank: ${pilot.currentRank})`,
+        this.logger.log(
+          'Demoted pilot from Super Pilot',
+          'ProgramService',
         );
       }
     } catch (error) {
-      console.error('Error demoting Super Pilots:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'ProgramService',
+        { scope: 'demoteSuperPilotsOutOfTopInTransaction' },
+      );
     }
   }
 }

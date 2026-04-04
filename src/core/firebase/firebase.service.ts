@@ -1,10 +1,14 @@
 import * as admin from 'firebase-admin';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class FirebaseService {
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert({
@@ -93,11 +97,18 @@ export class FirebaseService {
       // await new Promise(resolve => setTimeout(resolve, 10000));
 
       const response = await admin.messaging().send(message);
-      console.log('Successfully sent message:', response);
+      this.logger.debug(
+        `FCM message sent (messageId=${typeof response === 'string' ? response : 'ok'})`,
+        'FirebaseService',
+      );
 
       return response;
     } catch (error) {
-      console.error('Error sending message:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'FirebaseService',
+        { scope: 'sendNotification' },
+      );
       throw error;
     }
   }

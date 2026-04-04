@@ -74,7 +74,10 @@ export class RideService {
     try {
       if (!client.data?.user?.userId) {
         client.emit('error', { message: 'User not authenticated' });
-        console.log('❌ Client not authenticated to update location');
+        this.logger.warn(
+          'Client not authenticated to update location',
+          this.context,
+        );
         return;
       }
 
@@ -86,7 +89,10 @@ export class RideService {
         client.data.user.userId,
       );
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       client.emit(RideEvents.ERROR, {
         message: 'Failed to update location',
       });
@@ -96,7 +102,10 @@ export class RideService {
   async getActiveRideForPilot(client: Socket) {
     if (!client.data?.user?.userId) {
       client.emit('error', { message: 'User not authenticated' });
-      console.log('❌ Client not authenticated to get active ride for pilot');
+      this.logger.warn(
+        'Client not authenticated to get active ride for pilot',
+        this.context,
+      );
       return;
     }
 
@@ -320,7 +329,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -739,7 +751,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -749,7 +764,10 @@ export class RideService {
       const search = await this.driverSearchService.searchDrivers(payload);
       return search;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -1044,8 +1062,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.log('errorInAcceptRide', error);
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -1100,7 +1120,10 @@ export class RideService {
         message: 'Reached pickup point successfully.',
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -1306,7 +1329,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -1702,7 +1728,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -1875,7 +1904,10 @@ export class RideService {
         message: 'Ride request cancelled successfully.',
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -2128,7 +2160,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -2267,7 +2302,10 @@ export class RideService {
 
       throw new BadRequestException('Invalid role specified.');
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -2396,7 +2434,10 @@ export class RideService {
         },
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -2513,7 +2554,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      this.logger.error(error, this.context);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }
@@ -2635,7 +2679,10 @@ export class RideService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        this.context,
+      );
       throw error;
     }
   }

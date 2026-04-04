@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/core/cache/redis.service';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class TelemetryService {
@@ -9,6 +10,7 @@ export class TelemetryService {
   constructor(
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.CITY = this.configService.get<string>('pricing.city');
   }
@@ -21,7 +23,11 @@ export class TelemetryService {
       // Use the new incrbyWithExpire method
       await this.redis.incrbyWithExpire(key, inc, 15 * 60);
     } catch (error) {
-      console.error('Error incrementing demand:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'TelemetryService',
+        { scope: 'incrementDemand' },
+      );
     }
   }
 
@@ -31,7 +37,11 @@ export class TelemetryService {
     try {
       await this.redis.set(key, String(Math.max(0, idleDrivers)));
     } catch (error) {
-      console.error('Error setting supply:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'TelemetryService',
+        { scope: 'setSupply' },
+      );
     }
   }
 
@@ -44,7 +54,11 @@ export class TelemetryService {
       );
       return { D: Number(d || '0'), S: Number(s || '0') };
     } catch (error) {
-      console.error('Error getting demand/supply:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'TelemetryService',
+        { scope: 'getDemandSupply' },
+      );
       return { D: 0, S: 0 };
     }
   }

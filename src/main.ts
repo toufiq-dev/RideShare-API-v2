@@ -29,7 +29,7 @@ async function bootstrap() {
   app.useLogger(logger);
 
   // Use IoAdapter for Socket.IO
-  app.useWebSocketAdapter(new SocketIOAdapter(app));
+  app.useWebSocketAdapter(new SocketIOAdapter(app, logger));
 
   // Add correlation ID middleware (before other middleware)
   app.use(

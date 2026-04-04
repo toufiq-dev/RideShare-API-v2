@@ -7,6 +7,7 @@ import moment from 'moment-timezone';
 import { AzureOpenAI } from 'openai';
 import { PrismaService } from '../database/database.service';
 import { VehicleTypeName, VehicleTypeNameBD } from '@prisma/client';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class VerificationService {
@@ -33,6 +34,7 @@ export class VerificationService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
   ) {
     this.productionAccessToken = this.configService.get<string>(
       'signzy.productionAccessToken',
@@ -133,7 +135,11 @@ export class VerificationService {
 
       return parsedContent;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'verifyDocument' },
+      );
       throw new BadRequestException('Failed to verify document.');
     }
   }
@@ -374,7 +380,11 @@ export class VerificationService {
 
       return vehicleTypeBD as VehicleTypeNameBD;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'mapVehicleTypeBD' },
+      );
       throw new BadRequestException('Failed to map vehicle type.');
     }
   }
@@ -597,7 +607,11 @@ export class VerificationService {
         isExpired,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'verifyDrivingLicense' },
+      );
       throw new BadRequestException(
         'Failed to verify driving license with Signzy API.',
       );
@@ -719,9 +733,15 @@ export class VerificationService {
         puccUpto: formatDate(responseRc.data.result.puccUpto),
       };
     } catch (error) {
-      console.log(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'verifyVehicleRC' },
+      );
       throw new BadRequestException(
-        error.message || 'Failed to verify vehicle RC with Signzy API.',
+        error instanceof Error
+          ? error.message
+          : 'Failed to verify vehicle RC with Signzy API.',
       );
     }
   }
@@ -766,7 +786,11 @@ export class VerificationService {
 
       return response.data;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'sendOtpToverifyAadhaar' },
+      );
       throw new BadRequestException(error?.response?.data?.message);
     }
   }
@@ -788,7 +812,11 @@ export class VerificationService {
 
       return response.data;
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'verifyAadhaar' },
+      );
       throw new BadRequestException(error?.response?.data?.message);
     }
   }

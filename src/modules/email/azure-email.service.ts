@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailClient } from '@azure/communication-email';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class AzureEmailService {
@@ -8,7 +9,10 @@ export class AzureEmailService {
   private senderAddress: string;
   private connectionString: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.connectionString = this.configService.get<string>(
       'azure.communication.connectionString',
     );
@@ -49,7 +53,10 @@ export class AzureEmailService {
         return false;
       }
     } catch (error) {
-      console.error('Azure Email Error:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AzureEmailService',
+      );
       throw error;
     }
   }

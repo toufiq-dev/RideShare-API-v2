@@ -18,6 +18,7 @@ import { TransactionType, TransactionStatus } from '@prisma/client';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class PaymentService {
@@ -34,6 +35,7 @@ export class PaymentService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
   ) {
     this.storeId = this.configService.get<string>('sslcommerz.storeId');
     this.storePassword = this.configService.get<string>(
@@ -507,7 +509,10 @@ export class PaymentService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PaymentService',
+      );
       throw error;
     }
   }
@@ -596,7 +601,10 @@ export class PaymentService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'PaymentService',
+      );
       throw error;
     }
   }

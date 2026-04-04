@@ -8,10 +8,14 @@ import {
   TransactionType,
   TransactionStatus,
 } from 'src/common/types/common.type';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {}
 
   async getSubscriptionTypes() {
     try {
@@ -34,7 +38,10 @@ export class SubscriptionsService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'SubscriptionsService',
+      );
       throw error;
     }
   }

@@ -12,6 +12,7 @@ import { RedisService } from 'src/core/cache/redis.service';
 import { FirebaseService } from 'src/core/firebase/firebase.service';
 import { PrismaService } from 'src/core/database/database.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class RideNotificationService {
@@ -20,6 +21,7 @@ export class RideNotificationService {
     private readonly redis: RedisService,
     private readonly firebaseService: FirebaseService,
     private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
   ) {}
 
   private get server(): Server {
@@ -49,7 +51,11 @@ export class RideNotificationService {
         data.sound || 'default',
       );
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'RideNotificationService',
+        { scope: 'sendPushNotification' },
+      );
     }
   }
 
@@ -155,7 +161,11 @@ export class RideNotificationService {
         message: 'Unfortunately ride request has been cancelled.',
       });
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'RideNotificationService',
+        { scope: 'notifyDriverNotFound' },
+      );
       throw error;
     }
   }

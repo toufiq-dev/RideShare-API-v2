@@ -44,6 +44,7 @@ import { VerificationService } from 'src/core/utils/verification.util';
 import moment from 'moment-timezone';
 import { PilotService } from '../../pilot/pilot.service';
 import { FilterVehicleTypeBDFilterDto } from '../dto/admin-vehicle-type-filter.dto';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class AdminService {
@@ -81,6 +82,7 @@ export class AdminService {
     private readonly emailService: EmailService,
     private readonly verificationService: VerificationService,
     private readonly pilotService: PilotService,
+    private readonly logger: LoggerService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -128,7 +130,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -146,7 +151,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -207,7 +215,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -280,7 +291,10 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -306,7 +320,10 @@ export class AdminService {
         message: 'Reset password OTP sent to your email successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -375,7 +392,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -426,7 +446,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -468,7 +491,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -535,7 +561,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -563,7 +592,10 @@ export class AdminService {
         message: 'Staff deleted successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -629,7 +661,10 @@ export class AdminService {
         data: updatedSupport,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -661,7 +696,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -693,7 +731,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -716,7 +757,10 @@ export class AdminService {
         message: 'Menu permission deleted successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -776,7 +820,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -854,7 +901,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -889,7 +939,10 @@ export class AdminService {
         message: 'Support role deleted successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -926,7 +979,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -963,7 +1019,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1014,7 +1073,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1040,7 +1102,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1054,7 +1119,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1223,7 +1291,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1289,7 +1360,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1372,7 +1446,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1540,7 +1617,10 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1722,7 +1802,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1749,7 +1832,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -1775,7 +1861,10 @@ export class AdminService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -2301,7 +2390,10 @@ export class AdminService {
         data: updatedPilot,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -2367,7 +2459,10 @@ export class AdminService {
         data: updatedPromoter,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -2510,7 +2605,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }
@@ -2667,7 +2765,11 @@ export class AdminService {
         await Promise.allSettled(deletePromises);
       }
     } catch (error) {
-      console.error('Error cleaning up previous files', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+        { scope: 'deletePreviousFiles' },
+      );
     }
   }
 
@@ -2726,7 +2828,10 @@ export class AdminService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AdminService',
+      );
       throw error;
     }
   }

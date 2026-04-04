@@ -23,6 +23,7 @@ import { Country, PilotStatus, UserRole, UserStatus } from '@prisma/client';
 import { CouponsNames } from '../admin/admin.constants';
 import { SocketService } from 'src/core/socket/socket.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class AuthService {
@@ -40,6 +41,7 @@ export class AuthService {
     private readonly otpService: OTPService,
     private readonly geofencingService: GeofencingService,
     private readonly socketService: SocketService,
+    private readonly logger: LoggerService,
   ) {
     this.accessTokenExpiresIn = this.configService.get<string>(
       'jwt.accessTokenExpiresIn',
@@ -140,7 +142,7 @@ export class AuthService {
           }
         }
 
-        console.warn(`OTP ${otp} sent to the phone ${phone} successfully.`);
+        this.logger.log('OTP dispatched via BD SMS path', 'AuthService');
 
         await this.redis.set(`otpSent:${phone}`, 'true', 60);
 
@@ -163,7 +165,10 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -364,7 +369,10 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -415,7 +423,10 @@ export class AuthService {
           : 'Outside the service area.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -442,7 +453,10 @@ export class AuthService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -471,7 +485,10 @@ export class AuthService {
         message: 'FCM token refreshed successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -495,7 +512,10 @@ export class AuthService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -519,7 +539,10 @@ export class AuthService {
         message: 'User deleted successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -572,7 +595,10 @@ export class AuthService {
         message: 'Logged out successfully.',
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -622,7 +648,10 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+      );
       throw error;
     }
   }
@@ -849,8 +878,9 @@ export class AuthService {
         const oldSocket = sockets.find((s) => s.id === existingClientId);
 
         if (oldSocket) {
-          console.log(
-            `Force disconnecting socket ${existingClientId} for user ${userId}`,
+          this.logger.log(
+            `Force disconnecting socket for user (socket id redacted)`,
+            'AuthService',
           );
 
           // Emit before disconnecting to ensure message is sent
@@ -868,7 +898,11 @@ export class AuthService {
         await this.redis.del(connectionKey);
       }
     } catch (error) {
-      console.error('Error force disconnecting user:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+        { scope: 'forceDisconnectUser' },
+      );
     }
   }
 
@@ -889,9 +923,13 @@ export class AuthService {
       //   },
       // });
 
-      console.log(`Cleaned up pilot data for user ${userId}`);
+      this.logger.log('Cleaned up pilot geospatial data on logout', 'AuthService');
     } catch (error) {
-      console.error('Error cleaning up pilot data:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AuthService',
+        { scope: 'cleanupPilotData' },
+      );
     }
   }
 

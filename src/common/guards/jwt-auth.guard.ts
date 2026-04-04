@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RedisService } from 'src/core/cache/redis.service';
 import { ConfigService } from '@nestjs/config';
 import { RedisKeys } from 'src/core/cache/redis-keys';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -17,6 +18,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly redis: RedisService,
+    private readonly logger: LoggerService,
   ) {
     this.jwtSecret = this.configService.get<string>('jwt.secret');
   }
@@ -46,7 +48,8 @@ export class JwtAuthGuard implements CanActivate {
 
       request.user = payload;
       return true;
-    } catch (err) {
+    } catch {
+      this.logger.warn('JWT authentication failed', JwtAuthGuard.name);
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/database.service';
 import { RedisService } from 'src/core/cache/redis.service';
 import { RideNotificationService } from './ride-notification.service';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { BookingStatus, CancelledBy, PilotStatus, UserStatus } from '@prisma/client';
 import { NotifyDriverPayload, RideRequestPayload } from '../dto/ride.interface';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 interface SearchIteration {
   iterationNumber: number;
@@ -38,7 +39,6 @@ interface SearchConfiguration {
 
 @Injectable()
 export class DriverSearchService {
-  private readonly logger = new Logger(DriverSearchService.name);
   private readonly context = 'DriverSearchService';
 
   private readonly DEFAULT_SEARCH_CONFIG: SearchConfiguration = {
@@ -55,6 +55,7 @@ export class DriverSearchService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly rideNotificationService: RideNotificationService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
@@ -95,7 +96,10 @@ export class DriverSearchService {
           bookingStatus.status = status;
           if (status !== BookingStatus.PENDING) {
             bookingStatus.isResolved = true;
-            console.log('Booking status changed to', status);
+            this.logger.debug(
+              'Booking status changed (non-pending)',
+              this.context,
+            );
           }
         }
       };
@@ -158,9 +162,10 @@ export class DriverSearchService {
 
       return searchResult;
     } catch (error) {
-      this.logger.error(
-        `Error in searchDrivers: ${error.message}`,
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
         this.context,
+        { scope: 'searchDrivers' },
       );
       await this.handleSearchError(bookingId, error, userId);
       throw error;
@@ -819,9 +824,10 @@ export class DriverSearchService {
         this.context,
       );
     } catch (error) {
-      this.logger.error(
-        `Error in handleNoDriverFound: ${error.message}`,
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
         this.context,
+        { scope: 'handleNoDriverFound' },
       );
       throw error;
     }
@@ -832,9 +838,10 @@ export class DriverSearchService {
     error: any,
     userId: string,
   ): Promise<void> {
-    this.logger.error(
-      `Search error for booking ${bookingId}: ${error.message}`,
+    this.logger.logError(
+      error instanceof Error ? error : new Error(String(error)),
       this.context,
+      { scope: 'handleSearchError', bookingId },
     );
 
     try {
@@ -869,9 +876,12 @@ export class DriverSearchService {
       pipeline.del(`${RedisKeys.RIDE_ACCEPTED}${bookingId}`);
       await pipeline.exec();
     } catch (cleanupError) {
-      this.logger.error(
-        `Error during cleanup: ${cleanupError.message}`,
+      this.logger.logError(
+        cleanupError instanceof Error
+          ? cleanupError
+          : new Error(String(cleanupError)),
         this.context,
+        { scope: 'handleSearchErrorCleanup' },
       );
       throw cleanupError;
     }
@@ -991,9 +1001,10 @@ export class DriverSearchService {
         this.context,
       );
     } catch (error) {
-      this.logger.error(
-        `Error stopping search session for booking ${bookingId}: ${error.message}`,
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
         this.context,
+        { scope: 'stopSearchSession', bookingId },
       );
     }
   }

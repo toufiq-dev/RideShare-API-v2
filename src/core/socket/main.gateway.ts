@@ -17,6 +17,7 @@ import { RideNotificationService } from 'src/modules/ride/services/ride-notifica
 import { SendMessageDto } from 'src/modules/chat/dto/send-message.dto';
 import { ChatEvents, RideEvents } from './socket-events';
 import { BookingStatus } from '@prisma/client';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @WebSocketGateway({
   cors: {
@@ -43,28 +44,38 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chatService: ChatService,
     private readonly rideService: RideService,
     private readonly rideNotificationService: RideNotificationService,
+    private readonly logger: LoggerService,
   ) {}
 
   onModuleInit() {
     this.socketService.setServer(this.server);
-    console.log('🚀 WebSocket Gateway initialized with namespace: /socket');
+    this.logger.log(
+      'WebSocket Gateway initialized with namespace: /socket',
+      'MainGateway',
+    );
   }
 
   async handleConnection(client: Socket) {
-    console.log('🔌 New connection attempt:');
-    console.log('  - Client ID:', client.id);
-    console.log('  - Namespace:', client.nsp.name);
+    this.logger.debug(
+      `WebSocket connection attempt (id=${client.id})`,
+      'MainGateway',
+    );
 
     try {
       await this.socketService.handleConnection(client);
-      console.log('✅ Client connected successfully:', client.id);
+      this.logger.debug(`WebSocket connected (id=${client.id})`, 'MainGateway');
     } catch (error) {
-      console.error('Connection error:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'MainGateway',
+        { scope: 'handleConnection' },
+      );
       // Only emit error if client is still connected
       if (client.connected) {
         client.emit('error', {
           message: 'Failed to connect',
-          error: error.message,
+          error:
+            error instanceof Error ? error.message : 'Connection failed',
         });
       }
       // Client should already be disconnected by handleConnection, but ensure it
@@ -86,7 +97,10 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       if (!client.data?.user?.userId) {
         client.emit('error', { message: 'User not authenticated' });
-        console.log('❌ Client not authenticated to send message');
+        this.logger.warn(
+          'Client not authenticated to send message',
+          'MainGateway',
+        );
         return;
       }
 
@@ -103,10 +117,14 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       return { success: true };
     } catch (error) {
-      console.error('sendMessage error:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'MainGateway',
+        { scope: 'handleSendMessage' },
+      );
       client.emit('error', {
         message: 'Failed to send message',
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -122,7 +140,10 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.emit(RideEvents.ERROR, {
           message: 'User not authenticated',
         });
-        console.log('❌ Client not authenticated to update location');
+        this.logger.warn(
+          'Client not authenticated to update location',
+          'MainGateway',
+        );
         return;
       }
 
@@ -175,10 +196,14 @@ export class MainGateway implements OnGatewayConnection, OnGatewayDisconnect {
         message: 'Location updated successfully',
       };
     } catch (error) {
-      console.error('updateLocation error:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'MainGateway',
+        { scope: 'updateLocation' },
+      );
       client.emit(RideEvents.ERROR, {
         message: 'Failed to update location',
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

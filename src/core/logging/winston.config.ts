@@ -100,7 +100,9 @@ export const createWinstonConfig = (
           version: process.env.API_VERSION || 'v1',
         },
         onConnectionError: (err) => {
-          console.error('Loki connection error:', err);
+          process.stderr.write(
+            `Loki connection error: ${err instanceof Error ? err.message : String(err)}\n`,
+          );
         },
         gracefulShutdown: false,
       }),

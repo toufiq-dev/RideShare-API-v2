@@ -2,6 +2,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class AzureService {
@@ -11,7 +12,10 @@ export class AzureService {
   private readonly endpoint: string;
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.connectionString = this.configService.get<string>(
       'azure.connectionString',
     );
@@ -57,7 +61,7 @@ export class AzureService {
   async deleteFile(fileUrl: string): Promise<void> {
     try {
       if (!fileUrl) {
-        console.log('No file URL provided for deletion');
+        this.logger.debug('No file URL provided for deletion', 'AzureService');
         return;
       }
 
@@ -65,14 +69,17 @@ export class AzureService {
       const pathParts = url.pathname.split('/').filter(Boolean);
 
       if (pathParts.length < 2) {
-        console.log('Invalid URL structure:', fileUrl);
+        this.logger.warn('Invalid blob URL structure for deletion', 'AzureService');
         return;
       }
 
       const containerName = pathParts[0];
       const blobName = decodeURIComponent(pathParts.slice(1).join('/'));
 
-      console.log(`Attempting to delete: ${containerName}/${blobName}`);
+      this.logger.debug(
+        `Deleting blob container=${containerName}`,
+        'AzureService',
+      );
 
       const containerClient =
         this.blobServiceClient.getContainerClient(containerName);
@@ -80,14 +87,24 @@ export class AzureService {
 
       const exists = await blockBlobClient.exists();
       if (!exists) {
-        console.log(`Blob ${blobName} does not exist.`);
+        this.logger.debug(
+          `Blob not found (container=${containerName})`,
+          'AzureService',
+        );
         return;
       }
 
       await blockBlobClient.deleteIfExists({ deleteSnapshots: 'include' });
-      console.log(`Blob ${blobName} deleted successfully.`);
+      this.logger.debug(
+        `Blob deleted (container=${containerName})`,
+        'AzureService',
+      );
     } catch (error) {
-      console.error('Error while deleting blob:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'AzureService',
+        { scope: 'deleteFile' },
+      );
       throw new Error('Failed to delete file from Azure Blob Storage');
     }
   }

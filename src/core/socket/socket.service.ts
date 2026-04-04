@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { RedisService } from '../cache/redis.service';
 import { RedisKeys } from '../cache/redis-keys';
+import { LoggerService } from '../logging/logger.service';
 
 @Injectable()
 export class SocketService {
@@ -14,6 +15,7 @@ export class SocketService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly redis: RedisService,
+    private readonly logger: LoggerService,
   ) {}
 
   setServer(server: Server) {
@@ -31,7 +33,6 @@ export class SocketService {
     client: Socket,
   ): Promise<{ userId: string; role: string }> {
     const token = client.handshake.auth?.token;
-    console.log('Socket connection token:', token);
     if (!token) {
       throw new WsException('Missing authentication token');
     }
@@ -50,7 +51,9 @@ export class SocketService {
         `${RedisKeys.ACCESS_TOKEN}${userId}`,
       );
       if (!storedAccessToken || storedAccessToken !== token) {
-        console.log(`Token mismatch for user ${userId} - disconnecting`);
+        this.logger.logSecurity('WebSocket token mismatch; disconnecting', {
+          userId,
+        });
         client.disconnect(true);
         throw new WsException('Token has been invalidated');
       }
@@ -74,8 +77,9 @@ export class SocketService {
         const existingClientId = await this.redis.get(connectionKey);
 
         if (existingClientId && existingClientId !== client.id) {
-          console.log(
-            `Disconnecting previous socket ${existingClientId} for user ${userId}`,
+          this.logger.log(
+            'Disconnecting previous WebSocket for user (new connection)',
+            'SocketService',
           );
           const sockets = await this.server.fetchSockets();
           const oldSocket = sockets.find((s) => s.id === existingClientId);
@@ -97,12 +101,12 @@ export class SocketService {
       // Join room = userId
       await client.join(userId);
 
-      console.log(`${role} joined room: ${userId}`);
+      this.logger.log(`WebSocket joined room (role=${role})`, 'SocketService');
       client.data.user = { userId, role }; // store user in socket data
 
       return { userId, role };
     } catch (err) {
-      console.error('JWT verification failed:', err.message);
+      this.logger.warn('WebSocket JWT verification failed', 'SocketService');
       client.disconnect();
       throw new WsException('Authentication failed');
     }
@@ -116,17 +120,25 @@ export class SocketService {
         const storedClientId = await this.redis.get(connectionKey);
         if (storedClientId === client.id) {
           await this.redis.del(connectionKey);
-          console.log('Client disconnected and cleaned up:', client.id);
+          this.logger.log('WebSocket disconnected and cleaned up', 'SocketService');
         } else {
-          console.log(
-            `Client ${client.id} disconnected but connection key belongs to ${storedClientId}`,
+          this.logger.debug(
+            'WebSocket disconnect: connection key owned by another socket',
+            'SocketService',
           );
         }
       } else {
-        console.log('Client disconnected (no user data):', client.id);
+        this.logger.debug(
+          'WebSocket disconnected (no user data)',
+          'SocketService',
+        );
       }
     } catch (error) {
-      console.error('Error during disconnect cleanup:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'SocketService',
+        { scope: 'handleDisconnect' },
+      );
     }
   }
 }

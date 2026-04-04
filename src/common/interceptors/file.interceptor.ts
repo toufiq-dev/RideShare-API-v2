@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config';
 import { promisify } from 'util';
 import { Request } from 'express';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class CustomFileInterceptor implements NestInterceptor {
@@ -25,6 +26,7 @@ export class CustomFileInterceptor implements NestInterceptor {
   constructor(
     private readonly azureBlobService: AzureService,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.allowedMimeTypes = this.configService.get<string[]>(
       'file.allowedMimeTypes',
@@ -94,7 +96,11 @@ export class CustomFileInterceptor implements NestInterceptor {
         await promisify(fs.unlink)(path);
       }
     } catch (error) {
-      console.error('Error deleting file:', error.message);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'CustomFileInterceptor',
+        { scope: 'cleanUpFile' },
+      );
     }
   }
 

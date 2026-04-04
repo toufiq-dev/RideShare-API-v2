@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class PrismaService
@@ -11,7 +12,10 @@ export class PrismaService
 {
   private pool: Pool;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     const databaseUrl = configService.get<string>('database.url');
 
     // Create a PostgreSQL pool as a local variable first
@@ -40,8 +44,7 @@ export class PrismaService
   async onModuleInit() {
     try {
       await this.$connect();
-      const databaseUrl = this.configService.get<string>('database.url');
-      console.log(`Connected to database: ${databaseUrl}`);
+      this.logger.log('Connected to database', 'PrismaService');
     } catch (error) {
       throw new Error(`Database connection failed: ${error.message}`);
     }

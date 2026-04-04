@@ -13,6 +13,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { RedisKeys } from 'src/core/cache/redis-keys';
 import { AzureEmailService } from './azure-email.service';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class EmailService {
@@ -24,6 +25,7 @@ export class EmailService {
     private readonly redis: RedisService,
     @InjectQueue('otp-email') private readonly otpQueue: Queue,
     private readonly azureEmailService: AzureEmailService,
+    private readonly logger: LoggerService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
@@ -92,7 +94,11 @@ export class EmailService {
 
       return { message: 'OTP sent to your email successfully' };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'EmailService',
+        { scope: '_sendOtpEmail' },
+      );
       throw error;
     }
   }

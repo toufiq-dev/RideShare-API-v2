@@ -27,6 +27,7 @@ import {
   FilterDriverSortOptions,
   FilterDriverSortOrderOptions,
 } from '../dto/admin-driver.dto';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class AdminDriverService {
@@ -77,7 +78,10 @@ export class AdminDriverService {
     [DocumentType.VEHICLE_OWNERS_NID]: 'Vehicle Owner NID',
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {}
 
   // ==================== Public Methods ====================
 
@@ -1608,7 +1612,11 @@ export class AdminDriverService {
       return error;
     }
 
-    console.error('Transaction error:', error);
+    this.logger.logError(
+      error instanceof Error ? error : new Error(String(error)),
+      'AdminDriverService',
+      { scope: 'handleTransactionError' },
+    );
     return new BadRequestException(
       `${defaultMessage} An unexpected error occurred. Please try again or contact support if the problem persists.`,
     );
@@ -1629,7 +1637,11 @@ export class AdminDriverService {
       return this.handleTransactionError(error, defaultMessage);
     }
 
-    console.error('Service error:', error);
+    this.logger.logError(
+      error instanceof Error ? error : new Error(String(error)),
+      'AdminDriverService',
+      { scope: 'handleError' },
+    );
     return new BadRequestException(defaultMessage);
   }
 }

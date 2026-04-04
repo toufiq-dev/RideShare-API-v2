@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tariff, VehicleTypeNameBD } from '@prisma/client';
 import { PrismaService } from 'src/core/database/database.service';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 type Baseline = {
   baseFare: number;
@@ -15,7 +16,10 @@ type Baseline = {
 
 @Injectable()
 export class TariffService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {}
 
   async getActiveTariff(
     city: string,
@@ -102,7 +106,11 @@ export class TariffService {
 
       return detourRatio;
     } catch (error) {
-      console.error('Error calculating detour ratio:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'TariffService',
+        { scope: 'computeDetourRatio' },
+      );
       return undefined;
     }
   }

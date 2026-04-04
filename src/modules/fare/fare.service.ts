@@ -11,6 +11,7 @@ import { VehicleTypeNameBD } from '@prisma/client';
 import { MultiplierService } from '../pricing/multiplier.service';
 import { TariffService } from '../pricing/tariff.service';
 import { h3Cell } from 'src/core/utils/h3.util';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class FareService {
@@ -25,6 +26,7 @@ export class FareService {
     private readonly prisma: PrismaService,
     private readonly tariffService: TariffService,
     private readonly multService: MultiplierService,
+    private readonly logger: LoggerService,
   ) {
     this.gmaps = new Client({});
     this.apiKey = this.configService.get<string>('googleMaps.apiKey');
@@ -51,7 +53,11 @@ export class FareService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'FareService',
+        { scope: 'updateFare' },
+      );
       throw error;
     }
   }
@@ -96,7 +102,11 @@ export class FareService {
         routePolyline,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'FareService',
+        { scope: 'calculateDistanceAndDuration' },
+      );
       throw new BadRequestException(
         'Failed to calculate distance and duration',
       );
@@ -222,7 +232,11 @@ export class FareService {
         },
       };
     } catch (error) {
-      console.error('Error in calculateTariffBasedFare:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'FareService',
+        { scope: 'calculateTariffBasedFare' },
+      );
       throw new BadRequestException('Failed to calculate fare');
     }
   }
@@ -341,9 +355,10 @@ export class FareService {
             timeAway: `${Math.floor(Math.random() * 5) + 1} min away`, // You can implement proper time calculation
           });
         } catch (error) {
-          console.error(
-            `Error calculating fare for vehicle type ${vehicleType.name}:`,
-            error,
+          this.logger.logError(
+            error instanceof Error ? error : new Error(String(error)),
+            'FareService',
+            { scope: 'calculateMultipleVehicleFares', vehicleType: vehicleType.name },
           );
           // Skip this vehicle type if there's an error
           continue;
@@ -352,7 +367,11 @@ export class FareService {
 
       return results;
     } catch (error) {
-      console.error('Error in calculateMultipleVehicleFares:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'FareService',
+        { scope: 'calculateMultipleVehicleFares' },
+      );
       throw new BadRequestException('Failed to calculate vehicle fares');
     }
   }

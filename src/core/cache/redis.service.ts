@@ -177,7 +177,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     pilotUserId: string,
   ): Promise<number> {
     try {
-      console.log('geoAdd', key, latitude, longitude, pilotUserId);
       const result = await this.client.geoadd(
         key,
         longitude,
@@ -185,13 +184,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         pilotUserId,
       );
 
-      const pilot = await this.prisma.pilot.findUnique({
-        where: { userId: pilotUserId },
-        select: { phone: true },
-      });
-
-      this.logger.log(
-        `Added ${pilot.phone} to geospatial set ${key} at (${latitude}, ${longitude}) and result, ${result}`,
+      this.logger.debug(
+        `geoAdd key=${key} result=${result}`,
         this.context,
       );
 

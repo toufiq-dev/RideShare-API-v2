@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/database.service';
 import { UpdateLanguageDto } from './dto/languages.dto';
 import { UserRole } from '@prisma/client';
+import { LoggerService } from 'src/core/logging/logger.service';
 
 @Injectable()
 export class LanguagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {}
 
   async findAll() {
     const languages = await this.prisma.languages.findMany();
@@ -44,7 +48,10 @@ export class LanguagesService {
         data,
       };
     } catch (error) {
-      console.error(error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'LanguagesService',
+      );
       throw error;
     }
   }

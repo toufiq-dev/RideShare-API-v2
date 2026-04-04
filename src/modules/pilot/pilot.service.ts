@@ -573,14 +573,18 @@ export class PilotService {
         );
       }
 
-      // await this.verifyPancardName(verificationResponse, userId);
+      await this.verifyPancardName(verificationResponse, userId);
+
+      const panCardName = this.panDisplayNameFromVerification(
+        verificationResponse,
+      );
 
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isPanCardVerified: VerificationStatus.APPROVED,
           panCardNumber: verificationResponse.number,
-          panCardName: verificationResponse.name,
+          panCardName,
         },
       });
 
@@ -618,14 +622,18 @@ export class PilotService {
         );
       }
 
-      // await this.verifyPancardName(verificationResponse, userId);
+      await this.verifyPancardName(verificationResponse, userId);
+
+      const panCardName = this.panDisplayNameFromVerification(
+        verificationResponse,
+      );
 
       const data = await this.prisma.pilot.update({
         where: { userId },
         data: {
           isPanCardVerified: VerificationStatus.APPROVED,
           panCardNumber: verificationResponse.number,
-          panCardName: verificationResponse.name,
+          panCardName,
         },
       });
 
@@ -1802,23 +1810,25 @@ export class PilotService {
         throw new BadRequestException('Pilot already verified number plate.');
       }
 
-      // const vehicle = await this.prisma.vehicle.findFirst({
-      //   where: { pilotId: pilot.id },
-      //   select: {
-      //     regNo: true,
-      //   },
-      // });
-      // if (!vehicle) {
-      //   throw new BadRequestException(
-      //     'You did not upload any vehicle registration number.',
-      //   );
-      // }
+      const vehicle = await this.prisma.vehicle.findFirst({
+        where: { pilotId: pilot.id },
+        select: {
+          regNo: true,
+        },
+      });
+      if (!vehicle) {
+        throw new BadRequestException(
+          'You did not upload any vehicle registration number.',
+        );
+      }
 
-      // if (!vehicle.regNo.includes(numberPlate)) {
-      //   throw new BadRequestException(
-      //     'Number plate does not match with vehicle registration number.',
-      //   );
-      // }
+      const regNorm = this.normalizeVehicleRegToken(vehicle.regNo);
+      const plateNorm = this.normalizeVehicleRegToken(numberPlate);
+      if (!regNorm.includes(plateNorm) && !plateNorm.includes(regNorm)) {
+        throw new BadRequestException(
+          'Number plate does not match with vehicle registration number.',
+        );
+      }
 
       const updatedPilot = await this.prisma.pilot.update({
         where: { userId },
@@ -2470,17 +2480,70 @@ export class PilotService {
     }
   }
 
-  private async verifyPancardName(verificationResponse: any, userId: string) {
-    const name =
-      verificationResponse.firstName + ' ' + verificationResponse.lastName;
+  private normalizeVehicleRegToken(value: string): string {
+    return value.replace(/\s+/g, '').toUpperCase();
+  }
 
-    // Check if pan card name matches with driving license name
+  private panDisplayNameFromVerification(verificationResponse: {
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+  }): string {
+    if (verificationResponse.name?.trim()) {
+      return verificationResponse.name.trim();
+    }
+    const fn = (verificationResponse.firstName ?? '').trim();
+    const ln = (verificationResponse.lastName ?? '').trim();
+    return [fn, ln].filter(Boolean).join(' ');
+  }
+
+  private normalizePersonName(value: string): string {
+    return value.replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  private personNamesLikelyMatch(a: string, b: string): boolean {
+    const na = this.normalizePersonName(a);
+    const nb = this.normalizePersonName(b);
+    if (na === nb) {
+      return true;
+    }
+    const sortedA = na
+      .split(' ')
+      .filter(Boolean)
+      .sort()
+      .join(' ');
+    const sortedB = nb
+      .split(' ')
+      .filter(Boolean)
+      .sort()
+      .join(' ');
+    return sortedA === sortedB;
+  }
+
+  private async verifyPancardName(verificationResponse: any, userId: string) {
+    const panName = this.panDisplayNameFromVerification(verificationResponse);
+    if (!panName) {
+      throw new BadRequestException(
+        'Could not read name from PAN verification response.',
+      );
+    }
+
     const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+    if (!pilot) {
+      throw new BadRequestException('Pilot not found.');
+    }
+
     const drivingLicense = await this.prisma.drivingLicense.findUnique({
       where: { pilotId: pilot.id },
     });
 
-    if (drivingLicense.nameOnLicense !== name) {
+    if (!drivingLicense?.nameOnLicense) {
+      throw new BadRequestException(
+        'Driving license name not on file; complete driving license verification first.',
+      );
+    }
+
+    if (!this.personNamesLikelyMatch(drivingLicense.nameOnLicense, panName)) {
       throw new BadRequestException(
         'Pancard name does not match with driving license name.',
       );

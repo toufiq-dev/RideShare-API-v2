@@ -21,8 +21,6 @@ export class VerificationService {
   private readonly rcVerifyEndPointPreproduction: string;
   private readonly rcToName: string;
   private readonly rcVerifyBasic: string;
-  private readonly getAadhaar: string;
-  private readonly getAadhaarPreproduction: string;
   private readonly sendOtpEndPoint: string;
   private readonly verifyAadhaarEndPoint: string;
   private readonly clientId: string;
@@ -61,10 +59,6 @@ export class VerificationService {
       'signzy.rcVerifyEndPointPreproduction',
     );
     this.rcVerifyBasic = this.configService.get<string>('signzy.rcVerifyBasic');
-    this.getAadhaar = this.configService.get<string>('signzy.getAadhaar');
-    this.getAadhaarPreproduction = this.configService.get<string>(
-      'signzy.getAadhaarPreproduction',
-    );
     this.sendOtpEndPoint = this.configService.get<string>(
       'cashfreeAadhaar.sendOtpEndPoint',
     );
@@ -746,29 +740,7 @@ export class VerificationService {
     }
   }
 
-  // Signzy
-  // async verifyAadhaar(requestId: string) {
-  //   try {
-  //     const response = await axios.post(
-  //       this.getAadhaarPreproduction,
-  //       requestId,
-  //       {
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //           Authorization: this.preproductionAccessToken,
-  //         },
-  //       },
-  //     );
-
-  //     console.log(response.data.result);
-
-  //     return response.data.result;
-  //   } catch (error) {
-  //     throw new BadRequestException(
-  //       'Failed to verify aadhaar with Signzy API.',
-  //     );
-  //   }
-  // }
+  /** Aadhaar flow uses Cashfree (`sendOtpToverifyAadhaar` / `verifyAadhaar`). */
 
   async sendOtpToverifyAadhaar(aadhaar_number: string) {
     const data = {

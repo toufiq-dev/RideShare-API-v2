@@ -122,6 +122,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client;
   }
 
+  /**
+   * SET key value EX ttlSeconds NX. Returns true if the key was set (lock acquired).
+   */
+  async setIfNotExists(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    const result = await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  }
+
   async set(key: string, value: string, ttl?: number): Promise<void> {
     try {
       if (ttl !== undefined) {

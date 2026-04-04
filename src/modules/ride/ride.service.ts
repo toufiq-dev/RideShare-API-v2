@@ -823,13 +823,17 @@ export class RideService {
         throw new BadRequestException('Booking is no longer available.');
       }
 
-      // const lockKey = `lock:accept:${bookingId}`;
-      // const lockAcquired = await this.redis.set(lockKey, 'locked', 'EX', 10, 'NX');
+      const acceptLockKey = `lock:accept:${bookingId}`;
+      const lockAcquired = await this.redis.setIfNotExists(
+        acceptLockKey,
+        '1',
+        10,
+      );
+      if (!lockAcquired) {
+        throw new BadRequestException('Another pilot is accepting this ride.');
+      }
 
-      // if (!lockAcquired) {
-      //   throw new BadRequestException('Another pilot is accepting this ride.');
-      // }
-
+      try {
       const result = await this.prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findFirst({
           where: {
@@ -1061,6 +1065,9 @@ export class RideService {
         message: 'Ride accepted successfully.',
         data,
       };
+      } finally {
+        await this.redis.del(acceptLockKey).catch(() => undefined);
+      }
     } catch (error) {
       this.logger.logError(
         error instanceof Error ? error : new Error(String(error)),
@@ -2686,16 +2693,6 @@ export class RideService {
       throw error;
     }
   }
-
-  // private async newDistanceAndDuration(
-  //   origin: LocationDto,
-  //   destination: LocationDto,
-  // ): Promise<{ distanceKm: number; durationMin: number }> {
-  //   const { distanceKm, durationMin } =
-  //     await this.fareService.calculateDistanceAndDuration(origin, destination);
-
-  //   return { distanceKm, durationMin };
-  // }
 
   private calculateTripDuration(
     tripStart: Date | null,

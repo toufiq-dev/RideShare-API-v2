@@ -816,9 +816,9 @@ export class AuthService {
     if (existingAccessToken || existingRefreshToken) {
       await this.forceDisconnectUser(userId);
 
-      // if (role === RoleEnum.PILOT) {
-      //   await this.cleanupPilotData(userId);
-      // }
+      if (role === UserRole.PILOT) {
+        await this.cleanupPilotData(userId);
+      }
     }
 
     await this.redis.del(`${RedisKeys.ACCESS_TOKEN}${userId}`);
@@ -908,22 +908,17 @@ export class AuthService {
 
   private async cleanupPilotData(userId: string): Promise<void> {
     try {
-      // 1. Remove from geospatial set
       await this.redis.zRem(RedisKeys.PILOT_LOCATION, userId);
+      await this.redis.removeActiveRide(userId);
+      await this.prisma.pilot.update({
+        where: { userId },
+        data: { onlineStatus: PilotStatus.OFFLINE },
+      });
 
-      // 2. Clean up active ride if any
-      // await this.redis.removeActiveRide(userId);
-
-      // 3. Update pilot status to offline
-      // await this.prisma.pilot.update({
-      //   where: { userId },
-      //   data: {
-      //     onlineStatus: PilotStatus.OFFLINE,
-      //     activeBookingId: null,
-      //   },
-      // });
-
-      this.logger.log('Cleaned up pilot geospatial data on logout', 'AuthService');
+      this.logger.log(
+        'Cleaned up pilot session after login from another device (same as logout pilot branch)',
+        'AuthService',
+      );
     } catch (error) {
       this.logger.logError(
         error instanceof Error ? error : new Error(String(error)),

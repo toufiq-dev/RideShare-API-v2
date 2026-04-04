@@ -19,6 +19,7 @@ This folder documents **external services** used by FairDrive API: what they do 
 | Signzy | [signzy.md](signzy.md) | India DL / PAN / RC / DigiLocker Aadhaar APIs |
 | Firebase | [firebase.md](firebase.md) | FCM push notifications |
 | Microsoft Azure | [azure.md](azure.md) | Blob storage, Computer Vision OCR, OpenAI, Communication Email |
+| Socket.IO | [socketio-events.md](socketio-events.md) | Realtime ride/chat on namespace `/socket` (JWT via `auth.token`) |
 
 ## Webhooks and callbacks (this API)
 

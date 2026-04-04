@@ -83,6 +83,10 @@ Diagrams: [`architecture/flows.md`](architecture/flows.md).
 | **chat** | Persisted messages; realtime via `MainGateway` |
 | **health** | `@nestjs/terminus` probes (`/health`, `/health/detailed`) |
 
+### Pilot onboarding (India & Bangladesh)
+
+Step-by-step KYC, verification flags, admin vs vendor, re-upload, and ordering: [`src/modules/pilot/onboarding-flow-india-bangladesh.md`](src/modules/pilot/onboarding-flow-india-bangladesh.md).
+
 ---
 
 ## Per-file pages

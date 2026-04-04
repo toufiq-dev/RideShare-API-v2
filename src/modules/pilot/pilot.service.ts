@@ -1585,7 +1585,7 @@ export class PilotService {
           regNo: vehicleNumber,
           registrationDate,
           colour: vehicleColour,
-          model: vehicleType,
+          model,
           pilotId: pilot.id,
           vehicleTypeIdBD: vehicleTypeBDId.id,
         },

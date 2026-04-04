@@ -7,6 +7,7 @@ import { VerificationService } from 'src/core/utils/verification.util';
 import { RideModule } from '../ride/ride.module';
 import { OTPService } from 'src/core/utils/otp.util';
 import { PricingModule } from '../pricing/pricing.module';
+import { CustomFileInterceptor } from 'src/common/interceptors/file.interceptor';
 
 @Module({
   imports: [RideModule, PricingModule],
@@ -18,6 +19,7 @@ import { PricingModule } from '../pricing/pricing.module';
     AzureService,
     VerificationService,
     OTPService,
+    CustomFileInterceptor,
   ],
   exports: [PilotService],
 })

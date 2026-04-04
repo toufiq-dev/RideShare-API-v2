@@ -878,7 +878,11 @@ export class VerificationService {
 
       return category;
     } catch (error) {
-      console.error('Error calling OpenAI:', error);
+      this.logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        'VerificationService',
+        { scope: 'classifyVehicleUsingOpenAI' },
+      );
       return VehicleTypeName.OTHER;
     }
   }

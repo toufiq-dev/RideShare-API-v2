@@ -3,6 +3,7 @@ import {
   Injectable,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/core/database/database.service';
@@ -14,7 +15,9 @@ import {
   ReconcileSslcommerzDto,
 } from './dto/payment.dto';
 import { TransactionType, TransactionStatus } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 
 @Injectable()
 export class PaymentService {
@@ -517,6 +520,27 @@ export class PaymentService {
     const { subscriptionId, transactionId, times } = verifyPaymentDto;
 
     try {
+      const row = await this.prisma.transaction.findUnique({
+        where: { id: transactionId },
+        include: { pilot: true },
+      });
+      if (!row) {
+        throw new NotFoundException('Transaction not found');
+      }
+      if (row.pilot.userId !== userId) {
+        throw new ForbiddenException(
+          'Transaction does not belong to this user',
+        );
+      }
+      if (row.subscriptionId !== subscriptionId) {
+        throw new BadRequestException(
+          'Subscription does not match this transaction',
+        );
+      }
+      if (row.order_id !== orderId) {
+        throw new BadRequestException('Order does not match this transaction');
+      }
+
       const response = await axios.get(`${this.createOrderUrl}/${orderId}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -526,45 +550,33 @@ export class PaymentService {
         },
       });
 
-      const subcsription = await this.prisma.subscription.findUnique({
-        where: { id: subscriptionId },
-      });
-
       if (response.data.order_status === 'PAID') {
-        const pilot = await this.prisma.pilot.findUnique({
-          where: { userId },
+        const subscription = await this.prisma.subscription.findUnique({
+          where: { id: subscriptionId },
         });
-        if (!pilot) {
-          throw new NotFoundException('User not found');
+        if (!subscription) {
+          throw new NotFoundException('Subscription not found');
+        }
+        const expectedTimes =
+          Number(subscription.price) > 0
+            ? Number(row.amount) / Number(subscription.price)
+            : 0;
+        if (
+          !Number.isFinite(expectedTimes) ||
+          Math.abs(expectedTimes - Math.round(expectedTimes)) > 1e-6 ||
+          Math.round(expectedTimes) !== Number(times)
+        ) {
+          throw new BadRequestException(
+            'Times multiplier does not match this transaction',
+          );
         }
 
-        const pilotWallet = await this.prisma.pilotWallet.findUnique({
-          where: { pilotId: pilot.id },
-        });
-        if (!pilotWallet) {
-          throw new NotFoundException('Pilot wallet not found');
-        }
-
-        const balance =
-          Number(pilotWallet.balance) +
-          Number(subcsription.coins) * Number(times);
-
-        await this.prisma.$transaction(async (tx) => {
-          await tx.pilotWallet.update({
-            where: { pilotId: pilot.id },
-            data: {
-              balance: balance,
-              subscriptionId,
-            },
-          });
-
-          await tx.transaction.update({
-            where: { id: transactionId },
-            data: {
-              status: TransactionStatus.SUCCESSFUL,
-              balanceAfter: balance,
-            },
-          });
+        await this.fulfillCashfreePaidOrder({
+          orderId,
+          cashfreeOrderAmount: Number(response.data.order_amount),
+          internalTransactionId: transactionId,
+          source: 'client_verify',
+          userId,
         });
 
         return {
@@ -587,6 +599,245 @@ export class PaymentService {
       console.error(error);
       throw error;
     }
+  }
+
+  /**
+   * Cashfree PG webhooks (no JWT). Verifies HMAC per Cashfree docs:
+   * Base64(HMAC-SHA256(timestamp + rawBody, client secret)).
+   */
+  async handleCashfreeWebhook(
+    req: RawBodyRequest<Request>,
+  ): Promise<{ message: string }> {
+    const rawBuf = req.rawBody;
+    if (!rawBuf?.length) {
+      throw new BadRequestException('Missing raw body');
+    }
+    const rawStr = rawBuf.toString('utf8');
+    const signature = req.headers['x-webhook-signature'];
+    const timestamp = req.headers['x-webhook-timestamp'];
+    if (typeof signature !== 'string' || typeof timestamp !== 'string') {
+      throw new UnauthorizedException('Missing webhook signature headers');
+    }
+    if (!this.verifyCashfreeWebhookSignature(rawStr, timestamp, signature)) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawStr) as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException('Invalid webhook JSON');
+    }
+
+    const type = payload.type as string | undefined;
+    const data = payload.data as Record<string, unknown> | undefined;
+    const order = data?.order as Record<string, unknown> | undefined;
+    const orderId = order?.order_id as string | undefined;
+    if (!orderId) {
+      return { message: 'ignored: no order_id' };
+    }
+
+    if (type === 'PAYMENT_SUCCESS_WEBHOOK') {
+      const payment = data?.payment as Record<string, unknown> | undefined;
+      if ((payment?.payment_status as string) !== 'SUCCESS') {
+        return { message: 'ignored: payment not SUCCESS' };
+      }
+      const internalTx = await this.prisma.transaction.findFirst({
+        where: {
+          order_id: orderId,
+          type: TransactionType.SUBSCRIPTION_PURCHASE,
+        },
+      });
+      if (!internalTx) {
+        return { message: 'no matching transaction' };
+      }
+      if (internalTx.status === TransactionStatus.FAILED) {
+        return { message: 'transaction already failed' };
+      }
+      await this.fulfillCashfreePaidOrder({
+        orderId,
+        cashfreeOrderAmount: Number(order?.order_amount),
+        internalTransactionId: internalTx.id,
+        source: 'webhook',
+      });
+      return { message: 'ok' };
+    }
+
+    if (
+      type === 'PAYMENT_FAILED_WEBHOOK' ||
+      type === 'PAYMENT_USER_DROPPED_WEBHOOK'
+    ) {
+      await this.markCashfreeWebhookTerminalFailure(orderId, type, payload);
+      return { message: 'ok' };
+    }
+
+    return { message: 'ignored' };
+  }
+
+  private verifyCashfreeWebhookSignature(
+    rawBody: string,
+    timestamp: string,
+    signature: string,
+  ): boolean {
+    const signedPayload = timestamp + rawBody;
+    const expected = createHmac('sha256', this.testClientSecret)
+      .update(signedPayload)
+      .digest('base64');
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(signature, 'utf8');
+    if (a.length !== b.length) {
+      return false;
+    }
+    return timingSafeEqual(a, b);
+  }
+
+  private amountsRoughlyEqual(a: number, b: number, eps = 0.02): boolean {
+    return Math.abs(a - b) <= eps;
+  }
+
+  /**
+   * Credits wallet for a Cashfree subscription purchase (idempotent).
+   */
+  private async fulfillCashfreePaidOrder(params: {
+    orderId: string;
+    cashfreeOrderAmount: number;
+    internalTransactionId: string;
+    source: 'client_verify' | 'webhook';
+    userId?: string;
+  }): Promise<{ message: string; alreadyProcessed?: boolean }> {
+    const row = await this.prisma.transaction.findUnique({
+      where: { id: params.internalTransactionId },
+      include: { pilot: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Transaction not found');
+    }
+    if (row.type !== TransactionType.SUBSCRIPTION_PURCHASE) {
+      throw new BadRequestException('Invalid transaction type');
+    }
+    if (row.order_id !== params.orderId) {
+      throw new BadRequestException('Order mismatch');
+    }
+    if (
+      params.source === 'client_verify' &&
+      params.userId !== undefined &&
+      row.pilot.userId !== params.userId
+    ) {
+      throw new ForbiddenException(
+        'Transaction does not belong to this user',
+      );
+    }
+
+    if (row.status === TransactionStatus.SUCCESSFUL) {
+      return {
+        message: 'Payment already verified and processed',
+        alreadyProcessed: true,
+      };
+    }
+
+    if (!this.amountsRoughlyEqual(Number(row.amount), params.cashfreeOrderAmount)) {
+      throw new BadRequestException('Amount mismatch with Cashfree order');
+    }
+
+    if (!row.subscriptionId) {
+      throw new BadRequestException('Transaction missing subscription');
+    }
+
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: row.subscriptionId },
+    });
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    const price = Number(subscription.price);
+    const times = Math.round(Number(row.amount) / price);
+    if (
+      times < 1 ||
+      !Number.isFinite(times) ||
+      Math.abs(times * price - Number(row.amount)) > 0.02
+    ) {
+      throw new BadRequestException('Invalid purchase amount vs subscription');
+    }
+
+    const pilotWallet = await this.prisma.pilotWallet.findUnique({
+      where: { pilotId: row.pilotId },
+    });
+    if (!pilotWallet) {
+      throw new NotFoundException('Pilot wallet not found');
+    }
+
+    const balance =
+      Number(pilotWallet.balance) + Number(subscription.coins) * times;
+
+    const prevMeta =
+      row.metadata !== null &&
+      typeof row.metadata === 'object' &&
+      !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.pilotWallet.update({
+        where: { pilotId: row.pilotId },
+        data: {
+          balance,
+          subscriptionId: row.subscriptionId,
+        },
+      });
+
+      await tx.transaction.update({
+        where: { id: row.id },
+        data: {
+          status: TransactionStatus.SUCCESSFUL,
+          balanceAfter: balance,
+          metadata: {
+            ...prevMeta,
+            cashfree_fulfillment_source: params.source,
+            cashfree_fulfilled_at: new Date().toISOString(),
+          },
+        },
+      });
+    });
+
+    return { message: 'Payment verified successfully' };
+  }
+
+  private async markCashfreeWebhookTerminalFailure(
+    orderId: string,
+    webhookType: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const row = await this.prisma.transaction.findFirst({
+      where: {
+        order_id: orderId,
+        type: TransactionType.SUBSCRIPTION_PURCHASE,
+        status: TransactionStatus.PENDING,
+      },
+    });
+    if (!row) {
+      return;
+    }
+
+    const prevMeta =
+      row.metadata !== null &&
+      typeof row.metadata === 'object' &&
+      !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+
+    await this.prisma.transaction.update({
+      where: { id: row.id },
+      data: {
+        status: TransactionStatus.FAILED,
+        metadata: {
+          ...prevMeta,
+          cashfree_webhook_type: webhookType,
+          cashfree_webhook_received_at: new Date().toISOString(),
+          cashfree_webhook_payload_type: payload.type,
+        },
+      },
+    });
   }
 
   private generateTranId(prefix = 'FD') {

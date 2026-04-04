@@ -3,7 +3,7 @@
 ## Role in FairDrive
 
 1. **Aadhaar (offline OTP)** — `VerificationService` (`src/core/utils/verification.util.ts`): `sendOtpToverifyAadhaar`, `verifyAadhaar` using Cashfree Verification API endpoints.
-2. **Payment Gateway (orders)** — `PaymentService`: `createOrder`, `verifyPayment` against Cashfree PG (`PAYMENT_CREATE_ORDER_URL`, test client id/secret, API version).
+2. **Payment Gateway (orders)** — `PaymentService`: `createOrder`, `verifyPayment` against Cashfree PG (`PAYMENT_CREATE_ORDER_URL`, test client id/secret, API version), plus **`POST /payment/cashfree/webhook`** (public, HMAC-verified) on `CashfreeWebhookController`.
 
 ## Environment variables
 
@@ -42,7 +42,8 @@ Config path: `cashfreePayment.*` in `app.config.ts`.
 
 ## Webhooks / callbacks
 
-- **PG:** If you use Cashfree **webhooks** for payment status, configure the webhook URL in the Cashfree dashboard to hit a **dedicated** public route on FairDrive API and verify signatures per Cashfree docs. Current `PaymentController` exposes **JWT-protected** `POST /payment/verify/:orderId` for app-driven verification—confirm whether server-side webhooks are also required.
+- **PG webhook URL (configure in Cashfree):** `https://<your-api-host>/payment/cashfree/webhook` — subscribe to **PAYMENT_SUCCESS_WEBHOOK**, **PAYMENT_FAILED_WEBHOOK**, and **PAYMENT_USER_DROPPED_WEBHOOK** as needed. Signatures use **`PAYMENT_TEST_CLIENT_SECRET`** (same secret as `x-client-secret` on order APIs); see [Cashfree signature verification](https://www.cashfree.com/docs/payments/online/webhooks/signature-verification).
+- **App-driven verify:** JWT-protected `POST /payment/verify/:orderId` remains available for the client; webhook fulfillment is **idempotent** with the same wallet credit logic.
 
 ## Operational notes
 

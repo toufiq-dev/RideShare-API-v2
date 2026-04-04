@@ -22,7 +22,7 @@ This folder documents **external services** used by FairDrive API: what they do 
 
 ## Webhooks and callbacks (this API)
 
-Payment flows are implemented as **app-invoked HTTPS routes** on FairDrive API (often with JWT), not as vendor POST webhooks to a public URL—see [sslcommerz.md](sslcommerz.md) and [cashfree.md](cashfree.md) for paths under `payment/*`.
+Payment flows use **app-invoked HTTPS routes** (often JWT) and, for Cashfree PG, a **public webhook** — see [sslcommerz.md](sslcommerz.md) and [cashfree.md](cashfree.md) for paths under `payment/*`.
 
 ## Related code
 

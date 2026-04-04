@@ -18,6 +18,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     abortOnError: false,
     bufferLogs: true,
+    rawBody: true,
   });
 
   const logger = app.get(LoggerService);

@@ -721,6 +721,12 @@ export class PilotService {
   async onboardingOffer(userId: string) {
     try {
       const pilot = await this.prisma.pilot.findUnique({ where: { userId } });
+      if (!pilot) {
+        throw new NotFoundException('Pilot not found.');
+      }
+      if (pilot.isFairCoinAvailed) {
+        throw new BadRequestException('Already availed');
+      }
       if (
         pilot.isDLVerified !== VerificationStatus.APPROVED ||
         pilot.isRCVerified !== VerificationStatus.APPROVED

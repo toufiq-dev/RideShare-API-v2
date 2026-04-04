@@ -76,7 +76,7 @@ Diagrams: [`architecture/flows.md`](architecture/flows.md).
 | **email** | Email OTP queue (Bull) + Azure Communication / SMTP fallback |
 | **fare** | Admin fare CRUD for `VehicleTypeBD`; distance/duration via Google |
 | **maps** | Google Maps Directions, Geocoding, Places autocomplete/details |
-| **pricing** | Tariff artifacts, multipliers, telemetry for pricing experiments |
+| **pricing** | Tariff artifacts, multipliers, telemetry for pricing experiments — see [surge multiplier / μ system](pricing/surge-multiplier-system.md) |
 | **program** | Pilot programs, leaderboards, scheduled ranking |
 | **subscriptions** | Pilot subscription products and purchase helpers |
 | **languages** | CRUD/list languages for apps |

@@ -62,16 +62,19 @@ pnpm install
 
 ### Configuration
 
-- Copy.
+- Copy `.env.example` to `.env` and set variables for your environment.
 - Main configuration files are in `src/config/`:
   - `app.config.ts`
   - `jwt.config.ts`
 
 ### Running the Server
 
-**First Run Docker command**
+**First run (Docker Compose)** — use the file that matches your environment:
+
 ```bash
-docker-compose up --d
+docker compose -f docker-compose.development.yml up -d
+# or
+docker compose -f docker-compose.production.yml up -d
 ```
 
 **Development:**
@@ -104,9 +107,10 @@ fairdrive-api/
 ├── prisma/                    # Prisma schema, migrations, seed scripts
 ├── test/                      # End-to-end and integration tests
 ├── static/                    # Static assets (geojson, etc.)
-├── uploads/                   # Uploaded files
+├── uploads/                   # Uploaded files (tracked via .gitkeep)
 ├── package.json
-├── docker-compose.yml
+├── docker-compose.development.yml
+├── docker-compose.production.yml
 ├── README.md
 └── ...
 ```
@@ -172,7 +176,7 @@ fairdrive-api/
 
 ## Deployment
 
-- **Docker Compose:** `docker-compose.yml` for multi-service orchestration
+- **Docker Compose:** `docker-compose.development.yml` and `docker-compose.production.yml` for multi-service orchestration (`docker compose -f <file> up -d`)
 - **PM2:** `ecosystem.config.js` for process management
 - **Static Assets:** Served from `static/`
 - **Uploads:** Handled in `uploads/`
@@ -219,7 +223,7 @@ If enabled, API docs are available at `/api` (see `main.ts` for Swagger setup).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Proprietary — **UNLICENSED** (see `package.json`). All rights reserved; there is no `LICENSE` file in this repository.
 
 ---
 

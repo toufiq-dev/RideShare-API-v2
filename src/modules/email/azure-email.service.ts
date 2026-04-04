@@ -43,7 +43,6 @@ export class AzureEmailService {
 
       const poller = await this.emailClient.beginSend(emailMessage);
       const result = await poller.pollUntilDone();
-      console.log('azureEmail', result);
       if (result.status === 'Succeeded') {
         return true;
       } else {

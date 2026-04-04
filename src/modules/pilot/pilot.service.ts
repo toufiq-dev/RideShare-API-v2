@@ -458,7 +458,7 @@ export class PilotService {
       const verificationResponse: VerificationResponseVehicle =
         await this.verificationService.verifyVehicleRC(registrationNumber);
 
-      if (!verificationResponse.verificationFailed) {
+      if (verificationResponse.verificationFailed) {
         return {
           message: 'Vehicle registration or permit is expired.',
         };

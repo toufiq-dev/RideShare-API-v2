@@ -23,7 +23,7 @@ import {
   EditStaffDto,
   EditSupportRoleDto,
 } from '../dto/admin.dto';
-import { randomInt } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import {
   AppPlatform,
   UserRole,
@@ -949,7 +949,7 @@ export class AdminService {
         data: {
           name,
           phone,
-          referralCode: randomInt(10000, 1000000).toString(),
+          referralCode: randomUUID().replace(/-/g, ''),
           userId: user.id,
           supportRoleId,
           password: hashedPassword,
